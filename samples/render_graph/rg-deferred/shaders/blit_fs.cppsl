@@ -1,0 +1,21 @@
+#include <std/std.hpp>
+#include <std2/sampler.hpp>
+
+using namespace skr::shader;
+
+extern SampleImage& input_color;
+
+[[binding(0, 1)]]
+extern Sampler& texture_sampler;
+
+struct [[stage_inout]] VSOut
+{
+    float2 uv;
+};
+
+[[fragment_shader("fs")]]
+void fs(VSOut psIn, [[sv_render_target(0)]] float4 o_color)
+{
+    float2 uv = psIn.uv;
+    o_color = texture_sampler.Sample(input_color, uv);
+}

@@ -1,0 +1,163 @@
+#include <std/std.hpp>
+#include <std2/attributes.hpp>
+#include <std2/constant_buffer.hpp>
+
+using namespace skr::shader;
+
+// External resource bindings
+extern Image<float>& output_texture;
+extern ByteBuffer<CacheFlags::ReadOnly>& gpu_scene_buffer; // Core data buffer from GPUScene
+
+// Push constants for debug parameters
+struct SceneDebugConstants 
+{
+    float2 screenSize;
+    uint32 debug_mode;     // 0 = red fill, 1 = checkerboard, 2 = UV gradient, 3 = GPUScene color debug
+    uint32 color_segment_offset; // Offset to color component segment in SOA layout
+    uint32 color_element_size;   // Size of each color element (typically 16 bytes for float4)
+    uint32 instance_count;       // Number of instances in GPUScene
+};
+
+[[push_constant]]
+extern ConstantBuffer<SceneDebugConstants>& debug_constants;
+
+// Simple red fill compute shader
+[[compute_shader("scene_debug"), kernel_2d(16, 16)]]
+void scene_debug_main([[sv_thread_id]] uint3 thread_id) 
+{
+    uint2 screen_size = uint2(debug_constants.screenSize);
+    uint2 pixel_coord = thread_id.xy;
+    
+    // Boundary check
+    if (any(pixel_coord >= screen_size)) {
+        return;
+    }
+    
+    // Debug rendering based on mode
+    float4 pixel_color;
+    
+    switch (debug_constants.debug_mode) {
+        case 0: // Red fill
+        {
+            pixel_color = float4(1.0f, 0.0f, 0.0f, 1.0f);
+            break;
+        }
+            
+        case 1: // Checkerboard pattern
+        {
+            float2 uv = float2(pixel_coord) / float2(screen_size);
+            float checker_size = 32.0f;
+            float2 checker_uv = uv * checker_size;
+            uint2 checker_coord = uint2(checker_uv);
+            bool is_even = ((checker_coord.x + checker_coord.y) % 2) == 0;
+            pixel_color = is_even ? float4(1.0f, 0.0f, 0.0f, 1.0f) : float4(0.0f, 1.0f, 0.0f, 1.0f);
+            break;
+        }
+        
+        case 2: // UV gradient
+        {
+            float2 uv = float2(pixel_coord) / float2(screen_size);
+            pixel_color = float4(uv.x, uv.y, 0.0f, 1.0f);
+            break;
+        }
+        
+        case 3: // GPUScene color debug - visualize color data from GPU buffer
+        {
+            // Map pixel position to instance index (show multiple instances in a grid)
+            uint instances_per_row = uint(sqrt(float(debug_constants.instance_count))) + 1;
+            uint block_size = uint(screen_size.x / instances_per_row);
+            
+            uint instance_x = pixel_coord.x / block_size;
+            uint instance_y = pixel_coord.y / block_size;
+            uint instance_index = instance_y * instances_per_row + instance_x;
+            
+            if (instance_index < debug_constants.instance_count) {
+                // Calculate the address in the color segment
+                uint color_offset = debug_constants.color_segment_offset + 
+                                   (instance_index * debug_constants.color_element_size);
+                
+                // Read color data from GPU buffer (assuming float4 color)
+                // ByteBuffer uses 4-byte aligned access
+                float4 instance_color;
+                instance_color.x = gpu_scene_buffer.load<float>(color_offset);
+                instance_color.y = gpu_scene_buffer.load<float>(color_offset + 4);
+                instance_color.z = gpu_scene_buffer.load<float>(color_offset + 8);
+                instance_color.w = gpu_scene_buffer.load<float>(color_offset + 12);
+                
+                // Draw border for each instance block
+                uint2 block_coord = pixel_coord % block_size;
+                if (block_coord.x < 2 || block_coord.y < 2 || 
+                    block_coord.x >= block_size - 2 || block_coord.y >= block_size - 2) {
+                    pixel_color = float4(0.0f, 0.0f, 0.0f, 1.0f); // Black border
+                } else {
+                    pixel_color = instance_color;
+                }
+            } else {
+                // Background for areas without instances
+                pixel_color = float4(0.2f, 0.2f, 0.2f, 1.0f);
+            }
+            break;
+        }
+        
+        case 4: // Simple GPUScene validation - show first instance color across entire screen
+        {
+            if (debug_constants.instance_count > 0) {
+                // Read the first instance's color
+                uint color_offset = debug_constants.color_segment_offset;
+                float4 first_color;
+                first_color.x = gpu_scene_buffer.load<float>(color_offset);
+                first_color.y = gpu_scene_buffer.load<float>(color_offset + 4);
+                first_color.z = gpu_scene_buffer.load<float>(color_offset + 8);
+                first_color.w = gpu_scene_buffer.load<float>(color_offset + 12);
+                
+                pixel_color = first_color;
+                
+                // Add instance count indicator in top-left corner
+                if (pixel_coord.x < 100 && pixel_coord.y < 20) {
+                    float indicator = float(pixel_coord.x) / 100.0f;
+                    float normalized_count = float(debug_constants.instance_count) / 100.0f;
+                    if (indicator < normalized_count) {
+                        pixel_color = float4(0.0f, 1.0f, 0.0f, 1.0f); // Green bar showing instance count
+                    }
+                }
+            } else {
+                pixel_color = float4(0.5f, 0.0f, 0.0f, 1.0f); // Dark red for no instances
+            }
+            break;
+        }
+        
+        case 5: // Test mode - show fixed color based on instance count
+        {
+            if (debug_constants.instance_count > 0) {
+                // Show yellow if we have instances
+                pixel_color = float4(1.0f, 1.0f, 0.0f, 1.0f);
+                
+                // Show debug info in corners
+                if (pixel_coord.x < 200 && pixel_coord.y < 40) {
+                    // Top-left: instance count bar
+                    if (pixel_coord.y < 20) {
+                        float indicator = float(pixel_coord.x) / 200.0f;
+                        float normalized_count = float(debug_constants.instance_count) / 10000.0f;
+                        if (indicator < normalized_count) {
+                            pixel_color = float4(0.0f, 1.0f, 0.0f, 1.0f); // Green
+                        }
+                    } else {
+                        // Show segment offset as blue gradient
+                        float offset_norm = float(debug_constants.color_segment_offset) / 65536.0f;
+                        pixel_color = float4(0.0f, 0.0f, offset_norm, 1.0f);
+                    }
+                }
+            } else {
+                pixel_color = float4(0.5f, 0.0f, 0.0f, 1.0f); // Dark red for no instances
+            }
+            break;
+        }
+        
+        default: // Magenta for unknown mode
+            pixel_color = float4(1.0f, 0.0f, 1.0f, 1.0f);
+            break;
+    }
+    
+    // Write pixel color to output texture
+    output_texture.store(pixel_coord, pixel_color);
+}

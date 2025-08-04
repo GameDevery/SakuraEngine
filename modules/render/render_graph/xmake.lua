@@ -1,8 +1,0 @@
-shared_module("SkrRenderGraph", "SKR_RENDER_GRAPH")
-    public_dependency("SkrRT")
-    skr_unity_build()
-    add_includedirs("include", {public=true})
-    -- add_files("src/graphviz/*.cpp", {unity_ignored = true})
-    add_files("src/frontend/*.cpp", "src/graphviz/*.cpp")
-    add_files("src/backend/*.cpp", {unity_group = "backend"})
-    add_files("src/phases/*.cpp", {unity_group = "backend"})    

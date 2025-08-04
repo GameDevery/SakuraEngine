@@ -377,10 +377,8 @@ void VkUtil_InitializeShaderReflection(CGPUDeviceId device, CGPUShaderLibrary_Vu
                 for (uint32_t i = 0; i < icount; i++)
                 {
                     // We use semantic for HLSL sources because DXC is a piece of shit.
-                    reflection->vertex_inputs[i].name =
-                    bHLSL ? input_vars[i]->semantic : input_vars[i]->name;
-                    reflection->vertex_inputs[i].format =
-                    VkUtil_FormatTranslateToCGPU((VkFormat)input_vars[i]->format);
+                    reflection->vertex_inputs[i].name = bHLSL ? input_vars[i]->semantic : input_vars[i]->name;
+                    reflection->vertex_inputs[i].format = VkUtil_FormatTranslateToCGPU((VkFormat)input_vars[i]->format);
                 }
             }
         }

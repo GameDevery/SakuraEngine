@@ -26,17 +26,17 @@ skr_shader_map_id skr_shader_map_create(const struct skr_shader_map_root_t* desc
 // thread-safe.
 // (RC) request install for specific platform shader identifier
 SKR_EXTERN_C SKR_RENDERER_API 
-ESkrShaderMapShaderStatus skr_shader_map_install_shader(skr_shader_map_id shaderMap, const skr_platform_shader_identifier_t* key);
+ESkrShaderMapShaderStatus skr_shader_map_install_shader(skr_shader_map_id shaderMap, const SPlatformShaderIdentifier* key);
 
 // thread-safe.
 // fetch shader in shader map
 SKR_EXTERN_C SKR_RENDERER_API 
-CGPUShaderLibraryId skr_shader_map_find_shader(skr_shader_map_id shaderMap, const skr_platform_shader_identifier_t* id);
+CGPUShaderLibraryId skr_shader_map_find_shader(skr_shader_map_id shaderMap, const SPlatformShaderIdentifier* id);
 
 // thread-safe.
 // (RC) free shader in shader map
 SKR_EXTERN_C SKR_RENDERER_API 
-void skr_shader_map_free_shader(skr_shader_map_id shaderMap, const skr_platform_shader_identifier_t* id);
+void skr_shader_map_free_shader(skr_shader_map_id shaderMap, const SPlatformShaderIdentifier* id);
 
 // shader map new frame
 SKR_EXTERN_C SKR_RENDERER_API
@@ -66,9 +66,9 @@ struct SKR_RENDERER_API skr_shader_map_t
 {
     virtual ~skr_shader_map_t() = default;
 
-    virtual ESkrShaderMapShaderStatus install_shader(const skr_platform_shader_identifier_t& id) SKR_NOEXCEPT = 0;
-    virtual CGPUShaderLibraryId find_shader(const skr_platform_shader_identifier_t& id) SKR_NOEXCEPT = 0;
-    virtual bool free_shader(const skr_platform_shader_identifier_t& id) SKR_NOEXCEPT = 0;
+    virtual ESkrShaderMapShaderStatus install_shader(const SPlatformShaderIdentifier& id) SKR_NOEXCEPT = 0;
+    virtual CGPUShaderLibraryId find_shader(const SPlatformShaderIdentifier& id) SKR_NOEXCEPT = 0;
+    virtual bool free_shader(const SPlatformShaderIdentifier& id) SKR_NOEXCEPT = 0;
 
     virtual void new_frame(uint64_t frame_index) SKR_NOEXCEPT = 0;
     virtual void garbage_collect(uint64_t critical_frame) SKR_NOEXCEPT = 0;

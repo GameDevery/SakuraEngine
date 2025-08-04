@@ -225,7 +225,6 @@ void RenderPassForward::execute(const skr_primitive_pass_context_t* context, skr
                 cgpu_cmd_resource_barrier(context.cmd, &barrier_desc);
             }
         };
-        sugoiQ_sync(*anim_query);
         sugoiQ_get_views(*anim_query, SUGOI_LAMBDA(barrierVertices));
     });
 

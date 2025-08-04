@@ -38,8 +38,10 @@ scenes
 /vsxmake*
 xmake.log
 
+temp_docs
 project.lua
 
+.mcp.json
 .claude
 .vs
 .vscode
@@ -47,6 +49,8 @@ publish
 **/bin
 **/obj
 
+.memory_bank
+memory_bank/context
 .sb
 .pkgs
 sbuild

@@ -7,7 +7,7 @@ public static class RenderGraphSamples
 {
     static RenderGraphSamples()
     {
-        Engine.Program("RenderGraphTriangle")
+        Engine.Program("RenderGraphTriangleSample")
             .Depend(Visibility.Public, "SkrRenderGraph")
             .Depend(Visibility.Private, "AppSampleCommon")
             .IncludeDirs(Visibility.Private, "./../common")
@@ -15,15 +15,22 @@ public static class RenderGraphSamples
             .AddHLSLFiles("rg-triangle/**.hlsl")
             .DXCOutputDirectory("resources/shaders/rg-triangle");
 
-        Engine.Program("RenderGraphDeferred")
+        Engine.Program("RenderGraphDeferredSample")
             .Depend(Visibility.Public, "SkrImGui", "SkrRenderGraph")
             .Depend(Visibility.Private, "AppSampleCommon")
             .IncludeDirs(Visibility.Private, "./../common")
             .AddCppFiles("rg-deferred/*.cpp")
-            .AddHLSLFiles("rg-deferred/**.hlsl")
-            .DXCOutputDirectory("resources/shaders/rg-deferred");
+            .AddCppSLFiles("rg-deferred/**.cppsl")
+            .CppSLOutputDirectory("resources/shaders/rg-deferred");
 
-        Engine.Program("RenderGraphCrossProcess")
+        Engine.Program("RenderGraphRaytracingSample")
+            .Depend(Visibility.Public, "SkrRenderGraph", "SkrSystem", "SkrScene")
+            .Depend(Visibility.Private, "lodepng")
+            .AddCppFiles("rg-raytracing/*.cpp")
+            .AddCppSLFiles("rg-raytracing/**.cppsl")
+            .CppSLOutputDirectory("resources/shaders/rg-raytracing");
+
+        Engine.Program("RenderGraphCrossProcessSample")
             .Require("lmdb", new PackageConfig { Version = new(0, 9, 29) })
             .Depend(Visibility.Private, "lmdb@lmdb")
             .Depend(Visibility.Public, "SkrImGui", "SkrRenderGraph")

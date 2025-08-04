@@ -1258,8 +1258,6 @@ typedef struct CGPUSwapChainDescriptor {
     bool enable_vsync;
     /// We can toggle to using FLIP model if app desires
     bool use_flip_swap_effect;
-    /// Clear Value.
-    float clear_value[4];
     /// format
     ECGPUFormat format;
 } CGPUSwapChainDescriptor;
@@ -1427,6 +1425,7 @@ typedef struct CGPURenderPipelineDescriptor {
 typedef struct CGPUMemoryPoolDescriptor {
     ECGPUMemoryPoolType type;
     ECGPUMemoryUsage memory_usage;
+    CGPUMemoryPoolFlags flags;
     uint64_t block_size;
     uint32_t min_block_count;
     uint32_t max_block_count;
@@ -1521,7 +1520,6 @@ typedef struct CGPUShaderLibraryDescriptor {
     const char8_t* name;
     const uint32_t* code;
     uint32_t code_size;
-    ECGPUShaderStage stage;
     bool reflection_only;
 } CGPUShaderLibraryDescriptor;
 
@@ -1557,6 +1555,8 @@ typedef struct CGPUBufferDescriptor {
     /// Preferred actual location
     /// Only available when memory_usage is CPU_TO_GPU or GPU_TO_CPU
     bool prefer_on_host;
+    /// Memory pool to allocate from (optional)
+    CGPUMemoryPoolId memory_pool;
 } CGPUBufferDescriptor;
 
 typedef struct CGPUBufferInfo {
@@ -1603,6 +1603,8 @@ typedef struct CGPUTextureDescriptor {
     CGPUResourceTypes descriptors;
     /// Memory Aliasing
     uint32_t is_restrict_dedicated;
+    /// Memory pool to allocate from (optional)
+    CGPUMemoryPoolId memory_pool;
 } CGPUTextureDescriptor;
 
 typedef struct CGPUExportTextureDescriptor {

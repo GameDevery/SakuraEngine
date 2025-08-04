@@ -17,9 +17,7 @@
 #include "./../dxc/dxcapi.h" 
 
 // helper
-namespace skd
-{
-namespace asset
+namespace skd::asset
 {
 struct DxcCreateInstanceT
 {
@@ -223,14 +221,14 @@ inline static ECGPUShaderStage getShaderStageFromTargetString(const char* target
     return CGPU_SHADER_STAGE_NONE;
 }
 
-void SDXCCompiler::SetShaderOptions(skr::span<skr_shader_option_template_t> opt_defs, skr::span<skr_shader_option_instance_t> options_view, const skr_stable_shader_hash_t& option_hash) SKR_NOEXCEPT
+void SDXCCompiler::SetShaderOptions(skr::span<skr_shader_option_template_t> opt_defs, skr::span<skr_shader_option_instance_t> options_view, const SStableShaderHash& option_hash) SKR_NOEXCEPT
 {
     option_defs = skr::Vector<skr_shader_option_template_t>(opt_defs.data(), opt_defs.size());
     options = skr::Vector<skr_shader_option_instance_t>(options_view.data(), options_view.size());
     options_hash = option_hash;
 }
 
-void SDXCCompiler::SetShaderSwitches(skr::span<skr_shader_option_template_t> opt_defs, skr::span<skr_shader_option_instance_t> options_view, const skr_stable_shader_hash_t& option_hash) SKR_NOEXCEPT
+void SDXCCompiler::SetShaderSwitches(skr::span<skr_shader_option_template_t> opt_defs, skr::span<skr_shader_option_instance_t> options_view, const SStableShaderHash& option_hash) SKR_NOEXCEPT
 {
     switch_defs = skr::Vector<skr_shader_option_template_t>(opt_defs.data(), opt_defs.size());
     switches = skr::Vector<skr_shader_option_instance_t>(options_view.data(), options_view.size());
@@ -384,7 +382,7 @@ void SDXCCompiler::createDefArgsFromOptions(skr::span<skr_shader_option_template
     }
 }
 
-ICompiledShader* SDXCCompiler::Compile(ECGPUShaderBytecodeType format, const ShaderSourceCode& source, const SShaderImporter& importer) SKR_NOEXCEPT
+ICompiledShader* SDXCCompiler::Compile(ECGPUShaderBytecodeType format, const ShaderSourceCode& source, const ShaderImporter& importer) SKR_NOEXCEPT
 {
     IDxcBlobEncoding* pSourceBlob = nullptr;
     IDxcResult* pDxcResult = nullptr;
@@ -556,7 +554,6 @@ void SDXCLibrary::Finalize()
 {
     SDXCLibrary::UnloadLibraries();
 }
-}
-}
+} // namespace skd::asset
 
 SKR_MODULE_SUBSYSTEM(skd::asset::SDXCLibrary, SkrShaderCompiler);

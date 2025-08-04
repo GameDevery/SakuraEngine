@@ -35,6 +35,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
     AS->super.scratch_buffer_size = 0;
     if (desc->type == CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL)
     {
+        SkrCZoneN(zz, "CreateBLAS", 1);
         AS->mDescCount = desc->bottom.count;
         AS->asBottom.pGeometryDescs = (D3D12_RAYTRACING_GEOMETRY_DESC*)(AS + 1);
         for (uint32_t j = 0; j < AS->mDescCount; ++j)
@@ -103,26 +104,36 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
             .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
         };
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info = { 0 };
-        COM_CALL(GetRaytracingAccelerationStructurePrebuildInfo, D->pDxDevice5, &prebuildDesc, &info);
+        {
+            SkrCZoneN(zzz, "GetRaytracingAccelerationStructurePrebuildInfo", 1);
+            COM_CALL(GetRaytracingAccelerationStructurePrebuildInfo, D->pDxDevice5, &prebuildDesc, &info);
+            SkrCZoneEnd(zzz);
+        }
 
         /************************************************************************/
         // Allocate Acceleration Structure Buffer
         /************************************************************************/
-        CGPUBufferDescriptor bufferDesc = {
-            .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER,
-            .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
-            .flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION | CGPU_BCF_DEDICATED_BIT,
-            .element_stride = sizeof(uint32_t),
-            .first_element = 0,
-            .element_count = (uint32_t)(info.ResultDataMaxSizeInBytes / sizeof(UINT32)),
-            .size = info.ResultDataMaxSizeInBytes,
-            .start_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE
-        };
-        AS->pASBuffer = cgpu_create_buffer(device, &bufferDesc);
-        AS->super.scratch_buffer_size = (uint32_t)info.ScratchDataSizeInBytes;
+        {
+            SkrCZoneN(zzz, "CreateASBuffer", 1);
+            CGPUBufferDescriptor bufferDesc = {
+                .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER,
+                .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
+                .flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION | CGPU_BCF_DEDICATED_BIT,
+                .element_stride = sizeof(uint32_t),
+                .first_element = 0,
+                .element_count = (uint32_t)(info.ResultDataMaxSizeInBytes / sizeof(UINT32)),
+                .size = info.ResultDataMaxSizeInBytes,
+                .start_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE
+            };
+            AS->pASBuffer = cgpu_create_buffer(device, &bufferDesc);
+            AS->super.scratch_buffer_size = (uint32_t)info.ScratchDataSizeInBytes;
+            SkrCZoneEnd(zzz);
+        }
+        SkrCZoneEnd(zz);
     }
     else if (desc->type == CGPU_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL)
     {
+        SkrCZoneN(zz, "CreateTLAS", 1);
         AS->mDescCount = desc->top.count;
         /************************************************************************/
         // Get the size requirement for the Acceleration Structures
@@ -141,7 +152,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
         /************************************************************************/
         /*  Construct buffer with instances descriptions                        */
         /************************************************************************/
-        D3D12_RAYTRACING_INSTANCE_DESC* instanceDescs = cgpu_calloc(desc->top.count, sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
+        D3D12_RAYTRACING_INSTANCE_DESC* instanceDescs = cgpu_malloc(desc->top.count * sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
         for (uint32_t i = 0; i < desc->top.count; ++i)
         {
             const CGPUAccelerationStructureInstanceDesc* pInst = &desc->top.instances[i];
@@ -196,6 +207,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
         D3D12Util_CreateSRV(D, CGPU_NULLPTR, &srvDesc, &SRV);
 
         AS->super.scratch_buffer_size = (UINT)info.ScratchDataSizeInBytes;
+        SkrCZoneEnd(zz);
     }
 
     // Create scratch buffer

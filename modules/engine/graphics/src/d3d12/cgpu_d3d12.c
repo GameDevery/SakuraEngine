@@ -599,7 +599,7 @@ CGPURootSignatureId cgpu_create_root_signature_d3d12(CGPUDeviceId device, const 
     for (uint32_t i = 0; i < RS->super.push_constant_count; i++)
     {
         rootParams[valid_root_tables + i] = RS->mRootConstantParam;
-        RS->mRootParamIndex               = valid_root_tables + i;
+        RS->mRootParamIndex = valid_root_tables + i;
     }
     // Serialize root signature
     ID3DBlob* error               = NULL;
@@ -684,6 +684,7 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_d3d12(CGPUDeviceId device, const 
             SamplerCount++;
         }
         else if (param_table->resources[i].type == CGPU_RESOURCE_TYPE_TEXTURE ||
+                 param_table->resources[i].type == CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE ||
                  param_table->resources[i].type == CGPU_RESOURCE_TYPE_RW_TEXTURE ||
                  param_table->resources[i].type == CGPU_RESOURCE_TYPE_BUFFER ||
                  param_table->resources[i].type == CGPU_RESOURCE_TYPE_BUFFER_RAW ||
@@ -693,6 +694,10 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_d3d12(CGPUDeviceId device, const 
                  param_table->resources[i].type == CGPU_RESOURCE_TYPE_UNIFORM_BUFFER)
         {
             CbvSrvUavCount += D3D12Util_ComputeNeededDescriptorCount(&param_table->resources[i]);
+        }
+        else
+        {
+            cgpu_assert(0 && "Unexpected/Unhandled reousrce type!");
         }
     }
     // CBV/SRV/UAV
@@ -725,6 +730,9 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_d3d12(CGPUDeviceId device, const 
                 case CGPU_RESOURCE_TYPE_TEXTURE:
                     srcHandle = D->pNullDescriptors->TextureSRV[dimension];
                     break;
+                case CGPU_RESOURCE_TYPE_RW_TEXTURE:
+                    srcHandle = D->pNullDescriptors->TextureUAV[dimension];
+                    break;
                 case CGPU_RESOURCE_TYPE_BUFFER:
                     srcHandle = D->pNullDescriptors->BufferSRV;
                     break;
@@ -736,6 +744,9 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_d3d12(CGPUDeviceId device, const 
                     break;
                 case CGPU_RESOURCE_TYPE_SAMPLER:
                     srcSamplerHandle = D->pNullDescriptors->Sampler;
+                    break;
+                case CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE:
+                    srcHandle = D->pNullDescriptors->BufferSRV;
                     break;
                 default:
                     break;
@@ -804,7 +815,10 @@ void cgpu_update_descriptor_set_d3d12(CGPUDescriptorSetId set, const struct CGPU
                 HeapOffset += D3D12Util_ComputeNeededDescriptorCount(&ParamTable->resources[j]);
             }
         }
-        // Update Info
+
+        if (ResData == CGPU_NULLPTR)
+            continue;
+        
         const uint32_t arrayCount = cgpu_max(1U, pParam->count);
         switch (ResData->type)
         {
@@ -2011,10 +2025,8 @@ void cgpu_cmd_resource_barrier_d3d12(CGPUCommandBufferId cmd, const struct CGPUR
                 pBarrier->UAV.pResource = pBuffer->pDxResource;
                 ++transitionCount;
             }
-            else
+            else if (pTransBarrier->src_state != pTransBarrier->dst_state)
             {
-                cgpu_assert((pTransBarrier->src_state != pTransBarrier->dst_state) && "D3D12 ERROR: Buffer Barrier with same src and dst state!");
-
                 pBarrier->Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
                 if (pTransBarrier->d3d12_begin_only)
                 {
@@ -2038,9 +2050,8 @@ void cgpu_cmd_resource_barrier_d3d12(CGPUCommandBufferId cmd, const struct CGPUR
                 else
                     pBarrier->Transition.StateAfter = D3D12Util_TranslateResourceState(pTransBarrier->dst_state);
 
-                cgpu_assert((pBarrier->Transition.StateBefore != pBarrier->Transition.StateAfter) && "D3D12 ERROR: Buffer Barrier with same src and dst state!");
-
-                ++transitionCount;
+                if (pBarrier->Transition.StateBefore != pBarrier->Transition.StateAfter)
+                    ++transitionCount;
             }
         }
     }
@@ -2058,10 +2069,8 @@ void cgpu_cmd_resource_barrier_d3d12(CGPUCommandBufferId cmd, const struct CGPUR
             pBarrier->UAV.pResource = pTexture->pDxResource;
             ++transitionCount;
         }
-        else
+        else if (pTransBarrier->src_state != pTransBarrier->dst_state)
         {
-            cgpu_assert((pTransBarrier->src_state != pTransBarrier->dst_state) && "D3D12 ERROR: Texture Barrier with same src and dst state!");
-
             pBarrier->Type  = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
             pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
             if (pTransBarrier->d3d12_begin_only)
@@ -2094,8 +2103,8 @@ void cgpu_cmd_resource_barrier_d3d12(CGPUCommandBufferId cmd, const struct CGPUR
                     continue;
                 }
             }
-            cgpu_assert((pBarrier->Transition.StateBefore != pBarrier->Transition.StateAfter) && "D3D12 ERROR: Texture Barrier with same src and dst state!");
-            ++transitionCount;
+            if (pBarrier->Transition.StateBefore != pBarrier->Transition.StateAfter)
+                ++transitionCount;
         }
     }
     if (transitionCount)
@@ -2139,7 +2148,7 @@ inline static bool D3D12Util_UseAccel(CGPUCommandBufferId cmd, const CGPUDescrip
             };
             b.buffer_barriers = &bb;
             b.buffer_barriers_count = 1;
-            cgpu_cmd_resource_barrier(cmd, &b);
+            cgpu_cmd_resource_barrier_d3d12(cmd, &b);
             Set->pBoundAccel->bIsDirty = false;
         }
     }

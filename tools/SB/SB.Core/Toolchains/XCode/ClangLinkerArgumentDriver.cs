@@ -32,6 +32,9 @@ namespace SB.Core
         [TargetProperty]
         public string BundleLoader(string loader) => $"-bundle -bundle_loader {loader}";
 
+        [TargetProperty(InheritBehavior = true)]
+        public string[]? AppleClang_LinkerArgs(ArgumentList<string> libs) => libs.ToArray();
+
         public ArgumentDictionary Arguments { get; } = new ArgumentDictionary();
         public HashSet<string> RawArguments { get; } = new HashSet<string> { "-Wl,-rpath,." };
     }

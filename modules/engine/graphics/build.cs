@@ -4,11 +4,12 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-[SkrGraphicsDoctor]
 public static class SkrGraphics
 {
     static SkrGraphics()
     {
+        Engine.AddSetup<SkrGraphicsSetup>();
+
         var SkrGraphics = Engine
             .Module("SkrGraphics")
             .Depend(Visibility.Public, "SkrCore")
@@ -34,7 +35,7 @@ public static class SkrGraphics
             SkrGraphics
                 .AddObjCFiles(OCOptions, "src/build.*.m") 
                 .AddObjCppFiles(OCOptions, "src/build.*.mm") 
-                .AppleFramework(Visibility.Public, "CoreFoundation", "Cocoa", "Metal", "IOKit")
+                .AppleFramework(Visibility.Public, "CoreFoundation", "Cocoa", "Metal", "IOKit", "QuartzCore")
                 .Defines(Visibility.Private, "VK_USE_PLATFORM_MACOS_MVK");
         }
 
@@ -48,9 +49,9 @@ public static class SkrGraphics
     }
 }
 
-public class SkrGraphicsDoctor : DoctorAttribute
+public class SkrGraphicsSetup : ISetup
 {
-    public override bool Check()
+    public void Setup()
     {
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
@@ -62,11 +63,5 @@ public class SkrGraphicsDoctor : DoctorAttribute
                 Install.SDK("WinPixEventRuntime")
             );
         }
-        return true;
-    }
-    public override bool Fix() 
-    { 
-        Log.Fatal("graphics sdks install failed!");
-        return true; 
     }
 }

@@ -4,6 +4,7 @@
 #include <Metal/MTLArgument.h>
 
 #include "SkrGraphics/backend/metal/cgpu_metal_types.h"
+#include "SkrGraphics/backend/metal/metal_availability.h"
 #include "metal_vma.h"
 
 #ifdef __cplusplus
@@ -22,7 +23,7 @@ void MetalUtil_EnumFormatSupports(struct CGPUAdapter_Metal* MAdapter);
 void MetalUtil_RecordAdapterDetail(struct CGPUAdapter_Metal* MAdapter);
 
 NSArray<id<MTLDevice>>* MetalUtil_GetAvailableMTLDeviceArray();
-void MetalUtil_GetShaderResourceType(uint32_t set, const MTLStructMember* member, CGPUShaderResource* resource);
+ECGPUResourceType MetalUtil_GetShaderResourceType(id<MTLBufferBinding> SRT, uint32_t set, const MTLStructMember* member, CGPUShaderResource* resource);
 MTLBindingAccess MetalUtil_ResourceTypeToAccess(ECGPUResourceType type);
 MemoryType MetalUtil_MemoryUsageToMemoryType(ECGPUMemoryUsage usage);
 MTLResourceOptions MetalUtil_MemoryTypeToResourceOptions(MemoryType usage);
@@ -30,6 +31,10 @@ bool MetalUtil_DSHasBindAtIndex(const CGPUDescriptorSet_Metal* ds, uint32_t bind
 bool MetalUtil_DSBindResourceAtIndex(CGPUDescriptorSet_Metal* ds, uint32_t binding_index, __unsafe_unretained id<MTLResource> resource, MTLResourceUsage usage);
 char8_t* MetalUtil_DuplicateString(const char8_t* src_string);
 void MetalUtil_FlushUtilEncoders(CGPUCommandBuffer_Metal* CMD, MTLUtilEncoderTypes types);
+
+// Blit utilities
+id<MTLRenderPipelineState> MetalUtil_GetBlitPipeline(CGPUDevice_Metal* device, MTLPixelFormat format);
+id<MTLSamplerState> MetalUtil_GetLinearSampler(CGPUDevice_Metal* device);
 
 #ifdef __cplusplus
 }

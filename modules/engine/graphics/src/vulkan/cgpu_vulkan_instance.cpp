@@ -104,7 +104,7 @@ struct CGPUVkPassTable //
         {
             if (a.pRenderPass != b.pRenderPass) return false;
             if (a.mAttachmentCount != b.mAttachmentCount) return false;
-            return std::memcmp(&a, &b, sizeof(VkUtil_RenderPassDesc)) == 0;
+            return std::memcmp(&a, &b, sizeof(VkUtil_FramebufferDesc)) == 0;
         }
     };
 

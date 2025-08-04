@@ -1,8 +1,11 @@
-#include "SkrBase/misc/debug.h" 
+#include "SkrBase/misc/debug.h"
+#include "SkrGraphics/raytracing.h"
 #include "SkrRenderer/render_mesh.h"
 #include <SkrOS/filesystem.hpp>
 
 #include "SkrProfile/profile.h"
+
+const bool UseRayTracing = true;
 
 void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resource_id mesh_resource)
 {
@@ -19,10 +22,12 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
             ibv_c++;
         }
     }
+    
     // 2. do early reserve
     render_mesh->mesh_resource_id = mesh_resource;
     render_mesh->index_buffer_views.reserve(ibv_c);
     render_mesh->vertex_buffer_views.reserve(vbv_c);
+    
     // 3. fill sections
     for (uint32_t i = 0; i < mesh_resource->sections.size(); i++)
     {
@@ -43,6 +48,7 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
                 mesh_vbv.buffer = render_mesh->buffers[buffer_index];
                 mesh_vbv.offset = prim.vertex_buffers[j].offset;
                 mesh_vbv.stride = prim.vertex_buffers[j].stride;
+                SKR_LOG_INFO(u8"Mesh VBV %d: buffer %p, offset %d, stride %d", j, mesh_vbv.buffer, mesh_vbv.offset, mesh_vbv.stride);
             }
             // 3.2 fill ibv
             const auto buffer_index = prim.index_buffer.buffer_index;
@@ -58,50 +64,50 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
             draw_cmd.material_index = prim.material_index;
         }
     }
+    
+    // 4. construct blas
+    if (UseRayTracing && (mesh_resource->primitives.size() > 0))
+    {
+        skr::InlineVector<CGPUAccelerationStructureGeometryDesc, 4> geoms;
+        for (auto primitive : mesh_resource->primitives)
+        {
+            auto pos_vb = primitive.vertex_buffers.find_if(
+                [](auto prim){ return prim.attribute == SKR_VERT_ATTRIB_POSITION; }
+            ).ptr();
+            if (!pos_vb) continue;
+            
+            CGPUAccelerationStructureGeometryDesc geom = {};
+            geom.vertex_buffer = render_mesh->buffers[pos_vb->buffer_index];
+            geom.vertex_offset = pos_vb->offset;
+            geom.vertex_count = primitive.vertex_count;
+            geom.vertex_stride = pos_vb->stride;
+            geom.vertex_format = CGPU_FORMAT_R32G32B32_SFLOAT;
+            geom.index_buffer = render_mesh->buffers[primitive.index_buffer.buffer_index];
+            geom.index_offset = primitive.index_buffer.index_offset;
+            geom.index_count = primitive.vertex_count / 3;
+            geom.index_stride = primitive.index_buffer.stride;
+            geoms.add(geom);
+        }
+
+        CGPUAccelerationStructureDescriptor blas_desc = {};
+        blas_desc.type = CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+        blas_desc.bottom.geometries = geoms.data();
+        blas_desc.bottom.count = geoms.size();
+        render_mesh->blas = cgpu_create_acceleration_structure(geoms[0].vertex_buffer->device, &blas_desc);
+    }
 }
 
 void skr_render_mesh_free(skr_render_mesh_id render_mesh)
 {
+    if (UseRayTracing && render_mesh->blas)
+    {
+        cgpu_free_acceleration_structure(render_mesh->blas);
+    }
+
     for (auto&& buffer : render_mesh->buffers)
     {
         cgpu_free_buffer(buffer);
     }
+
     SkrDelete(render_mesh);
-}
-
-skr_primitive_draw_packet_t IMeshRenderEffect::produce_draw_packets(const skr_primitive_draw_context_t* context) SKR_NOEXCEPT
-{
-    auto pass = context->pass;
-    auto storage = context->storage; (void)storage;
-
-    skr_primitive_draw_packet_t packet = {}; (void)packet;
-    // 0. only produce for forward pass
-    // TODO: refactor this to support multi-pass rendering
-    if (strcmp((const char*)pass->identity(), (const char*)u8"ForwardPass") != 0) return {};
-    // 1. calculate primitive count
-    uint32_t primitiveCount = 0;
-    auto counterF = [&](sugoi_chunk_view_t* r_cv) {
-        SkrZoneScopedN("PreCalculateDrawCallCount");
-        const skr::renderer::MeshComponent* meshes = nullptr;
-        {
-            SkrZoneScopedN("FetchRenderMeshes");
-            meshes = sugoi::get_component_ro<skr::renderer::MeshComponent>(r_cv);
-        }
-        for (uint32_t i = 0; i < r_cv->count; i++)
-        {
-            auto status = meshes[i].mesh_resource.get_status();
-            if (status == SKR_LOADING_STATUS_INSTALLED)
-            {
-                auto resourcePtr = (skr_mesh_resource_t*)meshes[i].mesh_resource.get_ptr();
-                auto renderMesh = resourcePtr->render_mesh;
-                primitiveCount += (uint32_t)renderMesh->primitive_commands.size();
-            }
-            else
-            {
-                primitiveCount++;
-            }
-        }
-    }; (void)counterF;
-
-    return {};
 }

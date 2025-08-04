@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrBase/config.h"
 #include "SkrBase/memory/memory_traits.hpp"
-#include <memory>
+#include <memory> // IWYU pragma: export
 
 // for single element
 namespace skr::memory
@@ -76,7 +76,7 @@ SKR_INLINE void move(Dst* dst, Src* src)
         else
         {
             static_assert(sizeof(Dst) == sizeof(Src));
-            std::memmove(dst, src, sizeof(Src));
+            std::memmove((void*)dst, src, sizeof(Src));
         }
 
         if constexpr (MemoryTraits<Dst, Src>::need_dtor_after_move)

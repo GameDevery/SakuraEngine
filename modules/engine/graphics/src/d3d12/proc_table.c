@@ -38,6 +38,8 @@ const CGPUProcTable tbl_d3d12 = {
     .free_render_pipeline = &cgpu_free_render_pipeline_d3d12,
     .create_query_pool = &cgpu_create_query_pool_d3d12,
     .free_query_pool = &cgpu_free_query_pool_d3d12,
+    .create_memory_pool = &cgpu_create_memory_pool_d3d12,
+    .free_memory_pool = &cgpu_free_memory_pool_d3d12,
 
     // Queue APIs
     .get_queue = &cgpu_get_queue_d3d12,

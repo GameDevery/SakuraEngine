@@ -50,14 +50,14 @@ size_t MergedBindTablePool::Key::equal_to::operator()(const MergedBindTablePool:
 
 CGPUXMergedBindTableId MergedBindTablePool::pop(const CGPUXBindTableId* tables, uint32_t count)
 {
-    const auto view  = Key::View{ tables, count };
-    auto       found = pool.find(view);
+    const auto view = Key::View{ tables, count };
+    auto found = pool.find(view);
     if (found == pool.end()) // allocate and do merge
     {
         CGPUXMergedBindTableDescriptor desc = {};
-        desc.root_signature                 = root_sig;
-        GuradedMergedBindTable guarded      = {};
-        guarded.table                       = cgpux_create_megred_bind_table(root_sig->device, &desc);
+        desc.root_signature = root_sig;
+        GuradedMergedBindTable guarded = {};
+        guarded.table = cgpux_create_megred_bind_table(root_sig->device, &desc);
         cgpux_merged_bind_table_merge(guarded.table, tables, count); // only merge once otherwise reset has triggered
         guarded.update_gurad = true;
         pool.emplace(Key(tables, count), guarded);
@@ -106,10 +106,10 @@ void BindTablePool::expand(const char8_t* keys, const CGPUXName* names, uint32_t
     for (size_t i = 0; i < set_count; ++i)
     {
         CGPUXBindTableDescriptor table_desc = {};
-        table_desc.root_signature           = root_sig;
-        table_desc.names                    = names;
-        table_desc.names_count              = names_count;
-        auto new_table                      = cgpux_create_bind_table(root_sig->device, &table_desc);
+        table_desc.root_signature = root_sig;
+        table_desc.names = names;
+        table_desc.names_count = names_count;
+        auto new_table = cgpux_create_bind_table(root_sig->device, &table_desc);
         block.bind_tables.add(new_table);
     }
 }
@@ -288,7 +288,7 @@ CGPUTextureViewId TextureViewPool::allocate(const CGPUTextureViewDescriptor& des
     {
         // SKR_LOG_TRACE(u8"Creating texture view for texture %p (tex %p)", desc.texture, key.texture);
         CGPUTextureViewId new_view = cgpu_create_texture_view(device, &desc);
-        AllocationMark    mark     = { frame_index, 0 };
+        AllocationMark mark = { frame_index, 0 };
         views.add(key, PooledTextureView(new_view, mark));
         return new_view;
     }
@@ -335,7 +335,7 @@ std::pair<CGPUBufferId, ECGPUResourceState> BufferPool::allocate(const CGPUBuffe
     std::pair<CGPUBufferId, ECGPUResourceState> allocated = {
         nullptr, CGPU_RESOURCE_STATE_UNDEFINED
     };
-    auto    key         = make_zeroed<BufferPool::Key>(device, desc);
+    auto key = make_zeroed<BufferPool::Key>(device, desc);
     int32_t found_index = -1;
     for (uint32_t i = 0; i < buffers[key].size(); ++i)
     {

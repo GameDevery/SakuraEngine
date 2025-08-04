@@ -1,19 +1,64 @@
 #pragma once
-#include "SkrBase/types.h"
+#include "SkrBase/config/key_words.h"
 #include "SkrRTTR/rttr_traits.hpp"
 
 enum ESkrLoadingStatus : uint32_t;
-struct skr_resource_record_t;
+struct SResourceRecord;
 enum ESkrRequesterType
 {
-    SKR_REQUESTER_ENTITY     = 0,
+    SKR_REQUESTER_ENTITY = 0,
     SKR_REQUESTER_DEPENDENCY = 1,
-    SKR_REQUESTER_SYSTEM     = 2,
-    SKR_REQUESTER_SCRIPT     = 3,
-    SKR_REQUESTER_UNKNOWN    = 4
+    SKR_REQUESTER_SYSTEM = 2,
+    SKR_REQUESTER_SCRIPT = 3,
+    SKR_REQUESTER_UNKNOWN = 4
 };
 struct lua_State;
-typedef struct skr_resource_handle_t {
+typedef struct SResourceHandle
+{
+#if defined(__cplusplus)
+public:
+    SKR_RUNTIME_API SResourceHandle();
+    SKR_RUNTIME_API SResourceHandle(const skr::GUID& other);
+    SKR_RUNTIME_API SResourceHandle(const SResourceHandle& other);
+    SKR_RUNTIME_API SResourceHandle(const SResourceHandle& other, uint64_t requester, ESkrRequesterType requesterType);
+    SKR_RUNTIME_API SResourceHandle(SResourceHandle&& other);
+    SKR_RUNTIME_API ~SResourceHandle();
+    SKR_RUNTIME_API SResourceHandle& operator=(const SResourceHandle& other);
+    SKR_RUNTIME_API SResourceHandle& operator=(const skr::GUID& other);
+    SKR_RUNTIME_API SResourceHandle& operator=(SResourceHandle&& other);
+    SKR_RUNTIME_API void set_ptr(void* ptr);
+    SKR_RUNTIME_API void set_guid(const skr::GUID& guid);
+    SKR_RUNTIME_API bool is_resolved() const;
+    SKR_RUNTIME_API void* get_resolved(bool requireInstalled = true) const;
+    SKR_RUNTIME_API skr::GUID get_serialized() const;
+    SKR_RUNTIME_API void resolve(bool requireInstalled, uint64_t requester, ESkrRequesterType requesterType);
+    void resolve(bool requireInstalled, struct sugoi_storage_t* requester)
+    {
+        resolve(requireInstalled, (uint64_t)requester, SKR_REQUESTER_ENTITY);
+    }
+    SKR_RUNTIME_API void unload();
+    SKR_RUNTIME_API skr::GUID get_guid() const;
+    SKR_RUNTIME_API skr::GUID get_type() const;
+    SKR_RUNTIME_API void* get_ptr() const;
+    SKR_RUNTIME_API bool is_null() const;
+    SKR_RUNTIME_API void reset();
+    SResourceHandle clone(uint64_t requester, ESkrRequesterType requesterType)
+    {
+        return { *this, requester, requesterType };
+    }
+    SResourceHandle clone(struct sugoi_storage_t* requester)
+    {
+        return { *this, (uint64_t)requester, SKR_REQUESTER_ENTITY };
+    }
+    SKR_RUNTIME_API uint32_t get_requester_id() const;
+    SKR_RUNTIME_API ESkrRequesterType get_requester_type() const;
+    // if resolve is false, then unresolve handle will always return SKR_LOADING_STATUS_UNLOADED
+    SKR_RUNTIME_API ESkrLoadingStatus get_status(bool resolve = false) const;
+    SKR_RUNTIME_API SResourceRecord* get_record() const;
+    SKR_RUNTIME_API void set_record(SResourceRecord* record);
+    SKR_RUNTIME_API void set_resolved(SResourceRecord* record, uint32_t requesterId, ESkrRequesterType requesterType);
+protected:
+#endif
     union
     {
         skr_guid_t guid;
@@ -26,97 +71,69 @@ typedef struct skr_resource_handle_t {
             uint64_t pointer; // resource record ptr & requester type
         };
     };
-#if defined(__cplusplus)
-    SKR_RUNTIME_API skr_resource_handle_t();
-    SKR_RUNTIME_API ~skr_resource_handle_t();
-    SKR_RUNTIME_API                        skr_resource_handle_t(const skr_guid_t& other);
-    SKR_RUNTIME_API                        skr_resource_handle_t(const skr_resource_handle_t& other);
-    SKR_RUNTIME_API                        skr_resource_handle_t(const skr_resource_handle_t& other, uint64_t requester, ESkrRequesterType requesterType);
-    SKR_RUNTIME_API                        skr_resource_handle_t(skr_resource_handle_t&& other);
-    SKR_RUNTIME_API skr_resource_handle_t& operator=(const skr_resource_handle_t& other);
-    SKR_RUNTIME_API skr_resource_handle_t& operator=(const skr_guid_t& other);
-    SKR_RUNTIME_API skr_resource_handle_t& operator=(skr_resource_handle_t&& other);
-    SKR_RUNTIME_API void                   set_ptr(void* ptr);
-    SKR_RUNTIME_API void                   set_guid(const skr_guid_t& guid);
-    SKR_RUNTIME_API bool                   is_resolved() const;
-    SKR_RUNTIME_API void*                  get_resolved(bool requireInstalled = true) const;
-    SKR_RUNTIME_API skr_guid_t             get_serialized() const;
-    SKR_RUNTIME_API void                   resolve(bool requireInstalled, uint64_t requester, ESkrRequesterType requesterType);
-    void                                   resolve(bool requireInstalled, struct sugoi_storage_t* requester)
-    {
-        resolve(requireInstalled, (uint64_t)requester, SKR_REQUESTER_ENTITY);
-    }
-    SKR_RUNTIME_API void       unload();
-    SKR_RUNTIME_API skr_guid_t get_guid() const;
-    SKR_RUNTIME_API skr_guid_t get_type() const;
-    SKR_RUNTIME_API void*      get_ptr() const;
-    SKR_RUNTIME_API bool       is_null() const;
-    SKR_RUNTIME_API void       reset();
-    skr_resource_handle_t      clone(uint64_t requester, ESkrRequesterType requesterType)
-    {
-        return { *this, requester, requesterType };
-    }
-    skr_resource_handle_t clone(struct sugoi_storage_t* requester)
-    {
-        return { *this, (uint64_t)requester, SKR_REQUESTER_ENTITY };
-    }
-    SKR_RUNTIME_API uint32_t          get_requester_id() const;
-    SKR_RUNTIME_API ESkrRequesterType get_requester_type() const;
-    // if resolve is false, then unresolve handle will always return SKR_LOADING_STATUS_UNLOADED
-    SKR_RUNTIME_API ESkrLoadingStatus      get_status(bool resolve = false) const;
-    SKR_RUNTIME_API skr_resource_record_t* get_record() const;
-    SKR_RUNTIME_API void                   set_record(skr_resource_record_t* record);
-    SKR_RUNTIME_API void                   set_resolved(skr_resource_record_t* record, uint32_t requesterId, ESkrRequesterType requesterType);
-#endif
-} skr_resource_handle_t;
-SKR_RTTR_TYPE(skr_resource_handle_t, "A9E0CE3D-5E9B-45F1-AC28-B882885C63AB");
+} SResourceHandle;
+
+SKR_EXTERN_C SKR_RUNTIME_API int skr_is_resource_resolved(SResourceHandle* handle);
+SKR_EXTERN_C SKR_RUNTIME_API void skr_get_resource_guid(SResourceHandle* handle, skr_guid_t* guid);
+SKR_EXTERN_C SKR_RUNTIME_API void skr_get_resource(SResourceHandle* handle, void** guid);
 
 #if defined(__cplusplus)
+#include "SkrSerde/bin_serde.hpp"
+#include "SkrSerde/json_serde.hpp"
+
+#define SKR_RESOURCE_HANDLE(type) skr::resource::AsyncResource<type>
+#define SKR_RESOURCE_FIELD(type, name) skr::resource::AsyncResource<type> name
+
+SKR_RTTR_TYPE(SResourceHandle, "A9E0CE3D-5E9B-45F1-AC28-B882885C63AB");
 namespace skr::resource
 {
+using ResourceHandle = SResourceHandle;
 template <class T>
-struct TResourceHandle : skr_resource_handle_t {
-    using skr_resource_handle_t::skr_resource_handle_t;
-    // TODO: T* resolve
+struct AsyncResource : ResourceHandle
+{
+    AsyncResource() SKR_NOEXCEPT;
+    AsyncResource(const skr::GUID& guid) SKR_NOEXCEPT;
+
     T* get_resolved(bool requireInstalled = true) const
     {
-        return (T*)skr_resource_handle_t::get_resolved(requireInstalled);
+        return (T*)ResourceHandle::get_resolved(requireInstalled);
     }
     T* get_ptr() const
     {
-        return (T*)skr_resource_handle_t::get_ptr();
+        return (T*)ResourceHandle::get_ptr();
     }
-    TResourceHandle clone(uint64_t requester, ESkrRequesterType requesterType)
+    AsyncResource clone(uint64_t requester, ESkrRequesterType requesterType)
     {
         return { *this, requester, requesterType };
     }
-    TResourceHandle clone(struct sugoi_storage_t* requester)
+    AsyncResource clone(struct sugoi_storage_t* requester)
     {
         return { *this, (uint64_t)requester, SKR_REQUESTER_ENTITY };
     }
 };
+
+template <class T>
+inline AsyncResource<T>::AsyncResource() SKR_NOEXCEPT
+    : ResourceHandle()
+{
+
+}
+
+template <class T>
+inline AsyncResource<T>::AsyncResource(const skr::GUID& guid) SKR_NOEXCEPT
+    : ResourceHandle(guid)
+{
+
+}
 } // namespace skr::resource
-#endif
-
-#ifdef __cplusplus
-    #define SKR_RESOURCE_HANDLE(type) skr::resource::TResourceHandle<type>
-    #define SKR_RESOURCE_FIELD(type, name) skr::resource::TResourceHandle<type> name
-#else
-    #define SKR_RESOURCE_HANDLE(type) skr_resource_handle_t
-    #define SKR_RESOURCE_FIELD(type, name) skr_resource_handle_t name
-#endif
-
-SKR_RUNTIME_API int  skr_is_resource_resolved(skr_resource_handle_t* handle);
-SKR_RUNTIME_API void skr_get_resource_guid(skr_resource_handle_t* handle, skr_guid_t* guid);
-SKR_RUNTIME_API void skr_get_resource(skr_resource_handle_t* handle, void** guid);
 
 // bin serde
-#include "SkrSerde/bin_serde.hpp"
 namespace skr
 {
 template <>
-struct BinSerde<skr_resource_handle_t> {
-    inline static bool read(SBinaryReader* r, skr_resource_handle_t& v)
+struct BinSerde<skr::resource::ResourceHandle>
+{
+    inline static bool read(SBinaryReader* r, skr::resource::ResourceHandle& v)
     {
         skr_guid_t guid;
         if (!bin_read(r, guid))
@@ -127,38 +144,35 @@ struct BinSerde<skr_resource_handle_t> {
         v.set_guid(guid);
         return true;
     }
-    inline static bool write(SBinaryWriter* w, const skr_resource_handle_t& v)
+    inline static bool write(SBinaryWriter* w, const skr::resource::ResourceHandle& v)
     {
         return bin_write(w, v.get_serialized());
     }
 };
 
 template <class T>
-struct BinSerde<skr::resource::TResourceHandle<T>> {
-    inline static bool read(SBinaryReader* archive, skr::resource::TResourceHandle<T>& handle)
+struct BinSerde<skr::resource::AsyncResource<T>>
+{
+    inline static bool read(SBinaryReader* archive, skr::resource::AsyncResource<T>& handle)
     {
         skr_guid_t guid;
         if (!bin_read(archive, (guid))) return false;
         handle.set_guid(guid);
         return true;
     }
-    inline static bool write(SBinaryWriter* binary, const skr::resource::TResourceHandle<T>& handle)
+    inline static bool write(SBinaryWriter* binary, const skr::resource::AsyncResource<T>& handle)
     {
-        const auto& hdl = static_cast<const skr_resource_handle_t&>(handle);
+        const auto& hdl = static_cast<const skr::resource::ResourceHandle&>(handle);
         return bin_write(binary, hdl);
     }
 };
-} // namespace skr
 
-// json serde
-#include "SkrSerde/json_serde.hpp"
-namespace skr
-{
 template <>
-struct JsonSerde<skr_resource_handle_t> {
-    inline static bool read(skr::archive::JsonReader* r, skr_resource_handle_t& v)
+struct JsonSerde<skr::resource::ResourceHandle>
+{
+    inline static bool read(skr::archive::JsonReader* r, skr::resource::ResourceHandle& v)
     {
-        SkrZoneScopedN("JsonSerde<skr_resource_handle_t>::read");
+        SkrZoneScopedN("JsonSerde<skr::resource::ResourceHandle>::read");
         skr::String view;
         SKR_EXPECTED_CHECK(r->String(view), false);
         {
@@ -169,20 +183,25 @@ struct JsonSerde<skr_resource_handle_t> {
         }
         return true;
     }
-    inline static bool write(skr::archive::JsonWriter* w, const skr_resource_handle_t& v)
+    inline static bool write(skr::archive::JsonWriter* w, const skr::resource::ResourceHandle& v)
     {
         return json_write<skr_guid_t>(w, v.get_serialized());
     }
 };
 template <class T>
-struct JsonSerde<skr::resource::TResourceHandle<T>> {
-    inline static bool read(skr::archive::JsonReader* r, skr::resource::TResourceHandle<T>& v)
+struct JsonSerde<skr::resource::AsyncResource<T>>
+{
+    inline static bool read(skr::archive::JsonReader* r, skr::resource::AsyncResource<T>& v)
     {
-        return json_read<skr_resource_handle_t>(r, (skr_resource_handle_t&)v);
+        return json_read<skr::resource::ResourceHandle>(r, (skr::resource::ResourceHandle&)v);
     }
-    inline static bool write(skr::archive::JsonWriter* w, const skr::resource::TResourceHandle<T>& v)
+    inline static bool write(skr::archive::JsonWriter* w, const skr::resource::AsyncResource<T>& v)
     {
-        return json_write<skr_resource_handle_t>(w, (const skr_resource_handle_t&)v);
+        return json_write<skr::resource::ResourceHandle>(w, (const skr::resource::ResourceHandle&)v);
     }
 };
 } // namespace skr
+#else
+    #define SKR_RESOURCE_HANDLE(type) SResourceHandle
+    #define SKR_RESOURCE_FIELD(type, name) SResourceHandle name
+#endif

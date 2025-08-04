@@ -1,6 +1,6 @@
 #pragma once
 #include "SkrBase/config.h"
-#include "SkrRT/ecs/sugoi.h"
+#include "SkrRT/sugoi/sugoi.h"
 #include "SkrRT/resource/resource_factory.h"
 #include "SkrBase/types.h"
 #include "SkrRT/config.h"
@@ -9,7 +9,7 @@
 #endif
 
 sreflect_struct(guid = "EFBA637E-E7E5-4B64-BA26-90AEEE9E3E1A")
-skr_scene_resource_t {
+    skr_scene_resource_t {
     sugoi_storage_t* storage;
 };
 
@@ -17,10 +17,10 @@ namespace skr::resource
 {
 // scene resource factory, base class
 // derive from this class to implement your own game specific install logic
-class SKR_SCENE_API SSceneFactory : public SResourceFactory
+class SKR_SCENE_API SceneFactory : public ResourceFactory
 {
 public:
-    virtual ~SSceneFactory() noexcept = default;
+    virtual ~SceneFactory() noexcept = default;
     skr_guid_t GetResourceType() override;
     bool       AsyncIO() override { return true; }
     float      AsyncSerdeLoadFactor() override { return 0.5f; }

@@ -113,5 +113,11 @@ PipelineBufferHandle::PipelineReferenceHandle(const handle_t _this)
     : _this(_this)
 {
 }
+
+// AccelerationStructure SRV
+AccelerationStructureSRVHandle::ShaderReadHandle(const handle_t _this)
+    : _this(_this)
+{
+}
 } // namespace render_graph
 } // namespace skr

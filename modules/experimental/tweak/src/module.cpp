@@ -40,8 +40,8 @@ public:
     {
         if (action == efsw::Actions::Modified)
         {
-            skr::filesystem::path dirPath(dir);
-            skr::filesystem::path filePath(filename);
+            skr::fs::path dirPath(dir);
+            skr::fs::path filePath(filename);
             auto fullPath = dirPath / filePath;
             fullPath = fullPath.lexically_normal();
             SMutexLock lock(_mutex.mMutex);
@@ -49,7 +49,7 @@ public:
         }
     }
 
-    void UpdateTweaks(skr::filesystem::path path)
+    void UpdateTweaks(skr::fs::path path)
     {
         std::ifstream file( path, std::ios::in );
 
@@ -60,7 +60,7 @@ public:
         }
 
         size_t current_line_num = 1;
-        auto& tweak_file = _tweak_files[path.u8string().c_str()];
+        auto& tweak_file = _tweak_files[path.string().c_str()];
         size_t tweak_line_index = 0;
         while ( file.good() && tweak_line_index < tweak_file.size() ) {
             std::string line;
@@ -105,15 +105,15 @@ public:
     skr_tweak_value_t* TweakValue(T value, const char* str, const char* fileName, int lineNumber)
     {
         SMutexLock lock(_mutex.mMutex);
-        static skr::filesystem::path root = SKR_SOURCE_ROOT;
-        skr::filesystem::path path = (root / fileName).lexically_normal();
-        auto directory = path.parent_path().lexically_normal().u8string();
+        static skr::fs::path root = SKR_SOURCE_ROOT;
+        skr::fs::path path = (root / fileName).lexically_normal();
+        auto directory = path.parent_path().lexically_normal().string();
         if(!_watched_directories.contains(directory.c_str()))
         {
             _watcher.addWatch((const char*)directory.c_str(), this, false);
             _watched_directories.insert(directory.c_str());
         }
-        auto& file = _tweak_files[path.u8string().c_str()];
+        auto& file = _tweak_files[path.string().c_str()];
         TweakLine* line = nullptr;
         for(auto& lines : file)
         {

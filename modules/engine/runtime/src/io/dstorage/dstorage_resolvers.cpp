@@ -20,11 +20,11 @@ void DStorageFileResolver::resolve(SkrAsyncServicePriority priority, IOBatchId b
         SkrZoneScopedN("DStorage::OpenFile");
 
         SKR_ASSERT(pPath->get_vfs());
-        skr::filesystem::path p = pPath->get_vfs()->mount_dir;
+        skr::Path p = pPath->get_vfs()->mount_dir;
         p /= pPath->get_path();
 
         auto instance = skr_get_dstorage_instnace();
-        pFile->dfile = skr_dstorage_open_file(instance, p.u8string().c_str());
+        pFile->dfile = skr_dstorage_open_file(instance, p.string().c_str());
         SKR_ASSERT(pFile->dfile);
     }
     else

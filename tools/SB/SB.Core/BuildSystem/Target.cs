@@ -15,9 +15,9 @@ namespace SB
 
             BuildSystem.TargetDefaultSettings(this);
             if (BuildSystem.Configurations.TryGetValue(BuildSystem.GlobalConfiguration, out var GlobalConfig))
-            {
                 GlobalConfig(this);
-            }
+            else
+                throw new TaskFatalError($"Target {Name}: Global configuration {BuildSystem.GlobalConfiguration} does not exist!");
         }
 
         public T FileList<T>()
@@ -186,13 +186,13 @@ namespace SB
                 }
             }
             // Arguments
-            FinalArguments.Merge(PublicArguments);
-            FinalArguments.Merge(PrivateArguments);
+            FinalArguments.Merge(PublicArguments, false);
+            FinalArguments.Merge(PrivateArguments, false);
             foreach (var DepName in Dependencies)
             {
                 Target DepTarget = BuildSystem.GetTarget(DepName)!;
-                FinalArguments.Merge(DepTarget.PublicArguments);
-                FinalArguments.Merge(DepTarget.InterfaceArguments);
+                FinalArguments.Merge(DepTarget.PublicArguments, false);
+                FinalArguments.Merge(DepTarget.InterfaceArguments, false);
             }
         }
 
@@ -236,11 +236,11 @@ namespace SB
         public static ArgumentDictionary Copy(this ArgumentDictionary @this)
         {
             var Copy = new ArgumentDictionary();
-            Copy.Merge(@this);
+            Copy.Merge(@this, true);
             return Copy;
         }
 
-        public static void Merge(this ArgumentDictionary To, ArgumentDictionary? From)
+        public static void Merge(this ArgumentDictionary To, ArgumentDictionary? From, bool AllowOverride)
         {
             if (From is null)
                 return;
@@ -267,8 +267,14 @@ namespace SB
                     {
                         To.Add(K, V);
                     }
+                    else if (AllowOverride)
+                    {
+                        To[K] = V;
+                    }
                     else
+                    {
                         throw new TaskFatalError("Argument Confict!");
+                    }
                 }
             }
         }

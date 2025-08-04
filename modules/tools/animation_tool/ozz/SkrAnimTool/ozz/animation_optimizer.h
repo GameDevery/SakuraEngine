@@ -29,14 +29,18 @@
 #define OZZ_OZZ_ANIMATION_OFFLINE_ANIMATION_OPTIMIZER_H_
 
 #include "SkrAnimTool/ozz/export.h"
+
 #include "SkrAnim/ozz/base/containers/map.h"
 
-namespace ozz {
-namespace animation {
+namespace ozz
+{
+namespace animation
+{
 
 // Forward declare runtime skeleton type.
 class Skeleton;
-namespace offline {
+namespace offline
+{
 
 // Forward declare offline animation type.
 struct RawAnimation;
@@ -55,50 +59,47 @@ struct RawAnimation;
 // that leads to the hand if user wants it to be precise. Default optimization
 // tolerances are set in order to favor quality over runtime performances and
 // memory footprint.
-class OZZ_ANIMOFFLINE_DLL AnimationOptimizer {
- public:
-  // Initializes the optimizer with default tolerances (favoring quality).
-  AnimationOptimizer();
+class OZZ_ANIMOFFLINE_DLL AnimationOptimizer
+{
+public:
+    // Optimizes _input using *this parameters. _skeleton is required to evaluate
+    // optimization error along joint hierarchy (see hierarchical_tolerance).
+    // Returns true on success and fills _output animation with the optimized
+    // version of _input animation.
+    // *_output must be a valid RawAnimation instance.
+    // Returns false on failure and resets _output to an empty animation.
+    // See RawAnimation::Validate() for more details about failure reasons.
+    bool operator()(const RawAnimation& _input, const Skeleton& _skeleton, RawAnimation* _output) const;
 
-  // Optimizes _input using *this parameters. _skeleton is required to evaluate
-  // optimization error along joint hierarchy (see hierarchical_tolerance).
-  // Returns true on success and fills _output animation with the optimized
-  // version of _input animation.
-  // *_output must be a valid RawAnimation instance.
-  // Returns false on failure and resets _output to an empty animation.
-  // See RawAnimation::Validate() for more details about failure reasons.
-  bool operator()(const RawAnimation& _input, const Skeleton& _skeleton,
-                  RawAnimation* _output) const;
+    // Optimization settings.
+    struct Setting {
+        // Default settings
+        Setting() = default;
 
-  // Optimization settings.
-  struct Setting {
-    // Default settings
-    Setting()
-        : tolerance(1e-3f),  // 1mm
-          distance(1e-1f)    // 10cm
-    {}
+        Setting(float _tolerance, float _distance)
+            : tolerance(_tolerance)
+            , distance(_distance)
+        {
+        }
 
-    Setting(float _tolerance, float _distance)
-        : tolerance(_tolerance), distance(_distance) {}
+        // The maximum error that an optimization is allowed to generate on a whole
+        // joint hierarchy.
+        float tolerance = 1e-3f; // 1mm
 
-    // The maximum error that an optimization is allowed to generate on a whole
-    // joint hierarchy.
-    float tolerance;
+        // The distance (from the joint) at which error is measured (if bigger that
+        // joint hierarchy). This allows to emulate effect on skinning.
+        float distance = 1e-1f; // 10cm
+    };
 
-    // The distance (from the joint) at which error is measured (if bigger that
-    // joint hierarchy). This allows to emulate effect on skinning.
-    float distance;
-  };
+    // Global optimization settings. These settings apply to all joints of the
+    // hierarchy, unless overriden by joint specific settings.
+    Setting setting;
 
-  // Global optimization settings. These settings apply to all joints of the
-  // hierarchy, unless overriden by joint specific settings.
-  Setting setting;
-
-  // Per joint override of optimization settings.
-  typedef ozz::map<int, Setting> JointsSetting;
-  JointsSetting joints_setting_override;
+    // Per joint override of optimization settings.
+    typedef ozz::map<int, Setting> JointsSetting;
+    JointsSetting joints_setting_override;
 };
-}  // namespace offline
-}  // namespace animation
-}  // namespace ozz
-#endif  // OZZ_OZZ_ANIMATION_OFFLINE_ANIMATION_OPTIMIZER_H_
+} // namespace offline
+} // namespace animation
+} // namespace ozz
+#endif // OZZ_OZZ_ANIMATION_OFFLINE_ANIMATION_OPTIMIZER_H_

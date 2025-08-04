@@ -1,22 +1,22 @@
 #pragma once
 #include <cmath>
 #include <limits>
-#include "SkrContainers/string.hpp"  // IWYU pragma: export
+#include "SkrContainers/string.hpp" // IWYU pragma: export
 
 #define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
 #include "doctest_fwd.h" // IWYU pragma: export
 DOCTEST_MSVC_SUPPRESS_WARNING(4805)
 
 #ifndef SkrTestLine
-#  define SkrTestLine __LINE__
+    #define SkrTestLine __LINE__
 #endif
 
 #ifndef SkrTestConcat
-#  define SkrTestConcat(x,y) SkrTestConcatIndirect(x,y)
+    #define SkrTestConcat(x, y) SkrTestConcatIndirect(x, y)
 #endif
 
 #ifndef SkrTestConcatIndirect
-#  define SkrTestConcatIndirect(x,y) x##y
+    #define SkrTestConcatIndirect(x, y) x##y
 #endif
 
 #define ASSERT_TRUE REQUIRE
@@ -33,17 +33,43 @@ DOCTEST_MSVC_SUPPRESS_WARNING(4805)
 #define EXPECT_FALSE(v) REQUIRE(!(v))
 #define EXPECT_NEAR(a, b, c) REQUIRE(std::abs((a) - (b)) <= (c))
 
-#define SKR_TEST_INFO(...) auto SkrTestConcat(scopedTestMsg, SkrTestLine) = skr::format(__VA_ARGS__); INFO(SkrTestConcat(scopedTestMsg, SkrTestLine).c_str());
+#define SKR_TEST_INFO(...)                                                     \
+    auto SkrTestConcat(scopedTestMsg, SkrTestLine) = skr::format(__VA_ARGS__); \
+    INFO(SkrTestConcat(scopedTestMsg, SkrTestLine).c_str());
 
 #define TEST_CASE_METHOD TEST_CASE_FIXTURE
 
-template<class T>
+template <class T>
 typename std::enable_if<!std::numeric_limits<T>::is_integer, bool>::type
-    test_almost_equal(T x, T y, int ulp = 4)
+test_almost_equal(T x, T y, int ulp = 4)
 {
     // the machine epsilon has to be scaled to the magnitude of the values used
     // and multiplied by the desired precision in ULPs (units in the last place)
     return std::fabs(x - y) <= std::numeric_limits<T>::epsilon() * std::fabs(x + y) * ulp
-        // unless the result is subnormal
-        || std::fabs(x - y) < std::numeric_limits<T>::min();
+           // unless the result is subnormal
+           || std::fabs(x - y) < std::numeric_limits<T>::min();
 }
+
+inline auto approx(float x)
+{
+    return doctest::Approx(x).epsilon(0.001f);
+}
+
+// doctest ToString specializations for SakuraEngine string types
+namespace doctest {
+
+template<>
+struct StringMaker<skr::StringView> {
+    static doctest::String convert(const skr::StringView& value) {
+        return doctest::String(reinterpret_cast<const char*>(value.data()), static_cast<unsigned>(value.size()));
+    }
+};
+
+template<>
+struct StringMaker<skr::String> {
+    static doctest::String convert(const skr::String& value) {
+        return doctest::String(value.c_str_raw(), static_cast<unsigned>(value.size()));
+    }
+};
+
+} // namespace doctest

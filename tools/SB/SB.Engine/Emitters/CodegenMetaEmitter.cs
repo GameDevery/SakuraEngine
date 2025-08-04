@@ -12,7 +12,7 @@ namespace SB
         public string[]? AllGeneratedMetaFiles { get; internal set; }
     }
 
-    [MetaDoctor]
+    [Setup<MetaSetup>]
     public class CodegenMetaEmitter : TaskEmitter
     {
         public CodegenMetaEmitter(IToolchain Toolchain)
@@ -33,7 +33,7 @@ namespace SB
             // Batch headers to a source file
             var Headers = Target.FileList<MetaHeaderList>().Files;
             var BatchFile = Path.Combine(BatchDirectory, "ReflectionBatch.cpp");
-            Depend.OnChanged(Target.Name, BatchFile, Name, (Depend depend) => {
+            BS.CppCompileDepends(Target).OnChanged(Target.Name, BatchFile, Name, (Depend depend) => {
                 Directory.CreateDirectory(BatchDirectory);
                 File.WriteAllLines(BatchFile, Headers.Select(H => $"#include \"{H}\""));
                 depend.ExternalFiles.Add(BatchFile);
@@ -46,6 +46,7 @@ namespace SB
                 $"--root={MetaAttribute.RootDirectory}",
                 "--"
             };
+
             // Compiler arguments
             var ArgsWithoutPCH = Target.Arguments.ToDictionary();
             ArgsWithoutPCH.Remove("UsePCHAST");
@@ -53,22 +54,22 @@ namespace SB
                 .AddArguments(ArgsWithoutPCH)
                 .CalculateArguments()
                 .Values.SelectMany(x => x).ToList();
+
             // Set addon flags            
             CompilerArgs.Add("-Wno-abstract-final-class");
             if (BS.TargetOS == OSPlatform.Windows)
-                CompilerArgs.Add("--driver-mode=cl");
-            MetaArgs.AddRange(CompilerArgs);
-            MetaArgs.AddRange(
-                "-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk/usr/include/c++/v1",
-                "-isystem /Library/Developer/CommandLineTools/usr/lib/clang/17/include",
-                "-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk/usr/include",
-                "-isystem /Library/Developer/CommandLineTools/usr/include",
-                "-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk/System/Library/Frameworks"
-            );
-            // Run meta.exe
-            bool Changed = Depend.OnChanged(Target.Name, MetaAttribute.MetaDirectory, Name, (Depend depend) =>
             {
-                var EXE = Path.Combine(MetaDoctor.Installation!.Result, BS.HostOS == OSPlatform.Windows ? "meta.exe" : "meta");
+                CompilerArgs.Add("--driver-mode=cl");
+            }
+            MetaArgs.AddRange(CompilerArgs);
+
+            // Run meta.exe
+            bool Changed = Engine.CodegenDepend.OnChanged(Target.Name, MetaAttribute.MetaDirectory, Name, (Depend depend) =>
+            {
+                Directory.Delete(MetaAttribute.MetaDirectory, true);
+                Directory.CreateDirectory(MetaAttribute.MetaDirectory);
+
+                var EXE = Path.Combine(MetaSetup.Installation!.Result, BS.HostOS == OSPlatform.Windows ? "meta.exe" : "meta");
 
                 int ExitCode = BS.RunProcess(EXE, string.Join(" ", MetaArgs), out var OutputInfo, out var ErrorInfo);
                 if (ExitCode != 0)
@@ -89,18 +90,12 @@ namespace SB
         public static volatile int Time = 0;
     }
 
-    public class MetaDoctor : DoctorAttribute
+    public class MetaSetup : ISetup
     {
-        public override bool Check()
+        public void Setup()
         {
             Installation = Install.Tool("meta_v1.0.3-llvm_19.1.7");
             Installation!.Wait();
-            return true;
-        }
-        public override bool Fix() 
-        { 
-            Log.Fatal("meta install failed!");
-            return true; 
         }
         public static Task<string>? Installation;
     }

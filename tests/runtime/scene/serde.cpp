@@ -1,6 +1,6 @@
 #include "SkrCore/log.h"
 #include "SkrContainers/vector.hpp"
-#include "SkrScene/scene.h"
+#include "SkrScene/transform_system.h"
 #include "SkrSerde/json_serde.hpp"
 
 #include "SkrTestFramework/framework.hpp"
@@ -46,9 +46,9 @@ struct TestSceneType {
 
 TEST_CASE_METHOD(SceneSerdeTests, "json")
 {
-    TestSceneType<skr::ScaleComponent>(skr::ScaleComponent{ skr_float3_t{ 1.f, 2.f, 3.f } });
-    TestSceneType<skr::ScaleComponent>(skr::ScaleComponent{ skr_float3_t{ 5.f, 4.f, 3.f } });
-    TestSceneType<skr::TranslationComponent>(skr::TranslationComponent{ skr_float3_t{ 15.f, 42.f, 34.f } });
-    TestSceneType<skr::TranslationComponent>(skr::TranslationComponent{ skr_float3_t{ 5.f, 4.f, 3.f } });
-    TestSceneType<skr::RotationComponent>(skr::RotationComponent{ skr_rotator_f_t{ 5.f, 4.f, 3.f } });
+    TestSceneType<skr::scene::ScaleComponent>(skr::scene::ScaleComponent(1.0, 2.0, 3.0));
+    TestSceneType<skr::scene::ScaleComponent>(skr::scene::ScaleComponent(5.f, 4.f, 3.f ));
+    TestSceneType<skr::scene::PositionComponent>(skr::scene::PositionComponent(15.f, 42.f, 34.f));
+    TestSceneType<skr::scene::PositionComponent>(skr::scene::PositionComponent(5.f, 4.f, 3.f));
+    TestSceneType<skr::scene::RotationComponent>(skr::scene::RotationComponent(5.f, 4.f, 3.f));
 }

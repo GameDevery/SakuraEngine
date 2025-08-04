@@ -12,6 +12,7 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <Windows.h>
+#include <io.h>
 #endif
 
 namespace skr {
@@ -65,6 +66,9 @@ LogANSIOutputSink::LogANSIOutputSink(skr_guid_t pattern) SKR_NOEXCEPT
     : LogConsoleSink(pattern)
 {
     ::setvbuf(stdout, NULL, _IOFBF, bufSize);
+#if SKR_PLAT_WINDOWS
+    ::SetConsoleOutputCP(CP_UTF8);
+#endif
 }
 
 LogANSIOutputSink::~LogANSIOutputSink() SKR_NOEXCEPT
@@ -370,14 +374,14 @@ LogFileSink::LogFileSink() SKR_NOEXCEPT
     : LogSink(LogConstants::kDefaultFilePatternId)
 {
     /*
-    auto current_path = skr::filesystem::current_path();
+    auto current_path = skr::fs::current_path();
     auto txt_path = current_path / "log.log";
-    if (skr::filesystem::is_regular_file(txt_path))
+    if (skr::fs::is_regular_file(txt_path))
     {
-        auto time = skr::filesystem::last_write_time(txt_path);
+        auto time = skr::fs::last_write_time(txt_path);
         // append time to fname & rename 
         auto new_path = current_path / "log.txt";
-        skr::filesystem::rename(txt_path, new_path);
+        skr::fs::rename(txt_path, new_path);
     }
     */
     auto pname = skr::String(skr_get_current_process_name());

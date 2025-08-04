@@ -1,47 +1,44 @@
 #include "SkrRenderer/resources/material_resource.hpp"
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrToolCore/project/project.hpp"
 #include "SkrShaderCompiler/assets/material_asset.hpp"
 #include "SkrSerde/json_serde.hpp"
 
-namespace skd
-{
-namespace asset
+namespace skd::asset
 {
 
-void* SMaterialImporter::Import(skr_io_ram_service_t* ioService, SCookContext* context)
+void* MaterialImporter::Import(skr::io::IRAMService* ioService, CookContext* context)
 {
     skr::BlobId blob = nullptr;
     context->AddSourceFileAndLoad(ioService, jsonPath.c_str(), blob);
     SKR_DEFER({ blob.reset(); });
     /*
-    const auto assetRecord = context->GetAssetRecord();
+    const auto assetMetaFile = context->GetAssetMetaFile();
     {
-        SKR_LOG_FMT_ERROR(u8"Import shader options asset {} from {} failed, json parse error {}", assetRecord->guid, jsonPath, ::error_message(doc.error()));
+        SKR_LOG_FMT_ERROR(u8"Import shader options asset {} from {} failed, json parse error {}", assetMetaFile->guid, jsonPath, ::error_message(doc.error()));
         return nullptr;
     }
     '*/
     skr::String              jString(skr::StringView((const char8_t*)blob->get_data(), blob->get_size()));
     skr::archive::JsonReader jsonVal(jString.view());
-    auto                     mat_asset = SkrNew<skr_material_asset_t>();
+    auto                     mat_asset = SkrNew<MaterialAsset>();
     skr::json_read(&jsonVal, *mat_asset);
     return mat_asset;
 }
 
-void SMaterialImporter::Destroy(void* resource)
+void MaterialImporter::Destroy(void* resource)
 {
-    auto mat_asset = (skr_material_asset_t*)resource;
+    auto mat_asset = (MaterialAsset*)resource;
     SkrDelete(mat_asset);
 }
 
-bool SMaterialCooker::Cook(SCookContext* ctx)
+bool MaterialCooker::Cook(CookContext* ctx)
 {
-    const auto outputPath = ctx->GetOutputPath();
     //-----load config
     // no cook config for config, skipping
 
     //-----import resource object
-    auto material = ctx->Import<skr_material_asset_t>();
+    auto material = ctx->Import<MaterialAsset>();
     if (!material) return false;
     SKR_DEFER({ ctx->Destroy(material); });
 
@@ -205,5 +202,4 @@ bool SMaterialCooker::Cook(SCookContext* ctx)
     }
     return ctx->Save(runtime_material);
 }
-} // namespace asset
-} // namespace skd
+} // namespace skd::asset

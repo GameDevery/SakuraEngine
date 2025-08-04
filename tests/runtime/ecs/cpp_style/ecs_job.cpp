@@ -1,49 +1,55 @@
 #include "cpp_style.hpp"
 #include "SkrTask/parallel_for.hpp"
-#include "SkrRT/ecs/type_builder.hpp"
-#include "SkrRT/ecs/storage.hpp"
-#include "SkrRT/ecs/job.hpp"
+#include "SkrRT/ecs/world.hpp"
 #include "SkrCore/log.h"
 
+#define TEST_ENTITY_COUNT 2'000'000
 
 struct ECSJobs {
     ECSJobs() SKR_NOEXCEPT
+        : world(scheduler)
     {
-        // std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-        
-        storage = sugoiS_create();
-
-        spawnIntEntities();
-
+        std::this_thread::sleep_for(std::chrono::milliseconds(1200));
         scheduler.initialize(skr::task::scheudler_config_t());
         scheduler.bind();
-        sugoiJ_bind_storage(storage);
+     
+        world.initialize();
+
+        spawnIntEntities();
     }
 
     ~ECSJobs() SKR_NOEXCEPT
     {
-        sugoiJ_unbind_storage(storage);
-        ::sugoiS_release(storage);
+        world.finalize();
         scheduler.unbind();
-
-        // std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     }
 
     void spawnIntEntities()
     {
         SkrZoneScopedN("spawnIntEntities");
-        sugoi::EntitySpawner<IntComponent, FloatComponent> spawner;
-        spawner(storage, 2'000'000, 
-            [&](auto& view){
-                SkrZoneScopedN("memesetIntEntities");
-                auto [ints, floats] = view.unpack();
-                memset(ints, 0, sizeof(IntComponent) * view.count());
-                memset(floats, 0, sizeof(FloatComponent) * view.count());
-            });
+        struct Spawner
+        {
+            void build(skr::ecs::ArchetypeBuilder& Builder)
+            {
+                Builder.add_component(&Spawner::ints)
+                       .add_component(&Spawner::floats);
+            }
+
+            void run(skr::ecs::TaskContext& Context)
+            {
+                memset(&ints[0], 0, sizeof(IntComponent) * Context.size());
+                memset(&floats[0], 0, sizeof(FloatComponent) * Context.size());
+            }
+
+            skr::ecs::ComponentView<IntComponent> ints;
+            skr::ecs::ComponentView<FloatComponent> floats;
+        } spawner;
+        world.create_entities(spawner, TEST_ENTITY_COUNT);
     }
 
 protected:
-    sugoi_storage_t* storage = nullptr;
+    skr::ecs::World world;
     skr::task::scheduler_t scheduler;
 };
 
@@ -51,118 +57,276 @@ TEST_CASE_METHOD(ECSJobs, "WRW")
 {
     SkrZoneScopedN("ECSJobs::WRW");
 
-    auto ROQuery = storage->new_query()
-            .ReadAll<IntComponent>()
-            .commit().value();
-    auto RWQuery = storage->new_query()
-            .ReadWriteAll<IntComponent>()
-            .commit().value();
-    SKR_DEFER({ 
-        storage->destroy_query(ROQuery); 
-        storage->destroy_query(RWQuery); 
-    });
+    skr::ServiceThreadDesc desc = {
+        .name = u8"ECSJob-TaskScheduler",
+        .priority = SKR_THREAD_ABOVE_NORMAL
+    };
 
-    auto WJob0 = SkrNewLambda(
-        [=](sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex) {
-        SkrZoneScopedN("WJob0");
-        auto ints = sugoi::get_owned<IntComponent>(view);
-        for (auto i = 0; i < view->count; i++)
+    struct WriteJob0
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
         {
-            EXPECT_EQ(ints[i].v, 0);
-            ints[i].v = ints[i].v + 1;
+            Builder.write(&WriteJob0::ints);
         }
-    });
-    auto RJob = SkrNewLambda(
-        [=](sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex) {
-        SkrZoneScopedN("RJob");
-        auto ints = sugoi::get_owned<const IntComponent>(view);
-        for (auto i = 0; i < view->count; i++)
+        void run(skr::ecs::TaskContext& Context)
         {
-            EXPECT_EQ(ints[i].v, 1);
+            SkrZoneScopedN("WriteJob0");
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                EXPECT_EQ(ints[i].v, 0);
+                ints[i].v = ints[i].v + 1;
+            }
         }
-    });
-    auto WJob1 = SkrNewLambda(
-        [=](sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex) {
-        SkrZoneScopedN("WJob1");
-        auto ints = sugoi::get_owned<IntComponent>(view);
-        for (auto i = 0; i < view->count; i++)
-        {
-            EXPECT_EQ(ints[i].v, 1);
-            ints[i].v = ints[i].v + 1;
-        }
-    });
-    auto& JS = sugoi::JobScheduler::Get();
-    JS.schedule_ecs_job(RWQuery, 10'000, SUGOI_LAMBDA_POINTER(WJob0));
-    JS.schedule_ecs_job(ROQuery, 10'000, SUGOI_LAMBDA_POINTER(RJob));
-    JS.schedule_ecs_job(RWQuery, 10'000, SUGOI_LAMBDA_POINTER(WJob1));
-    JS.sync_all_jobs();
+        skr::ecs::ComponentView<IntComponent> ints;
+    } wjob0;
+    auto q0 = world.dispatch_task(wjob0, 1'280, nullptr);
 
-    JS.collect_garbage();
+    struct ReadJob
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
+        {
+            Builder.read(&ReadJob::ints);
+        }
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("ReadJob");
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                EXPECT_EQ(ints[i].v, 1);
+            }
+        }
+        skr::ecs::ComponentView<const IntComponent> ints;
+    } rjob;
+    auto q1 = world.dispatch_task(rjob, 1'280, nullptr);
+
+    struct WriteJob1
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
+        {
+            Builder.write(&WriteJob1::ints);
+        }
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("WriteJob1");
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                EXPECT_EQ(ints[i].v, 1);
+                ints[i].v = ints[i].v + 1;
+            }
+        }
+        skr::ecs::ComponentView<IntComponent> ints;
+    } wjob1;
+    world.dispatch_task(wjob1, 1'280, q0);
+
+    skr::ecs::TaskScheduler::Get()->flush_all();
+    skr::ecs::TaskScheduler::Get()->sync_all();
+
+    world.destroy_query(q0);
+    world.destroy_query(q1);
 }
 
 TEST_CASE_METHOD(ECSJobs, "WRW-Complex")
 {
     SkrZoneScopedN("ECSJobs::WRW-Complex");
 
-    auto ROQuery = storage->new_query()
-            .ReadAll<IntComponent>()
-            .commit().value();
-    auto RWIntQuery = storage->new_query()
-            .ReadWriteAll<IntComponent>()
-            .commit().value();
-    auto RWFloatQuery = storage->new_query()
-            .ReadWriteAll<FloatComponent>()
-            .commit().value();
-    SKR_DEFER({ 
-        storage->destroy_query(ROQuery); 
-        storage->destroy_query(RWIntQuery); 
-        storage->destroy_query(RWFloatQuery); 
-    });
+    struct WriteInts
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
+        {
+            Builder.write(&WriteInts::ints);
+        }
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("WriteInts");
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                ints[i].v = ints[i].v + 1;
+            }
+        }
+        skr::ecs::ComponentView<IntComponent> ints;
+    } writeInts;
+    auto q0 = world.dispatch_task(writeInts, 1'280, nullptr);
 
-    auto WriteInts = SkrNewLambda(
-        [=](sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex) {
-        SkrZoneScopedN("WriteInts");
-        auto ints = sugoi::get_owned<IntComponent>(view);
-        for (auto i = 0; i < view->count; i++)
+    struct WriteFloats
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
         {
-            ints[i].v = ints[i].v + 1;
+            Builder.write(&WriteFloats::floats);
         }
-    });
-    auto WriteFloats = SkrNewLambda(
-        [=](sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex) {
-        SkrZoneScopedN("WriteFloats");
-        auto floats = sugoi::get_owned<FloatComponent>(view);
-        for (auto i = 0; i < view->count; i++)
+        void run(skr::ecs::TaskContext& Context)
         {
-            floats[i].v = floats[i].v + 1.f;
-            floats[i].v = floats[i].v + 1.f;
+            SkrZoneScopedN("WriteFloats");
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                floats[i].v = floats[i].v + 1.f;
+                floats[i].v = floats[i].v + 1.f;
+            }
         }
-    });
-    auto ReadJob = SkrNewLambda(
-        [=](sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex) {
-        SkrZoneScopedN("ReadOnlyJob");
-        auto ints = sugoi::get_owned<const IntComponent>(view);
-        // use an int-only query to schedule a job but reads floats
-        // FloatComponents will not be synchronized but you can still read
-        // which is an unsafe operation
-        auto floats = sugoi::get_owned<const FloatComponent>(view);
-        for (auto i = 0; i < view->count; i++)
-        {
-            EXPECT_EQ(ints[i].v, 1);
-            const auto cond0 = floats[i].v == 0.f;
-            const auto cond1 = floats[i].v == 1.f;
-            const auto cond2 = floats[i].v == 2.f;
-            const auto cond3 = floats[i].v == 3.f;
-            const auto cond4 = floats[i].v == 4.f;
-            const auto cond = cond0 || cond1 || cond2 || cond3 || cond4;
-            EXPECT_TRUE(cond);
-        }
-    });
-    auto& JS = sugoi::JobScheduler::Get();
-    JS.schedule_ecs_job(RWIntQuery, 12'800, SUGOI_LAMBDA_POINTER(WriteInts));
-    JS.schedule_ecs_job(RWFloatQuery, 2'560, SUGOI_LAMBDA_POINTER(WriteFloats));
-    JS.schedule_ecs_job(ROQuery, 10'000, SUGOI_LAMBDA_POINTER(ReadJob));
-    JS.sync_all_jobs();
+        skr::ecs::ComponentView<FloatComponent> floats;
+    } writeFloats;
+    auto q1 = world.dispatch_task(writeFloats, 1'280, nullptr);
 
-    JS.collect_garbage();
+    struct ReadJob
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
+        {
+            Builder.read(&ReadJob::ints)
+                .read(&ReadJob::floats);
+        }
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("ReadOnlyJob");
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                EXPECT_EQ(ints[i].v, 1);
+                const auto cond0 = floats[i].v == 0.f;
+                const auto cond1 = floats[i].v == 1.f;
+                const auto cond2 = floats[i].v == 2.f;
+                const auto cond3 = floats[i].v == 3.f;
+                const auto cond4 = floats[i].v == 4.f;
+                const auto cond = cond0 || cond1 || cond2 || cond3 || cond4;
+                EXPECT_TRUE(cond);
+            }
+        }
+        skr::ecs::ComponentView<const IntComponent> ints;
+        skr::ecs::ComponentView<const FloatComponent> floats;
+    } readJob;
+    auto q2 = world.dispatch_task(readJob, 1'280, nullptr);
+
+    skr::ecs::TaskScheduler::Get()->flush_all();
+    skr::ecs::TaskScheduler::Get()->sync_all();
+
+    world.destroy_query(q0);
+    world.destroy_query(q1);
+    world.destroy_query(q2);
+}
+
+TEST_CASE_METHOD(ECSJobs, "RandomAccess")
+{
+    static std::atomic_uint64_t cnt = 0;
+    static std::atomic<skr::ecs::Entity> some_entity;
+    static std::atomic_uint64_t some_value = 0;
+
+    struct WriteInts
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
+        {
+            Builder.write(&WriteInts::ints);
+        }
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("WriteInts");
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                ints[i].v = ints[i].v + 1;
+                cnt += 1;
+            }
+
+            some_entity = Context.entities()[0];
+            some_value = ints[0].v;
+        }
+        skr::ecs::ComponentView<IntComponent> ints;
+    } writeInts;
+    auto q0 = world.dispatch_task(writeInts, 1'280, nullptr);
+
+    static std::atomic_uint64_t parallel_read_cnt = 0;
+    static std::atomic_uint64_t max_parallel_read_cnt = 0;
+    struct RandomReadInts
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
+        {
+            Builder.read(&RandomReadInts::ints) 
+                .access(&RandomReadInts::int_accessor);
+        }
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("RandomReadInts");
+            parallel_read_cnt += 1;
+            max_parallel_read_cnt = std::max(max_parallel_read_cnt.load(), parallel_read_cnt.load());
+
+            EXPECT_EQ(cnt, TEST_ENTITY_COUNT);
+            
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                EXPECT_EQ(ints[i].v, 1);
+            }
+
+            IntComponent value = int_accessor[some_entity];
+            EXPECT_EQ(value.v, some_value);
+            
+            parallel_read_cnt -= 1;
+        }
+
+        skr::ecs::ComponentView<const IntComponent> ints;
+        skr::ecs::RandomComponentReader<const IntComponent> int_accessor;
+    } randomReadInts;
+    auto q1 = world.dispatch_task(randomReadInts, 1'280, nullptr);
+
+    static std::atomic_uint64_t parallel_write_cnt = 0;
+    static std::atomic_uint64_t max_parallel_write_cnt = 0;
+    struct RandomWriteInts
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
+        {
+            Builder.write(&RandomWriteInts::floats)
+                .access(&RandomWriteInts::int_accessor);
+        }
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("RandomWriteInts");
+            parallel_write_cnt += 1;
+            max_parallel_write_cnt = std::max(max_parallel_write_cnt.load(), parallel_write_cnt.load());
+
+            EXPECT_EQ(cnt, TEST_ENTITY_COUNT);
+
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                EXPECT_EQ(floats[i].v, 0);
+            }
+            int_accessor.write_at(some_entity, IntComponent{5});
+
+            parallel_write_cnt -= 1;
+        }
+        skr::ecs::ComponentView<FloatComponent> floats;
+        skr::ecs::RandomComponentWriter<IntComponent> int_accessor;
+    } randomWriteInts;
+    auto q2 = world.dispatch_task(randomWriteInts, 1'280, nullptr);
+
+
+    static std::atomic_uint64_t parallel_rw_cnt = 0;
+    static std::atomic_uint64_t max_parallel_rw_cnt = 0;
+    struct RandomReadWriteInts
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
+        {
+            Builder.access(&RandomReadWriteInts::int_accessor);
+        }
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("RandomReadWriteInts");
+            parallel_rw_cnt += 1;
+            max_parallel_rw_cnt = std::max(max_parallel_rw_cnt.load(), parallel_rw_cnt.load());
+
+            EXPECT_EQ(cnt, TEST_ENTITY_COUNT);
+
+            IntComponent value = int_accessor[some_entity];
+            int_accessor.write_at(some_entity, IntComponent{10});
+
+            parallel_rw_cnt -= 1;
+        }
+        skr::ecs::RandomComponentReadWrite<IntComponent> int_accessor;
+    } randomReadWriteInts;
+    auto q3 = world.dispatch_task(randomReadWriteInts, 1'280, nullptr);
+
+    skr::ecs::TaskScheduler::Get()->flush_all();
+    skr::ecs::TaskScheduler::Get()->sync_all();
+
+    EXPECT_NE(max_parallel_read_cnt, 1);
+    EXPECT_NE(max_parallel_write_cnt, 1);
+    EXPECT_EQ(max_parallel_rw_cnt, 1);
+
+    world.destroy_query(q0);
+    world.destroy_query(q1);
+    world.destroy_query(q2);
+    world.destroy_query(q3);
 }

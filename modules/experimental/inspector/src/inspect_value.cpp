@@ -47,8 +47,9 @@ struct inspect_system : public skr::ModuleSubsystem
     tweak_value_t* AddInspect(const T& value, const char* str, const char* fileName, int lineNumber)
     {
         SMutexLock lock(_mutex.mMutex);
-        skr::filesystem::path path = skr::filesystem::path(fileName).lexically_normal();
-        auto& tweak_file = _tweak_files[path.u8string().c_str()]; 
+        skr::Path path{fileName};
+        path.normalize();
+        auto& tweak_file = _tweak_files[path.string().c_str()]; 
         auto result = &tweak_file.emplace(lineNumber, tweak_value_t{})->second;
         result->value = value;
         result->ident = counter++;

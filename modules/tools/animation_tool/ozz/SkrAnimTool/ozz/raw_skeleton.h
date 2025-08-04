@@ -34,9 +34,12 @@
 #include "SkrAnim/ozz/base/io/archive_traits.h"
 #include "SkrAnim/ozz/base/maths/transform.h"
 
-namespace ozz {
-namespace animation {
-namespace offline {
+namespace ozz
+{
+namespace animation
+{
+namespace offline
+{
 
 // Off-line skeleton type.
 // This skeleton type is not intended to be used in run time. It is used to
@@ -49,78 +52,87 @@ namespace offline {
 // freely with the only restriction that the total number of joints does not
 // exceed Skeleton::kMaxJoints.
 struct OZZ_ANIMOFFLINE_DLL RawSkeleton {
-  // Construct an empty skeleton.
-  RawSkeleton();
+    // Construct an empty skeleton.
+    RawSkeleton();
 
-  // The destructor is responsible for deleting the roots and their hierarchy.
-  ~RawSkeleton();
+    // The destructor is responsible for deleting the roots and their hierarchy.
+    ~RawSkeleton();
 
-  // Offline skeleton joint type.
-  struct Joint {
-    // Type of the list of children joints.
-    typedef ozz::vector<Joint> Children;
+    // Offline skeleton joint type.
+    struct Joint {
+        // Type of the list of children joints.
+        typedef ozz::vector<Joint> Children;
 
-    // Children joints.
-    Children children;
+        // Children joints.
+        Children children;
 
-    // The name of the joint.
-    ozz::string name;
+        // The name of the joint.
+        ozz::string name;
 
-    // Joint rest pose transformation in local space.
-    math::Transform transform;
-  };
+        // Joint rest pose transformation in local space.
+        math::Transform transform;
+    };
 
-  // Tests for *this validity.
-  // Returns true on success or false on failure if the number of joints exceeds
-  // ozz::Skeleton::kMaxJoints.
-  bool Validate() const;
+    // Tests for *this validity.
+    // Returns true on success or false on failure if the number of joints exceeds
+    // ozz::Skeleton::kMaxJoints.
+    bool Validate() const;
 
-  // Returns the number of joints of *this animation.
-  // This function is not constant time as it iterates the hierarchy of joints
-  // and counts them.
-  int num_joints() const;
+    // Returns the number of joints of *this animation.
+    // This function is not constant time as it iterates the hierarchy of joints
+    // and counts them.
+    int num_joints() const;
 
-  // Declares the skeleton's roots. Can be empty if the skeleton has no joint.
-  Joint::Children roots;
+    // Declares the skeleton's roots. Can be empty if the skeleton has no joint.
+    Joint::Children roots;
 };
 
-namespace {
+namespace
+{
 // Internal function used to iterate through joint hierarchy depth-first.
 template <typename _Fct>
 inline void _IterHierarchyRecurseDF(
     const RawSkeleton::Joint::Children& _children,
-    const RawSkeleton::Joint* _parent, _Fct& _fct) {
-  for (size_t i = 0; i < _children.size(); ++i) {
-    const RawSkeleton::Joint& current = _children[i];
-    _fct(current, _parent);
-    _IterHierarchyRecurseDF(current.children, &current, _fct);
-  }
+    const RawSkeleton::Joint* _parent, _Fct& _fct
+)
+{
+    for (size_t i = 0; i < _children.size(); ++i)
+    {
+        const RawSkeleton::Joint& current = _children[i];
+        _fct(current, _parent);
+        _IterHierarchyRecurseDF(current.children, &current, _fct);
+    }
 }
 
 // Internal function used to iterate through joint hierarchy breadth-first.
 template <typename _Fct>
 inline void _IterHierarchyRecurseBF(
     const RawSkeleton::Joint::Children& _children,
-    const RawSkeleton::Joint* _parent, _Fct& _fct) {
-  for (size_t i = 0; i < _children.size(); ++i) {
-    const RawSkeleton::Joint& current = _children[i];
-    _fct(current, _parent);
-  }
-  for (size_t i = 0; i < _children.size(); ++i) {
-    const RawSkeleton::Joint& current = _children[i];
-    _IterHierarchyRecurseBF(current.children, &current, _fct);
-  }
+    const RawSkeleton::Joint* _parent, _Fct& _fct
+)
+{
+    for (size_t i = 0; i < _children.size(); ++i)
+    {
+        const RawSkeleton::Joint& current = _children[i];
+        _fct(current, _parent);
+    }
+    for (size_t i = 0; i < _children.size(); ++i)
+    {
+        const RawSkeleton::Joint& current = _children[i];
+        _IterHierarchyRecurseBF(current.children, &current, _fct);
+    }
 }
-}  // namespace
+} // namespace
 
 // Applies a specified functor to each joint in a depth-first order.
 // _Fct is of type void(const Joint& _current, const Joint* _parent) where the
 // first argument is the child of the second argument. _parent is null if the
 // _current joint is the root.
 template <typename _Fct>
-inline _Fct IterateJointsDF(const RawSkeleton& _skeleton, _Fct _fct) {
-  _IterHierarchyRecurseDF(_skeleton.roots, nullptr, _fct);
-  return _fct;
+inline _Fct IterateJointsDF(const RawSkeleton& _skeleton, _Fct _fct)
+{
+    _IterHierarchyRecurseDF(_skeleton.roots, nullptr, _fct);
+    return _fct;
 }
 
 // Applies a specified functor to each joint in a breadth-first order.
@@ -128,26 +140,24 @@ inline _Fct IterateJointsDF(const RawSkeleton& _skeleton, _Fct _fct) {
 // first argument is the child of the second argument. _parent is null if the
 // _current joint is the root.
 template <typename _Fct>
-inline _Fct IterateJointsBF(const RawSkeleton& _skeleton, _Fct _fct) {
-  _IterHierarchyRecurseBF(_skeleton.roots, nullptr, _fct);
-  return _fct;
+inline _Fct IterateJointsBF(const RawSkeleton& _skeleton, _Fct _fct)
+{
+    _IterHierarchyRecurseBF(_skeleton.roots, nullptr, _fct);
+    return _fct;
 }
-}  // namespace offline
-}  // namespace animation
-namespace io {
+} // namespace offline
+} // namespace animation
+namespace io
+{
 OZZ_IO_TYPE_VERSION(1, animation::offline::RawSkeleton)
 OZZ_IO_TYPE_TAG("ozz-raw_skeleton", animation::offline::RawSkeleton)
 
 // Should not be called directly but through io::Archive << and >> operators.
 template <>
 struct OZZ_ANIMOFFLINE_DLL Extern<animation::offline::RawSkeleton> {
-  static void Save(OArchive& _archive,
-                   const animation::offline::RawSkeleton* _skeletons,
-                   size_t _count);
-  static void Load(IArchive& _archive,
-                   animation::offline::RawSkeleton* _skeletons, size_t _count,
-                   uint32_t _version);
+    static void Save(OArchive& _archive, const animation::offline::RawSkeleton* _skeletons, size_t _count);
+    static void Load(IArchive& _archive, animation::offline::RawSkeleton* _skeletons, size_t _count, uint32_t _version);
 };
-}  // namespace io
-}  // namespace ozz
-#endif  // OZZ_OZZ_ANIMATION_OFFLINE_RAW_SKELETON_H_
+} // namespace io
+} // namespace ozz
+#endif // OZZ_OZZ_ANIMATION_OFFLINE_RAW_SKELETON_H_

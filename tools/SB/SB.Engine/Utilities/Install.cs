@@ -7,10 +7,12 @@ namespace SB
     using BS = BuildSystem;
     public static class Install
     {
+        public static DependDatabase DownloadDepend = new DependDatabase(Engine.TempPath, "Engine.Downloads");
+        public static DependDatabase SDKDepend = new DependDatabase(Engine.TempPath, "Engine.SDKs." + Engine.GlobalConfiguration);
         public static async Task<string> Tool(string Name)
         {
             var ToolDirectory = Path.Combine(Engine.ToolDirectory, Name);
-            await Depend.OnChanged("Install.Tool.Download", Name, "Install.Tools", async (Depend depend) =>
+            await DownloadDepend.OnChanged("Install.Tool.Download", Name, "Install.Tools", async (Depend depend) =>
             {
                 var ZipFile = await Download.DownloadFile(Name + GetPlatPostfix());
 
@@ -19,6 +21,11 @@ namespace SB
                     using (Profiler.BeginZone($"Install.Tool | {Name} | Copy", color: (uint)Profiler.ColorType.Pink1))
                     {
                         Directory.CreateDirectory(ToolDirectory);
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            foreach (var F in Directory.GetFiles(ToolDirectory, "*"))
+                                System.IO.File.SetUnixFileMode(F, UnixFileMode.UserExecute | UnixFileMode.UserRead | UnixFileMode.UserWrite);
+                        }
                         System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, ToolDirectory, true);
 
                         depend.ExternalFiles.Add(ZipFile);
@@ -33,12 +40,17 @@ namespace SB
         {
             var IntermediateDirectory = Path.Combine(Engine.DownloadDirectory, "SDKs", Name);
 
-            await Depend.OnChanged("Install.SDK.Download", Name, "Install.SDKs", async (Depend depend) =>
+            await DownloadDepend.OnChanged("Install.SDK.Download", Name, "Install.SDKs", async (Depend depend) =>
             {
                 Directory.CreateDirectory(IntermediateDirectory);
                 var ZipFile = await Download.DownloadFile(Name + GetPlatPostfix());
                 using (Profiler.BeginZone($"Install.SDKs | {Name} | Download", color: (uint)Profiler.ColorType.Pink1))
                 {
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        foreach (var F in Directory.GetFiles(IntermediateDirectory, "*"))
+                            System.IO.File.SetUnixFileMode(F, UnixFileMode.UserExecute | UnixFileMode.UserRead | UnixFileMode.UserWrite);
+                    }
                     System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, IntermediateDirectory, true);
                     depend.ExternalFiles.Add(ZipFile);
                     depend.ExternalFiles.AddRange(Directory.GetFiles(IntermediateDirectory, "*", SearchOption.AllDirectories));
@@ -49,7 +61,7 @@ namespace SB
             {
                 using (Profiler.BeginZone($"Install.SDKs | {Name} | Copy", color: (uint)Profiler.ColorType.Pink1))
                 {
-                    Depend.OnChanged("Install.SDK.Copy", Name, "Install.SDKs", (Depend depend) =>
+                    SDKDepend.OnChanged("Install.SDK.Copy", Name, "Install.SDKs", (Depend depend) =>
                     {
                         var BuildDirectory = Path.Combine(BS.BuildPath, $"{BS.TargetOS}-{BS.TargetArch}-{BS.GlobalConfiguration}");
                         Directory.CreateDirectory(BuildDirectory);
@@ -75,6 +87,42 @@ namespace SB
                     }, null, new string[] { BS.GlobalConfiguration });
                 }
             }
+        }
+
+        public static async Task<string> File(string Name, string Destination)
+        {
+            // Determine the final destination
+            string finalDestination;
+            finalDestination = Path.IsPathFullyQualified(Destination) ? Destination : Path.Combine(BS.BuildPath, Destination);
+            finalDestination = Path.Combine(finalDestination, Name);
+            
+            // Use dependency system to track the copy operation
+            await SDKDepend.OnChanged("Install.File.Copy", Name, "Install.Files", async (Depend depend) =>
+            {
+                // Download the file
+                var downloadedFile = await Download.DownloadFile(Name);
+
+                // Ensure destination directory exists
+                var destDir = Path.GetDirectoryName(finalDestination);
+                if (!string.IsNullOrEmpty(destDir))
+                {
+                    Directory.CreateDirectory(destDir);
+                }
+                
+                // Copy the file
+                System.IO.File.Copy(downloadedFile, finalDestination, overwrite: true);
+                
+                // Set executable permissions on non-Windows platforms
+                if (!OperatingSystem.IsWindows())
+                {
+                    System.IO.File.SetUnixFileMode(finalDestination, UnixFileMode.UserExecute | UnixFileMode.UserRead | UnixFileMode.UserWrite);
+                }
+                
+                depend.ExternalFiles.Add(downloadedFile);
+                depend.ExternalFiles.Add(finalDestination);
+            }, null, new[] { BS.GlobalConfiguration });
+            
+            return finalDestination;
         }
 
         private static ConcurrentDictionary<string, System.Threading.Lock> InstallLocks = new();

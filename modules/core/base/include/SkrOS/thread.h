@@ -31,16 +31,14 @@ typedef struct SCallOnceGuard {
 typedef pthread_once_t SCallOnceGuard;
 #endif
 
-#define INVALID_THREAD_ID 0
-
 #if defined(_WIN32) || defined(XBOX)
     #define THREAD_LOCAL __declspec(thread)
 #else
     #define THREAD_LOCAL __thread
 #endif
 
-#define INVALID_THREAD_ID 0
-#define TIMEOUT_INFINITE UINT32_MAX
+#define SKR_INVALID_THREAD_ID 0
+#define SKR_TIMEOUT_INFINITE UINT32_MAX
 
 #ifdef __cplusplus
 extern "C" {
@@ -142,7 +140,7 @@ THREADS_API void skr_rw_mutex_release_w(SRWMutex* pMutex);
 /// cv
 THREADS_API bool skr_init_condition_var(SConditionVariable* cv);
 THREADS_API void skr_destroy_condition_var(SConditionVariable* cv);
-THREADS_API ThreadResult skr_wait_condition_vars(SConditionVariable* cv, const SMutex* pMutex, uint32_t timeout);
+THREADS_API ThreadResult skr_wait_condition_vars(SConditionVariable* cv, SMutex* pMutex, uint32_t timeout);
 THREADS_API void skr_wake_all_condition_vars(SConditionVariable* cv);
 THREADS_API void skr_wake_condition_var(SConditionVariable* cv);
 

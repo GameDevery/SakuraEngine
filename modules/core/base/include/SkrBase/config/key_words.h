@@ -88,6 +88,24 @@
     #define SKR_EXTERN_C extern
 #endif
 
+#ifdef __cplusplus
+    #define SKR_EXTERN_C_BEGIN extern "C" {
+#else
+    #define SKR_EXTERN_C_BEGIN
+#endif
+
+#ifdef __cplusplus
+    #define SKR_EXTERN_C_END }
+#else
+    #define SKR_EXTERN_C_END
+#endif
+
+#ifdef __cplusplus
+    #define SKR_STATIC_ASSERT(x, what)  static_assert(x, what)
+#else
+    #define SKR_STATIC_ASSERT(x, what) _Static_assert(x, what)
+#endif
+
 // IMPORT
 #ifndef SKR_IMPORT
     #if defined(_MSC_VER)

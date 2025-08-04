@@ -1,5 +1,5 @@
 #pragma once
-#include "./rc_util.hpp"
+#include "./rc_util.hpp" // IWYU pragma: export
 #include <SkrBase/misc/hash.hpp>
 
 namespace skr

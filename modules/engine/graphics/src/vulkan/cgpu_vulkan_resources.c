@@ -132,6 +132,21 @@ CGPUBufferId cgpu_create_buffer_vulkan(CGPUDeviceId device, const struct CGPUBuf
                                  VMA_MEMORY_USAGE_AUTO;
         vma_mem_reqs.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
     }
+    
+    // Check if buffer should be allocated from a memory pool
+    if (desc->memory_pool)
+    {
+        CGPUMemoryPool_Vulkan* pool = (CGPUMemoryPool_Vulkan*)desc->memory_pool;
+        vma_mem_reqs.pool = pool->pVmaPool;
+        // When using a custom pool, some flags and usage are ignored
+        vma_mem_reqs.usage = VMA_MEMORY_USAGE_UNKNOWN;
+        // If the pool type is LINEAR and aliasing might be needed
+        if (desc->memory_pool->type == CGPU_MEM_POOL_TYPE_LINEAR)
+        {
+            vma_mem_reqs.flags |= VMA_ALLOCATION_CREATE_CAN_ALIAS_BIT;
+        }
+    }
+    
     SKR_DECLARE_ZERO(VmaAllocationInfo, alloc_info)
     VkBuffer pVkBuffer = VK_NULL_HANDLE;
     VmaAllocation mVmaAllocation = VK_NULL_HANDLE;
@@ -819,6 +834,15 @@ CGPUTextureId cgpu_create_texture_vulkan(CGPUDeviceId device, const struct CGPUT
             if (desc->flags & CGPU_TCF_DEDICATED_BIT)
                 mem_reqs.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
             mem_reqs.usage = (VmaMemoryUsage)VMA_MEMORY_USAGE_GPU_ONLY;
+            
+            // Check if texture should be allocated from a memory pool
+            if (desc->memory_pool)
+            {
+                CGPUMemoryPool_Vulkan* pool = (CGPUMemoryPool_Vulkan*)desc->memory_pool;
+                mem_reqs.pool = pool->pVmaPool;
+                // When using a custom pool, some flags and usage are ignored
+                mem_reqs.usage = VMA_MEMORY_USAGE_UNKNOWN;
+            }
 
             wchar_t* win32Name = CGPU_NULLPTR;
 #if defined(USE_EXTERNAL_MEMORY_EXTENSIONS) && defined(VK_USE_PLATFORM_WIN32_KHR)

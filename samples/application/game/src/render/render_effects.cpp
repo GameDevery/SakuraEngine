@@ -7,10 +7,10 @@
 #include "SkrGraphics/cgpux.h"
 
 
-#include "SkrRT/ecs/sugoi.h"
+#include "SkrRT/sugoi/sugoi.h"
 
 #include "SkrRenderGraph/frontend/render_graph.hpp"
-#include "SkrScene/scene.h"
+#include "SkrScene/transform_system.h"
 
 #include "forward_pass.hpp"
 #include "rfx_mesh.hpp"
@@ -193,7 +193,7 @@ skr_primitive_draw_packet_t RenderEffectForward::produce_draw_packets(const skr_
 
             //SKR_LOG_DEBUG(u8"batch: %d -> %d", g_cv->start, g_cv->count);
             const auto l2ws = sugoi::get_component_ro<skr::TransformComponent>(g_cv);
-            const auto translations = sugoi::get_component_ro<skr::TranslationComponent>(g_cv);
+            const auto translations = sugoi::get_component_ro<skr::PositionComponent>(g_cv);
             const auto rotations = sugoi::get_component_ro<skr::RotationComponent>(g_cv);(void)rotations;
             const auto scales = sugoi::get_component_ro<skr::ScaleComponent>(g_cv);
             // 3.1 calculate model matrices

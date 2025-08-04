@@ -31,22 +31,22 @@ namespace resource
 // - bc & zlib: [TODO] ram service & decompress service & upload
 //    - upload with copy queue
 //    - upload with gfx queue
-struct SKR_RENDERER_API STextureFactoryImpl : public STextureFactory {
-    STextureFactoryImpl(const STextureFactory::Root& root)
+struct SKR_RENDERER_API TextureFactoryImpl : public TextureFactory {
+    TextureFactoryImpl(const TextureFactory::Root& root)
         : root(root)
     {
         dstorage_root            = skr::String::From(root.dstorage_root);
         this->root.dstorage_root = dstorage_root.c_str();
     }
-    ~STextureFactoryImpl() noexcept = default;
+    ~TextureFactoryImpl() noexcept = default;
     skr_guid_t        GetResourceType() override;
     bool              AsyncIO() override { return true; }
-    bool              Unload(skr_resource_record_t* record) override;
-    ESkrInstallStatus Install(skr_resource_record_t* record) override;
-    bool              Uninstall(skr_resource_record_t* record) override;
-    ESkrInstallStatus UpdateInstall(skr_resource_record_t* record) override;
+    bool              Unload(SResourceRecord* record) override;
+    ESkrInstallStatus Install(SResourceRecord* record) override;
+    bool              Uninstall(SResourceRecord* record) override;
+    ESkrInstallStatus UpdateInstall(SResourceRecord* record) override;
 
-    ESkrInstallStatus InstallImpl(skr_resource_record_t* record);
+    ESkrInstallStatus InstallImpl(SResourceRecord* record);
 
     enum class ECompressMethod : uint32_t
     {
@@ -110,32 +110,32 @@ struct SKR_RENDERER_API STextureFactoryImpl : public STextureFactory {
     skr::FlatHashMap<skr_texture_resource_id, SP<TextureRequest>> mTextureRequests;
 };
 
-STextureFactory* STextureFactory::Create(const Root& root)
+TextureFactory* TextureFactory::Create(const Root& root)
 {
-    return SkrNew<STextureFactoryImpl>(root);
+    return SkrNew<TextureFactoryImpl>(root);
 }
 
-void STextureFactory::Destroy(STextureFactory* factory)
+void TextureFactory::Destroy(TextureFactory* factory)
 {
     SkrDelete(factory);
 }
 
-skr_guid_t STextureFactoryImpl::GetResourceType()
+skr_guid_t TextureFactoryImpl::GetResourceType()
 {
-    const auto resource_type = ::skr::type_id_of<skr_texture_resource_t>();
+    const auto resource_type = ::skr::type_id_of<STextureResource>();
     return resource_type;
 }
 
-bool STextureFactoryImpl::Unload(skr_resource_record_t* record)
+bool TextureFactoryImpl::Unload(SResourceRecord* record)
 {
-    auto texture_resource = (skr_texture_resource_t*)record->resource;
+    auto texture_resource = (STextureResource*)record->resource;
     if (texture_resource->texture_view) cgpu_free_texture_view(texture_resource->texture_view);
     if (texture_resource->texture) cgpu_free_texture(texture_resource->texture);
     SkrDelete(texture_resource);
     return true;
 }
 
-ESkrInstallStatus STextureFactoryImpl::Install(skr_resource_record_t* record)
+ESkrInstallStatus TextureFactoryImpl::Install(SResourceRecord* record)
 {
     if (auto render_device = root.render_device)
     {
@@ -148,11 +148,11 @@ ESkrInstallStatus STextureFactoryImpl::Install(skr_resource_record_t* record)
     return ESkrInstallStatus::SKR_INSTALL_STATUS_FAILED;
 }
 
-ESkrInstallStatus STextureFactoryImpl::InstallImpl(skr_resource_record_t* record)
+ESkrInstallStatus TextureFactoryImpl::InstallImpl(SResourceRecord* record)
 {
     const auto gpuCompressOnly  = true;
     auto       vram_service     = root.vram_service;
-    auto       texture_resource = (skr_texture_resource_t*)record->resource;
+    auto       texture_resource = (STextureResource*)record->resource;
     auto       guid             = record->activeRequest->GetGuid();
     if (auto render_device = root.render_device)
     {
@@ -167,7 +167,7 @@ ESkrInstallStatus STextureFactoryImpl::InstallImpl(skr_resource_record_t* record
             SKR_ASSERT(found == mTextureRequests.end());
             mTextureRequests.emplace(texture_resource, dRequest);
             mInstallTypes.emplace(texture_resource, installType);
-            // auto compressedPath = skr::filesystem::path(root.dstorage_root) / compressedBin.c_str();
+            // auto compressedPath = skr::fs::path(root.dstorage_root) / compressedBin.c_str();
             // dRequest->absPath = compressedPath.string();
 
             CGPUTextureDescriptor tdesc = {};
@@ -199,14 +199,14 @@ ESkrInstallStatus STextureFactoryImpl::InstallImpl(skr_resource_record_t* record
     return ESkrInstallStatus::SKR_INSTALL_STATUS_INPROGRESS;
 }
 
-bool STextureFactoryImpl::Uninstall(skr_resource_record_t* record)
+bool TextureFactoryImpl::Uninstall(SResourceRecord* record)
 {
     return true;
 }
 
-ESkrInstallStatus STextureFactoryImpl::UpdateInstall(skr_resource_record_t* record)
+ESkrInstallStatus TextureFactoryImpl::UpdateInstall(SResourceRecord* record)
 {
-    auto                  texture_resource = (skr_texture_resource_t*)record->resource;
+    auto                  texture_resource = (STextureResource*)record->resource;
     [[maybe_unused]] auto installType      = mInstallTypes[texture_resource];
     auto                  dRequest         = mTextureRequests.find(texture_resource);
     if (dRequest != mTextureRequests.end())

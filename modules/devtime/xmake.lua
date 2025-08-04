@@ -1,6 +1,0 @@
- shared_module("SkrDevCore", "SKR_DEVCORE")
-    set_group("06.devs")
-    public_dependency("SkrImGui")
-    skr_unity_build()
-    add_includedirs("include", {public=true})
-    add_files("src/**.cpp")

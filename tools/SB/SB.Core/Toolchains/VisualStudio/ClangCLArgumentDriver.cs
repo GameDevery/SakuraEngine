@@ -10,6 +10,9 @@ namespace SB.Core
         public ClangCLArgumentDriver(CFamily lang, bool isPCH)
             : base(lang, isPCH)
         {
+            RawArguments.Add("-fansi-escape-codes");
+            RawArguments.Add("-fcolor-diagnostics");
+
             RawArguments.Add("-ftime-trace");
 
             // we use clang -xc/c++
@@ -27,6 +30,15 @@ namespace SB.Core
         [TargetProperty(InheritBehavior = true)]
         public virtual string[] ClangCl_CXFlags(ArgumentList<string> flags) => CXFlags(flags);
 
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] Clang_CppFlags(ArgumentList<string> flags) => CppFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] Clang_CFlags(ArgumentList<string> flags) => CFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] Clang_CXFlags(ArgumentList<string> flags) => CXFlags(flags);
+
         public override string[] Cl_CppFlags(ArgumentList<string> flags) => new string[0];
         public override string[] Cl_CFlags(ArgumentList<string> flags) => new string[0];
         public override string[] Cl_CXFlags(ArgumentList<string> flags) => new string[0];
@@ -41,7 +53,7 @@ namespace SB.Core
             CFamily.Cpp => isPCH ? "-xc++-header" : "-xc++",
             CFamily.ObjC => isPCH ? "-xobjective-c-header" : "-xobjective-c",
             CFamily.ObjCpp => isPCH ? "-xobjective-c++-header" : "-xobjective-c++",
-            _ => throw new TaskFatalError($"Invalid language \"{Language}\" for Apple clang!")
+            _ => throw new TaskFatalError($"Invalid language \"{Language}\" for clang-cl!")
         };
     }
 }
