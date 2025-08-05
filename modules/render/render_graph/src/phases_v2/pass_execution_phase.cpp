@@ -48,13 +48,6 @@ void PassExecutionPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor
         SKR_BREAK();
     }
 
-    // Wait for executor to be available
-    {
-        SkrZoneScopedN("AcquireExecutor");
-        cgpu_wait_fences(&executor->exec_fence, 1);
-        if (profiler) profiler->on_acquire_executor(*backend, *executor);
-    }
-
     // Begin command recording
     {
         SkrZoneScopedN("GraphExecutePasses");

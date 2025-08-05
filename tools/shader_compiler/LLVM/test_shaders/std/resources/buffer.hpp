@@ -73,20 +73,20 @@ template<uint32 cache_flags>
 struct [[builtin("buffer")]] Buffer<void, cache_flags> {
 	
 	template<typename T = uint>
-	[[callop("BYTE_BUFFER_READ")]] T load(uint32 byte_index);
+	[[callop("BYTE_BUFFER_READ")]] T Load(uint32 byte_index);
 	
 	template<typename T = uint>
-	[[callop("BYTE_BUFFER_WRITE")]] void store(uint32 byte_index, const T& val);
+	[[callop("BYTE_BUFFER_WRITE")]] void Store(uint32 byte_index, const T& val);
 
-	[[callop("BYTE_BUFFER_LOAD")]] uint load(uint byte_index);
-	[[callop("BYTE_BUFFER_LOAD2")]] uint2 load2(uint byte_index);
-	[[callop("BYTE_BUFFER_LOAD3")]] uint3 load3(uint byte_index);
-	[[callop("BYTE_BUFFER_LOAD4")]] uint4 load4(uint byte_index);
+	[[callop("BYTE_BUFFER_LOAD")]] uint Load(uint byte_index);
+	[[callop("BYTE_BUFFER_LOAD2")]] uint2 Load2(uint byte_index);
+	[[callop("BYTE_BUFFER_LOAD3")]] uint3 Load3(uint byte_index);
+	[[callop("BYTE_BUFFER_LOAD4")]] uint4 Load4(uint byte_index);
 
-	[[callop("BYTE_BUFFER_STORE")]] void store(uint byte_index, uint value);
-	[[callop("BYTE_BUFFER_STORE2")]] void store2(uint byte_index, uint2 value);
-	[[callop("BYTE_BUFFER_STORE3")]] void store3(uint byte_index, uint3 value);
-	[[callop("BYTE_BUFFER_STORE4")]] void store4(uint byte_index, uint4 value);
+	[[callop("BYTE_BUFFER_STORE")]] void Store(uint byte_index, uint value);
+	[[callop("BYTE_BUFFER_STORE2")]] void Store2(uint byte_index, uint2 value);
+	[[callop("BYTE_BUFFER_STORE3")]] void Store3(uint byte_index, uint3 value);
+	[[callop("BYTE_BUFFER_STORE4")]] void Store4(uint byte_index, uint4 value);
 
 	[[ignore]] Buffer() = delete;
 	[[ignore]] Buffer(Buffer const&) = delete;

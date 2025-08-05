@@ -267,6 +267,14 @@ uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 
     const auto executor_index = frame_index % RG_MAX_FRAME_IN_FLIGHT;
     RenderGraphStackAllocator::Reset();
+    
+    // Wait for executor to be available
+    {
+        SkrZoneScopedN("AcquireExecutor");
+        cgpu_wait_fences(&executors[executor_index].exec_fence, 1);
+        if (profiler) profiler->on_acquire_executor(*this, executors[executor_index]);
+    }
+    
     {
         auto culling = CullPhase();
         culling.on_execute(this, &executors[executor_index], profiler);

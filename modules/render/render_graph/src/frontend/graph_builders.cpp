@@ -498,15 +498,27 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::memory_usage(ECGPUMemory
     return *this;
 }
 
-RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_shader_readwrite() SKR_NOEXCEPT
+RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_structured_readwrite() SKR_NOEXCEPT
 {
     node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_RW_BUFFER;
     return *this;
 }
 
-RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_shader_read() SKR_NOEXCEPT
+RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_structured_read() SKR_NOEXCEPT
 {
     node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_BUFFER;
+    return *this;
+}
+
+RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_raw_readwrite() SKR_NOEXCEPT
+{
+    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_RW_BUFFER_RAW;
+    return *this;
+}
+
+RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_raw_read() SKR_NOEXCEPT
+{
+    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_BUFFER_RAW;
     return *this;
 }
 

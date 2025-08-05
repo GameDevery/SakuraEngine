@@ -12,30 +12,29 @@ struct Upload {
 
 // External resource bindings
 extern ByteBuffer<CacheFlags::ReadOnly>& upload_buffer;     // Source data buffer
-extern Buffer<Upload, CacheFlags::ReadOnly>& upload_operations;  // Copy operations list
+extern ByteBuffer<CacheFlags::ReadOnly>& upload_operations;  // Copy operations list
 extern ByteBuffer<>& target_buffer;     // Target buffer (Core Data)
 
 // Push constants
 struct SparseUploadConstants {
     uint num_operations;      // Number of operations
     uint max_threads_per_op;  // Max threads per operation
-    uint alignment;           // Memory alignment requirement (16 bytes)
-    uint padding0;             // Struct alignment
+    uint alignment;           // Memory alignment requirement (16 bytes)  
+    uint padding0;            // Struct alignment
 };
 
 [[push_constant]]
 extern ConstantBuffer<SparseUploadConstants>& constants;
 
-// Multi-threaded sparse upload - multiple threads collaborate on large operations
+// Multi-threaded sparse upload - simplified but maintains parallelism  
 [[compute_shader("sparse_upload"), kernel_1d(256)]]
 void sparse_upload_main([[sv_thread_id]] uint3 thread_id)
 {
     uint global_thread_id = thread_id.x;
-    uint total_threads = constants.max_threads_per_op;
     
-    // Calculate operation index and local thread ID within the operation
-    uint operation_index = global_thread_id / total_threads;
-    uint local_thread_id = global_thread_id % total_threads;
+    // Calculate operation index and local thread ID
+    uint operation_index = global_thread_id / constants.max_threads_per_op;
+    uint local_thread_id = global_thread_id % constants.max_threads_per_op;
     
     // Boundary check
     if (operation_index >= constants.num_operations) {
@@ -43,64 +42,42 @@ void sparse_upload_main([[sv_thread_id]] uint3 thread_id)
     }
     
     // Load the operation
-    Upload op = upload_operations.load(operation_index);
+    Upload op = upload_operations.Load<Upload>(operation_index * sizeof(Upload));
     
-    // Calculate bytes per thread (minimum 16 bytes for better coalescing)
-    uint bytes_per_thread = max(constants.alignment, 16u);
-    uint threads_needed = (op.data_size + bytes_per_thread - 1) / bytes_per_thread;
+    // Calculate 16-byte chunks for this operation
+    uint total_chunks = (op.data_size + 15) / 16;
     
-    // Check if current thread participates
-    if (local_thread_id >= threads_needed) {
-        return;
+    // Each thread processes one 16-byte chunk
+    if (local_thread_id >= total_chunks) {
+        return; // Thread has no work
     }
     
-    // Calculate byte range for this thread
-    uint thread_byte_start = local_thread_id * bytes_per_thread;
-    uint thread_byte_count = min(bytes_per_thread, op.data_size - thread_byte_start);
+    // Calculate offsets for this thread's chunk
+    uint chunk_offset = local_thread_id * 16;
+    uint src_offset = op.src_offset + chunk_offset;
+    uint dst_offset = op.dst_offset + chunk_offset;
+    uint remaining_bytes = min(16u, op.data_size - chunk_offset);
     
-    // Boundary check
-    if (thread_byte_start >= op.data_size) {
-        return;
+    // Copy data in one optimized block per thread
+    if (remaining_bytes >= 16) {
+        // Full 16-byte chunk
+        uint4 data = upload_buffer.Load4(src_offset);
+        target_buffer.Store4(dst_offset, data);
+    } else if (remaining_bytes >= 8) {
+        // 8-12 byte chunk
+        uint2 data = upload_buffer.Load2(src_offset);
+        target_buffer.Store2(dst_offset, data);
+        if (remaining_bytes >= 12) {
+            uint extra = upload_buffer.Load(src_offset + 8);
+            target_buffer.Store(dst_offset + 8, extra);
+        }
+    } else if (remaining_bytes >= 4) {
+        // 4-7 byte chunk  
+        uint data = upload_buffer.Load(src_offset);
+        target_buffer.Store(dst_offset, data);
+        if (remaining_bytes >= 8) {
+            uint extra = upload_buffer.Load(src_offset + 4);
+            target_buffer.Store(dst_offset + 4, extra);
+        }
     }
-    
-    // Calculate actual buffer offsets
-    uint src_offset = op.src_offset + thread_byte_start;
-    uint dst_offset = op.dst_offset + thread_byte_start;
-    
-    // Copy data using 128-bit (16-byte) operations when possible
-    uint remaining_bytes = thread_byte_count;
-    uint current_src = src_offset;
-    uint current_dst = dst_offset;
-    
-    // Process 16-byte chunks
-    while (remaining_bytes >= 16) {
-        uint4 data = upload_buffer.load4(current_src);
-        target_buffer.store4(current_dst, data);
-        
-        current_src += 16;
-        current_dst += 16;
-        remaining_bytes -= 16;
-    }
-    
-    // Process 8-byte chunks
-    if (remaining_bytes >= 8) {
-        uint2 data = upload_buffer.load2(current_src);
-        target_buffer.store2(current_dst, data);
-        
-        current_src += 8;
-        current_dst += 8;
-        remaining_bytes -= 8;
-    }
-    
-    // Process 4-byte chunks
-    if (remaining_bytes >= 4) {
-        uint data = upload_buffer.load(current_src);
-        target_buffer.store(current_dst, data);
-        
-        current_src += 4;
-        current_dst += 4;
-        remaining_bytes -= 4;
-    }
-    
-    // Note: ByteBuffer requires 4-byte aligned access, so we can't handle remaining 1-3 bytes
 }

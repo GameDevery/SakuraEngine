@@ -182,8 +182,10 @@ public:
         BufferBuilder& size(uint64_t size) SKR_NOEXCEPT;
         BufferBuilder& with_flags(CGPUBufferCreationFlags flags) SKR_NOEXCEPT;
         BufferBuilder& memory_usage(ECGPUMemoryUsage mem_usage) SKR_NOEXCEPT;
-        BufferBuilder& allow_shader_readwrite() SKR_NOEXCEPT;
-        BufferBuilder& allow_shader_read() SKR_NOEXCEPT;
+        BufferBuilder& allow_structured_readwrite() SKR_NOEXCEPT;
+        BufferBuilder& allow_structured_read() SKR_NOEXCEPT;
+        BufferBuilder& allow_raw_readwrite() SKR_NOEXCEPT;
+        BufferBuilder& allow_raw_read() SKR_NOEXCEPT;
         BufferBuilder& as_upload_buffer() SKR_NOEXCEPT;
         BufferBuilder& as_vertex_buffer() SKR_NOEXCEPT;
         BufferBuilder& as_index_buffer() SKR_NOEXCEPT;

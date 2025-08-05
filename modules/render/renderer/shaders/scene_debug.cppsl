@@ -79,10 +79,10 @@ void scene_debug_main([[sv_thread_id]] uint3 thread_id)
                 // Read color data from GPU buffer (assuming float4 color)
                 // ByteBuffer uses 4-byte aligned access
                 float4 instance_color;
-                instance_color.x = gpu_scene_buffer.load<float>(color_offset);
-                instance_color.y = gpu_scene_buffer.load<float>(color_offset + 4);
-                instance_color.z = gpu_scene_buffer.load<float>(color_offset + 8);
-                instance_color.w = gpu_scene_buffer.load<float>(color_offset + 12);
+                instance_color.x = gpu_scene_buffer.Load<float>(color_offset);
+                instance_color.y = gpu_scene_buffer.Load<float>(color_offset + 4);
+                instance_color.z = gpu_scene_buffer.Load<float>(color_offset + 8);
+                instance_color.w = gpu_scene_buffer.Load<float>(color_offset + 12);
                 
                 // Draw border for each instance block
                 uint2 block_coord = pixel_coord % block_size;
@@ -105,10 +105,10 @@ void scene_debug_main([[sv_thread_id]] uint3 thread_id)
                 // Read the first instance's color
                 uint color_offset = debug_constants.color_segment_offset;
                 float4 first_color;
-                first_color.x = gpu_scene_buffer.load<float>(color_offset);
-                first_color.y = gpu_scene_buffer.load<float>(color_offset + 4);
-                first_color.z = gpu_scene_buffer.load<float>(color_offset + 8);
-                first_color.w = gpu_scene_buffer.load<float>(color_offset + 12);
+                first_color.x = gpu_scene_buffer.Load<float>(color_offset);
+                first_color.y = gpu_scene_buffer.Load<float>(color_offset + 4);
+                first_color.z = gpu_scene_buffer.Load<float>(color_offset + 8);
+                first_color.w = gpu_scene_buffer.Load<float>(color_offset + 12);
                 
                 pixel_color = first_color;
                 

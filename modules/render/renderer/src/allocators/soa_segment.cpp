@@ -323,7 +323,7 @@ skr::render_graph::BufferHandle SOASegmentBuffer::import_buffer(
         [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
             builder.set_name(name)
                 .import(buffer, import_state)
-                .allow_shader_readwrite();
+                .allow_structured_readwrite();
         }
     );
     

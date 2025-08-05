@@ -1386,6 +1386,16 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     {
         return TranslateStmt(cxxDefaultArg->getExpr());
     }
+    else if (auto cxxTypeExpr = llvm::dyn_cast<clang::UnaryExprOrTypeTraitExpr>(x))
+    {
+        auto Type = getType(cxxTypeExpr->getArgumentType());
+        if (cxxTypeExpr->getKind() == clang::UETT_SizeOf)
+            return AST.Constant(IntValue(Type->size()));
+        else if (cxxTypeExpr->getKind() == clang::UETT_PreferredAlignOf || cxxTypeExpr->getKind() == clang::UETT_AlignOf)
+            return AST.Constant(IntValue(Type->alignment()));
+        else
+            ReportFatalError(x, "Unsupportted UnaryExprOrTypeTraitExpr!");
+    }
     else if (auto cxxExplicitCast = llvm::dyn_cast<clang::ExplicitCastExpr>(x))
     {
         if (cxxExplicitCast->getType()->isFunctionPointerType())
