@@ -1,4 +1,5 @@
 #include "SkrScene/actor.h"
+#include "SkrRenderer/render_mesh.h"
 
 namespace skr
 {
@@ -29,7 +30,8 @@ MeshActor::MeshActor()
                 .add_component<skr::scene::PositionComponent>()
                 .add_component<skr::scene::RotationComponent>()
                 .add_component<skr::scene::ScaleComponent>()
-                .add_component<skr::scene::TransformComponent>();
+                .add_component<skr::scene::TransformComponent>()
+                .add_component<skr::renderer::MeshComponent>();
         },
         [this](skr::ecs::TaskContext& Context) {
             SkrZoneScopedN("MeshActor::Spawner::run");

@@ -149,6 +149,7 @@ public:
 
 protected:
     MeshActor();
+    skr::InlineVector<skr::GUID, 1> mesh_guids; // GUIDs of mesh resources associated with this actor
 };
 
 // Actor for Skeletal Meshes

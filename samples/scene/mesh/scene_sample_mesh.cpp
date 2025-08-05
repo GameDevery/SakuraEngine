@@ -7,6 +7,7 @@
 #include <SkrCore/async/thread_job.hpp>
 #include <SkrRT/io/vram_io.hpp>
 #include "SkrOS/thread.h"
+#include "SkrProfile/profile.h"
 #include "SkrRT/io/ram_io.hpp"
 #include "SkrRT/misc/cmd_parser.hpp"
 
@@ -16,81 +17,27 @@
 #include <SkrRT/ecs/world.hpp>
 #include <SkrRT/resource/resource_system.h>
 #include <SkrRT/resource/local_resource_registry.hpp>
-
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrImGui/imgui_app.hpp"
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrRenderer/render_mesh.h"
 #include "SkrTask/fib_task.hpp"
-#include "SkrGLTFTool/mesh_processing.hpp"
-#include "SkrGLTFTool/mesh_asset.hpp"
+#include "SkrMeshCore/mesh_processing.hpp"
 #include "SkrToolCore/project/project.hpp"
 #include "SkrToolCore/cook_system/cook_system.hpp"
+#include "SkrGLTFTool/mesh_asset.hpp"
+
+#include "SkrScene/actor.h"
+#include "SkrSceneCore/transform_system.h"
+
 #include "scene_renderer.hpp"
 #include "helper.hpp"
-#include "cgltf/cgltf.h"
-#include <cstdio>
 
 using namespace skr::literals;
 const auto MeshAssetID = u8"01985f1f-8286-773f-8bcc-7d7451b0265d"_guid;
 
-namespace temp
-{
-
-static const skd::asset::ERawVertexStreamType kGLTFToRawAttributeTypeLUT[] = {
-    skd::asset::ERawVertexStreamType::POSITION,
-    skd::asset::ERawVertexStreamType::NORMAL,
-    skd::asset::ERawVertexStreamType::TANGENT,
-    skd::asset::ERawVertexStreamType::TEXCOORD,
-    skd::asset::ERawVertexStreamType::COLOR,
-    skd::asset::ERawVertexStreamType::JOINTS,
-    skd::asset::ERawVertexStreamType::WEIGHTS,
-    skd::asset::ERawVertexStreamType::CUSTOM,
-    skd::asset::ERawVertexStreamType::Count,
-};
-skd::asset::SRawMesh GenerateRawMeshForGLTFMesh(cgltf_mesh* mesh)
-{
-    skd::asset::SRawMesh raw_mesh = {};
-    raw_mesh.primitives.reserve(mesh->primitives_count);
-    for (uint32_t pid = 0; pid < mesh->primitives_count; pid++)
-    {
-        const auto gltf_primitive = mesh->primitives + pid;
-        skd::asset::SRawPrimitive& primitive = raw_mesh.primitives.add_default().ref();
-        // fill indices
-        {
-            const auto buffer_view = gltf_primitive->indices->buffer_view;
-            const auto buffer_data = static_cast<const uint8_t*>(buffer_view->data ? buffer_view->data : buffer_view->buffer->data);
-            const auto view_data = buffer_data + buffer_view->offset;
-            const auto indices_count = gltf_primitive->indices->count;
-            primitive.index_stream.buffer_view = skr::span<const uint8_t>(view_data + gltf_primitive->indices->offset, gltf_primitive->indices->stride * indices_count);
-            primitive.index_stream.offset = 0;
-            primitive.index_stream.count = indices_count;
-            primitive.index_stream.stride = gltf_primitive->indices->stride;
-        }
-        // fill vertex streams
-        primitive.vertex_streams.reserve(gltf_primitive->attributes_count);
-        for (uint32_t vid = 0; vid < gltf_primitive->attributes_count; vid++)
-        {
-            const auto& attribute = gltf_primitive->attributes[vid];
-            const auto buffer_view = attribute.data->buffer_view;
-            const auto buffer_data = static_cast<const uint8_t*>(buffer_view->data ? buffer_view->data : buffer_view->buffer->data);
-            const auto view_data = buffer_data + buffer_view->offset;
-            const auto vertex_count = attribute.data->count;
-            skd::asset::SRawVertexStream& vertex_stream = primitive.vertex_streams.add_default().ref();
-            vertex_stream.buffer_view = skr::span<const uint8_t>(view_data + attribute.data->offset, attribute.data->stride * vertex_count);
-            vertex_stream.offset = 0;
-            vertex_stream.count = vertex_count;
-            vertex_stream.stride = attribute.data->stride;
-            vertex_stream.type = kGLTFToRawAttributeTypeLUT[attribute.type];
-        }
-    }
-    return raw_mesh;
-}
-} // namespace temp
-
 // The Three-Triangle Example: simple mesh scene hierarchy
-
 struct SceneSampleMeshModule : public skr::IDynamicModule
 {
     virtual void on_load(int argc, char8_t** argv) override;
@@ -117,13 +64,12 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
 
     skr::String gltf_path = u8"";
     skr::resource::LocalResourceRegistry* registry = nullptr;
-    skr::renderer::MeshFactory* MeshFactory = nullptr;
+    skr::renderer::MeshFactory* mesh_factory = nullptr;
     bool use_gltf = false;
 
     skd::SProject project;
-
-    // Currently we do not use this, but it can be useful for future extensions
-    skr::renderer::MeshFactory* mesh_factory = nullptr;
+    skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
+    skr::TransformSystem* transform_system = nullptr;
 };
 
 IMPLEMENT_DYNAMIC_MODULE(SceneSampleMeshModule, SceneSample_Mesh);
@@ -179,8 +125,8 @@ void SceneSampleMeshModule::InitializeReosurceSystem()
         factoryRoot.ram_service = ram_service;
         factoryRoot.vram_service = vram_service;
         factoryRoot.render_device = render_device;
-        MeshFactory = skr::renderer::MeshFactory::Create(factoryRoot);
-        resource_system->RegisterFactory(MeshFactory);
+        mesh_factory = skr::renderer::MeshFactory::Create(factoryRoot);
+        resource_system->RegisterFactory(mesh_factory);
     }
 }
 
@@ -189,7 +135,7 @@ void SceneSampleMeshModule::DestroyResourceSystem()
     auto resource_system = skr::resource::GetResourceSystem();
     resource_system->Shutdown();
 
-    skr::renderer::MeshFactory::Destroy(MeshFactory);
+    skr::renderer::MeshFactory::Destroy(mesh_factory);
 
     skr_io_ram_service_t::destroy(ram_service);
     skr_io_vram_service_t::destroy(vram_service);
@@ -235,8 +181,9 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
 
     scheduler.initialize({});
     scheduler.bind();
-
     world.initialize();
+    actor_manager.initialize(&world);
+    transform_system = skr_transform_system_create(&world);
     render_device = SkrRendererModule::Get()->get_render_device();
 
     auto resourceRoot = (skr::fs::current_directory() / u8"../resources");
@@ -273,6 +220,8 @@ void SceneSampleMeshModule::on_unload()
         DestroyAssetSystem();
         DestroyResourceSystem();
     }
+    skr_transform_system_destroy(transform_system);
+    actor_manager.finalize();
     world.finalize();
     scheduler.unbind();
     SKR_LOG_INFO(u8"Scene Sample Mesh Module Unloaded");
@@ -281,22 +230,14 @@ void SceneSampleMeshModule::on_unload()
 void SceneSampleMeshModule::CookAndLoadGLTF()
 {
     auto& System = *skd::asset::GetCookSystem();
-
-    // source file is a GLTF so we create a gltf importer, if it is a fbx, then just use a fbx importer
     auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
-
-    // static mesh has some additional meta data to append
     auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
     metadata->vertexType = u8"1b357a40-83ff-471c-8903-23e99d95b273"_guid; // GLTFVertexLayoutWithoutTangentId
-
     auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
-        u8"girl.gltf.meta",                             // virtual uri for this asset in the project
-        MeshAssetID,                                    // guid for this asset
-        skr::type_id_of<skr::renderer::MeshResource>(), // output resource is a mesh resource
-        skr::type_id_of<skd::asset::MeshCooker>()       // this cooker cooks the raw mesh data to mesh resource
-    );
-    // source file
-    // importer->assetPath = u8"D:/ws/repos/SakuraEngine/samples/application/game/assets/sketchfab/loli/scene.gltf";
+        u8"girl.gltf.meta",
+        MeshAssetID,
+        skr::type_id_of<skr::renderer::MeshResource>(),
+        skr::type_id_of<skd::asset::MeshCooker>());
     importer->assetPath = gltf_path.c_str();
     System.ImportAssetMeta(&project, asset, importer, metadata);
     auto event = System.EnsureCooked(asset->GetGUID());
@@ -305,7 +246,7 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
 
 int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
 {
-    constexpr float kPi = rtm::constants::pi();
+
     SkrZoneScopedN("SceneSampleMeshModule::main_module_exec");
     SKR_LOG_INFO(u8"Running Scene Sample Mesh Module");
 
@@ -316,17 +257,19 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
         return 1;
     }
 
-    temp::Camera camera;
-    scene_renderer->temp_set_camera(&camera);
+    utils::Camera camera;
+    scene_renderer->set_camera(&camera);
+    utils::CameraController cam_ctrl;
+    cam_ctrl.set_camera(&camera);
 
     auto cgpu_device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
 
-    // transform mesh_buffer_t into CGPUBufferId
+    // TODO: capsulate into MeshActor
     skr_mesh_resource_t* mesh_resource = nullptr;
     skr_render_mesh_id render_mesh = SkrNew<skr_render_mesh_t>();
-    utils::Grid2DMesh dummy_mesh;
 
+    utils::Grid2DMesh dummy_mesh;
     skr::resource::AsyncResource<skr::renderer::MeshResource> gltf_mesh_resource;
     gltf_mesh_resource = MeshAssetID;
 
@@ -341,9 +284,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
         dummy_mesh.generate_render_mesh(render_device, render_mesh);
         mesh_resource->render_mesh = render_mesh;
     }
-
     {
-
         skr::render_graph::RenderGraphBuilder graph_builder;
         graph_builder.with_device(cgpu_device)
             .with_gfx_queue(gfx_queue)
@@ -385,58 +326,12 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
 
         // Camera control
         {
-            ImGuiIO& io = ImGui::GetIO();
-
-            const float camera_speed = 0.0025f * io.DeltaTime;
-            const float camera_pan_speed = 0.0025f * io.DeltaTime;
-            const float camera_sensitivity = 0.05f;
-
-            skr_float3_t world_up = { 0.0f, 1.0f, 0.0f };
-            skr_float3_t camera_right = skr::normalize(skr::cross(camera.front, world_up));
-            skr_float3_t camera_up = skr::normalize(skr::cross(camera_right, camera.front));
-
-            // Movement
-            if (ImGui::IsKeyDown(ImGuiKey_W)) camera.position += camera.front * camera_speed;
-            if (ImGui::IsKeyDown(ImGuiKey_S)) camera.position -= camera.front * camera_speed;
-            if (ImGui::IsKeyDown(ImGuiKey_A)) camera.position -= camera_right * camera_speed;
-            if (ImGui::IsKeyDown(ImGuiKey_D)) camera.position += camera_right * camera_speed;
-
-            // Rotation
-            if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
-            {
-                static float yaw = 90.0f;
-                static float pitch = 0.0f;
-                yaw += io.MouseDelta.x * camera_sensitivity;
-                pitch -= io.MouseDelta.y * camera_sensitivity;
-                if (pitch > 89.0f) pitch = 89.0f;
-                if (pitch < -89.0f) pitch = -89.0f;
-
-                skr_float3_t direction;
-                direction.x = cosf(yaw * (float)kPi / 180.f) * cosf(pitch * (float)kPi / 180.f);
-                direction.y = sinf(pitch * (float)kPi / 180.f);
-                direction.z = sinf(yaw * (float)kPi / 180.f) * cosf(pitch * (float)kPi / 180.f);
-                camera.front = skr::normalize(direction);
-            }
-
-            // Panning
-            if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
-            {
-                camera.position -= camera_right * io.MouseDelta.x * camera_pan_speed;
-                camera.position += camera_up * io.MouseDelta.y * camera_pan_speed;
-            }
-
-            {
-                ImGui::Begin("Camera Info");
-                ImGui::Text("Position: (%.2f, %.2f, %.2f)", camera.position.x, camera.position.y, camera.position.z);
-                ImGui::Text("Front:    (%.2f, %.2f, %.2f)", camera.front.x, camera.front.y, camera.front.z);
-                ImGui::End();
-            }
+            SkrZoneScopedN("CameraControl");
+            cam_ctrl.imgui_control_frame();
         }
 
         {
-
-            // update viewport
-            SkrZoneScopedN("Viewport Render");
+            SkrZoneScopedN("ViewportRender");
             imgui_app->acquire_frames();
             auto main_window = imgui_app->main_window();
             const auto size = main_window->get_physical_size();
@@ -463,6 +358,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             imgui_app->render_imgui();
         }
         {
+            SkrZoneScopedN("RenderGraphExecute");
             frame_index = render_graph->execute();
             if (frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)
                 render_graph->collect_garbage(frame_index - RG_MAX_FRAME_IN_FLIGHT * 10);

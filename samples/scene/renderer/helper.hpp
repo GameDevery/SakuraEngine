@@ -6,6 +6,7 @@
 #include "SkrContainersDef/string.hpp"
 #include "SkrRenderer/primitive_draw.h"
 #include "SkrBase/math.h"
+#include <imgui.h>
 
 namespace utils
 {
@@ -81,6 +82,19 @@ public:
     float get_size() const { return size; }
 };
 
+struct Camera
+{
+    skr_float3_t position = { 0.0f, 0.0f, -1.0f }; // camera position
+    skr_float3_t front = skr_float3_t::forward();  // camera front vector
+    skr_float3_t up = skr_float3_t::up();          // camera up vector
+    skr_float3_t right = skr_float3_t::right();    // camera right vector
+
+    float fov = 3.1415926f / 2.f; // fov_x
+    float aspect = 1.0;           // aspect ratio
+    float near_plane = 0.1;       // near plane distance
+    float far_plane = 1000.0;     // far plane distance
+};
+
 // a tiled grid 2D mesh
 class SCENE_RENDERER_API Grid2DMesh : public SimpleMesh
 {
@@ -102,6 +116,16 @@ public:
     void set_num_tiles_height(int height) { num_tiles_height = height; }
     void set_tile_size_width(float size) { tile_size_width = size; }
     void set_tile_size_height(float size) { tile_size_height = size; }
+};
+
+class SCENE_RENDERER_API CameraController
+{
+    utils::Camera* camera = nullptr;
+
+public:
+    void set_camera(utils::Camera* cam) { camera = cam; }
+    void imgui_camera_info_frame();
+    void imgui_control_frame();
 };
 
 } // namespace utils

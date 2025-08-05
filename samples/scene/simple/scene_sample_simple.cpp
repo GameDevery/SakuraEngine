@@ -14,16 +14,28 @@ struct SceneSampleSimpleModule : public skr::IDynamicModule
     virtual void on_unload() override;
 
     skr::TransformSystem* transform_system = nullptr;
+    skr::task::scheduler_t scheduler;
+    skr::ecs::World world{ scheduler };
+    skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
 };
 
 IMPLEMENT_DYNAMIC_MODULE(SceneSampleSimpleModule, SceneSample_Simple);
 void SceneSampleSimpleModule::on_load(int argc, char8_t** argv)
 {
     SKR_LOG_INFO(u8"Scene Sample Simple Module Loaded");
+    scheduler.initialize(skr::task::scheudler_config_t());
+    scheduler.bind();
+    world.initialize();
+    transform_system = skr_transform_system_create(&world);
+    actor_manager.initialize(&world);
 }
 
 void SceneSampleSimpleModule::on_unload()
 {
+    skr_transform_system_destroy(transform_system);
+    actor_manager.finalize();
+    world.finalize();
+    scheduler.unbind();
     SKR_LOG_INFO(u8"Scene Sample Simple Module Unloaded");
 }
 
@@ -31,15 +43,6 @@ int SceneSampleSimpleModule::main_module_exec(int argc, char8_t** argv)
 {
     SkrZoneScopedN("SceneSampleSimpleModule::main_module_exec");
     SKR_LOG_INFO(u8"Running Scene Sample Simple Module");
-    skr::task::scheduler_t scheduler;
-
-    scheduler.initialize(skr::task::scheudler_config_t());
-    scheduler.bind();
-    skr::ecs::World world(scheduler);
-    world.initialize();
-    transform_system = skr_transform_system_create(&world);
-    auto& actor_manager = skr::ActorManager::GetInstance();
-    actor_manager.initialize(&world);
 
     auto root = skr::Actor::GetRoot();
     auto actor1 = skr::Actor::CreateActor();
@@ -47,6 +50,7 @@ int SceneSampleSimpleModule::main_module_exec(int argc, char8_t** argv)
     root.lock()->CreateEntity();
     actor1.lock()->CreateEntity();
     actor2.lock()->CreateEntity();
+
     actor1.lock()->AttachTo(root);
     actor2.lock()->AttachTo(actor1);
 
@@ -68,12 +72,6 @@ int SceneSampleSimpleModule::main_module_exec(int argc, char8_t** argv)
     SKR_LOG_INFO(u8"Transform Position: ({%f}, {%f}, {%f})", transform.position.x, transform.position.y, transform.position.z);
     SKR_LOG_INFO(u8"Transform Rotation: ({%f}, {%f}, {%f}, {%f})", transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w);
     SKR_LOG_INFO(u8"Transform Scale: ({%f}, {%f}, {%f})", transform.scale.x, transform.scale.y, transform.scale.z);
-
-    // cleanup
-    skr_transform_system_destroy(transform_system);
-    actor_manager.finalize();
-    world.finalize();
-    scheduler.unbind();
 
     return 0;
 }

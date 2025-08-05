@@ -19,7 +19,7 @@ struct SceneRendererImpl : public skr::SceneRenderer
     const ECGPUFormat depth_format = CGPU_FORMAT_D32_SFLOAT;
 
     skr_vfs_t* resource_vfs;
-    temp::Camera* mp_camera;
+    utils::Camera* mp_camera;
     CGPURenderPipelineId pipeline = nullptr;
     CGPUVertexLayout vertex_layout = {};
     CGPURasterizerStateDescriptor rs_state = {};
@@ -39,7 +39,7 @@ struct SceneRendererImpl : public skr::SceneRenderer
         free_pipeline(renderer);
     }
 
-    void temp_set_camera(temp::Camera* camera) override
+    void set_camera(utils::Camera* camera) override
     {
         mp_camera = camera;
     }
