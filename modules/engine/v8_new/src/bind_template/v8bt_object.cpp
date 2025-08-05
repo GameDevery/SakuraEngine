@@ -15,9 +15,6 @@ namespace skr
 {
 V8BTObject* V8BTObject::TryCreate(V8Isolate* isolate, const RTTRType* type)
 {
-    auto& _logger    = isolate->logger();
-    auto  _log_stack = _logger.stack(u8"export value type {}", type->name());
-
     if (type->is_record() && type->based_on(type_id_of<ScriptbleObject>()))
     {
         V8BTObject* result = SkrNew<V8BTObject>();
@@ -43,6 +40,19 @@ String V8BTObject::type_name() const
 String V8BTObject::cpp_namespace() const
 {
     return _rttr_type->name_space_str();
+}
+
+// error process
+bool V8BTObject::any_error() const
+{
+    return _any_error();
+}
+void V8BTObject::dump_error(V8ErrorBuilderTreeStyle& builder) const
+{
+    builder.write_line(u8"{} <Object>", _rttr_type->name());
+    builder.indent([&]() {
+        _dump_error(builder);
+    });
 }
 
 // convert helper
@@ -212,37 +222,43 @@ void V8BTObject::solve_invoke_behaviour(
     appare_in_return = false;
 }
 bool V8BTObject::check_param(
-    const V8BTDataParam& param_bind_tp
+    const V8BTDataParam& param_bind_tp,
+    V8ErrorCache&        errors
 ) const
 {
     switch (param_bind_tp.inout_flag)
     {
     case ERTTRParamFlag::Out:
     case ERTTRParamFlag::InOut:
-        isolate()->logger().warning(
+        errors.warning(
             u8"Out/InOut param flag will be ignored for object type"
         );
         break;
+    default:
+        break;
     }
-    return _basic_type_check(param_bind_tp.modifiers);
+    return _basic_type_check(param_bind_tp.modifiers, errors);
 }
 bool V8BTObject::check_return(
-    const V8BTDataReturn& return_bind_tp
+    const V8BTDataReturn& return_bind_tp,
+    V8ErrorCache&         errors
 ) const
 {
-    return _basic_type_check(return_bind_tp.modifiers);
+    return _basic_type_check(return_bind_tp.modifiers, errors);
 }
 bool V8BTObject::check_field(
-    const V8BTDataField& field_bind_tp
+    const V8BTDataField& field_bind_tp,
+    V8ErrorCache&        errors
 ) const
 {
-    return _basic_type_check(field_bind_tp.modifiers);
+    return _basic_type_check(field_bind_tp.modifiers, errors);
 }
 bool V8BTObject::check_static_field(
-    const V8BTDataStaticField& field_bind_tp
+    const V8BTDataStaticField& field_bind_tp,
+    V8ErrorCache&              errors
 ) const
 {
-    return _basic_type_check(field_bind_tp.modifiers);
+    return _basic_type_check(field_bind_tp.modifiers, errors);
 }
 
 // v8 export
@@ -326,11 +342,11 @@ V8BPObject* V8BTObject::_new_bind_proxy(void* address, v8::Local<v8::Object> sel
 
     return bind_proxy;
 }
-bool V8BTObject::_basic_type_check(const V8BTDataModifier& modifiers) const
+bool V8BTObject::_basic_type_check(const V8BTDataModifier& modifiers, V8ErrorCache& errors) const
 {
     if (!modifiers.is_pointer)
     {
-        isolate()->logger().error(
+        errors.error(
             u8"export object {} as value or reference type",
             _rttr_type->name()
         );

@@ -273,7 +273,7 @@ V8BindTemplate* V8Isolate::solve_bind_tp(
     auto* rttr_type = get_type_from_guid(type_id);
     if (!rttr_type)
     {
-        logger().error(
+        SKR_LOG_FMT_ERROR(
             u8"V8Isolate::solve_bind_tp: type not found for guid: {}",
             type_id
         );
@@ -282,7 +282,7 @@ V8BindTemplate* V8Isolate::solve_bind_tp(
     // try enum
     if (rttr_type->is_enum())
     {
-        auto* enum_bind_tp = V8BTEnum::Create(this, rttr_type);
+        auto* enum_bind_tp = V8BTEnum::TryCreate(this, rttr_type);
         _bind_tp_map.add(type_id, enum_bind_tp);
         return enum_bind_tp;
     }

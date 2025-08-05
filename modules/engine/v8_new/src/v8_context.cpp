@@ -40,6 +40,7 @@ void V8Context::build_export(FunctionRef<void(V8VirtualModule&)> build_func)
 
     // build module
     build_func(_virtual_module);
+    _virtual_module.dump_bind_tp_error();
 
     // setup context
     _virtual_module.export_v8_to(

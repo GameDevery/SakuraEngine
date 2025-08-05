@@ -13,27 +13,24 @@
 
 namespace skr
 {
-V8BTEnum* V8BTEnum::Create(V8Isolate* isolate, const RTTRType* type)
+V8BTEnum* V8BTEnum::TryCreate(V8Isolate* isolate, const RTTRType* type)
 {
     SKR_ASSERT(type->is_enum());
 
-    auto& _logger    = isolate->logger();
-    auto  _log_stack = _logger.stack(u8"export enum type {}", type->name());
+    auto* underlying = isolate->solve_bind_tp_as<V8BTPrimitive>(
+        type->enum_underlying_type_id()
+    );
+    if (!underlying)
+    {
+
+        SKR_LOG_FMT_ERROR(u8"enum '{}' underlying type not supported", type->name());
+        return nullptr;
+    }
 
     V8BTEnum* result = SkrNew<V8BTEnum>();
     result->set_isolate(isolate);
-
-    result->_rttr_type = type;
-
-    // export underlying type
-    result->_underlying = isolate->solve_bind_tp_as<V8BTPrimitive>(
-        type->enum_underlying_type_id()
-    );
-    if (!result->_underlying)
-    {
-        _logger.error(u8"enum '{}' underlying type not supported", type->name());
-        return nullptr;
-    }
+    result->_rttr_type  = type;
+    result->_underlying = underlying;
 
     // export items
     type->each_enum_items([&](const RTTREnumItemData* item) {
@@ -62,6 +59,16 @@ String V8BTEnum::type_name() const
 String V8BTEnum::cpp_namespace() const
 {
     return _rttr_type->name_space_str();
+}
+
+// error process
+bool V8BTEnum::any_error() const
+{
+    return false;
+}
+void V8BTEnum::dump_error(V8ErrorBuilderTreeStyle& builder) const
+{
+    SKR_UNREACHABLE_CODE();
 }
 
 v8::Local<v8::Value> V8BTEnum::to_v8(
@@ -199,50 +206,54 @@ void V8BTEnum::solve_invoke_behaviour(
     );
 }
 bool V8BTEnum::check_param(
-    const V8BTDataParam& param_bind_tp
+    const V8BTDataParam& param_bind_tp,
+    V8ErrorCache&        errors
 ) const
 {
-    if (!_basic_type_check(param_bind_tp.modifiers))
+    if (!_basic_type_check(param_bind_tp.modifiers, errors))
     {
         return false;
     }
-    return _underlying->check_param(param_bind_tp);
+    return _underlying->check_param(param_bind_tp, errors);
 }
 bool V8BTEnum::check_return(
-    const V8BTDataReturn& return_bind_tp
+    const V8BTDataReturn& return_bind_tp,
+    V8ErrorCache&         errors
 ) const
 {
-    if (!_basic_type_check(return_bind_tp.modifiers))
+    if (!_basic_type_check(return_bind_tp.modifiers, errors))
     {
         return false;
     }
-    return _underlying->check_return(return_bind_tp);
+    return _underlying->check_return(return_bind_tp, errors);
 }
 bool V8BTEnum::check_field(
-    const V8BTDataField& field_bind_tp
+    const V8BTDataField& field_bind_tp,
+    V8ErrorCache&        errors
 ) const
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        isolate()->logger().error(
+        errors.error(
             u8"enum cannot be exported as decayed pointer type in field"
         );
         return false;
     }
-    return _underlying->check_field(field_bind_tp);
+    return _underlying->check_field(field_bind_tp, errors);
 }
 bool V8BTEnum::check_static_field(
-    const V8BTDataStaticField& field_bind_tp
+    const V8BTDataStaticField& field_bind_tp,
+    V8ErrorCache&              errors
 ) const
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        isolate()->logger().error(
+        errors.error(
             u8"enum cannot be exported as decayed pointer type in field"
         );
         return false;
     }
-    return _underlying->check_static_field(field_bind_tp);
+    return _underlying->check_static_field(field_bind_tp, errors);
 }
 
 // v8 export
@@ -357,11 +368,11 @@ void V8BTEnum::_enum_from_string(const ::v8::FunctionCallbackInfo<::v8::Value>& 
         Isolate->ThrowError("no matched enum item");
     }
 }
-bool V8BTEnum::_basic_type_check(const V8BTDataModifier& modifiers) const
+bool V8BTEnum::_basic_type_check(const V8BTDataModifier& modifiers, V8ErrorCache& errors) const
 {
     if (modifiers.is_pointer)
     {
-        isolate()->logger().error(
+        errors.error(
             u8"export enum {} as pointer type",
             _rttr_type->name()
         );

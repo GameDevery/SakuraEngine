@@ -136,7 +136,7 @@ void V8BTDataField::setup(
     field_owner = owner;
     rttr_data   = field_data;
     modifiers.solve(field_data->type.view());
-    bind_tp->check_field(*this);
+    bind_tp->check_field(*this, errors);
 }
 
 //===============================V8BTDataStaticField===============================
@@ -154,17 +154,16 @@ void V8BTDataStaticField::setup(
     field_owner = owner;
     rttr_data   = field_data;
     modifiers.solve(field_data->type.view());
-    bind_tp->check_static_field(*this);
+    bind_tp->check_static_field(*this, errors);
 }
 
 //===============================V8BTDataParam===============================
 void V8BTDataParam::setup(
     V8Isolate*           isolate,
-    const RTTRParamData* param_data
+    const RTTRParamData* param_data,
+    V8ErrorCache&        errors
 )
 {
-    auto& _logger = isolate->logger();
-
     {
         auto type_sig_view = param_data->type.view();
         type_sig_view.jump_modifier();
@@ -183,7 +182,7 @@ void V8BTDataParam::setup(
         // check pointer level
         if (type_sig_view.decayed_pointer_level() > 1)
         {
-            _logger.error(u8"pointer level greater than 1");
+            errors.error(u8"param {}: pointer level greater than 1", index);
             return;
         }
 
@@ -206,7 +205,7 @@ void V8BTDataParam::setup(
                 inout_flag |= ERTTRParamFlag::Out;
                 if (!modifiers.is_any_ref() || modifiers.is_const)
                 {
-                    _logger.error(u8"only T& can be out param");
+                    errors.error(u8"param {}: only T& can be out param", index);
                 }
             }
         }
@@ -217,32 +216,31 @@ void V8BTDataParam::setup(
         appare_in_return,
         appare_in_param
     );
-    bind_tp->check_param(*this);
+    bind_tp->check_param(*this, errors);
 }
 
 void V8BTDataParam::setup(
     V8Isolate*        isolate,
     const StackProxy* proxy,
-    int32_t           index
+    int32_t           index,
+    V8ErrorCache&     errors
 )
 {
     RTTRParamData param_data = {};
     param_data.type          = proxy->signature;
     param_data.index         = index;
     format_to(param_data.name, u8"#{}", index);
-    setup(isolate, &param_data);
+    setup(isolate, &param_data, errors);
     rttr_data = nullptr;
 }
 
 //===============================V8BTDataParam===============================
 void V8BTDataReturn::setup(
     V8Isolate*        isolate,
-    TypeSignatureView signature
+    TypeSignatureView signature,
+    V8ErrorCache&     errors
 )
 {
-    auto& _logger    = isolate->logger();
-    auto  _log_stack = _logger.stack(u8"export return");
-
     {
         auto type_sig_view = signature;
         modifiers.solve(type_sig_view);
@@ -254,7 +252,7 @@ void V8BTDataReturn::setup(
     TypeSignatureTyped<void> void_sig;
     is_void = signature.equal(void_sig);
 
-    bind_tp->check_return(*this);
+    bind_tp->check_return(*this, errors);
 }
 
 //===============================V8BTDataMethod===============================
@@ -334,11 +332,11 @@ void V8BTDataMethod::setup(
     rttr_data    = method_data;
 
     // setup info
-    return_data.setup(isolate, method_data->ret_type);
+    return_data.setup(isolate, method_data->ret_type, errors);
     for (const auto* param : method_data->param_data)
     {
         auto& param_binder = params_data.add_default().ref();
-        param_binder.setup(isolate, param);
+        param_binder.setup(isolate, param, errors);
     }
 
     // solve count
@@ -414,11 +412,11 @@ void V8BTDataStaticMethod::setup(
 {
     method_owner = owner;
     rttr_data    = method_data;
-    return_data.setup(isolate, method_data->ret_type);
+    return_data.setup(isolate, method_data->ret_type, errors);
     for (const auto* param : method_data->param_data)
     {
         auto& param_binder = params_data.add_default().ref();
-        param_binder.setup(isolate, param);
+        param_binder.setup(isolate, param, errors);
     }
 
     // solve count
@@ -470,16 +468,13 @@ void V8BTDataCtor::setup(
     const RTTRCtorData* ctor_data
 )
 {
-    auto& _logger    = isolate->logger();
-    auto  _log_stack = _logger.stack(u8"export ctor");
-
     rttr_data = ctor_data;
 
     // export params
     for (const auto* param : ctor_data->param_data)
     {
         auto& param_binder = params_data.add_default().ref();
-        param_binder.setup(isolate, param);
+        param_binder.setup(isolate, param, errors);
     }
 
     // check out flag
@@ -487,12 +482,10 @@ void V8BTDataCtor::setup(
     {
         if (flag_all(param_binder.inout_flag, ERTTRParamFlag::Out))
         {
-            auto _param_log_stack = _logger.stack(
-                u8"export param '{}', index {}",
-                param_binder.rttr_data->name,
-                param_binder.rttr_data->index
+            errors.error(
+                u8"param {}: ctor param cannot has out flag",
+                param_binder.index
             );
-            _logger.error(u8"ctor param cannot has out flag");
         }
     }
 }
@@ -593,19 +586,20 @@ void V8BTDataCallScript::setup(
         params_data.add_default().ref().setup(
             isolate,
             &param,
-            param_index
+            param_index,
+            errors
         );
         ++param_index;
     }
 
     if (return_value)
     {
-        return_data.setup(isolate, return_value.signature);
+        return_data.setup(isolate, return_value.signature, errors);
     }
     else
     {
         TypeSignatureTyped<void> sig;
-        return_data.setup(isolate, sig);
+        return_data.setup(isolate, sig, errors);
     }
 
     // solve count

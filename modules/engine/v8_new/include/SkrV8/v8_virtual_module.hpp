@@ -216,6 +216,9 @@ struct SKR_V8_NEW_API V8VirtualModule {
     bool raw_register_type(const GUID& type_id);
     bool raw_register_type(const GUID& type_id, StringView ns);
 
+    // dump bind tp error
+    void dump_bind_tp_error();
+
 private:
     inline void _save_mapping(String ns, V8BindTemplate* bind_tp)
     {

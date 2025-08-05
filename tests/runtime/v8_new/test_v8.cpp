@@ -1,13 +1,14 @@
 #include "SkrTestFramework/framework.hpp"
 #include "SkrRTTR/rttr_traits.hpp"
 #include "SkrCore/log.hpp"
-#include "test_v8_types.hpp"
+#include "test_v8_types_new.hpp"
 #include "SkrV8/v8_isolate.hpp"
 #include "SkrV8/v8_context.hpp"
 
 skr::V8Isolate isolate;
 
-struct V8EnvGuard {
+struct V8EnvGuard
+{
     V8EnvGuard()
     {
         skr::init_v8();
@@ -20,12 +21,22 @@ struct V8EnvGuard {
     }
 } _guard{};
 
-TEST_CASE("simple")
+TEST_CASE("dump error")
 {
-    auto* context = isolate.main_context();
+    auto* context = isolate.create_context();
     SKR_DEFER({ isolate.destroy_context(context); });
 
-    SKR_LOG_FMT_INFO(u8"Test Begin");
+    SKR_LOG_FMT_ERROR(u8"Test Begin");
+
+    context->build_export([](skr::V8VirtualModule& module) {
+        module.register_type<test_v8::ErrorExport>(u8"");
+    });
+}
+
+TEST_CASE("simple")
+{
+    auto* context = isolate.create_context();
+    SKR_DEFER({ isolate.destroy_context(context); });
 
     context->build_export([](skr::V8VirtualModule& module) {
         module.register_type<test_v8::SimpleTest>(u8"");
@@ -45,10 +56,8 @@ TEST_CASE("simple")
         }
     )__");
     auto print_sum = context->get_global(u8"print_sum");
-    auto obj       = context->get_global(u8"obj");
+    auto obj = context->get_global(u8"obj");
 
     print_sum.call<void, int32_t, int32_t>(1, 1);
     obj.call_method<void, skr::StringView>(u8"print", u8"print self");
-
-    SKR_LOG_FMT_INFO(u8"Test End");
 }

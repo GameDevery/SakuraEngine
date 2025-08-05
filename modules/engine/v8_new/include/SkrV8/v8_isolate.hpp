@@ -113,9 +113,6 @@ SKR_V8_NEW_API V8Isolate : IScriptMixinCore {
     // mixin
     IScriptMixinCore* get_mixin_core() const;
 
-    // get logger
-    ErrorCollector& logger() { return _logger; }
-
 private:
     // helper
 
@@ -138,8 +135,6 @@ private:
     // call v8 bind proxy manage
     Vector<V8BindProxy*> _call_v8_param_proxy       = {};
     Vector<uint64_t>     _call_v8_param_proxy_stack = {};
-
-    ErrorCollector _logger = {};
 
     // TODO. cpp module manage
     // TODO. script module manage

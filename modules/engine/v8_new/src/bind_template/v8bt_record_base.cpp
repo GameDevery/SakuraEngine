@@ -15,15 +15,13 @@ namespace skr
 {
 void V8BTRecordBase::_setup(V8Isolate* isolate, const RTTRType* type)
 {
-    auto& _logger = isolate->logger();
-
     // get basic data
     set_isolate(isolate);
     _rttr_type    = type;
     _default_ctor = type->find_default_ctor();
     if (!_default_ctor)
     {
-        _logger.error(u8"record type '{}' has no default ctor", type->name());
+        _errors.error(u8"record type '{}' has no default ctor", type->name());
     }
     _dtor = type->dtor_invoker();
 
@@ -34,7 +32,7 @@ void V8BTRecordBase::_setup(V8Isolate* isolate, const RTTRType* type)
             if (!flag_all(ctor->flag, ERTTRCtorFlag::ScriptVisible)) { return; }
             if (_ctor.is_valid())
             {
-                _logger.error(u8"overload is not supported yet for ctor '{}'", type->name());
+                _errors.error(u8"overload is not supported yet for ctor '{}'", type->name());
                 return;
             }
         });
@@ -57,7 +55,7 @@ void V8BTRecordBase::_setup(V8Isolate* isolate, const RTTRType* type)
         });
         if (!found_impl_method)
         {
-            _logger.error(u8"miss impl for mixin method '{}', witch should be named '{}'", method->name, impl_method_name);
+            _errors.error(u8"miss impl for mixin method '{}', witch should be named '{}'", method->name, impl_method_name);
             return;
         }
         mixin_consumed_methods.add(found_impl_method);
@@ -65,7 +63,7 @@ void V8BTRecordBase::_setup(V8Isolate* isolate, const RTTRType* type)
         // export
         if (auto found_mixin = _methods.find(method->name))
         {
-            _logger.error(u8"overload is not supported yet for mixin method '{}'", method->name);
+            _errors.error(u8"overload is not supported yet for mixin method '{}'", method->name);
         }
         else
         {
@@ -127,18 +125,17 @@ void V8BTRecordBase::_setup(V8Isolate* isolate, const RTTRType* type)
         // check flag error
         if (find_getter_result && find_setter_result)
         {
-            _logger.error(u8"getter and setter applied on same method {}", method->name);
+            _errors.error(u8"getter and setter applied on same method {}", method->name);
             return;
         }
 
         if (find_getter_result)
         { // getter case
-            String prop_name  = find_getter_result.ref().cast<skr::attr::ScriptGetter>()->prop_name;
-            auto&  prop_data  = _properties.try_add_default(prop_name).value();
-            auto   _log_stack = _logger.stack(u8"export property '{}' getter", prop_name);
+            String prop_name = find_getter_result.ref().cast<skr::attr::ScriptGetter>()->prop_name;
+            auto&  prop_data = _properties.try_add_default(prop_name).value();
             if (prop_data.getter.is_valid())
             {
-                _logger.error(u8"overload is not supported yet for property '{}'", prop_name);
+                _errors.error(u8"overload is not supported yet for property '{}'", prop_name);
             }
             else
             {
@@ -151,12 +148,11 @@ void V8BTRecordBase::_setup(V8Isolate* isolate, const RTTRType* type)
         }
         else if (find_setter_result)
         { // setter case
-            String prop_name  = find_setter_result.ref().cast<skr::attr::ScriptSetter>()->prop_name;
-            auto&  prop_data  = _properties.try_add_default(prop_name).value();
-            auto   _log_stack = _logger.stack(u8"export property '{}' setter", prop_name);
+            String prop_name = find_setter_result.ref().cast<skr::attr::ScriptSetter>()->prop_name;
+            auto&  prop_data = _properties.try_add_default(prop_name).value();
             if (prop_data.setter.is_valid())
             {
-                _logger.error(u8"overload is not supported yet for property '{}'", prop_name);
+                _errors.error(u8"overload is not supported yet for property '{}'", prop_name);
             }
             else
             {
@@ -171,7 +167,7 @@ void V8BTRecordBase::_setup(V8Isolate* isolate, const RTTRType* type)
         { // normal method
             if (auto found_method = _methods.find(method->name))
             {
-                _logger.error(u8"overload is not supported yet for method '{}'", method->name);
+                _errors.error(u8"overload is not supported yet for method '{}'", method->name);
             }
             else
             {
@@ -203,18 +199,17 @@ void V8BTRecordBase::_setup(V8Isolate* isolate, const RTTRType* type)
         // check flag error
         if (find_getter_result && find_setter_result)
         {
-            _logger.error(u8"getter and setter applied on same static method{}", method->name);
+            _errors.error(u8"getter and setter applied on same static method{}", method->name);
             return;
         }
 
         if (find_getter_result)
         { // getter case
-            String prop_name  = find_getter_result.ref().cast<skr::attr::ScriptGetter>()->prop_name;
-            auto&  prop_data  = _static_properties.try_add_default(prop_name).value();
-            auto   _log_stack = _logger.stack(u8"export static getter '{}'", prop_name);
+            String prop_name = find_getter_result.ref().cast<skr::attr::ScriptGetter>()->prop_name;
+            auto&  prop_data = _static_properties.try_add_default(prop_name).value();
             if (prop_data.getter.is_valid())
             {
-                _logger.error(u8"overload is not supported yet for static property '{}'", prop_name);
+                _errors.error(u8"overload is not supported yet for static property '{}'", prop_name);
             }
             else
             {
@@ -227,12 +222,11 @@ void V8BTRecordBase::_setup(V8Isolate* isolate, const RTTRType* type)
         }
         else if (find_setter_result)
         { // setter case
-            String prop_name  = find_setter_result.ref().cast<skr::attr::ScriptSetter>()->prop_name;
-            auto&  prop_data  = _static_properties.try_add_default(prop_name).value();
-            auto   _log_stack = _logger.stack(u8"export static setter '{}'", prop_name);
+            String prop_name = find_setter_result.ref().cast<skr::attr::ScriptSetter>()->prop_name;
+            auto&  prop_data = _static_properties.try_add_default(prop_name).value();
             if (prop_data.setter.is_valid())
             {
-                _logger.error(u8"overload is not supported yet for static property '{}'", prop_name);
+                _errors.error(u8"overload is not supported yet for static property '{}'", prop_name);
             }
             else
             {
@@ -247,7 +241,7 @@ void V8BTRecordBase::_setup(V8Isolate* isolate, const RTTRType* type)
         { // normal method
             if (auto found_method = _static_methods.find(method->name))
             {
-                _logger.error(u8"overload is not supported yet for static method '{}'", method->name);
+                _errors.error(u8"overload is not supported yet for static method '{}'", method->name);
             }
             else
             {
@@ -401,6 +395,144 @@ void V8BTRecordBase::_fill_template(
             getter_template,
             setter_template
         );
+    }
+}
+bool V8BTRecordBase::_any_error() const
+{
+    // test self
+    if (_errors.has_error()) return true;
+
+    // test ctor
+    if (_ctor.any_error()) return true;
+
+    // test fields
+    for (auto& [field_name, field_binder] : _fields)
+    {
+        if (field_binder.any_error()) return true;
+    }
+
+    // test static fields
+    for (auto& [static_field_name, static_field_binder] : _static_fields)
+    {
+        if (static_field_binder.any_error()) return true;
+    }
+
+    // test methods
+    for (auto& [method_name, method_binder] : _methods)
+    {
+        if (method_binder.any_error()) return true;
+    }
+
+    // test static methods
+    for (auto& [static_method_name, static_method_binder] : _static_methods)
+    {
+        if (static_method_binder.any_error()) return true;
+    }
+
+    // test properties
+    for (auto& [property_name, property_binder] : _properties)
+    {
+        if (property_binder.any_error()) return true;
+    }
+
+    // test static properties
+    for (auto& [static_property_name, static_property_binder] : _static_properties)
+    {
+        if (static_property_binder.any_error()) return true;
+    }
+
+    return false;
+}
+void V8BTRecordBase::_dump_error(V8ErrorBuilderTreeStyle& builder) const
+{
+    // dump self error
+    if (_errors.has_error())
+    {
+        builder.write_line(u8"<SelfError>:");
+        builder.indent([&]() {
+            builder.dump_errors(_errors);
+        });
+    }
+
+    // dump ctor error
+    if (_ctor.any_error())
+    {
+        builder.write_line(u8"<Ctor>:");
+        builder.indent([&]() {
+            _ctor.dump_error(builder);
+        });
+    }
+
+    // dump fields error
+    for (const auto& [field_name, field_binder] : _fields)
+    {
+        if (field_binder.any_error())
+        {
+            builder.write_line(u8"<Field> {}:", field_name);
+            builder.indent([&]() {
+                field_binder.dump_error(builder);
+            });
+        }
+    }
+
+    // dump static fields error
+    for (const auto& [static_field_name, static_field_binder] : _static_fields)
+    {
+        if (static_field_binder.any_error())
+        {
+            builder.write_line(u8"<StaticField> {}:", static_field_name);
+            builder.indent([&]() {
+                static_field_binder.dump_error(builder);
+            });
+        }
+    }
+
+    // dump methods error
+    for (const auto& [method_name, method_binder] : _methods)
+    {
+        if (method_binder.any_error())
+        {
+            builder.write_line(u8"<Method> {}:", method_name);
+            builder.indent([&]() {
+                method_binder.dump_error(builder);
+            });
+        }
+    }
+
+    // dump static methods error
+    for (const auto& [static_method_name, static_method_binder] : _static_methods)
+    {
+        if (static_method_binder.any_error())
+        {
+            builder.write_line(u8"<StaticMethod> {}:", static_method_name);
+            builder.indent([&]() {
+                static_method_binder.dump_error(builder);
+            });
+        }
+    }
+
+    // dump properties error
+    for (const auto& [property_name, property_binder] : _properties)
+    {
+        if (property_binder.any_error())
+        {
+            builder.write_line(u8"<Property> {}:", property_name);
+            builder.indent([&]() {
+                property_binder.dump_error(builder);
+            });
+        }
+    }
+
+    // dump static properties error
+    for (const auto& [static_property_name, static_property_binder] : _static_properties)
+    {
+        if (static_property_binder.any_error())
+        {
+            builder.write_line(u8"<StaticProperty> {}:", static_property_name);
+            builder.indent([&]() {
+                static_property_binder.dump_error(builder);
+            });
+        }
     }
 }
 

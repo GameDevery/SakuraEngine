@@ -10,6 +10,8 @@ protected:
     void _fill_template(
         v8::Local<v8::FunctionTemplate> ctor_template
     );
+    bool _any_error() const;
+    void _dump_error(V8ErrorBuilderTreeStyle& builder) const;
 
     static void _call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
@@ -35,5 +37,7 @@ protected:
     Map<String, V8BTDataStaticMethod>   _static_methods    = {};
     Map<String, V8BTDataProperty>       _properties        = {};
     Map<String, V8BTDataStaticProperty> _static_properties = {};
+
+    V8ErrorCache _errors = {};
 };
 } // namespace skr

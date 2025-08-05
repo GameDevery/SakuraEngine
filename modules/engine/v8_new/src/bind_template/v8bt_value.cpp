@@ -15,9 +15,6 @@ namespace skr
 {
 V8BTValue* V8BTValue::TryCreate(V8Isolate* isolate, const RTTRType* type)
 {
-    auto& _logger    = isolate->logger();
-    auto  _log_stack = _logger.stack(u8"export value type {}", type->name());
-
     V8BTValue* result = SkrNew<V8BTValue>();
     result->_setup(isolate, type);
     result->_make_template();
@@ -36,6 +33,19 @@ String V8BTValue::type_name() const
 String V8BTValue::cpp_namespace() const
 {
     return _rttr_type->name_space_str();
+}
+
+// error process
+bool V8BTValue::any_error() const
+{
+    return _any_error();
+}
+void V8BTValue::dump_error(V8ErrorBuilderTreeStyle& builder) const
+{
+    builder.write_line(u8"{} <Value>", _rttr_type->name());
+    builder.indent([&]() {
+        _dump_error(builder);
+    });
 }
 
 // convert helper
@@ -305,42 +315,46 @@ void V8BTValue::solve_invoke_behaviour(
     }
 }
 bool V8BTValue::check_param(
-    const V8BTDataParam& param_bind_tp
+    const V8BTDataParam& param_bind_tp,
+    V8ErrorCache&        errors
 ) const
 {
-    return _basic_type_check(param_bind_tp.modifiers);
+    return _basic_type_check(param_bind_tp.modifiers, errors);
 }
 bool V8BTValue::check_return(
-    const V8BTDataReturn& return_bind_tp
+    const V8BTDataReturn& return_bind_tp,
+    V8ErrorCache&         errors
 ) const
 {
-    return _basic_type_check(return_bind_tp.modifiers);
+    return _basic_type_check(return_bind_tp.modifiers, errors);
 }
 bool V8BTValue::check_field(
-    const V8BTDataField& field_bind_tp
+    const V8BTDataField& field_bind_tp,
+    V8ErrorCache&        errors
 ) const
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        isolate()->logger().error(
+        errors.error(
             u8"value cannot be exported as decayed pointer type in field"
         );
         return false;
     }
-    return _basic_type_check(field_bind_tp.modifiers);
+    return _basic_type_check(field_bind_tp.modifiers, errors);
 }
 bool V8BTValue::check_static_field(
-    const V8BTDataStaticField& field_bind_tp
+    const V8BTDataStaticField& field_bind_tp,
+    V8ErrorCache&              errors
 ) const
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        isolate()->logger().error(
+        errors.error(
             u8"value cannot be exported as decayed pointer type in field"
         );
         return false;
     }
-    return _basic_type_check(field_bind_tp.modifiers);
+    return _basic_type_check(field_bind_tp.modifiers, errors);
 }
 
 // v8 export
@@ -423,11 +437,11 @@ V8BPValue* V8BTValue::_new_bind_proxy(void* address, v8::Local<v8::Object> self)
 
     return bind_proxy;
 }
-bool V8BTValue::_basic_type_check(const V8BTDataModifier& modifiers) const
+bool V8BTValue::_basic_type_check(const V8BTDataModifier& modifiers, V8ErrorCache& errors) const
 {
     if (modifiers.is_pointer)
     {
-        isolate()->logger().error(
+        errors.error(
             u8"export value {} as pointer type",
             _rttr_type->name()
         );
