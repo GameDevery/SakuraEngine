@@ -39,10 +39,6 @@ struct GPUScene final {
     void Initialize(CGPUDeviceId device, const GPUSceneConfig& config);
     void RequireUpload(skr::ecs::Entity entity, CPUTypeID component);
     void ExecuteUpload(skr::render_graph::RenderGraph* graph);
-    
-    // 查询接口
-    ComponentAddress GetComponentAddress(skr::ecs::Entity entity, const CPUTypeID& component_type) const;
-    GPUAccessInfo GetGPUAccessInfo() const;
 };
 
 struct GPUSceneConfig {

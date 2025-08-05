@@ -1,11 +1,11 @@
 #pragma once
-#include "SkrContainersDef/sparse_vector.hpp"
 #include "SkrContainersDef/map.hpp"
 #include "SkrGraphics/api.h"
 #include "SkrRT/ecs/world.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderer/fwd_types.h"
 #include "SkrRenderer/allocators/soa_segment.hpp"
+#include "SkrRenderer/allocators/page_pool.hpp"
 #ifndef __meta__
     #include "SkrRenderer/gpu_scene.generated.h" // IWYU pragma: export
 #endif
@@ -27,7 +27,6 @@ using CPUTypeID = skr::ecs::TypeIndex;
 
 // 特殊值定义
 static constexpr GPUSceneInstanceID INVALID_GPU_SCENE_INSTANCE_ID = 0xFFFFFFFF;
-static constexpr GPUPageID INVALID_GPU_PAGE_ID = 0xFFFFFFFF;
 
 // 实例 ID 编码（用于光线追踪等需要紧凑索引的场景）
 // D3D12 限制 InstanceID 为 24 位，我们遵循这个限制
@@ -84,11 +83,8 @@ sreflect_managed_component(guid = "fd6cd47d-bb68-4d1c-bd26-ad3717f10ea7")
 GPUSceneInstance
 {
     skr::ecs::Entity entity;
-    GPUArchetypeID archetype_id;
-    uint32_t entity_index_in_archetype; // archetype 内的索引
     GPUSceneInstanceID instance_index;
     GPUSceneCustomIndex custom_index;
-    GPUSceneArchetype* pArchetype;
 };
 
 // 组件类型描述
@@ -108,22 +104,6 @@ struct GPUSceneComponentType
     } storage_class;
 };
 
-// 页面描述（16KB 对齐）
-struct GPUScenePage
-{
-    static constexpr size_t PAGE_SIZE = 16 * 1024; // 16KB
-
-    GPUPageID page_id;                 // 全局页面 ID
-    GPUArchetypeID archetype_id;       // 所属 archetype
-    GPUComponentTypeID component_type; // 存储的组件类型
-
-    uint32_t entity_count;    // 当前存储的实体数
-    uint32_t entity_capacity; // 最大容量
-    uint32_t next_free_slot;  // 下一个空闲槽位
-
-    uint64_t gpu_buffer_offset; // 在大缓冲池中的偏移
-    uint32_t generation;        // 版本号，用于验证
-};
 
 // Archetype 的 GPU 映射
 struct GPUSceneArchetype
@@ -138,13 +118,42 @@ struct GPUSceneArchetype
     skr::ConcurrentQueue<GPUComponentTypeID> free_ids;     // free id
 };
 
-// GPU 页表条目
+// GPU 端实例索引信息（用于快速查找）
+struct alignas(16) GPUInstanceInfo
+{
+    uint16_t archetype_id;           // 所属 archetype
+    uint16_t entity_index;           // 在 archetype 中的索引
+    uint32_t core_data_offset;       // Core Data 基础偏移（可选优化）
+};
+
+// GPU 端组件地址索引（每个 instance 每个 additional component 一个条目）
+struct alignas(16) GPUComponentAddressEntry
+{
+    uint32_t page_offset;            // 页面在 buffer 中的偏移
+    uint16_t index_in_page;          // 在页面内的索引
+    uint16_t element_size;           // 元素大小
+};
+
+// GPU 页表条目（用于页面管理）
 struct GPUPageTableEntry
 {
     uint32_t byte_offset;    // 在 HugeBuffer 中的字节偏移
     uint32_t byte_size;      // 页面大小（通常是 16KB）
     uint32_t element_count;  // 当前存储的元素数
     uint32_t element_stride; // 每个元素的字节大小
+};
+
+// 组件地址信息
+struct ComponentAddress
+{
+    CGPUBufferId buffer;        // 组件数据所在的缓冲区
+    uint32_t offset;           // 在缓冲区中的偏移量
+    uint32_t stride;           // 组件大小（用于数组访问）
+    bool is_core_data;         // 是否在 CoreData 中
+    
+    // 附加信息（用于 AdditionalData）
+    PageID page_id = INVALID_PAGE_ID;           // 所在页面ID
+    uint32_t index_in_page = 0;                 // 在页面内的索引
 };
 
 // 配置结构（分层设计）
@@ -190,34 +199,11 @@ public:
     void RequireUpload(skr::ecs::Entity entity, CPUTypeID component);
     void ExecuteUpload(skr::render_graph::RenderGraph* graph);
 
-    skr::SP<GPUSceneArchetype> EnsureArchetype(sugoi::archetype_t* group);
-    void RemoveArchetype(sugoi::archetype_t* group);
-
     // 组件查询和管理
     const skr::Map<CPUTypeID, GPUComponentTypeID>& GetTypeRegistry() const;
     GPUComponentTypeID GetComponentTypeID(const CPUTypeID& type_guid) const;
     bool IsComponentTypeRegistered(const CPUTypeID& type_guid) const;
     const GPUSceneComponentType* GetComponentType(GPUComponentTypeID type_id) const;
-
-    // 获取组件在缓冲区中的地址信息
-    struct ComponentAddress
-    {
-        CGPUBufferId buffer;
-        uint32_t offset;
-        uint32_t stride;
-        bool is_core_data;
-    };
-    ComponentAddress GetComponentAddress(skr::ecs::Entity entity, const CPUTypeID& component_type) const;
-    ComponentAddress GetComponentAddress(GPUSceneInstanceID instance_id, GPUComponentTypeID component_type) const;
-
-    // GPU 访问辅助
-    struct GPUAccessInfo
-    {
-        CGPUBufferId core_data_buffer;       // 核心数据缓冲区
-        CGPUBufferId additional_data_buffer; // 扩展数据缓冲区
-        CGPUBufferId page_table_buffer;      // 页表缓冲区
-    };
-    GPUAccessInfo GetGPUAccessInfo() const;
 
     // 简化的内存信息
     struct MemoryUsageInfo
@@ -232,12 +218,14 @@ public:
     };
     MemoryUsageInfo GetMemoryUsageInfo() const;
 
-    inline skr::render_graph::BufferHandle GetSceneBuffer() const { return scene_buffer; }
+    inline skr::render_graph::BufferHandle GetCoreDataBuffer() const { return core_data_buffer; }
+    // inline skr::render_graph::BufferHandle GetAdditionalDataBuffer() const { return additional_data_buffer; }
     inline uint32_t GetInstanceCount() const { return instance_count; }
 
 public: // Core Data
     uint32_t GetCoreComponentSegmentOffset(GPUComponentTypeID type_id) const;
     uint32_t GetCoreInstanceStride() const;
+
 protected: // Core Data
     void InitializeComponentTypes(const GPUSceneConfig& config);
     void CreateCoreDataBuffer(CGPUDeviceId device, const GPUSceneConfig& config);
@@ -246,18 +234,23 @@ protected: // Core Data
     uint64_t CalculateDirtySize() const;
 
 protected: // Additional Data
-    void CreateAdditionalDataBuffers(CGPUDeviceId device, const GPUSceneConfig& config);
-    void InitializePageAllocator(const GPUSceneConfig& config);
-    uint32_t GetAdditionalComponentTypeCount() const;
-    GPUPageID AllocateComponentPage(GPUArchetypeID archetype_id, GPUComponentTypeID component_type);
-    GPUSceneCustomIndex EncodeCustomIndex(GPUArchetypeID archetype_id, uint32_t entity_index_in_archetype);
+    // void CreateAdditionalDataBuffers(CGPUDeviceId device, const GPUSceneConfig& config);
+    // void InitializePageAllocator(CGPUDeviceId device, const GPUSceneConfig& config); // 更新：需要device参数
+    // uint32_t GetAdditionalComponentTypeCount() const;
+    // GPUPageID AllocateComponentPage(GPUArchetypeID archetype_id, GPUComponentTypeID component_type);
+    // GPUSceneCustomIndex EncodeCustomIndex(GPUArchetypeID archetype_id, uint32_t entity_index_in_archetype);
+    // void AdjustAdditionalBuffer(skr::render_graph::RenderGraph* graph);
 
 private:
+    struct Upload
+    {
+        uint32_t src_offset; // 在 upload_buffer 中的偏移
+        uint32_t dst_offset; // 在目标缓冲区中的偏移
+        uint32_t data_size;  // 数据大小
+    };
     void CreateSparseUploadPipeline(CGPUDeviceId device);
     void PrepareUploadBuffer();
-    void DispatchSparseUpload(skr::render_graph::RenderGraph* graph);
-    // TODO: REMOVE THIS: Helper functions for buffer creation
-    CGPUBufferId CreateBuffer(CGPUDeviceId device, const char8_t* name, size_t size, ECGPUMemoryUsage usage = CGPU_MEM_USAGE_GPU_ONLY);
+    void DispatchSparseUpload(skr::render_graph::RenderGraph* graph, skr::Vector<Upload>&& core_uploads, skr::Vector<Upload>&& additional_uploads);
 
     friend struct GPUSceneInstanceTask;
     friend struct AddEntityToGPUScene;
@@ -281,72 +274,29 @@ private:
     std::atomic<GPUSceneInstanceID> latest_index = 0;
     skr::ConcurrentQueue<GPUSceneInstanceID> free_ids;
 
+    skr::render_graph::BufferHandle core_data_buffer; // core data 的 graph handle
+
     // 1. 核心数据：完全连续的大块（预分段）
     SOASegmentBuffer core_data; // SOA 分配器（包含 buffer）
-    skr::render_graph::BufferHandle scene_buffer; // core data 的 graph handle
-
-    // 2. 扩展数据：页面管理（支持不同 Archetype）
-    struct AdditionalDataRegion
-    {
-        CGPUBufferId buffer; // HugeBuffer
-        size_t buffer_size;  // 总大小
-        size_t bytes_used;   // 已使用字节数
-
-        // 页表系统（与核心数据使用相同的页面分配算法）
-        CGPUBufferId page_table_buffer;                // GPU 可见页表
-        skr::Vector<GPUPageTableEntry> page_table_cpu; // CPU 页表镜像
-    } additional_data;
-
-    // 统一页面管理（两个区域共用）
-    struct PageAllocator
-    {
-        // 简单的页面池
-        skr::Vector<GPUPageID> free_pages; // 空闲页面列表
-        uint32_t total_page_count;         // 总页面数
-        uint32_t next_new_page_id;         // 下一个新页面ID
-
-        // 简单分配
-        GPUPageID AllocatePage()
-        {
-            if (!free_pages.is_empty())
-            {
-                GPUPageID id = free_pages.back();
-                free_pages.pop_back();
-                return id;
-            }
-            return next_new_page_id++;
-        }
-
-        void FreePage(GPUPageID page_id)
-        {
-            free_pages.push_back(page_id);
-        }
-    } page_allocator;
-    skr::Vector<GPUScenePage> pages;
-
+    
+    // dirties
     shared_atomic_mutex add_mtx;
     skr::Vector<skr::ecs::Entity> add_ents;
 
     shared_atomic_mutex remove_mtx;
     skr::Vector<skr::ecs::Entity> remove_ents;
 
-    // dirties
     std::atomic<uint64_t> dirty_comp_count = 0;
     shared_atomic_mutex dirty_mtx;
     skr::Vector<skr::ecs::Entity> dirty_ents;
     skr::Map<skr::ecs::Entity, skr::InlineVector<CPUTypeID, 4>> dirties;
 
     // upload buffer management
-    struct Upload
-    {
-        uint64_t src_offset; // 在 upload_buffer 中的偏移
-        uint64_t dst_offset; // 在目标缓冲区中的偏移
-        uint64_t data_size;  // 数据大小
-    };
     struct UploadContext
     {
         CGPUBufferId upload_buffer = nullptr;
-        skr::Vector<Upload> uploads;             // 记录拷贝操作的位置信息
+        skr::Vector<Upload> core_data_uploads;       // Core Data上传操作
+        skr::Vector<Upload> additional_data_uploads; // Additional Data上传操作
         skr::Vector<uint8_t> DRAMCache;
         std::atomic<uint64_t> upload_cursor = 0; // upload_buffer 中的当前写入位置
     } upload_ctx;
