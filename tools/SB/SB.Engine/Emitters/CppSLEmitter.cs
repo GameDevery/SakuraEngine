@@ -100,6 +100,7 @@ namespace SB
                     "-fms-extensions",
                     "-fms-compatibility-version=17.1.1",
                     "-Wno-microsoft-union-member-reference",
+                    "-D__CPPSL__",
                     $"-I{Engine.EngineDirectory}/tools/shader_compiler/LLVM/test_shaders",
                     SourceFile
                 }

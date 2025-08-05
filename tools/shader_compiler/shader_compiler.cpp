@@ -14,6 +14,7 @@ int main(int argc, const char **argv)
     args.emplace_back("c++");
     args.emplace_back("-std=c++23");
     args.emplace_back("-fsyntax-only");
+    args.emplace_back("-D__CPPSL__");
     // swizzle uses reference member in union
     args.emplace_back("-fms-extensions");
     args.emplace_back("-Wno-microsoft-union-member-reference");

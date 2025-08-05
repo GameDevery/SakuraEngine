@@ -27,22 +27,22 @@ namespace SB
         {
             [JsonPropertyName("version")]
             public string Version { get; set; } = "0.2.0";
-            
+
             [JsonPropertyName("configurations")]
             public List<DebugConfigurationBase> Configurations { get; set; } = new();
-            
+
             [JsonExtensionData]
             public Dictionary<string, JsonElement>? ExtensionData { get; set; }
         }
-        
+
         public class TasksJson
         {
             [JsonPropertyName("version")]
             public string Version { get; set; } = "2.0.0";
-            
+
             [JsonPropertyName("tasks")]
             public List<TaskConfiguration> Tasks { get; set; } = new();
-            
+
             [JsonExtensionData]
             public Dictionary<string, JsonElement>? ExtensionData { get; set; }
         }
@@ -52,53 +52,57 @@ namespace SB
         {
             [JsonPropertyName("label")]
             public string Label { get; set; } = "";
-            
+
             [JsonPropertyName("type")]
             public string Type { get; set; } = "shell";
-            
+
             [JsonPropertyName("command")]
             public string Command { get; set; } = "";
-            
+
             [JsonPropertyName("args")]
             public List<string> Args { get; set; } = new();
-            
+
             [JsonPropertyName("group")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
             public TaskGroup? Group { get; set; }
-            
+
             [JsonPropertyName("problemMatcher")]
             public string ProblemMatcher { get; set; } = "$msCompile";
-            
+
             [JsonPropertyName("presentation")]
             public TaskPresentation Presentation { get; set; } = new();
+
+            [JsonPropertyName("dependsOn")]
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+            public List<string>? DependsOn { get; set; }
         }
-        
+
         public class TaskGroup
         {
             [JsonPropertyName("kind")]
             public string Kind { get; set; } = "build";
-            
+
             [JsonPropertyName("isDefault")]
             public bool IsDefault { get; set; } = false;
         }
-        
+
         public class TaskPresentation
         {
             [JsonPropertyName("echo")]
             public bool Echo { get; set; } = true;
-            
+
             [JsonPropertyName("reveal")]
             public string Reveal { get; set; } = "always";
-            
+
             [JsonPropertyName("focus")]
             public bool Focus { get; set; } = false;
-            
+
             [JsonPropertyName("panel")]
             public string Panel { get; set; } = "shared";
-            
+
             [JsonPropertyName("showReuseMessage")]
             public bool ShowReuseMessage { get; set; } = true;
-            
+
             [JsonPropertyName("clear")]
             public bool Clear { get; set; } = false;
         }
@@ -108,35 +112,35 @@ namespace SB
         {
             [JsonPropertyName("name")]
             public string Name { get; set; } = "";
-            
+
             [JsonPropertyName("type")]
             public string Type { get; set; } = "";
-            
+
             [JsonPropertyName("request")]
             public string Request { get; set; } = "launch";
-            
+
             [JsonPropertyName("program")]
             public string Program { get; set; } = "";
-            
+
             [JsonPropertyName("args")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
             public List<string>? Args { get; set; }
-            
+
             [JsonPropertyName("cwd")]
             public string Cwd { get; set; } = "";
-            
+
             [JsonPropertyName("stopAtEntry")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
             public bool StopAtEntry { get; set; } = false;
-            
+
             [JsonPropertyName("stopOnEntry")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
             public bool StopOnEntry { get; set; } = false;
-            
+
             [JsonPropertyName("preLaunchTask")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
             public string? PreLaunchTask { get; set; }
-            
+
             [JsonPropertyName("console")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
             public string? Console { get; set; }
@@ -159,18 +163,18 @@ namespace SB
             [JsonPropertyName("sourceMap")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
             public List<List<string>>? SourceMap { get; set; }
-            
+
             [JsonPropertyName("env")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
             public Dictionary<string, string>? Env { get; set; }
-            
+
             [JsonPropertyName("runInTerminal")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
             public bool RunInTerminal { get; set; } = false;
-            
+
             [JsonConstructor]
             public LLDBDebugConfiguration() { }
-            
+
             public LLDBDebugConfiguration(bool useDap) : this()
             {
                 Type = useDap ? "lldb-dap" : "lldb";
@@ -194,14 +198,14 @@ namespace SB
         {
             [JsonPropertyName("MIMode")]
             public string MIMode { get; set; } = "gdb";
-            
+
             [JsonPropertyName("miDebuggerPath")]
             public string MIDebuggerPath { get; set; } = "gdb";
-            
+
             [JsonPropertyName("setupCommands")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
             public List<object>? SetupCommands { get; set; }
-            
+
             [JsonConstructor]
             public GDBDebugConfiguration()
             {
@@ -210,14 +214,14 @@ namespace SB
         }
 
         private static readonly ConcurrentDictionary<string, List<DebugConfigurationBase>> TargetConfigurations = new();
-        
+
         public static string WorkspaceRoot { get; set; } = "./";
         public static string VSCodeDirectory { get; set; } = ".vscode";
         public static bool PreserveUserConfigurations { get; set; } = true;
         public static DebuggerType DefaultDebugger { get; set; } = DebuggerType.CppDbg;
 
         private IToolchain Toolchain { get; }
-        
+
         public VSCodeDebugEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
 
         public override bool EnableEmitter(Target Target) => Target.GetTargetType() == TargetType.Executable;
@@ -253,8 +257,13 @@ namespace SB
             config.Cwd = Path.Combine("${workspaceFolder}", relativeBinaryPath);
             config.PreLaunchTask = $"Build {target.Name} ({buildType})";
 
+            // Support for RunArgs (backwards compatibility)
             if (target.Arguments.TryGetValue("RunArgs", out var runArgs) && runArgs is List<string> argsList && argsList.Count > 0)
                 config.Args = argsList;
+
+            // Support for DebugArgs (new extension method)
+            if (TargetExtensions.DebugArgs.TryGetValue(target, out var debugArgs) && debugArgs.Count > 0)
+                config.Args = debugArgs;
 
             return config;
 
@@ -263,15 +272,15 @@ namespace SB
                 // 自动选择最佳调试器
                 (DebuggerType.CppDbg, VisualStudio, OSPlatform.Windows) => new VSDebugConfiguration(),
                 (DebuggerType.CppDbg, XCode, _) => new LLDBDebugConfiguration(false),
-                
+
                 // 用户指定的调试器
                 (DebuggerType.CppVsDbg, _, OSPlatform.Windows) => new VSDebugConfiguration(),
                 (DebuggerType.LLDBDap, _, _) => new LLDBDebugConfiguration(true),
                 (DebuggerType.CodeLLDB, _, _) => new LLDBDebugConfiguration(false),
-                
+
                 // 默认 GDB
-                _ => new GDBDebugConfiguration 
-                { 
+                _ => new GDBDebugConfiguration
+                {
                     MIDebuggerPath = FindDebugger("gdb")!,
                     SetupCommands = BS.TargetOS == OSPlatform.Linux ? new List<object>
                     {
@@ -287,7 +296,7 @@ namespace SB
             var launchJson = LoadOrCreateLaunchJson(path);
 
             launchJson.Configurations.RemoveAll(IsGeneratedConfig);
-            
+
             // Sort by target name first, then flatten the configurations
             var generatedConfigs = TargetConfigurations
                 .OrderBy(kv => kv.Key)  // Sort by target name
@@ -308,30 +317,66 @@ namespace SB
 
             tasksJson.Tasks.RemoveAll(IsGeneratedTask);
 
-            // Sort by target name first, then create tasks
-            var tasks = (from entry in TargetConfigurations.OrderBy(kv => kv.Key)
-                        from config in entry.Value
-                        let buildType = ExtractBuildType(config.Name)
-                        select CreateBuildTask(entry.Key, buildType, config.PreLaunchTask!))
-                        .ToList();
+            var allTasks = new List<TaskConfiguration>();
 
-            tasksJson.Tasks.AddRange(tasks);
+            // Sort by target name first, then create tasks
+            foreach (var entry in TargetConfigurations.OrderBy(kv => kv.Key))
+            {
+                var targetName = entry.Key;
+                var target = BS.GetTarget(targetName);
+                
+                foreach (var config in entry.Value)
+                {
+                    var buildType = ExtractBuildType(config.Name);
+                    var dependencies = new List<string>();
+
+                    // Create prerun tasks if any
+                    if (target != null && TargetExtensions.PreRuns.TryGetValue(target, out var preruns) && preruns.Count > 0)
+                    {
+                        foreach (var (prerun, index) in preruns.Select((cmd, i) => (cmd, i)))
+                        {
+                            var prerunTask = new TaskConfiguration
+                            {
+                                Label = $"PreRun {targetName} ({buildType}) - {index + 1}",
+                                Command = BS.HostOS == OSPlatform.Windows ? "cmd" : "sh",
+                                Args = BS.HostOS == OSPlatform.Windows
+                                    ? new List<string> { "/c", prerun }
+                                    : new List<string> { "-c", prerun },
+                                ProblemMatcher = ""
+                            };
+                            allTasks.Add(prerunTask);
+                            dependencies.Add(prerunTask.Label);
+                        }
+                    }
+
+                    // Create the build task
+                    var buildTask = CreateBuildTask(targetName, buildType, config.PreLaunchTask!);
+                    if (dependencies.Count > 0)
+                    {
+                        buildTask.DependsOn = dependencies;
+                    }
+                    allTasks.Add(buildTask);
+                }
+            }
+
+            tasksJson.Tasks.AddRange(allTasks);
 
             WriteJsonFile(path, tasksJson);
             Log.Information($"Generated VSCode tasks.json with {tasksJson.Tasks.Count} tasks");
         }
-        
+
         private static bool IsGeneratedConfig(DebugConfigurationBase c) => c.Name.Contains("[SB Generated]");
-        private static bool IsGeneratedTask(TaskConfiguration t) => t.Label.StartsWith("Build ") && 
+        private static bool IsGeneratedTask(TaskConfiguration t) => 
+            (t.Label.StartsWith("Build ") || t.Label.StartsWith("PreRun ")) &&
             TargetConfigurations.Keys.Any(target => t.Label.Contains(target));
-        
+
         private static string ExtractBuildType(string configName) => configName switch
         {
             var n when n.Contains("Debug") => "Debug",
             var n when n.Contains("Release") => "Release",
             _ => "RelWithDebInfo"
         };
-        
+
         private static TaskConfiguration CreateBuildTask(string targetName, string buildType, string label) => new()
         {
             Label = label,
@@ -342,7 +387,7 @@ namespace SB
 
         private static LaunchJson LoadOrCreateLaunchJson(string path) => LoadOrCreateJson<LaunchJson>(path, true);
         private static TasksJson LoadOrCreateTasksJson(string path) => LoadOrCreateJson<TasksJson>(path, false);
-        
+
         private static T LoadOrCreateJson<T>(string path, bool useConverter) where T : new()
         {
             if (PreserveUserConfigurations && File.Exists(path))
@@ -364,7 +409,7 @@ namespace SB
         private static void WriteJsonFile<T>(string path, T content)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            
+
             var options = new JsonSerializerOptions
             {
                 WriteIndented = true,
@@ -380,14 +425,14 @@ namespace SB
             // 在 Windows 上添加 .exe 扩展名
             if (BS.HostOS == OSPlatform.Windows && !debuggerName.EndsWith(".exe"))
                 debuggerName += ".exe";
-                
+
             var paths = Environment.GetEnvironmentVariable("PATH")?.Split(Path.PathSeparator) ?? Array.Empty<string>();
             var found = paths.Select(p => Path.Combine(p, debuggerName)).FirstOrDefault(File.Exists);
-            
+
             // 如果找到了，返回完整路径；否则返回原始名称让系统处理
             return found ?? debuggerName;
         }
-        
+
         // Custom JSON converter for polymorphic debug configurations
         private class PolymorphicDebugConfigurationConverter : JsonConverter<DebugConfigurationBase>
         {
@@ -395,9 +440,9 @@ namespace SB
             {
                 using var doc = JsonDocument.ParseValue(ref reader);
                 var root = doc.RootElement;
-                
+
                 if (!root.TryGetProperty("type", out var typeElement)) return null;
-                
+
                 var json = root.GetRawText();
                 return typeElement.GetString() switch
                 {
@@ -407,9 +452,29 @@ namespace SB
                     _ => JsonSerializer.Deserialize<DebugConfigurationBase>(json, options)
                 };
             }
-            
-            public override void Write(Utf8JsonWriter writer, DebugConfigurationBase value, JsonSerializerOptions options) => 
+
+            public override void Write(Utf8JsonWriter writer, DebugConfigurationBase value, JsonSerializerOptions options) =>
                 JsonSerializer.Serialize(writer, value, value.GetType(), options);
         }
+    }
+
+    public static partial class TargetExtensions
+    {
+        public static Target VSCode_PreDebugRun(this Target @this, string cmd)
+        {
+            if (!PreRuns.TryGetValue(@this, out var preRuns))
+                PreRuns.Add(@this, new());
+            PreRuns[@this].Add(cmd);
+            return @this;
+        }
+
+        public static Target VSCode_DebugArgs(this Target @this, params string[] args)
+        {
+            DebugArgs[@this] = args.ToList();
+            return @this;
+        }
+
+        internal static Dictionary<Target, List<string>> PreRuns = new();
+        internal static Dictionary<Target, List<string>> DebugArgs = new();
     }
 }

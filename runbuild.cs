@@ -149,6 +149,7 @@ public class BuildCommand : CommandBase
         }
         Engine.RunBuild(SingleTarget);
 
+        // Copy Compiled Tools to Tools Directory
         if (Categories.HasFlag(TargetCategory.Tool))
         {
             string ToolsDirectory = Path.Combine(SourceLocation.Directory(), ".sb", "tools");
