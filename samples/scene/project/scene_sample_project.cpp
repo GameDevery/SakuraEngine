@@ -3,7 +3,7 @@
 #
 #include <SkrCore/module/module_manager.hpp>
 #include <SkrCore/log.h>
-#include <SkrSceneCore/actor.h>
+#include <SkrScene/actor.h>
 
 struct SceneSampleProjectModule : public skr::IDynamicModule
 {

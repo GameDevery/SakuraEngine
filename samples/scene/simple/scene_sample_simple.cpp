@@ -2,7 +2,7 @@
 #include "SkrBase/math/gen/misc/transform.hpp"
 #include <SkrCore/module/module_manager.hpp>
 #include <SkrCore/log.h>
-#include <SkrSceneCore/actor.h>
+#include <SkrScene/actor.h>
 #include <SkrSceneCore/scene_components.h>
 #include <SkrSceneCore/transform_system.h>
 #include <SkrRT/ecs/world.hpp>

@@ -1,18 +1,18 @@
-// #include "SkrSceneCore/actor.h"
+#include "SkrScene/actor.h"
 
-// namespace skr
-// {
+namespace skr
+{
 
-// SkelMeshActor::~SkelMeshActor() SKR_NOEXCEPT
-// {
-//     for (auto& child : children)
-//     {
-//         child->DetachFromParent();
-//     }
-//     if (_parent)
-//     {
-//         DetachFromParent();
-//     }
-// }
+SkelMeshActor::~SkelMeshActor() SKR_NOEXCEPT
+{
+    for (auto& child : children)
+    {
+        child->DetachFromParent();
+    }
+    if (_parent)
+    {
+        DetachFromParent();
+    }
+}
 
-// } // namespace skr
+} // namespace skr
