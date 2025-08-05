@@ -113,7 +113,7 @@ protected:
     void InitializeReosurceSystem();
     void DestroyResourceSystem();
 
-    void CreateEntities(skr::render_graph::RenderGraph* graph, uint32_t count = 3);
+    void CreateEntities(skr::render_graph::RenderGraph* graph, uint32_t count = 10);
     void CreateComputePipeline();
     void render();
 
@@ -227,15 +227,12 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
         .world = &world,
         .render_device = render_device,
         .core_data_types = {
-
-            // { sugoi_id_of<GPUSceneObjectToWorld>::get(), 0 },
-            { sugoi_id_of<GPUSceneInstanceColor>::get(), 0 }
-        }
-        /*.additional_data_types = {
-            { sugoi_id_of<GPUSceneInstanceEmission>::get(), 2 }
-        }*/
+            { sugoi_id_of<GPUSceneObjectToWorld>::get(), 0 },
+            { sugoi_id_of<GPUSceneInstanceColor>::get(), 1 } },
+        .additional_data_types = { { sugoi_id_of<GPUSceneInstanceEmission>::get(), 2 } }
     };
     GPUScene.Initialize(render_device->get_cgpu_device(), cfg);
+    CreateEntities(render_app->render_graph());
 
     // AsyncResource<> is a handle can be constructed by any resource type & ids
     skr::resource::AsyncResource<MeshResource> mesh_resource;
@@ -250,7 +247,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
 
         if (frame_index < 1'000'000)
         {
-            CreateEntities(render_app->render_graph());
+            CreateEntities(render_app->render_graph(), frame_index % 10 + 1);
         }
 
         auto render_graph = render_app->render_graph();
@@ -395,16 +392,8 @@ void ModelViewerModule::CreateEntities(skr::render_graph::RenderGraph* graph, ui
             auto entities = Context.entities();
             for (uint32_t i = 0; i < cnt; i++)
             {
-                if (local_index == 0)
-                    colors[i].color = skr::float4(1.f, 0.f, 0.f, 1.f);
-                if (local_index == 1)
-                    colors[i].color = skr::float4(0.f, 1.f, 0.f, 1.f);
-                if (local_index == 2)
-                    colors[i].color = skr::float4(0.f, 0.f, 1.f, 1.f);
+                colors[i].color = skr::float4(1.f, 0.f, 1.f, 1.f);
                 pScene->AddEntity(entities[i]);
-
-                local_index += 1;
-                local_index = local_index % 3;
             }
         }
 
@@ -416,7 +405,6 @@ void ModelViewerModule::CreateEntities(skr::render_graph::RenderGraph* graph, ui
         ComponentView<skr::scene::RotationComponent> rotations;
         ComponentView<skr::scene::ScaleComponent> scales;
         ComponentView<skr::scene::IndexComponent> indices;
-        uint32_t local_index = 0;
     } spawner;
     spawner.pScene = &GPUScene;
     world.create_entities(spawner, count);

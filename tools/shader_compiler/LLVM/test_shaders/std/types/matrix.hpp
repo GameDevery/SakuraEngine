@@ -12,10 +12,9 @@ struct [[builtin("matrix")]] matrix<2> {
     static constexpr uint32 X = 2;
     static constexpr uint32 Y = 2;
 
-    constexpr matrix() noexcept = default;
     constexpr matrix(float2 col0, float2 col1)
         : _v(col0, col1) {}
-    constexpr matrix(float m00, float m01, float m10, float m11)
+    constexpr matrix(float m00 = 0.f, float m01 = 0.f, float m10 = 0.f, float m11 = 0.f)
         : _v(float2(m00, m01), float2(m10, m11)) {}
     explicit constexpr matrix(matrix<3> f33);
     explicit constexpr matrix(matrix<4> f44);
@@ -37,11 +36,13 @@ struct [[builtin("matrix")]] matrix<3> {
     static constexpr uint32 X = 4;
     static constexpr uint32 Y = 3;
 
-    constexpr matrix() noexcept = default;
     constexpr matrix(float3 col0, float3 col1, float3 col2)
         : _v(float4(col0, 0), float4(col1, 0), float4(col2, 0)) {}
 
-    constexpr matrix(float m00, float m01, float m02, float m10, float m11, float m12, float m20, float m21, float m22)
+    constexpr matrix(
+        float m00 = 0.f, float m01 = 0.f, float m02 = 0.f, 
+        float m10 = 0.f, float m11 = 0.f, float m12 = 0.f, 
+        float m20 = 0.f, float m21 = 0.f, float m22 = 0.f)
         : _v(float4(m00, m01, m02, 0),
              float4(m10, m11, m12, 0),
              float4(m20, m21, m22, 0)) {}
@@ -66,14 +67,13 @@ struct alignas(16) [[builtin("matrix")]] matrix<4> {
     static constexpr uint32 X = 4;
     static constexpr uint32 Y = 4;
 
-    constexpr matrix() noexcept = default;
     constexpr matrix(float4 col0, float4 col1, float4 col2, float4 col3)
         : _v(col0, col1, col2, col3) {}
 
-    constexpr matrix(float m00, float m01, float m02, float m03,
-                     float m10, float m11, float m12, float m13,
-                     float m20, float m21, float m22, float m23,
-                     float m30, float m31, float m32, float m33)
+    constexpr matrix(float m00 = 0.f, float m01 = 0.f, float m02 = 0.f, float m03 = 0.f,
+                     float m10 = 0.f, float m11 = 0.f, float m12 = 0.f, float m13 = 0.f,
+                     float m20 = 0.f, float m21 = 0.f, float m22 = 0.f, float m23 = 0.f,
+                     float m30 = 0.f, float m31 = 0.f, float m32 = 0.f, float m33 = 0.f)
         : _v(vec<float, 4>(m00, m01, m02, m03),
              vec<float, 4>(m10, m11, m12, m13),
              vec<float, 4>(m20, m21, m22, m23),
