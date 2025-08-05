@@ -7,6 +7,7 @@
 #include "SkrRT/resource/resource_handle.h"
 #include "SkrRT/ecs/world.hpp"
 #include "SkrSceneCore/scene_components.h"
+#include "SkrRenderer/render_mesh.h"
 
 #if !defined(__meta__)
     #include "SkrScene/actor.generated.h"
@@ -37,6 +38,7 @@ SKR_SCENE_API Actor
 
 public:
     SKR_RC_IMPL();
+
     virtual ~Actor() SKR_NOEXCEPT;
     static RCWeak<Actor> GetRoot();
     static RCWeak<Actor> CreateActor(EActorType type = EActorType::Default);
@@ -102,6 +104,7 @@ public:
     }
     void initialize(skr::ecs::World* world);
     void finalize();
+
     skr::RCWeak<Actor> CreateActor(EActorType type = EActorType::Default);
     bool DestroyActor(skr::GUID guid);
     void CreateActorEntity(skr::RCWeak<Actor> actor);
@@ -110,13 +113,16 @@ public:
 
     void ClearAllActors();
     skr::RCWeak<Actor> GetRoot();
+
     // accessors
+    // TODO: we need a better way to manage these accessors
     skr::ecs::RandomComponentReadWrite<skr::scene::ParentComponent> parent_accessor;
     skr::ecs::RandomComponentReadWrite<skr::scene::ChildrenComponent> children_accessor;
     skr::ecs::RandomComponentReadWrite<skr::scene::PositionComponent> pos_accessor;
     skr::ecs::RandomComponentReadWrite<skr::scene::RotationComponent> rot_accessor;
     skr::ecs::RandomComponentReadWrite<skr::scene::ScaleComponent> scale_accessor;
     skr::ecs::RandomComponentReadWrite<skr::scene::TransformComponent> trans_accessor;
+    skr::ecs::RandomComponentReadWrite<skr::renderer::MeshComponent> mesh_accessor;
 
 protected:
     // Factory method to create specific actor types
@@ -136,9 +142,13 @@ private:
     // Currently, we only use Map<GUID, Actor*> and cpp new/delete for Actor management.
     // In the future, we can implement a more sophisticated memory management system.
     skr::Map<skr::GUID, skr::RC<Actor>> actors; // Map to manage actors by their GUIDs
+
+    // Accessors
 };
 
-class SKR_SCENE_API MeshActor : public Actor
+sreflect_struct(
+    guid = "01987a21-a2b4-7488-924d-17639e937f87")
+SKR_SCENE_API MeshActor : public Actor
 {
     friend class ActorManager;
 
@@ -146,14 +156,15 @@ public:
     SKR_RC_IMPL();
 
     ~MeshActor() SKR_NOEXCEPT;
+    skr::renderer::MeshComponent* GetMeshComponent() const;
 
 protected:
     MeshActor();
-    skr::InlineVector<skr::GUID, 1> mesh_guids; // GUIDs of mesh resources associated with this actor
 };
 
-// Actor for Skeletal Meshes
-class SKR_SCENE_API SkelMeshActor : public MeshActor
+sreflect_struct(
+    guid = "01987a21-e796-76b6-89c4-fb550edf5610")
+SKR_SCENE_API SkelMeshActor : public MeshActor
 {
     friend class ActorManager;
 

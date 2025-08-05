@@ -266,12 +266,19 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     auto gfx_queue = render_device->get_gfx_queue();
 
     // TODO: capsulate into MeshActor
+    auto root = skr::Actor::GetRoot();
+    auto actor1 = skr::MeshActor::CreateActor(skr::EActorType::Mesh).cast_static<skr::MeshActor>();
+    actor1.lock()->SetDisplayName(u8"Actor 1");
+    root.lock()->CreateEntity();
+    actor1.lock()->CreateEntity();
+    root.lock()->GetPositionComponent()->set({ 0.0f, 0.0f, 0.0f });
+    actor1.lock()->GetPositionComponent()->set({ 0.0f, 1.0f, 0.0f });
+
     skr_mesh_resource_t* mesh_resource = nullptr;
     skr_render_mesh_id render_mesh = SkrNew<skr_render_mesh_t>();
 
     utils::Grid2DMesh dummy_mesh;
-    skr::resource::AsyncResource<skr::renderer::MeshResource> gltf_mesh_resource;
-    gltf_mesh_resource = MeshAssetID;
+    actor1.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
 
     if (use_gltf)
     {
@@ -339,10 +346,10 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
 
             if (use_gltf)
             {
-                gltf_mesh_resource.resolve(true, 0, ESkrRequesterType::SKR_REQUESTER_SYSTEM);
-                if (gltf_mesh_resource.is_resolved())
+                actor1.lock()->GetMeshComponent()->mesh_resource.resolve(true, 0, ESkrRequesterType::SKR_REQUESTER_SYSTEM);
+                if (actor1.lock()->GetMeshComponent()->mesh_resource.is_resolved())
                 {
-                    mesh_resource = gltf_mesh_resource.get_resolved(true);
+                    mesh_resource = actor1.lock()->GetMeshComponent()->mesh_resource.get_resolved(true);
                 }
             }
 

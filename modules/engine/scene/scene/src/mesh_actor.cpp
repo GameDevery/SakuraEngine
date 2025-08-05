@@ -1,5 +1,5 @@
-#include "SkrScene/actor.h"
 #include "SkrRenderer/render_mesh.h"
+#include "SkrScene/actor.h"
 
 namespace skr
 {
@@ -40,6 +40,17 @@ MeshActor::MeshActor()
             SKR_LOG_INFO(u8"MeshActor {%s} created with entity: {%d}", this->GetDisplayName().c_str(), this->GetEntity());
         }
     };
+}
+
+skr::renderer::MeshComponent* MeshActor::GetMeshComponent() const
+{
+    auto entity = GetEntity();
+    if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
+    {
+        return skr::ActorManager::GetInstance().mesh_accessor.get(entity);
+    }
+    SKR_LOG_ERROR(u8"MeshActor {} has no valid entity to get MeshComponent", display_name.c_str());
+    return nullptr;
 }
 
 } // namespace skr

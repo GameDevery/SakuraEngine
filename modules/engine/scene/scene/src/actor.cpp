@@ -152,13 +152,13 @@ skr::scene::TransformComponent* Actor::GetTransformComponent() const
 void ActorManager::initialize(skr::ecs::World* world)
 {
     this->world = world; // Store the ECS world pointer for actor management
-    // Initialize accessors
     parent_accessor = world->random_readwrite<skr::scene::ParentComponent>();
     children_accessor = world->random_readwrite<skr::scene::ChildrenComponent>();
     pos_accessor = world->random_readwrite<skr::scene::PositionComponent>();
     rot_accessor = world->random_readwrite<skr::scene::RotationComponent>();
     scale_accessor = world->random_readwrite<skr::scene::ScaleComponent>();
     trans_accessor = world->random_readwrite<skr::scene::TransformComponent>();
+    mesh_accessor = world->random_readwrite<skr::renderer::MeshComponent>();
 }
 
 skr::RC<Actor> ActorManager::CreateActorInstance(EActorType type)
