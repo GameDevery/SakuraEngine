@@ -37,7 +37,7 @@ MeshActor::MeshActor()
             SkrZoneScopedN("MeshActor::Spawner::run");
             this->scene_entities.resize_zeroed(1);
             this->scene_entities[0] = Context.entities()[0];
-            SKR_LOG_INFO(u8"MeshActor {%s} created with entity: {%d}", this->GetDisplayName().c_str(), this->GetEntity());
+            SKR_LOG_INFO(u8"MeshActor {%s} created with entity: {%u}", this->GetDisplayName().c_str(), this->GetEntity());
         }
     };
 }
@@ -49,7 +49,7 @@ skr::renderer::MeshComponent* MeshActor::GetMeshComponent() const
     {
         return skr::ActorManager::GetInstance().mesh_accessor.get(entity);
     }
-    SKR_LOG_ERROR(u8"MeshActor {} has no valid entity to get MeshComponent", display_name.c_str());
+    SKR_LOG_ERROR(u8"MeshActor {%s} has no valid entity to get MeshComponent", display_name.c_str());
     return nullptr;
 }
 

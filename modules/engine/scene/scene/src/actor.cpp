@@ -26,7 +26,7 @@ Actor::Actor(EActorType type) SKR_NOEXCEPT
               SkrZoneScopedN("Actor::Spawner::run");
               this->scene_entities.resize_zeroed(1);
               this->scene_entities[0] = Context.entities()[0];
-              SKR_LOG_INFO(u8"Actor {%s} created with entity: {%d}", this->GetDisplayName().c_str(), this->GetEntity());
+              SKR_LOG_INFO(u8"Actor {%s} created with entity: {%u}", this->GetDisplayName().c_str(), this->GetEntity());
           }
       }
 {
@@ -68,7 +68,7 @@ skr::ecs::Entity Actor::GetEntity() const
 {
     if (scene_entities.is_empty())
     {
-        SKR_LOG_ERROR(u8"Actor {} has no entity associated", display_name.c_str());
+        SKR_LOG_ERROR(u8"Actor {%s} has no entity associated", display_name.c_str());
         return skr::ecs::Entity{ SUGOI_NULL_ENTITY };
     }
     return scene_entities[0];
@@ -111,7 +111,7 @@ skr::scene::ScaleComponent* Actor::GetScaleComponent() const
     {
         return skr::ActorManager::GetInstance().scale_accessor.get(entity);
     }
-    SKR_LOG_ERROR(u8"Actor {} has no valid entity to get ScaleComponent", display_name.c_str());
+    SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get ScaleComponent", display_name.c_str());
     return nullptr;
 }
 skr::scene::PositionComponent* Actor::GetPositionComponent() const
@@ -121,7 +121,7 @@ skr::scene::PositionComponent* Actor::GetPositionComponent() const
     {
         return skr::ActorManager::GetInstance().pos_accessor.get(entity);
     }
-    SKR_LOG_ERROR(u8"Actor {} has no valid entity to get PositionComponent", display_name.c_str());
+    SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get PositionComponent", display_name.c_str());
     return nullptr;
 }
 skr::scene::RotationComponent* Actor::GetRotationComponent() const
@@ -131,7 +131,7 @@ skr::scene::RotationComponent* Actor::GetRotationComponent() const
     {
         return skr::ActorManager::GetInstance().rot_accessor.get(entity);
     }
-    SKR_LOG_ERROR(u8"Actor {} has no valid entity to get RotationComponent", display_name.c_str());
+    SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get RotationComponent", display_name.c_str());
     return nullptr;
 }
 skr::scene::TransformComponent* Actor::GetTransformComponent() const
@@ -141,7 +141,7 @@ skr::scene::TransformComponent* Actor::GetTransformComponent() const
     {
         return skr::ActorManager::GetInstance().trans_accessor.get(entity);
     }
-    SKR_LOG_ERROR(u8"Actor {} has no valid entity to get TransformComponent", display_name.c_str());
+    SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get TransformComponent", display_name.c_str());
     return nullptr;
 }
 
@@ -217,7 +217,7 @@ void ActorManager::DestroyActorEntity(skr::RCWeak<Actor> actor)
     }
     else
     {
-        SKR_LOG_WARN(u8"Actor {} has no entities to destroy", actor.lock()->GetDisplayName().c_str());
+        SKR_LOG_WARN(u8"Actor {%s} has no entities to destroy", actor.lock()->GetDisplayName().c_str());
     }
 }
 
@@ -290,7 +290,7 @@ skr::RCWeak<Actor> ActorManager::GetRoot()
                 root_actor.lock()->scene_entities.resize_zeroed(1);
                 root_actor.lock()->scene_entities[0] = Context.entities()[0];
                 root_actor.lock()->SetDisplayName(u8"Root Actor");
-                SKR_LOG_INFO(u8"Root actor created with entity: {%d}", root_actor.lock()->GetEntity());
+                SKR_LOG_INFO(u8"Root actor created with entity: {%u}", root_actor.lock()->GetEntity());
             }
         };
     }

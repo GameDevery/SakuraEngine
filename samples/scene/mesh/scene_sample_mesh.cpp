@@ -32,6 +32,8 @@
 #include "SkrSceneCore/transform_system.h"
 
 #include "scene_renderer.hpp"
+#include "scene_render_system.h"
+
 #include "helper.hpp"
 
 using namespace skr::literals;
@@ -70,6 +72,7 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     skd::SProject project;
     skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
     skr::TransformSystem* transform_system = nullptr;
+    skr::scene::SceneRenderSystem* scene_render_system = nullptr;
 };
 
 IMPLEMENT_DYNAMIC_MODULE(SceneSampleMeshModule, SceneSample_Mesh);
@@ -184,6 +187,7 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     world.initialize();
     actor_manager.initialize(&world);
     transform_system = skr_transform_system_create(&world);
+    scene_render_system = skr_scene_render_system_create(&world);
     render_device = SkrRendererModule::Get()->get_render_device();
 
     auto resourceRoot = (skr::fs::current_directory() / u8"../resources");
@@ -208,6 +212,7 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     }
     scene_renderer = skr::SceneRenderer::Create();
     scene_renderer->initialize(render_device, &world, resource_vfs);
+    scene_render_system->bind_renderer(scene_renderer);
 }
 
 void SceneSampleMeshModule::on_unload()
@@ -221,6 +226,8 @@ void SceneSampleMeshModule::on_unload()
         DestroyResourceSystem();
     }
     skr_transform_system_destroy(transform_system);
+    skr_scene_render_system_destroy(scene_render_system);
+
     actor_manager.finalize();
     world.finalize();
     scheduler.unbind();
@@ -265,20 +272,64 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     auto cgpu_device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
 
-    // TODO: capsulate into MeshActor
+    skr::Vector<skr::RCWeak<skr::MeshActor>> hierarchy_actors;
+    constexpr int hierarchy_count = 3; // Number of actors in the hierarchy
+
     auto root = skr::Actor::GetRoot();
     auto actor1 = skr::MeshActor::CreateActor(skr::EActorType::Mesh).cast_static<skr::MeshActor>();
+
     actor1.lock()->SetDisplayName(u8"Actor 1");
+
     root.lock()->CreateEntity();
     actor1.lock()->CreateEntity();
+
+    actor1.lock()->AttachTo(root);
+
     root.lock()->GetPositionComponent()->set({ 0.0f, 0.0f, 0.0f });
+
     actor1.lock()->GetPositionComponent()->set({ 0.0f, 1.0f, 0.0f });
+    actor1.lock()->GetScaleComponent()->set({ .1f, .1f, .1f });
+    actor1.lock()->GetRotationComponent()->set({ 0.0f, 0.0f, 0.0f });
+    for (auto i = 0; i < hierarchy_count; ++i)
+    {
+        auto actor = skr::MeshActor::CreateActor(skr::EActorType::Mesh).cast_static<skr::MeshActor>();
+        hierarchy_actors.push_back(actor);
+
+        actor.lock()->SetDisplayName(skr::format(u8"Actor {}", i + 2).c_str());
+        actor.lock()->CreateEntity();
+        if (i == 0)
+        {
+            actor.lock()->AttachTo(actor1);
+        }
+        else
+        {
+            actor.lock()->AttachTo(hierarchy_actors[i - 1]);
+        }
+
+        actor.lock()->GetPositionComponent()->set({ 0.0f, 0.0f, (float)(i + 1) * 5.0f });
+        actor.lock()->GetScaleComponent()->set({ .8f, .8f, .8f });
+    }
+
+    // auto actor2 = skr::MeshActor::CreateActor(skr::EActorType::Mesh).cast_static<skr::MeshActor>();
+    // actor2.lock()->SetDisplayName(u8"Actor 2");
+    // actor2.lock()->CreateEntity();
+    // actor2.lock()->AttachTo(actor1);
+    // actor2.lock()->GetPositionComponent()->set({ 5.0f, 0.0f, 0.0f });
+    // actor2.lock()->GetScaleComponent()->set({ 1.0f, 1.0f, 1.0f });
+
+    transform_system->update();
+    skr::ecs::TaskScheduler::Get()->sync_all();
 
     skr_mesh_resource_t* mesh_resource = nullptr;
     skr_render_mesh_id render_mesh = SkrNew<skr_render_mesh_t>();
 
     utils::Grid2DMesh dummy_mesh;
     actor1.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
+    // actor2.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
+    for (auto& actor : hierarchy_actors)
+    {
+        actor.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
+    }
 
     if (use_gltf)
     {
@@ -330,6 +381,10 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             // ResourceSystem Update
             resource_system->Update();
         }
+        {
+            // Update Actor Transform
+            transform_system->update();
+        }
 
         // Camera control
         {
@@ -344,20 +399,29 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             const auto size = main_window->get_physical_size();
             camera.aspect = (float)size.x / (float)size.y;
 
-            if (use_gltf)
-            {
-                actor1.lock()->GetMeshComponent()->mesh_resource.resolve(true, 0, ESkrRequesterType::SKR_REQUESTER_SYSTEM);
-                if (actor1.lock()->GetMeshComponent()->mesh_resource.is_resolved())
-                {
-                    mesh_resource = actor1.lock()->GetMeshComponent()->mesh_resource.get_resolved(true);
-                }
-            }
+            // if (use_gltf)
+            // {
+            //     actor1.lock()->GetMeshComponent()->mesh_resource.resolve(true, 0, ESkrRequesterType::SKR_REQUESTER_SYSTEM);
+            //     if (actor1.lock()->GetMeshComponent()->mesh_resource.is_resolved())
+            //     {
+            //         mesh_resource = actor1.lock()->GetMeshComponent()->mesh_resource.get_resolved(true);
+            //     }
+            // }
 
-            if (mesh_resource && mesh_resource->render_mesh)
-            {
-                scene_renderer->draw_primitives(render_graph, mesh_resource->render_mesh->primitive_commands);
-            }
+            // if (mesh_resource && mesh_resource->render_mesh)
+            // {
+            //     scene_renderer->draw_primitives(render_graph, mesh_resource->render_mesh->primitive_commands);
+            // }
         };
+        {
+            scene_render_system->update();
+            // Currently we just sync all, but this logic will be moved to Render Thread in the future
+            skr::ecs::TaskScheduler::Get()->sync_all();
+            SKR_LOG_INFO(u8"Scene Render System has %d drawcalls", scene_render_system->get_drawcalls().size());
+            scene_renderer->draw_primitives(
+                render_graph,
+                scene_render_system->get_drawcalls());
+        }
 
         {
             SkrZoneScopedN("ImGuiRender");
