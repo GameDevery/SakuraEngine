@@ -9,8 +9,8 @@ namespace SB
         public ArgumentDictionary([CallerFilePath] string? path = null) { this.Directory = Path.GetDirectoryName(path)!; }
         public void AppendToArgumentList<T>(string Name, params T[] Args) {{ this.GetOrAddNew<string, ArgumentList<T>>(Name).AddRange(Args); }}
         public void OverrideArgument<T>(string Name, T value) {{ this.Override(Name, value); }}
-        private string HandlePath(string path) => Path.IsPathFullyQualified(path) ? path : Path.Combine(Directory!, path);
-        private string[] HandlePath(string[] paths)
+        public string HandlePath(string path) => Path.IsPathFullyQualified(path) ? path : Path.Combine(Directory!, path);
+        public string[] HandlePath(string[] paths)
         {
             for (int i = 0; i < paths.Length; i++)
                 paths[i] = HandlePath(paths[i]);
@@ -30,7 +30,7 @@ namespace SB
             InterfaceArguments = new (Location);
         }
 
-        private ArgumentDictionary GetArgumentsContainer(Visibility Visibility)
+        public ArgumentDictionary GetArgumentsContainer(Visibility Visibility)
         {
             switch (Visibility)
             {

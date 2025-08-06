@@ -155,7 +155,7 @@ bool LanguageRule_BanDoubleFieldsAndVariables(const clang::Decl* decl, const cla
 
 bool LanguageRule_UseFunctionInsteadOfMethod(const clang::CXXMethodDecl* Method)
 {
-    return Method->isStatic() || IsBuiltin(Method->getParent());
+    return Method->isStatic() || IsBuiltin(Method->getParent()) || Method->getParent()->isLambda();
 }
 
 const skr::CppSL::TypeDecl* FunctionStack::methodThisType() const
@@ -663,45 +663,28 @@ CppSL::NamespaceDecl* ASTConsumer::TranslateNamespaceDecl(const clang::Namespace
 
 const CppSL::TypeDecl* ASTConsumer::TranslateLambda(const clang::LambdaExpr* x)
 {
-    if (_lambda_types.contains(x))
-        return _lambda_types[x];
-
-    auto lambdaMethod = x->getCallOperator();
-    appendStack(x->getCallOperator());
-    DeferGuard defer([&]() { popStack(); });
-
-    std::vector<CppSL::ParamVarDecl*> _params;
-    TranslateParams(_params, lambdaMethod);
-
-    TranslateLambdaCapturesToParams(x);
-    _params.insert(_params.end(), current_stack->_captured_params.begin(), current_stack->_captured_params.end());
-
-    auto returnType = lambdaMethod->getReturnType();
-    // 需要先翻译 body，因为会展开出潜在的全局变量，如果先翻译类型，可能会导致生成的方法函数体排序在全局变量之前，产生未定义变量错误
-    auto lambdaBody = TranslateStmt<CppSL::CompoundStmt>(x->getBody());
-    auto lambdaWrapper = AST.DeclareStructure(std::format(L"lambda_{}", next_lambda_id++), {});
-
-    auto newLambda = AST.DeclareMethod(lambdaWrapper, L"operator_call", getType(returnType), _params, lambdaBody);
-    lambdaWrapper->add_method(newLambda);
-    lambdaWrapper->add_ctor(AST.DeclareConstructor(lambdaWrapper, L"lambda_ctor", {}, AST.Block({})));
-
-    addFunc(lambdaMethod, newLambda);
-    addType(x->getLambdaClass()->getTypeForDecl()->getCanonicalTypeInternal(), lambdaWrapper);
-    _lambda_types[x] = lambdaWrapper;
-    _lambda_wrappers[lambdaWrapper] = x;
-    _lambda_methods[lambdaMethod] = x;
-    return lambdaWrapper;
+    if (!_lambda_proxy)
+    {
+        auto lambda_proxy = AST.DeclareStructure(std::format(L"lambda_proxy", next_lambda_id++), {});
+        lambda_proxy->add_ctor(AST.DeclareConstructor(lambda_proxy, L"lambda_ctor", {}, AST.Block({})));
+        _lambda_proxy = lambda_proxy;
+    }
+    if (!getType(x->getType()))
+    {
+        addType(x->getType(), _lambda_proxy);
+    }
+    return _lambda_proxy;
 }
 
-void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* x)
+void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* expr)
 {
-    auto translateCaptureToParam = [&](CppSL::TypeDecl* _type, const CppSL::String& name, bool byref) 
+    auto translateCaptureToParam = [&](clang::QualType _type, const CppSL::String& name, bool byref) 
     {
         return TranslateParam(current_stack->_captured_params, byref ? EVariableQualifier::Inout : EVariableQualifier::None, _type, L"cap_" + name);
     };
 
-    current_stack->_captured_params.reserve(x->capture_size() + current_stack->_captured_params.size()); // reserve space for captures
-    for (auto capture : x->captures())
+    current_stack->_captured_params.reserve(expr->capture_size() + current_stack->_captured_params.size()); // reserve space for captures
+    for (auto capture : expr->captures())
     {
         bool isThis = capture.capturesThis();
         if (!isThis)
@@ -710,12 +693,12 @@ void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* x)
             auto byRef = capture.getCaptureKind() == clang::LambdaCaptureKind::LCK_ByRef;
             byRef &= !capture.getCapturedVar()->getType().isConstQualified(); // const&
             auto newParam = translateCaptureToParam(
-                getType(capture.getCapturedVar()->getType()), 
+                capture.getCapturedVar()->getType(), 
                 ToText(capture.getCapturedVar()->getName()), 
                 byRef
             );
             FunctionStack::CapturedParamInfo info = {
-                .owner = x,
+                .owner = expr,
                 .asVar = clang::dyn_cast<clang::VarDecl>(capture.getCapturedVar()),
                 .asCaptureThisField = nullptr
             };
@@ -727,16 +710,16 @@ void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* x)
         {
             // 1.2 this 需要把内部访问到的变量拆解开，再按 1.1 传入
             MemberExprAnalyzer analyzer;
-            analyzer.TraverseStmt(x->getBody());
+            analyzer.TraverseStmt(expr->getBody());
             for (auto&& [field, exprs] : analyzer.member_redirects)
             {
                 auto newParam = translateCaptureToParam(
-                    getType(field->getType()),
+                    field->getType(),
                     ToText(field->getName()),
                     true
                 );
                 FunctionStack::CapturedParamInfo info = {
-                    .owner = x,
+                    .owner = expr,
                     .asVar = nullptr,
                     .asCaptureThisField = field
                 };
@@ -802,8 +785,6 @@ CppSL::Stmt* ASTConsumer::TranslateCall(const clang::Decl* _funcDecl, const clan
     _args.reserve(AsCall ? AsCall->getNumArgs() : AsConstruct->getNumArgs());
     for (auto arg : AsCall ? AsCall->arguments() : AsConstruct->arguments())
         _args.emplace_back(TranslateStmt<CppSL::Expr>(arg));
-    if (AsCXXOperatorCall && methodDecl) // op call to methods use first arg as the caller
-        _args.erase(_args.begin());
 
     // translate function declaration
     if (!AsConstructorForBuiltin && !TranslateFunction(llvm::dyn_cast<clang::FunctionDecl>(funcDecl)))
@@ -857,10 +838,17 @@ CppSL::Stmt* ASTConsumer::TranslateCall(const clang::Decl* _funcDecl, const clan
     }
     else
     {
-        if (AsMethod)
+        if (AsMethod && LanguageRule_UseFunctionInsteadOfMethod(AsMethod))
         {
             auto _callee = getFunc(AsMethod)->ref();
-            _args.emplace(_args.begin(), (CppSL::Expr*)TranslateStmt<CppSL::MemberExpr>(AsMethodCall->getCallee())->owner());
+            if (AsMethodCall)
+            {
+                _args.emplace(_args.begin(), (CppSL::Expr*)TranslateStmt<CppSL::MemberExpr>(AsMethodCall->getCallee())->owner());
+            }
+            else if (AsCXXOperatorCall)
+            {
+                // do nothing because 'this' is already the first argument
+            }
             return AST.CallFunction(_callee, _args);
         }
         else
@@ -981,13 +969,15 @@ CppSL::TypeDecl* ASTConsumer::TranslateType(clang::QualType type)
     return getType(type);
 }
 
-CppSL::ParamVarDecl* ASTConsumer::TranslateParam(std::vector<CppSL::ParamVarDecl*>& params, skr::CppSL::EVariableQualifier qualifier, const skr::CppSL::TypeDecl* type, const skr::CppSL::Name& name)
+CppSL::ParamVarDecl* ASTConsumer::TranslateParam(std::vector<CppSL::ParamVarDecl*>& params, skr::CppSL::EVariableQualifier qualifier, clang::QualType type, const skr::CppSL::Name& name)
 {
-    auto _param = AST.DeclareParam(qualifier, type, name);
+    auto cppslType = getType(type);
+    auto _param = AST.DeclareParam(qualifier, cppslType, name);
     params.emplace_back(_param);
-    if (auto is_lambda = _lambda_wrappers.contains(type))
+    auto AsRecordDecl = type->getAsCXXRecordDecl();
+    if (AsRecordDecl && AsRecordDecl->isLambda())
     {
-        TranslateLambdaCapturesToParams(_lambda_wrappers[type]);
+        TranslateLambdaCapturesToParams(_lambda_map[type->getAsCXXRecordDecl()]);
     }
     return _param;
 }
@@ -1019,7 +1009,7 @@ void ASTConsumer::TranslateParams(std::vector<CppSL::ParamVarDecl*>& params, con
             else
                 paramName = std::format("{}_{}", paramName, param->getFunctionScopeIndex());
 
-            auto _param = TranslateParam(params, qualifier, _paramType, ToText(paramName));
+            auto _param = TranslateParam(params, qualifier, ParamQualType, ToText(paramName));
             addVar(param, _param);
 
             if (auto BuiltinInfo = IsBuiltin(param))
@@ -1034,6 +1024,12 @@ void ASTConsumer::TranslateParams(std::vector<CppSL::ParamVarDecl*>& params, con
             ReportFatalError(param, "Unknown parameter type: {} for parameter: {}", ParamQualType.getAsString(), std::string(param->getName()));
         }
     }
+
+    auto AsMethod = llvm::dyn_cast<clang::CXXMethodDecl>(func);
+    if (AsMethod && AsMethod->getParent()->isLambda())
+    {
+        TranslateLambdaCapturesToParams(_lambda_map[AsMethod->getParent()]);
+    }
 }
 
 CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x, llvm::StringRef override_name) 
@@ -1045,6 +1041,8 @@ CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x
         return Existed;
     if (LanguageRule_UseAssignForImplicitCopyOrMove(x))
         return nullptr;
+
+    auto AsMethod = llvm::dyn_cast<clang::CXXMethodDecl>(x);
 
     appendStack(x);
     DeferGuard deferGuard([this]() { popStack(); });
@@ -1061,7 +1059,6 @@ CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x
     params.insert(params.end(), current_stack->_captured_params.begin(), current_stack->_captured_params.end());
 
     CppSL::FunctionDecl* F = nullptr;
-    auto AsMethod = llvm::dyn_cast<clang::CXXMethodDecl>(x);
     if (AsMethod && !LanguageRule_UseFunctionInsteadOfMethod(AsMethod))
     {
         auto parentType = AsMethod->getParent();
@@ -1121,7 +1118,7 @@ CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x
     }
     else
     {
-        if (AsMethod)
+        if (AsMethod && !AsMethod->isStatic())
         {
             auto _t = getType(AsMethod->getThisType()->getPointeeType());
             if (_t == nullptr)
@@ -1274,13 +1271,20 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
                     ReportFatalError(x, "VarDecl as reference type is not supported: [{}]", Ty.getAsString());
 
                 if (auto AsLambda = Ty->getAsRecordDecl(); AsLambda && AsLambda->isLambda())
+                {
                     TranslateLambda(clang::dyn_cast<clang::LambdaExpr>(varDecl->getInit()));
+                    return AST.Comment(L"c++: this line is a lambda decl");
+                }
 
                 const bool isConst = varDecl->getType().isConstQualified();
                 if (auto CppSLType = getType(Ty.getCanonicalType()))
                 {
                     auto _init = TranslateStmt<CppSL::Expr>(varDecl->getInit());
                     auto _name = CppSL::String(varDecl->getName().begin(), varDecl->getName().end());
+                    if (_name.empty())
+                    {
+                        _name = L"anonymous" + std::to_wstring(next_anonymous_id++);
+                    }
                     auto v = AST.Variable(isConst ? CppSL::EVariableQualifier::Const : CppSL::EVariableQualifier::None, CppSLType, _name, _init);
                     addVar(varDecl, (CppSL::VarDecl*)v->decl());
                     var_decls.emplace_back(v); 
@@ -1293,6 +1297,8 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
                 comments.emplace_back(AST.Comment(L"c++: this line is a typedef"));
             } else if (auto staticAssertDecl = dyn_cast<clang::StaticAssertDecl>(decl)) {// ignore
                 comments.emplace_back(AST.Comment(L"c++: this line is a static_assert"));
+            } else if (auto UsingDirectiveDecl = dyn_cast<clang::UsingDirectiveDecl>(decl)) {
+                comments.emplace_back(AST.Comment(L"c++: this line is a using decl"));
             } else {
                 ReportFatalError(x, "unsupported decl stmt: {}", cxxDecl->getStmtClassName());
             }
@@ -1319,6 +1325,10 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
         if (auto Function = llvm::dyn_cast<clang::FunctionDecl>(_cxxDecl))
         {
             return AST.Ref(getFunc(Function));
+        }
+        else if (auto Binding = llvm::dyn_cast<clang::BindingDecl>(_cxxDecl))
+        {
+            return TranslateStmt(Binding->getBinding());
         }
         else if (auto Var = llvm::dyn_cast<clang::VarDecl>(_cxxDecl))
         {
@@ -1359,7 +1369,6 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
                     return AST.Ref(getVar(Var));
                 }
             }
-
         }
         else if (auto EnumConstant = llvm::dyn_cast<clang::EnumConstantDecl>(_cxxDecl))
         {
@@ -1375,8 +1384,11 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     else if (auto cxxLambda = llvm::dyn_cast<LambdaExpr>(x)) 
     {
         current_stack->_local_lambdas.insert(cxxLambda);
-        TranslateLambda(cxxLambda);
-        return AST.Construct(getType(cxxLambda->getType()), {});
+        if (TranslateLambda(cxxLambda))
+        {
+            return AST.Construct(getType(cxxLambda->getType()), {});
+        }
+        return AST.Comment(L"lambda declare here");
     }
     else if (auto cxxParenExpr = llvm::dyn_cast<clang::ParenExpr>(x))
     {

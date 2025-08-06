@@ -48,6 +48,7 @@ void skr_save_scene(sugoi_storage_t* world, skr::archive::JsonWriter* writer)
             sortedEntities[*it] = entities[it - indices.begin()];
         }
     });
+
     writer->StartObject();
     auto saveEntity = [&](sugoi_chunk_view_t* view) {
         auto cguids = (skr_guid_t*)sugoiV_get_owned_ro(view, SUGOI_COMPONENT_GUID);

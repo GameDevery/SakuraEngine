@@ -15,6 +15,25 @@ inline constexpr bool is_function_v = __is_function(F);
 template<typename T, typename U>
 inline constexpr bool is_same_v = __is_same_as(T, U);
 
+template<typename T, typename U>
+inline constexpr bool is_base_of_v = __is_base_of(T, U);
+
+template<typename T>
+inline constexpr bool is_polymorphic_v = __is_polymorphic(T);
+
+template<typename T>
+inline constexpr bool is_aggregate_v = __is_aggregate(T);
+
+namespace detail {
+template<class T>
+T &&declval_(int);
+template<class T>
+T declval_(long);
+}// namespace detail
+
+template<class T>
+decltype(detail::declval_<T>(0)) declval() noexcept;
+
 template <typename T, typename Arg>
 inline constexpr bool is_assignable_v = __is_assignable(T, Arg);
 

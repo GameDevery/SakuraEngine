@@ -39,15 +39,16 @@ namespace SB.Generators
     [Generator]
     public class TargetSetterGenerator : IIncrementalGenerator
     {
-        public static void RecursiveGetAllTypes(INamespaceSymbol Namespace, ref List<INamedTypeSymbol> Types)
+        public static void RecursiveGetAllTypes(Compilation Compile, INamespaceSymbol Namespace, ref List<INamedTypeSymbol> Types)
         {
             foreach (var Type in Namespace.GetTypeMembers())
             {
-                Types.Add(Type);
+                if (SymbolEqualityComparer.Default.Equals(Type.ContainingAssembly, Compile.Assembly))
+                    Types.Add(Type);
             }
             foreach (var NS in Namespace.GetNamespaceMembers())
             {
-                RecursiveGetAllTypes(NS, ref Types);
+                RecursiveGetAllTypes(Compile, NS, ref Types);
             }
         }
 
@@ -61,7 +62,7 @@ namespace SB.Generators
             {
                 var Methods = new Dictionary<IMethodSymbol, AttributeData>(SymbolEqualityComparer.Default);
                 var Types = new List<INamedTypeSymbol>();
-                RecursiveGetAllTypes(Compile.GlobalNamespace, ref Types);
+                RecursiveGetAllTypes(Compile, Compile.GlobalNamespace, ref Types);
                 
                 var ArgumentDrivers = Types.Where(T => T.Interfaces.Any(I => I.GetFullTypeName().Equals("global::SB.Core.IArgumentDriver")));
                 // sort to avoid IDE bugs
@@ -93,8 +94,8 @@ namespace SB.Generators
 using SB.Core;
 
 namespace SB
-{    
-    public partial class ArgumentDictionary : Dictionary<string, object?>
+{
+    public static partial class ArgumentDictionaryExtensions
     {
 ");
                 foreach (var MethodAndProperty in Methods)
@@ -122,11 +123,11 @@ namespace SB
                         var FlagsP = InheritBehavior ? $"Visibility Visibility, " : "";
                         var ArgumentsContainer = InheritBehavior ? "GetArgumentsContainer(Visibility)" : "FinalArguments";
                         var PropertyP = $"params {Param.Type.GetFullTypeName()} {Param.Name}";
-                        var ParamP = PathBehavior ? $"HandlePath({Param.Name})" : Param.Name;
+                        var ParamP = PathBehavior ? $"@this.HandlePath({Param.Name})" : Param.Name;
                         if (Param.Type.GetUnderlyingTypeIfIsArgumentList(out var ElementType))
                         {
                             sourceBuilder.Append($@"
-        public virtual void {MethodName}({FlagsP}params {ElementType!.GetFullTypeName()}[] {Param.Name}) {{ AppendToArgumentList<{ElementType!.GetFullTypeName()}>(""{MethodName}"", {ParamP}); }}
+        public static void {MethodName}(this ArgumentDictionary @this, {FlagsP}params {ElementType!.GetFullTypeName()}[] {Param.Name}) {{ @this.AppendToArgumentList<{ElementType!.GetFullTypeName()}>(""{MethodName}"", {ParamP}); }}
 ");
                         }
                         else
@@ -134,7 +135,7 @@ namespace SB
                             if (InheritBehavior)
                                 throw new Exception($"{MethodName} fails: Single param setters should not have inherit behavior!");
                             sourceBuilder.Append($@"
-        public virtual void {MethodName}({FlagsP}{Param.Type.GetFullTypeName()} {Param.Name}) {{ this.Override(""{MethodName}"", {ParamP}); }}"
+        public static void {MethodName}(this ArgumentDictionary @this, {FlagsP}{Param.Type.GetFullTypeName()} {Param.Name}) {{ @this.Override(""{MethodName}"", {ParamP}); }}"
 );
                         }
                     }
@@ -143,7 +144,7 @@ namespace SB
                 sourceBuilder.Append(@"
     }
 
-    public abstract partial class TargetSetters
+    public static partial class TargetSettersExtensions
     {
 ");
 
@@ -171,7 +172,7 @@ namespace SB
                         if (Param.Type.GetUnderlyingTypeIfIsArgumentList(out var ElementType))
                         {
                             sourceBuilder.Append($@"
-        public virtual SB.Target {MethodName}({FlagsP}params {ElementType!.GetFullTypeName()}[] {Param.Name}) {{ {ArgumentsContainer}.{MethodName}({FlagsA}{Param.Name}); return (SB.Target)this; }}
+        public static SB.Target {MethodName}(this TargetSetters @this, {FlagsP}params {ElementType!.GetFullTypeName()}[] {Param.Name}) {{ @this.{ArgumentsContainer}.{MethodName}({FlagsA}{Param.Name}); return (SB.Target)@this; }}
 ");
                         }
                         else
@@ -179,7 +180,7 @@ namespace SB
                             if (InheritBehavior)
                                 throw new Exception($"{MethodName} fails: Single param setters should not have inherit behavior!");
                             sourceBuilder.Append($@"
-        public virtual SB.Target {MethodName}({FlagsP}{Param.Type.GetFullTypeName()} {Param.Name}) {{ {ArgumentsContainer}.{MethodName}({FlagsA}{Param.Name}); return (SB.Target)this; }}"
+        public static SB.Target {MethodName}(this TargetSetters @this, {FlagsP}{Param.Type.GetFullTypeName()} {Param.Name}) {{ @this.{ArgumentsContainer}.{MethodName}({FlagsA}{Param.Name}); return (SB.Target)@this; }}"
 );
                         }
                     }

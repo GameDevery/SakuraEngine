@@ -17,6 +17,18 @@ String CppLikeShaderGenerator::GetQualifiedTypeName(const TypeDecl* type)
     return NonQualified;
 }
 
+String CppLikeShaderGenerator::GetQualifiedFunctionName(const FunctionDecl* func)
+{
+    // Check if this function has a namespace mapping
+    auto NonQualified = func->name();
+    auto it = function_namespace_map_.find(func);
+    if (it != function_namespace_map_.end() && !it->second.empty())
+    {
+        return it->second + L"::" + NonQualified;
+    }
+    return NonQualified;
+}
+
 void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt)
 {
     using namespace skr::CppSL;
@@ -72,10 +84,10 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
         auto callee = callExpr->callee();
         if (auto callee_decl = dynamic_cast<const FunctionDecl*>(callee->decl()))
         {
-            auto func_name = callee_decl->name();
+            auto func_name = GetQualifiedFunctionName(callee_decl);
             
             // TODO: Implement REAL TEMPLATE CALL (CallWithTypeArgs)
-            if (func_name == L"byte_buffer_read")
+            if (callee_decl->name() == L"byte_buffer_read")
             {
                 func_name = func_name + L"<" + GetQualifiedTypeName(callee_decl->return_type()) + L">";
             }
@@ -574,6 +586,8 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
             functionName = GetTypeName(AsMethod->owner_type());
         if ((style == FunctionStyle::OutterImplmentation) && AsMethod)
             functionName = GetQualifiedTypeName(AsMethod->owner_type()) + L"::" + functionName;
+        else if (style == FunctionStyle::OutterImplmentation)
+            functionName = GetQualifiedFunctionName(funcDecl);
 
         if (SupportCtor && AsCtor)
             sb.append(functionName + L"(");
@@ -795,8 +809,9 @@ void CppLikeShaderGenerator::generate_namespace_recursive(SourceBuilderNew& sb, 
 
 void CppLikeShaderGenerator::build_type_namespace_map(const AST& ast)
 {
-    // Clear the map first
+    // Clear the maps first
     type_namespace_map_.clear();
+    function_namespace_map_.clear();
 
     // Helper function to build namespace path
     std::function<String(const NamespaceDecl*)> build_namespace_path = [&](const NamespaceDecl* ns) -> String {
@@ -819,6 +834,12 @@ void CppLikeShaderGenerator::build_type_namespace_map(const AST& ast)
             {
                 type_namespace_map_[type] = namespace_path;
             }
+        }
+        
+        // Map all functions in this namespace
+        for (const auto& func : ns->functions())
+        {
+            function_namespace_map_[func] = namespace_path;
         }
 
         // Recursively process nested namespaces

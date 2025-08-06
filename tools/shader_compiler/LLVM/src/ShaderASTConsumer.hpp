@@ -72,6 +72,10 @@ public:
     bool VisitFunctionDecl(const clang::FunctionDecl* x);
     bool VisitFieldDecl(const clang::FieldDecl* x);
     bool VisitVarDecl(const clang::VarDecl* x);
+    bool VisitLambdaExpr(clang::LambdaExpr* lambda) {
+        _lambda_map[lambda->getLambdaClass()] = lambda;
+        return true;
+    }
 
 protected:
     CppSL::TypeDecl* TranslateType(clang::QualType type);
@@ -80,14 +84,15 @@ protected:
     CppSL::NamespaceDecl* TranslateNamespaceDecl(const clang::NamespaceDecl* x);
     void AssignDeclsToNamespaces();
     const clang::NamespaceDecl* GetDeclNamespace(const clang::Decl* decl) const;
-    CppSL::ParamVarDecl* TranslateParam(std::vector<CppSL::ParamVarDecl*>& params, skr::CppSL::EVariableQualifier qualifier, const skr::CppSL::TypeDecl* type, const skr::CppSL::Name& name);
+    CppSL::ParamVarDecl* TranslateParam(std::vector<CppSL::ParamVarDecl*>& params, skr::CppSL::EVariableQualifier qualifier, clang::QualType type, const skr::CppSL::Name& name);
     void TranslateParams(std::vector<CppSL::ParamVarDecl*>& params, const clang::FunctionDecl* x);
     bool TranslateStageEntry(const clang::FunctionDecl* x);
     CppSL::FunctionDecl* TranslateFunction(const clang::FunctionDecl* x, llvm::StringRef override_name = {});
-    const CppSL::TypeDecl* TranslateLambda(const clang::LambdaExpr* x);
-    void TranslateLambdaCapturesToParams(const clang::LambdaExpr* x);
     CppSL::GlobalVarDecl* TranslateGlobalVariable(const clang::VarDecl* x);
     CppSL::Stmt* TranslateCall(const clang::Decl* toCall, const clang::Stmt* callExpr);
+
+    const CppSL::TypeDecl* TranslateLambda(const clang::LambdaExpr* x);
+    void TranslateLambdaCapturesToParams(const clang::LambdaExpr* x);
 
     Stmt* TranslateStmt(const clang::Stmt *x);
     template <typename T>
@@ -102,6 +107,7 @@ protected:
     skr::CppSL::FunctionDecl* getFunc(const clang::FunctionDecl* func) const;
     
     clang::ASTContext* pASTContext = nullptr;
+    std::map<const clang::CXXRecordDecl*, const clang::LambdaExpr*> _lambda_map;
     std::vector<const clang::FunctionDecl*> _stages;
     std::vector<const clang::FunctionDecl*> _noignore_funcs;
     std::map<const clang::TagDecl*, skr::CppSL::TypeDecl*> _tag_types;
@@ -111,12 +117,11 @@ protected:
     std::map<const clang::EnumConstantDecl*, skr::CppSL::GlobalVarDecl*> _enum_constants;
     std::map<const clang::NamespaceDecl*, skr::CppSL::NamespaceDecl*> _namespaces;
 
-    std::map<const clang::LambdaExpr*, const skr::CppSL::TypeDecl*> _lambda_types;
-    std::map<const clang::CXXMethodDecl*, const clang::LambdaExpr*> _lambda_methods;
-    std::map<const skr::CppSL::TypeDecl*, const clang::LambdaExpr*> _lambda_wrappers;
+    const skr::CppSL::TypeDecl* _lambda_proxy = nullptr;
 
     uint64_t next_lambda_id = 0;
     uint64_t next_template_spec_id = 0;
+    uint64_t next_anonymous_id = 0;
     AST& AST;
     
 protected:

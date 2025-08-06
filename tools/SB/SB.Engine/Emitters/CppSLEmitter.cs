@@ -8,7 +8,7 @@ namespace SB
     {
         public override bool EnableEmitter(Target Target) => Target.HasFilesOf<CppSLFileList>();
         public override bool EmitFileTask(Target Target, FileList FileList) => FileList.Is<CppSLFileList>();
-        public override IArtifact? PerFileTask(Target Target, FileList FileList, FileOptions? Options, string SourceFile)
+        public override IArtifact? PerFileTask(Target Target, FileList FileList, FileOptions? FileOptions, string SourceFile)
         {
             var CppSLFileList = FileList as CppSLFileList;
             string SourceName = Path.GetFileNameWithoutExtension(SourceFile);
@@ -19,13 +19,19 @@ namespace SB
             if (BuildSystem.TargetOS == OSPlatform.Windows)
                 Executable += ".exe";
 
+            IArgumentDriver Driver = new CppSLArgumentDriver();
+            var CompilerArgsDict = Driver.AddArguments(Target.Arguments)
+                .MergeArguments(FileOptions?.Arguments, true)
+                .CalculateArguments();
+            var Arguments = CompilerArgsDict.Values.SelectMany(x => x).Select(x => $"--extra-arg={x}").ToList();
             bool Changed = Engine.ShaderCompileDepend.OnChanged(Target.Name, SourceFile, "CPPSL", (Depend depend) =>
             {
-                var Arguments = new string[]
+                var _Args = new string[]
                 {
                     $"--extra-arg=-I{Engine.EngineDirectory}/tools/shader_compiler/LLVM/test_shaders",
                     SourceFile
                 };
+                Arguments.AddRange(_Args);
 
                 ProcessOptions Options = new ProcessOptions
                 {
@@ -53,7 +59,7 @@ namespace SB
                     .Concat(Directory.GetFiles(OutputDirectory, $"{SourceName}.*.*.metal"))
                     .ToArray();
                 depend.ExternalFiles.AddRange(OutputFiles);
-            }, new string[] { Executable, SourceFile }, null);
+            }, new string[] { Executable, SourceFile }, Arguments);
 
             if (BuildSystem.TargetOS == OSPlatform.Windows)
             {
@@ -82,10 +88,16 @@ namespace SB
     {
         public override bool EnableEmitter(Target Target) => Target.HasFilesOf<CppSLFileList>();
         public override bool EmitFileTask(Target Target, FileList FileList) => FileList.Is<CppSLFileList>();
-        public override IArtifact? PerFileTask(Target Target, FileList FileList, FileOptions? Options, string SourceFile)
+        public override IArtifact? PerFileTask(Target Target, FileList FileList, FileOptions? FileOptions, string SourceFile)
         {
             var OutputDirectory = Path.Combine(Engine.BuildPath, CppSLEmitter.ShaderOutputDirectories[Target.Name]);
             Directory.CreateDirectory(OutputDirectory);
+
+            IArgumentDriver Driver = new CppSLArgumentDriver();
+            var CompilerArgsDict = Driver.AddArguments(Target.Arguments)
+                .MergeArguments(FileOptions?.Arguments, true)
+                .CalculateArguments();
+            var CompilerArgsList = CompilerArgsDict.Values.SelectMany(x => x).ToList();
 
             var CMD = new CompileCommand
             {
@@ -101,10 +113,11 @@ namespace SB
                     "-fms-compatibility-version=17.1.1",
                     "-Wno-microsoft-union-member-reference",
                     "-D__CPPSL__",
-                    $"-I{Engine.EngineDirectory}/tools/shader_compiler/LLVM/test_shaders",
-                    SourceFile
+                    $"-I{Engine.EngineDirectory}/tools/shader_compiler/LLVM/test_shaders"
                 }
             };
+            CMD.arguments.AddRange(CompilerArgsList);
+            CMD.arguments.Add(SourceFile);
             CompileCommands.Add(SB.Core.Json.Serialize(CMD));
 
             return new PlainArtifact { IsRestored = false };
@@ -120,6 +133,18 @@ namespace SB
     {
 
     }
+
+    public class CppSLArgumentDriver : IArgumentDriver
+    {
+        [TargetProperty(InheritBehavior = true)] 
+        public string[] CppSL_Defines(ArgumentList<string> defines) => defines.Select(define => $"-D{define}").ToArray();
+
+        [TargetProperty(InheritBehavior = true, PathBehavior = true)] 
+        public virtual string[]? CppSL_IncludeDirs(ArgumentList<string> dirs) => dirs.All(x => BuildSystem.CheckPath(x, true) ? true : throw new TaskFatalError($"Invalid include dir {x}!")) ? dirs.Select(dir => $"-I{dir}").ToArray() : null;
+        
+        public ArgumentDictionary Arguments { get; } = new();
+        public HashSet<string> RawArguments { get; } = new();
+    };
 
     public static partial class TargetExtensions
     {

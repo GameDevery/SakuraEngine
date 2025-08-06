@@ -279,7 +279,6 @@ void HLSLGenerator::VisitConstructExpr(SourceBuilderNew& sb, const ConstructExpr
             sb.append(GetQualifiedTypeName(ctorExpr->type()) + L"(");
         else
             sb.append(GetQualifiedTypeName(ctorExpr->type()) + L"::New(");
-        ;
 
         if (fillVectorArgsWithZero > 0)
         {
@@ -404,7 +403,7 @@ void HLSLGenerator::VisitConstructor(SourceBuilderNew& sb, const ConstructorDecl
     }
 
     // HLSL: Type _this = (Type)0;
-    auto _this = pAST->Variable(EVariableQualifier::None, typeDecl, L"_this", pAST->StaticCast(typeDecl, pAST->Constant(IntValue(0))));
+    auto _this = pAST->Variable(EVariableQualifier::None, typeDecl, L"_this");
     // HLSL: _this.__SSL_CTOR__(args...);
     auto _init = pAST->CallMethod(pAST->Method(_this->ref(), ctor), param_refs);
     // HLSL: return _this;

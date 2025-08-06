@@ -1,6 +1,7 @@
 #include <std/std.hpp>
 #include <std2/attributes.hpp>
 #include <std2/constant_buffer.hpp>
+#include <data_layout>
 
 using namespace skr::shader;
 
@@ -23,10 +24,14 @@ struct SceneDebugConstants
 [[push_constant]]
 extern ConstantBuffer<SceneDebugConstants>& debug_constants;
 
+
 // Simple red fill compute shader
 [[compute_shader("scene_debug"), kernel_2d(16, 16)]]
 void scene_debug_main([[sv_thread_id]] uint3 thread_id) 
 {
+    using namespace skr::data_layout;
+    auto t = DataLayout::CreateReader<GPUSceneInstance>(gpu_scene_buffer);
+
     uint2 screen_size = uint2(debug_constants.screenSize);
     uint2 pixel_coord = thread_id.xy;
     

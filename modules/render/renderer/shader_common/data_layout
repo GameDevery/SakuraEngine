@@ -1,0 +1,6 @@
+#pragma once
+#ifdef __CPPSL__
+#include "detail/data_layout.hppsl"
+#else
+#include "detail/data_layout.hpp"
+#endif

@@ -52,6 +52,7 @@ protected:
 
 protected:
     String GetQualifiedTypeName(const TypeDecl* type);
+    String GetQualifiedFunctionName(const FunctionDecl* func);
     void visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt);
     void visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* typeDecl);
     void visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl, FunctionStyle style);
@@ -64,5 +65,6 @@ private:
     void generate_namespace_recursive(SourceBuilderNew& sb, const NamespaceDecl* ns, int indent_level);
     void build_type_namespace_map(const AST& ast);
     std::unordered_map<const TypeDecl*, String> type_namespace_map_;
+    std::unordered_map<const FunctionDecl*, String> function_namespace_map_;
 };
 } // namespace skr::CppSL
