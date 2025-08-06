@@ -5,6 +5,28 @@
 
 namespace skr::data_layout
 {
-    using namespace skr::shader;
-    using uint32_t = uint;
-}
+using namespace skr::shader;
+using uint32_t = uint;
+
+template <bool Writable = false>
+struct DataAccessor
+{
+public:
+    uint32_t GetCapacity() const { return _capacity; }
+    uint32_t GetSize() const { return _size; }
+
+    DataAccessor(ByteBuffer<CacheFlags::ReadOnly> b)
+        : buffer(b)
+    {
+        _size = buffer.Load(0);
+        _capacity = buffer.Load(4);
+    }
+
+protected:
+    ByteBuffer<CacheFlags::ReadOnly> buffer;
+    uint32_t _size = 0;
+    uint32_t _capacity = 0;
+};
+
+
+} // namespace skr::data_layout

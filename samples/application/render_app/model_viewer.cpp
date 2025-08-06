@@ -229,12 +229,9 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     GPUSceneConfig cfg = {
         .world = &world,
         .render_device = render_device,
-        .core_data_types = {
+        .types = {
             { sugoi_id_of<GPUSceneInstanceColor>::get(), 0 },
             { sugoi_id_of<GPUSceneObjectToWorld>::get(), 1 }
-        },
-        .additional_data_types = {
-            { sugoi_id_of<GPUSceneInstanceEmission>::get(), 2 }
         }
     };
     GPUScene.Initialize(render_device->get_cgpu_device(), cfg);
@@ -285,7 +282,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                 builder.set_name(u8"GPUSceneDebugPass")
                     .set_pipeline(compute_pipeline)
                     .readwrite(u8"output_texture", render_target_handle)
-                    .read(u8"gpu_scene_buffer", GPUScene.GetCoreDataBuffer());
+                    .read(u8"gpu_scene_buffer", GPUScene.GetSceneBuffer());
             },
             [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
                 // Push constants
@@ -306,13 +303,13 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                 
                 // Get GPUScene color component info
                 auto color_type_id = GPUScene.GetComponentTypeID(sugoi_id_of<GPUSceneInstanceColor>::get());
-                constants.color_segment_offset = GPUScene.GetCoreComponentSegmentOffset(color_type_id);
+                constants.color_segment_offset = GPUScene.GetComponentSegmentOffset(color_type_id);
                 constants.color_element_size = sizeof(GPUSceneInstanceColor);
                 constants.instance_count = GPUScene.GetInstanceCount();
                 
                 // Get GPUScene transform component info
                 auto transform_type_id = GPUScene.GetComponentTypeID(sugoi_id_of<GPUSceneObjectToWorld>::get());
-                constants.transform_segment_offset = GPUScene.GetCoreComponentSegmentOffset(transform_type_id);
+                constants.transform_segment_offset = GPUScene.GetComponentSegmentOffset(transform_type_id);
                 constants.transform_element_size = sizeof(GPUSceneObjectToWorld);
                 
                 cgpu_compute_encoder_push_constants(ctx.encoder, root_signature, u8"debug_constants", &constants);

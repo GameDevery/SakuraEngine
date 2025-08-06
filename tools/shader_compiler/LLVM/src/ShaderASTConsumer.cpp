@@ -1873,9 +1873,12 @@ void ASTConsumer::AssignDeclsToNamespaces()
     // Assign functions to namespaces (but exclude methods)
     for (const auto& [clangFunc, cppslFunc] : _funcs)
     {
+        const auto AsMethod = llvm::dyn_cast<clang::CXXMethodDecl>(clangFunc);
+        const auto FunctionInsteadOfMethod = AsMethod && LanguageRule_UseFunctionInsteadOfMethod(AsMethod);
+
         // Only assign non-member functions to namespaces
         // Methods belong to their types, not namespaces
-        if (!llvm::isa<clang::CXXMethodDecl>(clangFunc))
+        if (!AsMethod || FunctionInsteadOfMethod)
         {
             if (auto nsDecl = GetDeclNamespace(clangFunc))
             {

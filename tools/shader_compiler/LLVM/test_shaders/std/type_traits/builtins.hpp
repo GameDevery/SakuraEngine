@@ -94,6 +94,12 @@ using remove_cv_t = __remove_cv(T);
 template<typename T>
 using remove_cvref_t = __remove_cvref(T);
 
+template <typename T, T... Is>
+struct integer_sequence {};
+
+template <typename T, T N>
+using make_integer_sequence = __make_integer_seq<integer_sequence, T, N>;
+
 template<typename T, T v>
 trait integral_constant {
     static constexpr const T value = v;

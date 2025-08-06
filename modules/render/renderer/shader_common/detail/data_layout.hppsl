@@ -13,12 +13,11 @@ public:
 protected:
     friend struct DataLayout;
     Reader(ByteBuffer<CacheFlags::ReadOnly> b)
-        : buffer(b)
+        : data_reader(b)
     {
-        instance_count = buffer.Load(0);
+    
     }
-    ByteBuffer<CacheFlags::ReadOnly> buffer;
-    uint32_t instance_count;
+    DataAccessor<false> data_reader;
     uint32_t field_count;
 };
 
@@ -38,7 +37,6 @@ struct DataLayout
         uint field_count = 0;
         auto t = T();
         skr::data_layout::foreach_field(t, [&](auto field, const auto i) {
-            static_assert(is_float_family_v<decltype(field)>, "!!!");
             field_count += 1;
         });
         return field_count;

@@ -71,29 +71,20 @@ struct ScanGPUScene : public GPUSceneInstanceTask
         {
             // 预先计算此批次需要的上传操作数量，分类统计
             uint32_t core_data_op_count = 0;
-            uint32_t additional_data_op_count = 0;
             for (auto i = 0; i < Context.size(); i++)
             {
                 for (auto [cpu_type, gpu_type] : pScene->type_registry)
                 {
                     const auto data = Context.read(cpu_type).at(i);
-                    if (!data) continue;
+                    if (!data)
+                        continue;
                     const auto& component_info = pScene->component_types[gpu_type];
-                    
-                    if (component_info.storage_class == GPUSceneComponentType::StorageClass::CORE_DATA)
-                    {
-                        core_data_op_count++;
-                    }
-                    else if (component_info.storage_class == GPUSceneComponentType::StorageClass::ADDITIONAL_DATA)
-                    {
-                        additional_data_op_count++;
-                    }
+                    core_data_op_count++;
                 }
             }
             
             // 为Core Data和Additional Data分别分配索引范围
             auto core_batch_start = pCoreCounter->fetch_add(core_data_op_count);
-            auto additional_batch_start = pAdditionalCounter->fetch_add(additional_data_op_count);
             uint32_t core_local_index = 0;
             uint32_t additional_local_index = 0;
             
@@ -107,41 +98,33 @@ struct ScanGPUScene : public GPUSceneInstanceTask
                     if (!data) continue;
 
                     const auto& component_info = pScene->component_types[gpu_type];
-                    
-                    if (component_info.storage_class == GPUSceneComponentType::StorageClass::CORE_DATA)
+                    // Core Data处理
+                    const uint64_t dst_offset = pScene->core_data.get_component_offset(gpu_type, instance_data.instance_index);
+                    const uint64_t src_offset = pScene->upload_ctx.upload_cursor.fetch_add(component_info.element_size);
+                    if (src_offset + component_info.element_size <= pScene->upload_ctx.upload_buffer->info->size)
                     {
-                        // Core Data处理
-                        const uint64_t dst_offset = pScene->core_data.get_component_offset(gpu_type, instance_data.instance_index);
-                        const uint64_t src_offset = pScene->upload_ctx.upload_cursor.fetch_add(component_info.element_size);
-                        if (src_offset + component_info.element_size <= pScene->upload_ctx.upload_buffer->info->size)
+                        memcpy(DRAMCache->data() + src_offset, data, component_info.element_size);
+                        
+                        // 使用预分配的连续索引范围，添加到Core Data上传列表
+                        auto upload_index = core_batch_start + core_local_index;
+                        if (upload_index < pScene->upload_ctx.core_data_uploads.size())
                         {
-                            memcpy(DRAMCache->data() + src_offset, data, component_info.element_size);
-                            
-                            // 使用预分配的连续索引范围，添加到Core Data上传列表
-                            auto upload_index = core_batch_start + core_local_index;
-                            if (upload_index < pScene->upload_ctx.core_data_uploads.size())
-                            {
-                                GPUScene::Upload upload;
-                                upload.src_offset = src_offset;
-                                upload.dst_offset = dst_offset;
-                                upload.data_size = component_info.element_size;
-                                pScene->upload_ctx.core_data_uploads[upload_index] = upload;
-                                core_local_index++;
-                            }
-                            else
-                            {
-                                SKR_LOG_ERROR(u8"GPUScene: Core Data upload operations array overflow - index %u >= size %u", 
-                                             upload_index, (uint32_t)pScene->upload_ctx.core_data_uploads.size());
-                            }
+                            GPUScene::Upload upload;
+                            upload.src_offset = src_offset;
+                            upload.dst_offset = dst_offset;
+                            upload.data_size = component_info.element_size;
+                            pScene->upload_ctx.core_data_uploads[upload_index] = upload;
+                            core_local_index++;
                         }
                         else
                         {
-                            SKR_LOG_ERROR(u8"GPUScene: Upload buffer overflow");
+                            SKR_LOG_ERROR(u8"GPUScene: Core Data upload operations array overflow - index %u >= size %u", 
+                                            upload_index, (uint32_t)pScene->upload_ctx.core_data_uploads.size());
                         }
                     }
-                    else if (component_info.storage_class == GPUSceneComponentType::StorageClass::ADDITIONAL_DATA)
+                    else
                     {
-
+                        SKR_LOG_ERROR(u8"GPUScene: Upload buffer overflow");
                     }
                 }
             }
@@ -195,9 +178,9 @@ void GPUScene::PrepareUploadBuffer()
     }
 }
 
-void GPUScene::AdjustCoreBuffer(skr::render_graph::RenderGraph* graph) 
+void GPUScene::AdjustBuffer(skr::render_graph::RenderGraph* graph) 
 {
-    SkrZoneScopedN("GPUScene::AdjustCoreBuffer");
+    SkrZoneScopedN("GPUScene::AdjustBuffer");
 
     uint32_t existed_instances = GetInstanceCount();
     auto required_instances = instance_count = existed_instances + add_ents.size() - remove_ents.size();
@@ -211,7 +194,7 @@ void GPUScene::AdjustCoreBuffer(skr::render_graph::RenderGraph* graph)
         
         // Resize and get old buffer
         auto old_buffer = core_data.resize(new_capacity);
-        core_data_buffer = core_data.import_buffer(graph, u8"scene_buffer");
+        scene_buffer = core_data.import_buffer(graph, u8"scene_buffer");
         if (old_buffer && core_data.get_buffer())
         {
             // Import old buffer for copy source
@@ -222,39 +205,36 @@ void GPUScene::AdjustCoreBuffer(skr::render_graph::RenderGraph* graph)
                 }
             );
             // Copy data from old to new buffer
-            core_data.copy_segments(graph, old_buffer_handle, core_data_buffer, existed_instances);
+            core_data.copy_segments(graph, old_buffer_handle, scene_buffer, existed_instances);
         }
     }
     else
     {
         // Import scene buffer with proper state management
-        core_data_buffer = core_data.import_buffer(graph, u8"scene_buffer");
+        scene_buffer = core_data.import_buffer(graph, u8"scene_buffer");
     }
 }
 
 
-void GPUScene::CreateCoreDataBuffer(CGPUDeviceId device, const GPUSceneConfig& config)
+void GPUScene::CreateDataBuffer(CGPUDeviceId device, const GPUSceneConfig& config)
 {
     SKR_LOG_DEBUG(u8"Creating core data buffer...");
 
     // Use Builder to create SOA allocator
     auto builder = SOASegmentBuffer::Builder(device)
-        .with_size(config.core_data_initial_size, config.core_data_max_size)
+        .with_size(config.initial_size, config.max_size)
         .allow_resize(config.enable_auto_resize);
     
     // Register core components
     for (const auto& component_type : component_types)
     {
-        if (component_type.storage_class == GPUSceneComponentType::StorageClass::CORE_DATA)
-        {
-            builder.add_component(
-                component_type.gpu_type_id,
-                component_type.element_size,
-                component_type.element_align
-            );
-            SKR_LOG_DEBUG(u8"  Added core component to SOASegmentBuffer: gpu_type_id=%u, size=%u, align=%u",
-                component_type.gpu_type_id, component_type.element_size, component_type.element_align);
-        }
+        builder.add_component(
+            component_type.gpu_type_id,
+            component_type.element_size,
+            component_type.element_align
+        );
+        SKR_LOG_DEBUG(u8"  Added core component to SOASegmentBuffer: gpu_type_id=%u, size=%u, align=%u",
+            component_type.gpu_type_id, component_type.element_size, component_type.element_align);
     }
     
     // Build the allocator
@@ -286,7 +266,7 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
     SkrZoneScopedN("GPUScene::ExecuteUpload");
 
     // Ensure buffers are sized correctly
-    AdjustCoreBuffer(graph);
+    AdjustBuffer(graph);
 
     // Prepare upload buffer based on dirty size
     PrepareUploadBuffer();
@@ -393,7 +373,7 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph, skr::
                     .set_pipeline(sparse_upload_pipeline)
                     .read(u8"upload_buffer", upload_buffer_handle)
                     .read(u8"upload_operations", core_operations_buffer_handle)
-                    .readwrite(u8"target_buffer", core_data_buffer);
+                    .readwrite(u8"target_buffer", scene_buffer);
             },
             [=, this, core_uploads = std::move(core_uploads)](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
                 // Upload core data operations
@@ -416,56 +396,6 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph, skr::
             }
         );
     }
-
-    // Pass 2: Additional Data Upload
-    /*
-    if (!additional_uploads.is_empty())
-    {
-        size_t additional_ops_size = additional_uploads.size() * sizeof(Upload);
-        const uint32_t max_threads_per_op = 4;
-        const uint32_t additional_dispatch_groups = (additional_uploads.size() * max_threads_per_op + 255) / 256;
-        
-        auto additional_operations_buffer_handle = graph->create_buffer(
-            [=](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
-                builder.set_name(u8"additional_upload_operations")
-                    .size(additional_ops_size)
-                    .memory_usage(CGPU_MEM_USAGE_CPU_TO_GPU)
-                    .as_upload_buffer()
-                    .allow_raw_read()
-                    .prefer_on_device();
-            }
-        );
-        
-        graph->add_compute_pass(
-            [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassBuilder& builder) {
-                builder.set_name(u8"AdditionalDataSparseUploadPass")
-                    .set_pipeline(sparse_upload_pipeline)
-                    .read(u8"upload_buffer", upload_buffer_handle)
-                    .read(u8"upload_operations", additional_operations_buffer_handle)
-                    .readwrite(u8"target_buffer", additional_data_buffer);
-            },
-            [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
-                // Upload additional data operations
-                if (auto mapped_ptr = static_cast<Upload*>(ctx.resolve(additional_operations_buffer_handle)->info->cpu_mapped_address))
-                {
-                    memcpy(mapped_ptr, additional_uploads.data(), additional_ops_size);
-                }
-                
-                struct SparseUploadConstants {
-                    uint32_t num_operations;
-                    uint32_t max_threads_per_op;
-                    uint32_t alignment = 16;
-                    uint32_t padding0 = 0;
-                } constants;
-                constants.num_operations = static_cast<uint32_t>(additional_uploads.size());
-                constants.max_threads_per_op = max_threads_per_op;
-                
-                cgpu_compute_encoder_push_constants(ctx.encoder, sparse_upload_root_signature, u8"constants", &constants);
-                cgpu_compute_encoder_dispatch(ctx.encoder, additional_dispatch_groups, 1, 1);
-            }
-        );
-    }
-    */
 }
 
 } // namespace skr::renderer

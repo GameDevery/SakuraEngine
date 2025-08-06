@@ -33,15 +33,12 @@ void GPUScene::Initialize(CGPUDeviceId device, const GPUSceneConfig& cfg)
     // 1. Initialize component type registry
     InitializeComponentTypes(config);
     // 2. Create core data buffer and calculate segments
-    CreateCoreDataBuffer(device, config);
+    CreateDataBuffer(device, config);
 
     SKR_LOG_INFO(u8"GPUScene initialized successfully");
     SKR_LOG_INFO(u8"  - Core data: %lldMB initial, %lldMB max",
-        config.core_data_initial_size / (1024 * 1024),
-        config.core_data_max_size / (1024 * 1024));
-    SKR_LOG_INFO(u8"  - Additional data: %lldMB initial, %lldMB max",
-        config.additional_data_initial_size / (1024 * 1024),
-        config.additional_data_max_size / (1024 * 1024));
+        config.initial_size / (1024 * 1024),
+        config.max_size / (1024 * 1024));
 }
 
 void GPUScene::AddEntity(skr::ecs::Entity entity)
@@ -84,7 +81,7 @@ void GPUScene::InitializeComponentTypes(const GPUSceneConfig& config)
     component_types.clear();
 
     // Register core data component types
-    for (const auto& [cpu_type, gpu_type_id] : config.core_data_types)
+    for (const auto& [cpu_type, gpu_type_id] : config.types)
     {
         GPUSceneComponentType component_type;
         component_type.cpu_type_guid = cpu_type;
@@ -92,36 +89,12 @@ void GPUScene::InitializeComponentTypes(const GPUSceneConfig& config)
         component_type.element_size = ecs_world->GetComponentSize(cpu_type);
         component_type.element_align = ecs_world->GetComponentAlign(cpu_type);
         component_type.name = ecs_world->GetComponentName(cpu_type);
-        component_type.storage_class = GPUSceneComponentType::StorageClass::CORE_DATA;
 
         // Add to registry
         type_registry.add(cpu_type, component_type.gpu_type_id);
         component_types.push_back(component_type);
 
         SKR_LOG_INFO(u8"  Registered core component: %s (size: %d, align: %d, cpu_type_id:%d, gpu_type_id: %d)",
-            component_type.name,
-            component_type.element_size,
-            component_type.element_align,
-            component_type.cpu_type_guid,
-            component_type.gpu_type_id);
-    }
-
-    // Register additional data component types
-    for (const auto& [cpu_type, gpu_type_id] : config.additional_data_types)
-    {
-        GPUSceneComponentType component_type;
-        component_type.cpu_type_guid = cpu_type;
-        component_type.gpu_type_id = gpu_type_id;
-        component_type.element_size = ecs_world->GetComponentSize(cpu_type);
-        component_type.element_align = ecs_world->GetComponentAlign(cpu_type);
-        component_type.name = ecs_world->GetComponentName(cpu_type);
-        component_type.storage_class = GPUSceneComponentType::StorageClass::ADDITIONAL_DATA;
-
-        // Add to registry
-        type_registry.add(cpu_type, component_type.gpu_type_id);
-        component_types.push_back(component_type);
-
-        SKR_LOG_INFO(u8"  Registered additional component: %s (size: %d, align: %d, cpu_type_id: %d, gpu_type_id: %d)",
             component_type.name,
             component_type.element_size,
             component_type.element_align,
@@ -195,7 +168,7 @@ uint64_t GPUScene::CalculateDirtySize() const
     return total_size;
 }
 
-uint32_t GPUScene::GetCoreComponentSegmentOffset(GPUComponentTypeID type_id) const
+uint32_t GPUScene::GetComponentSegmentOffset(GPUComponentTypeID type_id) const
 {
     // Get the segment offset from SOASegmentBuffer
     const auto* segment = core_data.get_segment(type_id);
@@ -207,7 +180,7 @@ uint32_t GPUScene::GetCoreComponentSegmentOffset(GPUComponentTypeID type_id) con
     return 0;
 }
 
-uint32_t GPUScene::GetCoreInstanceStride() const
+uint32_t GPUScene::GetInstanceStride() const
 {
     // Total size of all core components per instance
     uint32_t stride = 0;
@@ -218,13 +191,12 @@ uint32_t GPUScene::GetCoreInstanceStride() const
     return stride;
 }
 
-uint32_t GPUScene::GetCoreComponentTypeCount() const
+uint32_t GPUScene::GetComponentTypeCount() const
 {
     uint32_t count = 0;
     for (const auto& component_type : component_types)
     {
-        if (component_type.storage_class == GPUSceneComponentType::StorageClass::CORE_DATA)
-            count++;
+        count++;
     }
     return count;
 }
@@ -253,14 +225,6 @@ const GPUSceneComponentType* GPUScene::GetComponentType(GPUComponentTypeID type_
             return &component_type;
     }
     return nullptr;
-}
-
-GPUScene::MemoryUsageInfo GPUScene::GetMemoryUsageInfo() const
-{
-    MemoryUsageInfo info;
-    info.core_data_used_bytes = core_data.get_capacity_bytes();
-    info.core_data_capacity_bytes = core_data.get_capacity_bytes();
-    return info;
 }
 
 inline static void read_bytes(const char8_t* file_name, uint32_t** bytes, uint32_t* length)
