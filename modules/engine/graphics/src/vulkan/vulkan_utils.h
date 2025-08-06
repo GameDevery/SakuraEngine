@@ -175,10 +175,11 @@ SKR_UNUSED static const char* cgpu_wanted_instance_exts[] = {
     VK_NN_VI_SURFACE_EXTENSION_NAME,
 #endif
 #ifdef USE_EXTERNAL_MEMORY_EXTENSIONS
-    VK_NV_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
-    VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
-    VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME,
-    VK_KHR_EXTERNAL_FENCE_CAPABILITIES_EXTENSION_NAME,
+    // NOTE: These extensions are promoted to Vulkan 1.1, we don't need them if targeting 1.1+
+    // VK_NV_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME, // Deprecated by KHR version
+    // VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME, // Promoted to 1.1
+    // VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME, // Promoted to 1.1
+    // VK_KHR_EXTERNAL_FENCE_CAPABILITIES_EXTENSION_NAME, // Promoted to 1.1
 #endif
     // To legally use HDR formats
     VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
@@ -191,13 +192,13 @@ SKR_UNUSED static const char* cgpu_wanted_instance_exts[] = {
 // Multi GPU Extensions
 /************************************************************************/
 #if VK_KHR_device_group_creation
-    VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME,
+    // VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME, // Promoted to 1.1
 #endif
 #ifndef NX64
     /************************************************************************/
     // Property querying extensions
     /************************************************************************/
-    VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME
+    VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME // Required for vkGetPhysicalDeviceProperties2KHR
 #endif
 };
 
@@ -228,10 +229,10 @@ SKR_UNUSED static const char* cgpu_wanted_device_exts[] = {
 #endif
 
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-    VK_KHR_MAINTENANCE1_EXTENSION_NAME,
-    VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
+    // VK_KHR_MAINTENANCE1_EXTENSION_NAME, // Promoted to 1.1
+    // VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME, // Promoted to 1.1
     VK_EXT_SHADER_SUBGROUP_BALLOT_EXTENSION_NAME,
-    VK_EXT_SHADER_SUBGROUP_VOTE_EXTENSION_NAME,
+    // VK_EXT_SHADER_SUBGROUP_VOTE_EXTENSION_NAME, // Deprecated by 1.1
     VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
     VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
 
@@ -318,8 +319,11 @@ SKR_UNUSED static const char* cgpu_wanted_device_exts[] = {
 /************************************************************************/
 // Raytracing
 /************************************************************************/
+	VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
 	VK_KHR_RAY_QUERY_EXTENSION_NAME,
 	VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+	// Required by VK_KHR_acceleration_structure
+	VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
 	// Required by VK_KHR_ray_tracing_pipeline
 	VK_KHR_SPIRV_1_4_EXTENSION_NAME,
 	// Required by VK_KHR_spirv_1_4

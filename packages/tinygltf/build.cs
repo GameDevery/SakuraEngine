@@ -16,6 +16,7 @@ public static class TinyGltf
                     .Exception(false)
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, "./")
+                    .Clang_CppFlags(Visibility.Public, "-Wno-deprecated-literal-operator")
                     .AddCppFiles("tinygltf/**.cc");
             });
     }

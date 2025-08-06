@@ -32,6 +32,21 @@ SKR_FORCEINLINE static VkBufferCreateInfo VkUtil_CreateBufferCreateInfo(CGPUAdap
     // Buffer can be used as dest in a transfer command (Uploading data to a storage buffer, Readback query data)
     if (desc->memory_usage == CGPU_MEM_USAGE_GPU_ONLY || desc->memory_usage == CGPU_MEM_USAGE_GPU_TO_CPU)
         add_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    
+    // Add shader device address usage for buffers that might be used in raytracing
+    // This includes vertex buffers, index buffers, and storage buffers when raytracing is supported
+    if (A->adapter_detail.support_ray_tracing)
+    {
+        if ((desc->descriptors & CGPU_RESOURCE_TYPE_VERTEX_BUFFER) ||
+            (desc->descriptors & CGPU_RESOURCE_TYPE_INDEX_BUFFER) ||
+            (desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER) ||
+            (desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER))
+        {
+            add_info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+            add_info.usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+        }
+    }
+    
     return add_info;
 }
 

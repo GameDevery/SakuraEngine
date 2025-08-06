@@ -193,7 +193,11 @@ const char* const* device_extensions, uint32_t device_extension_count)
                 *ppNext = &VkAdapter->mPhysicalDeviceShaderObjectProperties;
                 ppNext = &VkAdapter->mPhysicalDeviceShaderObjectProperties.pNext;
 #endif
-
+#if VK_KHR_ray_tracing_pipeline
+                VkAdapter->mPhysicalDeviceRayPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+                *ppNext = &VkAdapter->mPhysicalDeviceRayPipelineProperties;
+                ppNext = &VkAdapter->mPhysicalDeviceRayPipelineProperties.pNext;
+#endif
 #if VK_EXT_descriptor_buffer
                 VkAdapter->mPhysicalDeviceDescriptorBufferProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
                 *ppNext = &VkAdapter->mPhysicalDeviceDescriptorBufferProperties;
@@ -212,7 +216,7 @@ const char* const* device_extensions, uint32_t device_extension_count)
             {
                 void** ppNext = &VkAdapter->mPhysicalDeviceFeatures.pNext;
 #if VK_KHR_buffer_device_address
-                VkAdapter->mPhysicalDeviceBufferDeviceAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT;
+                VkAdapter->mPhysicalDeviceBufferDeviceAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
                 *ppNext = &VkAdapter->mPhysicalDeviceBufferDeviceAddressFeatures;
                 ppNext = &VkAdapter->mPhysicalDeviceBufferDeviceAddressFeatures.pNext;
 #endif
@@ -257,6 +261,11 @@ const char* const* device_extensions, uint32_t device_extension_count)
                 VkAdapter->mPhysicalDeviceAccelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
                 *ppNext = &VkAdapter->mPhysicalDeviceAccelerationStructureFeatures;
                 ppNext = &VkAdapter->mPhysicalDeviceAccelerationStructureFeatures.pNext;
+#endif
+#if VK_KHR_ray_tracing_pipeline
+                VkAdapter->mPhysicalDeviceRayPipelineFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+                *ppNext = &VkAdapter->mPhysicalDeviceRayPipelineFeatures;
+                ppNext = &VkAdapter->mPhysicalDeviceRayPipelineFeatures.pNext;
 #endif
 #if VK_KHR_ray_query
                 VkAdapter->mPhysicalDeviceRayQueryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
@@ -413,7 +422,10 @@ void VkUtil_InitializeShaderReflection(CGPUDeviceId device, CGPUShaderLibrary_Vu
                     current_res->set = current_binding->set;
                     current_res->binding = current_binding->binding;
                     current_res->stages = S->pReflect->shader_stage;
-                    current_res->type = RTLut[current_binding->descriptor_type];
+                    if (current_binding->descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR)
+                        current_res->type = CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE;
+                    else    
+                        current_res->type = RTLut[current_binding->descriptor_type];
                     current_res->name = current_binding->name;
                     current_res->name_hash =
                     skr_hash_of(current_binding->name, strlen(current_binding->name), SKR_DEFAULT_HASH_SEED);
@@ -505,6 +517,11 @@ void VkUtil_CreateVMAAllocator(CGPUInstance_Vulkan* I, CGPUAdapter_Vulkan* A, CG
         vmaInfo.flags |= VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT;
     }
 #endif
+    // Enable buffer device address if raytracing is supported
+    if (A->adapter_detail.support_ray_tracing && A->buffer_device_address)
+    {
+        vmaInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+    }
     if (vmaCreateAllocator(&vmaInfo, &D->pVmaAllocator) != VK_SUCCESS)
     {
         cgpu_assert(0 && "Failed to create VMA Allocator");
@@ -538,11 +555,28 @@ struct VkUtil_DescriptorPool* VkUtil_CreateDescriptorPool(CGPUDevice_Vulkan* D)
     flags |= VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     Pool->Device = D;
     Pool->mFlags = flags;
+    
+    // Create pool sizes array with acceleration structure support
+    VkDescriptorPoolSize poolSizes[CGPU_VK_DESCRIPTOR_TYPE_RANGE_SIZE + 1];
+    memcpy(poolSizes, gDescriptorPoolSizes, sizeof(gDescriptorPoolSizes));
+    uint32_t poolSizeCount = CGPU_VK_DESCRIPTOR_TYPE_RANGE_SIZE;
+    
+    // Add acceleration structure pool size if raytracing is supported
+    const CGPUAdapterDetail* adapter_detail = cgpu_query_adapter_detail(D->super.adapter);
+    if (adapter_detail->support_ray_tracing)
+    {
+        poolSizes[poolSizeCount] = (VkDescriptorPoolSize){
+            .type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+            .descriptorCount = 1024
+        };
+        poolSizeCount++;
+    }
+    
     VkDescriptorPoolCreateInfo poolCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .pNext = NULL,
-        .poolSizeCount = CGPU_VK_DESCRIPTOR_TYPE_RANGE_SIZE,
-        .pPoolSizes = gDescriptorPoolSizes,
+        .poolSizeCount = poolSizeCount,
+        .pPoolSizes = poolSizes,
         .flags = Pool->mFlags,
         .maxSets = 8192
     };

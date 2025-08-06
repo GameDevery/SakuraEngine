@@ -221,7 +221,7 @@ typedef struct CGPUAdapter_Vulkan {
     VkPhysicalDeviceShaderObjectPropertiesEXT mPhysicalDeviceShaderObjectProperties;
 #endif
 #if VK_KHR_buffer_device_address
-    VkPhysicalDeviceBufferDeviceAddressFeaturesKHR mPhysicalDeviceBufferDeviceAddressFeatures;
+    VkPhysicalDeviceBufferDeviceAddressFeatures mPhysicalDeviceBufferDeviceAddressFeatures;
 #endif
 #if VK_EXT_descriptor_buffer
     VkPhysicalDeviceDescriptorBufferFeaturesEXT mPhysicalDeviceDescriptorBufferFeatures;
@@ -229,6 +229,10 @@ typedef struct CGPUAdapter_Vulkan {
 #endif
 #if VK_KHR_acceleration_structure
     VkPhysicalDeviceAccelerationStructureFeaturesKHR mPhysicalDeviceAccelerationStructureFeatures;
+#endif
+#if VK_KHR_ray_tracing_pipeline
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR mPhysicalDeviceRayPipelineProperties;
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR mPhysicalDeviceRayPipelineFeatures;
 #endif
 #if VK_KHR_ray_query
     VkPhysicalDeviceRayQueryFeaturesKHR mPhysicalDeviceRayQueryFeatures;
@@ -442,6 +446,7 @@ typedef union VkDescriptorUpdateData
     VkDescriptorImageInfo mImageInfo;
     VkDescriptorBufferInfo mBufferInfo;
     VkBufferView mBuferView;
+    VkAccelerationStructureKHR mAccelerationStructure;
 } VkDescriptorUpdateData;
 
 typedef struct CGPUDescriptorSet_Vulkan {

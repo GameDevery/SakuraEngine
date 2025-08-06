@@ -368,6 +368,18 @@ SKR_FORCEINLINE static VkPipelineStageFlags VkUtil_DeterminePipelineStageFlags(C
 {
     VkPipelineStageFlags flags = 0;
 
+    if (A->adapter_detail.support_ray_tracing)
+    {
+        if (accessFlags & (VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR))
+        {
+            flags |= VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+        }
+        if (accessFlags & (VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR))
+        {
+            flags |= VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+        }
+    }
+
 	switch (queue_type)
 	{
 		case CGPU_QUEUE_TYPE_GRAPHICS:

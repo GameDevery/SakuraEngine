@@ -1,4 +1,5 @@
 #include "SkrGraphics/backend/vulkan/cgpu_vulkan.h"
+#include "SkrGraphics/backend/vulkan/cgpu_vulkan_raytracing.h"
 #include "SkrGraphics/config.h"
 #include "vulkan_utils.h"
 #include "SkrGraphics/shader-reflections/spirv/spirv_reflect.h"
@@ -727,6 +728,20 @@ void cgpu_update_descriptor_set_vulkan(CGPUDescriptorSetId set, const struct CGP
                         Data->mBufferInfo.offset = pParam->buffers_params.offsets[arr];
                         Data->mBufferInfo.range = pParam->buffers_params.sizes[arr];
                     }
+                    dirty = true;
+                }
+                break;
+            }
+            case CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE: {
+                cgpu_assert(pParam->acceleration_structures && "cgpu_assert: Binding NULL Acceleration Structure(s)!");
+                CGPUAccelerationStructure_Vulkan** AccelerationStructures = (CGPUAccelerationStructure_Vulkan**)pParam->acceleration_structures;
+                for (uint32_t arr = 0; arr < arrayCount; ++arr)
+                {
+                    cgpu_assert(pParam->acceleration_structures[arr] && "cgpu_assert: Binding NULL Acceleration Structure!");
+                    uint32_t index = ResData->binding + arr;
+                    cgpu_assert(index < max_binding && "cgpu_assert: Binding index out of bounds!");
+                    VkDescriptorUpdateData* Data = &pUpdateData[index];
+                    Data->mAccelerationStructure = AccelerationStructures[arr]->mVkAccelerationStructure;
                     dirty = true;
                 }
                 break;

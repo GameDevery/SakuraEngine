@@ -44,7 +44,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
         AS->mDescCount = desc->bottom.count;
         AS->asBottom.pGeometryDescs = (VkAccelerationStructureGeometryKHR*)(AS + 1);
         AS->asBottom.pBuildRangeInfos = (VkAccelerationStructureBuildRangeInfoKHR*)(AS->asBottom.pGeometryDescs + AS->mDescCount);
-        
+
         for (uint32_t j = 0; j < AS->mDescCount; ++j)
         {
             const CGPUAccelerationStructureGeometryDesc* pGeom = &desc->bottom.geometries[j];
@@ -65,11 +65,11 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
             cgpu_assert(pGeom->vertex_buffer);
             cgpu_assert(pGeom->vertex_count);
             const CGPUBuffer_Vulkan* pVertexBuffer = (CGPUBuffer_Vulkan*)pGeom->vertex_buffer;
-            triangles->vertexData.deviceAddress = D->mVkDeviceTable.vkGetBufferDeviceAddress(D->pVkDevice, 
-                &(VkBufferDeviceAddressInfo){
-                    .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-                    .buffer = pVertexBuffer->pVkBuffer
-                }) + pGeom->vertex_offset;
+            triangles->vertexData.deviceAddress = D->mVkDeviceTable.vkGetBufferDeviceAddressKHR(D->pVkDevice,
+                                                      &(VkBufferDeviceAddressInfo){
+                                                          .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+                                                          .buffer = pVertexBuffer->pVkBuffer }) +
+                pGeom->vertex_offset;
             triangles->vertexStride = pGeom->vertex_stride;
             triangles->vertexFormat = VkUtil_FormatTranslateToVk(pGeom->vertex_format);
             triangles->maxVertex = pGeom->vertex_count - 1;
@@ -78,13 +78,13 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
             {
                 cgpu_assert(pGeom->index_buffer);
                 const CGPUBuffer_Vulkan* pIndexBuffer = (CGPUBuffer_Vulkan*)pGeom->index_buffer;
-                triangles->indexData.deviceAddress = D->mVkDeviceTable.vkGetBufferDeviceAddress(D->pVkDevice,
-                    &(VkBufferDeviceAddressInfo){
-                        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-                        .buffer = pIndexBuffer->pVkBuffer
-                    }) + pGeom->index_offset;
+                triangles->indexData.deviceAddress = D->mVkDeviceTable.vkGetBufferDeviceAddressKHR(D->pVkDevice,
+                                                         &(VkBufferDeviceAddressInfo){
+                                                             .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+                                                             .buffer = pIndexBuffer->pVkBuffer }) +
+                    pGeom->index_offset;
                 triangles->indexType = (pGeom->index_stride == sizeof(uint16_t)) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
-                
+
                 pRangeInfo->primitiveCount = pGeom->index_count / 3;
             }
             else
@@ -110,7 +110,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
             .geometryCount = AS->mDescCount,
             .pGeometries = AS->asBottom.pGeometryDescs,
             .ppGeometries = NULL,
-            .scratchData = {0}
+            .scratchData = { 0 }
         };
 
         VkAccelerationStructureBuildSizesInfoKHR sizeInfo = {
@@ -124,19 +124,26 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
             pMaxPrimitiveCounts[i] = AS->asBottom.pBuildRangeInfos[i].primitiveCount;
         }
 
+        if (D->mVkDeviceTable.vkGetAccelerationStructureBuildSizesKHR != CGPU_NULLPTR)
         {
             SkrCZoneN(zzz, "vkGetAccelerationStructureBuildSizesKHR", 1);
             D->mVkDeviceTable.vkGetAccelerationStructureBuildSizesKHR(D->pVkDevice,
                 VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
-                &buildInfo, pMaxPrimitiveCounts, &sizeInfo);
+                &buildInfo,
+                pMaxPrimitiveCounts,
+                &sizeInfo);
             SkrCZoneEnd(zzz);
+        }
+        else
+        {
+            cgpu_error("PROC MISSING: vkGetAccelerationStructureBuildSizesKHR is NULL!");
         }
 
         // Allocate Acceleration Structure Buffer
         {
             SkrCZoneN(zzz, "CreateASBuffer", 1);
             CGPUBufferDescriptor bufferDesc = {
-                .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER,
+                .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER | CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE,
                 .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
                 .flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION | CGPU_BCF_DEDICATED_BIT,
                 .element_stride = sizeof(uint32_t),
@@ -158,6 +165,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
 
         // Create instance buffer
         CGPUBufferDescriptor instanceDesc = {
+            .descriptors = CGPU_RESOURCE_TYPE_BUFFER,
             .memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU,
             .flags = CGPU_BCF_PERSISTENT_MAP_BIT,
             .size = desc->top.count * sizeof(VkAccelerationStructureInstanceKHR),
@@ -165,7 +173,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
         AS->asTop.pInstanceDescBuffer = cgpu_create_buffer(device, &instanceDesc);
 
         // Fill instance data
-        VkAccelerationStructureInstanceKHR* instanceDescs = 
+        VkAccelerationStructureInstanceKHR* instanceDescs =
             (VkAccelerationStructureInstanceKHR*)AS->asTop.pInstanceDescBuffer->info->cpu_mapped_address;
 
         for (uint32_t i = 0; i < desc->top.count; ++i)
@@ -175,10 +183,10 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
             cgpu_assert(pBLAS && "Instance Bottom AS must not be NULL!");
 
             VkAccelerationStructureInstanceKHR* pInstanceVk = &instanceDescs[i];
-            
+
             // Copy transform matrix (3x4)
             memcpy(&pInstanceVk->transform, pInst->transform, sizeof(float[12]));
-            
+
             pInstanceVk->instanceCustomIndex = pInst->instance_id & 0xFFFFFF; // 24 bits
             pInstanceVk->mask = pInst->instance_mask;
             pInstanceVk->instanceShaderBindingTableRecordOffset = 0; // TODO: support hit group index
@@ -199,11 +207,10 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
             .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
             .pNext = NULL,
             .arrayOfPointers = VK_FALSE,
-            .data.deviceAddress = D->mVkDeviceTable.vkGetBufferDeviceAddress(D->pVkDevice,
+            .data.deviceAddress = D->mVkDeviceTable.vkGetBufferDeviceAddressKHR(D->pVkDevice,
                 &(VkBufferDeviceAddressInfo){
                     .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-                    .buffer = pInstanceBuffer->pVkBuffer
-                })
+                    .buffer = pInstanceBuffer->pVkBuffer })
         };
 
         VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {
@@ -217,7 +224,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
             .geometryCount = 1,
             .pGeometries = &topASGeometry,
             .ppGeometries = NULL,
-            .scratchData = {0}
+            .scratchData = { 0 }
         };
 
         VkAccelerationStructureBuildSizesInfoKHR sizeInfo = {
@@ -225,13 +232,22 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
             .pNext = NULL
         };
 
-        D->mVkDeviceTable.vkGetAccelerationStructureBuildSizesKHR(D->pVkDevice,
-            VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
-            &buildInfo, &AS->mDescCount, &sizeInfo);
+        if (D->mVkDeviceTable.vkGetAccelerationStructureBuildSizesKHR != CGPU_NULLPTR)
+        {
+            D->mVkDeviceTable.vkGetAccelerationStructureBuildSizesKHR(D->pVkDevice,
+                VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+                &buildInfo,
+                &AS->mDescCount,
+                &sizeInfo);
+        }
+        else
+        {
+            cgpu_error("PROC MISSING: vkGetAccelerationStructureBuildSizesKHR is NULL!");
+        }
 
         // Allocate Acceleration Structure Buffer
         CGPUBufferDescriptor bufferDesc = {
-            .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER_RAW | CGPU_RESOURCE_TYPE_BUFFER_RAW,
+            .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER | CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE,
             .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
             .flags = CGPU_BCF_DEDICATED_BIT,
             .element_stride = sizeof(uint32_t),
@@ -259,8 +275,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
             .deviceAddress = 0
         };
 
-        CHECK_VKRESULT(D->mVkDeviceTable.vkCreateAccelerationStructureKHR(D->pVkDevice, &createInfo, 
-            GLOBAL_VkAllocationCallbacks, &AS->mVkAccelerationStructure));
+        CHECK_VKRESULT(D->mVkDeviceTable.vkCreateAccelerationStructureKHR(D->pVkDevice, &createInfo, GLOBAL_VkAllocationCallbacks, &AS->mVkAccelerationStructure));
 
         // Get device address
         VkAccelerationStructureDeviceAddressInfoKHR addressInfo = {
@@ -340,11 +355,10 @@ void cgpu_cmd_build_acceleration_structures_vulkan(CGPUCommandBufferId cmd, cons
             .geometryCount = 0,
             .pGeometries = NULL,
             .ppGeometries = NULL,
-            .scratchData.deviceAddress = D->mVkDeviceTable.vkGetBufferDeviceAddress(D->pVkDevice,
+            .scratchData.deviceAddress = D->mVkDeviceTable.vkGetBufferDeviceAddressKHR(D->pVkDevice,
                 &(VkBufferDeviceAddressInfo){
                     .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-                    .buffer = pScratchBuffer->pVkBuffer
-                })
+                    .buffer = pScratchBuffer->pVkBuffer })
         };
 
         if (AS->mType == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR)
@@ -368,11 +382,10 @@ void cgpu_cmd_build_acceleration_structures_vulkan(CGPUCommandBufferId cmd, cons
                 .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
                 .pNext = NULL,
                 .arrayOfPointers = VK_FALSE,
-                .data.deviceAddress = D->mVkDeviceTable.vkGetBufferDeviceAddress(D->pVkDevice,
+                .data.deviceAddress = D->mVkDeviceTable.vkGetBufferDeviceAddressKHR(D->pVkDevice,
                     &(VkBufferDeviceAddressInfo){
                         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-                        .buffer = pInstanceBuffer->pVkBuffer
-                    })
+                        .buffer = pInstanceBuffer->pVkBuffer })
             };
 
             buildInfos[i].geometryCount = 1;
@@ -388,8 +401,15 @@ void cgpu_cmd_build_acceleration_structures_vulkan(CGPUCommandBufferId cmd, cons
             rangeInfos[i] = rangeInfo;
         }
     }
+    if (D->mVkDeviceTable.vkCmdBuildAccelerationStructuresKHR != CGPU_NULLPTR)
+    {
+        D->mVkDeviceTable.vkCmdBuildAccelerationStructuresKHR(CMD->pVkCmdBuf, desc->as_count, buildInfos, (const VkAccelerationStructureBuildRangeInfoKHR* const*)rangeInfos);
+    }
+    else
+    {
+        cgpu_error("PROC MISSING: vkCmdBuildAccelerationStructuresKHR is NULL!");
+    }
 
-    D->mVkDeviceTable.vkCmdBuildAccelerationStructuresKHR(CMD->pVkCmdBuf, desc->as_count, buildInfos, (const VkAccelerationStructureBuildRangeInfoKHR* const*)rangeInfos);
 
     // Add barriers for BLAS
     if (desc->type == CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL)

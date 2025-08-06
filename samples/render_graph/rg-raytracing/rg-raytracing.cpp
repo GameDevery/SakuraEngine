@@ -514,8 +514,8 @@ void RGRaytracingSampleModule::create_as()
 #elif SKR_PLAT_MACOSX
         .backend = CGPU_BACKEND_METAL,
 #endif
-        .enable_debug_layer = true,
-        .enable_gpu_based_validation = true,
+        .enable_debug_layer = false,
+        .enable_gpu_based_validation = false,
         .enable_set_name = true
     };
     instance = cgpu_create_instance(&instance_desc);
