@@ -237,7 +237,7 @@ V8BindTemplate* V8Isolate::solve_bind_tp(
     auto jumped_modifiers = signature.jump_modifier();
     if (!jumped_modifiers.is_empty())
     {
-        SKR_LOG_FMT_WARN(u8"modifiers of signature will be ignored, to disable this warning, please jump modifier before call this function");
+        SKR_LOG_WARN(u8"modifiers of signature will be ignored, to disable this warning, please jump modifier before call this function");
     }
 
     if (signature.is_type())

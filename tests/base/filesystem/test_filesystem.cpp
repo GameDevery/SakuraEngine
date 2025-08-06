@@ -212,10 +212,10 @@ TEST_CASE("path utilities")
 TEST_CASE("apple specific directories")
 {
     auto app_support = Directory::application_support();
-    CHECK(!app_support.empty());
+    CHECK(!app_support.is_empty());
     
     auto caches = Directory::caches();
-    CHECK(!caches.empty());
+    CHECK(!caches.is_empty());
     
     // bundle path 可能在非 app 环境下为空，所以不强制检查
     auto bundle = Directory::bundle_path();

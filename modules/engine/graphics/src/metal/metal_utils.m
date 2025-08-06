@@ -181,7 +181,7 @@ ECGPUResourceType MetalUtil_GetShaderResourceType(id<MTLBufferBinding> SRT, uint
     resource->set = set;
     resource->binding = member.argumentIndex;
     resource->name = MetalUtil_DuplicateString(member.name.UTF8String);
-    resource->name_hash = cgpu_name_hash(resource->name, member.name.length);
+    resource->name_hash = skr_hash_of(resource->name, member.name.length, SKR_DEFAULT_HASH_SEED);
     resource->offset = member.offset;
 
     if (!is_array)

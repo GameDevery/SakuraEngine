@@ -31,8 +31,10 @@ void SkrRendererModule::on_load(int argc, char8_t** argv)
     builder.enable_debug_layer = true;
     builder.enable_gpu_based_validation = true;
     builder.enable_set_name = true;
-#ifdef _WIN32
+#if SKR_PLAT_WINDOWS
     builder.backend = CGPU_BACKEND_D3D12;
+#elif SKR_PLAT_MACOSX
+    builder.backend = CGPU_BACKEND_METAL;
 #else
     builder.backend = CGPU_BACKEND_VULKAN;
 #endif

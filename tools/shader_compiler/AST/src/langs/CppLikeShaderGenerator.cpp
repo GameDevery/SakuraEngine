@@ -20,7 +20,7 @@ String CppLikeShaderGenerator::GetQualifiedTypeName(const TypeDecl* type)
 String CppLikeShaderGenerator::GetQualifiedFunctionName(const FunctionDecl* func)
 {
     // Check if this function has a namespace mapping
-    auto NonQualified = func->name();
+    auto NonQualified = GetFunctionName(func);  // Use virtual GetFunctionName instead of func->name()
     auto it = function_namespace_map_.find(func);
     if (it != function_namespace_map_.end() && !it->second.empty())
     {
@@ -611,8 +611,61 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
         }
         else
         {
+            // Generate member initializer list for constructors that support it
+            if (SupportCtor && AsCtor && !AsCtor->member_inits().empty())
+            {
+                sb.endline();
+                sb.append(L"    : ");
+                bool first = true;
+                for (const auto& init : AsCtor->member_inits())
+                {
+                    if (!first)
+                    {
+                        sb.append(L", ");
+                    }
+                    first = false;
+                    sb.append(init.field->name());
+                    sb.append(L"(");
+                    visitExpr(sb, init.init_expr);
+                    sb.append(L")");
+                }
+            }
+            
             sb.endline();
-            visitExpr(sb, funcDecl->body());
+            
+            // For languages that don't support constructors, emit initializers as assignments in body
+            if (!SupportCtor && AsCtor && !AsCtor->member_inits().empty())
+            {
+                sb.append(L"{");
+                sb.endline();
+                sb.indent([&] {
+                    // First emit the member initializers as assignments
+                    for (const auto& init : AsCtor->member_inits())
+                    {
+                        sb.append(L"(/*this.*/");
+                        sb.append(init.field->name());
+                        sb.append(L" = ");
+                        visitExpr(sb, init.init_expr);
+                        sb.append(L");");
+                        sb.endline();
+                    }
+                    
+                    // Then emit the original body if it exists
+                    if (auto compound = dynamic_cast<const CompoundStmt*>(funcDecl->body()))
+                    {
+                        for (auto stmt : compound->children())
+                        {
+                            visitExpr(sb, stmt);
+                            sb.endline();
+                        }
+                    }
+                });
+                sb.append(L"}");
+            }
+            else
+            {
+                visitExpr(sb, funcDecl->body());
+            }
             sb.endline();
 
             if (StageEntry)
@@ -685,12 +738,10 @@ String CppLikeShaderGenerator::generate_code(SourceBuilderNew& sb, const AST& as
 {
     using namespace skr::CppSL;
 
-    // Build the type-to-namespace mapping
-    build_type_namespace_map(ast);
-    // generate namespace forward declarations
-    generate_namespace_declarations(sb, ast);
-
     RecordBuiltinHeader(sb, ast);
+
+    build_type_namespace_map(ast);
+    generate_namespace_declarations(sb, ast);
 
     for (const auto& decl : ast.types())
         visit_decl(sb, decl);

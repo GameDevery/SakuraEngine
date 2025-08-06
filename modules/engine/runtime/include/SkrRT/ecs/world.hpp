@@ -301,7 +301,7 @@ public:
             };
         Access->storage = storage;
         Access->_is_run_with = true;
-        Access->_run_with = entities;
+        Access->_run_with = { entities.data(), entities.size() };
         Access->task->func = std::move(TASK);
         TaskScheduler::Get()->add_task(Access);
     }

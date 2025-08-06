@@ -25,7 +25,7 @@ TEST_CASE("simple")
     auto* context = isolate.main_context();
     SKR_DEFER({ isolate.destroy_context(context); });
 
-    SKR_LOG_FMT_INFO(u8"Test Begin");
+    SKR_LOG_INFO(u8"Test Begin");
 
     context->build_export([](skr::V8VirtualModule& module) {
         module.register_type<test_v8::SimpleTest>(u8"");

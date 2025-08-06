@@ -52,7 +52,6 @@ void ImporterRegistryImpl::StoreImporter(skr::archive::JsonWriter* writer, skr::
     auto iter = importer_types.find(importer->GetType());
     if (iter != importer_types.end())
     {
-        writer->Key(u8"importer");
         iter->second.Store(writer, importer);
     }
 }

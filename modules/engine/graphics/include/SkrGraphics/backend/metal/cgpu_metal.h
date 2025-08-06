@@ -115,6 +115,10 @@ CGPU_API void cgpu_map_buffer_metal(CGPUBufferId buffer, const struct CGPUBuffer
 CGPU_API void cgpu_unmap_buffer_metal(CGPUBufferId buffer);
 CGPU_API void cgpu_free_buffer_metal(CGPUBufferId buffer);
 
+// Sampler APIs
+CGPU_API CGPUSamplerId cgpu_create_sampler_metal(CGPUDeviceId device, const struct CGPUSamplerDescriptor* desc);
+CGPU_API void cgpu_free_sampler_metal(CGPUSamplerId sampler);
+
 // Texture APIs
 CGPU_API CGPUTextureId cgpu_create_texture_metal(CGPUDeviceId device, const struct CGPUTextureDescriptor* desc);
 CGPU_API void cgpu_free_texture_metal(CGPUTextureId texture);

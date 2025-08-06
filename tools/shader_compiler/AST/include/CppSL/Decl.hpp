@@ -362,10 +362,21 @@ struct ConstructorDecl : public MethodDecl
 {
 public:
     inline static const Name kSymbolName = L"__SSL_CTOR__";
+    
+    // Member initializer for constructor initialization list
+    struct MemberInit {
+        const FieldDecl* field;
+        const Expr* init_expr;
+    };
+    
+    std::span<const MemberInit> member_inits() const { return _member_inits; }
+    void add_member_init(const FieldDecl* field, const Expr* init_expr);
 
 protected:
     friend struct AST;
     ConstructorDecl(AST& ast, TypeDecl* owner, const Name& name, std::span<const ParamVarDecl* const> params, const CompoundStmt* body);
+    
+    std::vector<MemberInit> _member_inits;
 };
 
 // Template callable that can represent both function and method templates

@@ -123,6 +123,11 @@ typedef struct CGPUQueryPool_Metal {
     ECGPUQueryType queryType;
 } CGPUQueryPool_Metal;
 
+typedef struct CGPUSampler_Metal {
+    CGPUSampler super;
+    id<MTLSamplerState> mtlSamplerState;
+} CGPUSampler_Metal;
+
 typedef struct CGPUSwapChain_Metal {
     CGPUSwapChain super;
 	NSView* pView;

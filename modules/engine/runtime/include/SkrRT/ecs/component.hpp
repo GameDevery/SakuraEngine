@@ -33,7 +33,7 @@ public:
     explicit operator bool() const;
     bool operator<(Entity Other) const;
     skr::String to_string() const;
-    static size_t _skr_hash(const Entity& Handle);
+    static skr_hash _skr_hash(const Entity& Handle);
 
 private:
     sugoi_entity_t EntityId = sugoi::kEntityNull;
@@ -264,7 +264,7 @@ inline bool Entity::operator<(Entity Other) const
     return EntityId < Other.EntityId;
 }
 
-inline size_t Entity::_skr_hash(const Entity& Handle)
+inline skr_hash Entity::_skr_hash(const Entity& Handle)
 {
     return Handle.EntityId;
 }

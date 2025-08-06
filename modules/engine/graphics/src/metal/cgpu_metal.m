@@ -62,6 +62,10 @@ const CGPUProcTable tbl_metal = {
     .unmap_buffer = &cgpu_unmap_buffer_metal,
     .free_buffer = &cgpu_free_buffer_metal,
 
+    // Sampler APIs
+    .create_sampler = &cgpu_create_sampler_metal,
+    .free_sampler = &cgpu_free_sampler_metal,
+
     // Texture APIs
     .create_texture = &cgpu_create_texture_metal,
     .free_texture = &cgpu_free_texture_metal,
@@ -454,7 +458,7 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
             CGPUShaderResource* resource = CGPU_NULLPTR;
             if (data->name != CGPU_NULLPTR)
             {
-                size_t name_hash = cgpu_name_hash(data->name, strlen((const char*)data->name));
+                skr_hash name_hash = skr_hash_of(data->name, strlen((const char*)data->name), SKR_DEFAULT_HASH_SEED);
                 for (uint32_t j = 0; j < set_table->resources_count; j++)
                 {
                     CGPUShaderResource* temp_resource = set_table->resources + j;
@@ -813,6 +817,78 @@ void cgpu_free_buffer_metal(CGPUBufferId buffer)
     cgpu_free(B);
 }
 
+// Sampler APIs
+static inline MTLSamplerAddressMode MetalUtil_TranslateAddressMode(ECGPUAddressMode mode) 
+{
+    switch (mode) {
+        case CGPU_ADDRESS_MODE_MIRROR:
+            return MTLSamplerAddressModeMirrorRepeat;
+        case CGPU_ADDRESS_MODE_REPEAT:
+            return MTLSamplerAddressModeRepeat;
+        case CGPU_ADDRESS_MODE_CLAMP_TO_EDGE:
+            return MTLSamplerAddressModeClampToEdge;
+        case CGPU_ADDRESS_MODE_CLAMP_TO_BORDER:
+            return MTLSamplerAddressModeClampToBorderColor;
+        default:
+            return MTLSamplerAddressModeClampToEdge;
+    }
+}
+
+CGPUSamplerId cgpu_create_sampler_metal(CGPUDeviceId device, const struct CGPUSamplerDescriptor* desc)
+{
+    CGPUDevice_Metal* D = (CGPUDevice_Metal*)device;
+    CGPUSampler_Metal* pSampler = cgpu_calloc(1, sizeof(CGPUSampler_Metal));
+    pSampler->super.device = device;
+    
+    MTLSamplerDescriptor* samplerDesc = [[MTLSamplerDescriptor alloc] init];
+    
+    // Set filter modes
+    samplerDesc.minFilter = (desc->min_filter == CGPU_FILTER_TYPE_LINEAR) ? 
+        MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
+    samplerDesc.magFilter = (desc->mag_filter == CGPU_FILTER_TYPE_LINEAR) ? 
+        MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
+    samplerDesc.mipFilter = (desc->mipmap_mode == CGPU_MIPMAP_MODE_LINEAR) ? 
+        MTLSamplerMipFilterLinear : MTLSamplerMipFilterNearest;
+    
+    // Set address modes
+    samplerDesc.sAddressMode = MetalUtil_TranslateAddressMode(desc->address_u);
+    samplerDesc.tAddressMode = MetalUtil_TranslateAddressMode(desc->address_v);
+    samplerDesc.rAddressMode = MetalUtil_TranslateAddressMode(desc->address_w);
+    
+    // Set LOD parameters
+    samplerDesc.lodMinClamp = 0.0f;
+    samplerDesc.lodMaxClamp = (desc->mipmap_mode == CGPU_MIPMAP_MODE_LINEAR) ? FLT_MAX : 0.0f;
+    
+    // Set anisotropy
+    if (desc->max_anisotropy > 0.0f) {
+        samplerDesc.maxAnisotropy = (NSUInteger)cgpu_max(desc->max_anisotropy, 1.0f);
+    } else {
+        samplerDesc.maxAnisotropy = 1;
+    }
+    
+    // Set compare function if needed
+    if (desc->compare_func != CGPU_CMP_NEVER) {
+        samplerDesc.compareFunction = (MTLCompareFunction)desc->compare_func;
+    } else {
+        samplerDesc.compareFunction = MTLCompareFunctionNever;
+    }
+    
+    // Set border color (Metal only supports a limited set of border colors)
+    samplerDesc.borderColor = MTLSamplerBorderColorTransparentBlack;
+    
+    // Create the sampler state
+    pSampler->mtlSamplerState = [D->pDevice newSamplerStateWithDescriptor:samplerDesc];
+    
+    return &pSampler->super;
+}
+
+void cgpu_free_sampler_metal(CGPUSamplerId sampler)
+{
+    CGPUSampler_Metal* pSampler = (CGPUSampler_Metal*)sampler;
+    pSampler->mtlSamplerState = nil;
+    cgpu_free(pSampler);
+}
+
 // CMDs
 void cgpu_cmd_begin_metal(CGPUCommandBufferId cmd) 
 {
@@ -1106,7 +1182,7 @@ void cgpu_compute_encoder_push_constants_metal(CGPUComputePassEncoderId encoder,
     CGPURootSignature_Metal* RS = (CGPURootSignature_Metal*)rs;
     
     // Find the push constant by name
-    size_t name_hash = name ? cgpu_name_hash(name, strlen((const char*)name)) : 0;
+    skr_hash name_hash = name ? skr_hash_of(name, strlen((const char*)name), SKR_DEFAULT_HASH_SEED) : 0;
     for (uint32_t i = 0; i < RS->super.push_constant_count; i++)
     {
         CGPUShaderResource* push_const = &RS->super.push_constants[0];
@@ -1155,7 +1231,7 @@ void cgpu_render_encoder_push_constants_metal(CGPURenderPassEncoderId encoder, C
     CGPURootSignature_Metal* RS = (CGPURootSignature_Metal*)rs;
     
     // Find the push constant by name
-    size_t name_hash = name ? cgpu_name_hash(name, strlen((const char*)name)) : 0;
+    skr_hash name_hash = name ? skr_hash_of(name, strlen((const char*)name), SKR_DEFAULT_HASH_SEED) : 0;
     for (uint32_t i = 0; i < RS->super.push_constant_count; i++)
     {
         CGPUShaderResource* push_const = &RS->super.push_constants[i];

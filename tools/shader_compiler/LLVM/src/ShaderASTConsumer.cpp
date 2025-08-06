@@ -337,6 +337,7 @@ void ASTConsumer::HandleTranslationUnit(clang::ASTContext& Context)
     addType(Context.UnsignedIntTy, AST.UIntType);
     addType(Context.IntTy, AST.IntType);
     addType(Context.DoubleTy, AST.DoubleType);
+    addType(Context.UnsignedLongTy, AST.U64Type);
     addType(Context.UnsignedLongLongTy, AST.U64Type);
     addType(Context.LongLongTy, AST.I64Type);
 
@@ -1072,35 +1073,31 @@ CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x
             if (_parentType->is_builtin())
                 return nullptr;
 
-            auto body = AST.Block({});
+            // Create constructor
+            auto ctor = AST.DeclareConstructor(
+                _parentType,
+                ConstructorDecl::kSymbolName,
+                params,
+                TranslateStmt<CppSL::CompoundStmt>(x->getBody())
+            );
+            
+            // Process member initializers
             for (auto ctor_init : AsCtor->inits())
             {
                 if (auto F = ctor_init->getMember())
                 {
-                    auto I = ctor_init->getMember()->getFieldIndex();
                     auto N = ToText(F->getDeclName().getAsString());
-                    body->add_statement(
-                        AST.Assign(
-                            AST.Field(AST.This(_parentType), _parentType->get_field(N)),
-                            (CppSL::Expr*)TranslateStmt(ctor_init->getInit())
-                        )
-                    );
+                    auto field = _parentType->get_field(N);
+                    auto init_expr = (CppSL::Expr*)TranslateStmt(ctor_init->getInit());
+                    ((CppSL::ConstructorDecl*)ctor)->add_member_init(field, init_expr);
                 }
                 else
                 {
                     ReportFatalError(x, "Derived class is currently unsupported!");
                 }
             }
-            
-            if (auto func = TranslateStmt<CppSL::CompoundStmt>(x->getBody()))
-                body->add_statement(func);
 
-            F = AST.DeclareConstructor(
-                _parentType,
-                ConstructorDecl::kSymbolName,
-                params,
-                body
-            );
+            F = ctor;
             _parentType->add_ctor((CppSL::ConstructorDecl*)F);
         }
         else

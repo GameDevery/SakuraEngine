@@ -361,7 +361,7 @@ void ModelViewerModule::CookAndLoadGLTF()
             skr::type_id_of<skd::asset::MeshCooker>()      // this cooker cooks t he raw mesh data to mesh resource
         );
         // source file
-        importer->assetPath = u8"D:/Code/SakuraEngine/samples/application/game/assets/sketchfab/loli/scene.gltf";
+        importer->assetPath = u8"/Users/d5/Documents/SakuraEngine/samples/application/game/assets/sketchfab/loli/scene.gltf";
         CookSystem.ImportAssetMeta(&project, asset, importer, metadata);
         
         // save
@@ -630,7 +630,7 @@ void ModelViewerModule::CreateComputePipeline()
     const char8_t* push_constant_name = u8"debug_constants";
     CGPUShaderEntryDescriptor compute_shader_entry = {
         .library = compute_shader,
-        .entry = u8"scene_debug_main",
+        .entry = u8"scene_debug",
         .stage = CGPU_SHADER_STAGE_COMPUTE
     };
     CGPURootSignatureDescriptor root_desc = {

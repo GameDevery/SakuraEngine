@@ -27,7 +27,7 @@ extern ConstantBuffer<SceneDebugConstants>& debug_constants;
 
 // Simple red fill compute shader
 [[compute_shader("scene_debug"), kernel_2d(16, 16)]]
-void scene_debug_main([[sv_thread_id]] uint3 thread_id) 
+void scene_debug([[sv_thread_id]] uint3 thread_id) 
 {
     using namespace skr::data_layout;
     auto t = DataLayout::CreateReader<GPUSceneInstance>(gpu_scene_buffer);

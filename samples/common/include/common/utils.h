@@ -64,6 +64,9 @@ inline static void read_shader_bytes(const char8_t* virtual_path, uint32_t** byt
     case CGPU_BACKEND_VULKAN:
         strcat((char*)shader_file, (const char*)SKR_UTF8(".spv"));
         break;
+    case CGPU_BACKEND_METAL:
+        strcat((char*)shader_file, (const char*)SKR_UTF8(".metallib"));
+        break;
     case CGPU_BACKEND_D3D12:
     case CGPU_BACKEND_XBOX_D3D12:
         strcat((char*)shader_file, (const char*)SKR_UTF8(".dxil"));

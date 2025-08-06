@@ -49,7 +49,7 @@ namespace detail {
     }
 
     template<typename T, typename Any>
-    constexpr size_t _CountMember();
+    constexpr uint32_t _CountMember();
 } // namespace detail
 
 template<typename T, typename CheckTrait = detail::_EmptyCheck>
@@ -75,7 +75,7 @@ consteval auto count_member()
 namespace skr::data_layout::detail
 {
 template<typename T, typename Any>
-constexpr size_t _CountMember() {
+constexpr uint32_t _CountMember() {
 static_assert(TRAITS::is_aggregate_v<T>, "Only aggregate types are supported");
 if constexpr(!requires{T{Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{}};}){
 if constexpr(!requires{T{Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{},Any{}};}){

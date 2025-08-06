@@ -275,12 +275,51 @@ template <typename T> using RWStructuredBuffer = Buffer<T, metal::access::read_w
 template <typename T> void buffer_write(RWStructuredBuffer<T> buffer, uint index, T value) { buffer.cgpu_buffer_data[index] = value; }
 template <typename T> T buffer_read(RWStructuredBuffer<T> buffer, uint index) { return buffer.cgpu_buffer_data[index]; }
 
+// ByteAddressBuffer support
+struct ByteAddressBuffer { ByteAddressBuffer() = default; constant uint* cgpu_buffer_data = nullptr; uint64_t cgpu_buffer_size; };
+struct RWByteAddressBuffer { RWByteAddressBuffer() = default; device uint* cgpu_buffer_data = nullptr; uint64_t cgpu_buffer_size; };
+
+// ByteAddressBuffer read operations
+template <typename T> 
+T byte_buffer_read(ByteAddressBuffer b, uint byte_offset) { 
+    return *reinterpret_cast<constant T*>(reinterpret_cast<constant char*>(b.cgpu_buffer_data) + byte_offset);
+}
+
+template <typename T> 
+T byte_buffer_read(RWByteAddressBuffer b, uint byte_offset) { 
+    return *reinterpret_cast<device T*>(reinterpret_cast<device char*>(b.cgpu_buffer_data) + byte_offset);
+}
+
+// ByteAddressBuffer write operations
+template <typename T> 
+void byte_buffer_write(RWByteAddressBuffer b, uint byte_offset, T value) { 
+    *reinterpret_cast<device T*>(reinterpret_cast<device char*>(b.cgpu_buffer_data) + byte_offset) = value;
+}
+
+// Convenience macros for HLSL compatibility
+#define byte_buffer_load(b, i)  byte_buffer_read<uint>((b), i)
+#define byte_buffer_load2(b, i) byte_buffer_read<uint2>((b), i)
+#define byte_buffer_load3(b, i) byte_buffer_read<uint3>((b), i)
+#define byte_buffer_load4(b, i) byte_buffer_read<uint4>((b), i)
+
+#define byte_buffer_store(b, i, v)  byte_buffer_write(b, i, v)
+#define byte_buffer_store2(b, i, v) byte_buffer_write(b, i, v)
+#define byte_buffer_store3(b, i, v) byte_buffer_write(b, i, v)
+#define byte_buffer_store4(b, i, v) byte_buffer_write(b, i, v)
+
 template <typename T, metal::access a = metal::access::sample> struct Texture2D { metal::texture2d<T, a> cgpu_texture; };
 template <typename T> using RWTexture2D = Texture2D<T, metal::access::read_write>;
 struct SamplerState { metal::sampler cgpu_sampler; };
 
 // Math intrinsics
 using metal::abs; using metal::min; using metal::max; using metal::clamp; using metal::all; using metal::any; using metal::select;
+
+// Helper overloads for min/max with mixed int/uint arguments to avoid ambiguity
+inline uint min(int a, uint b) { return metal::min(uint(a), b); }
+inline uint min(uint a, int b) { return metal::min(a, uint(b)); }
+inline uint max(int a, uint b) { return metal::max(uint(a), b); }
+inline uint max(uint a, int b) { return metal::max(a, uint(b)); }
+
 using metal::sin; using metal::sinh; using metal::cos; using metal::cosh; using metal::atan; using metal::atanh; using metal::tan; using metal::tanh;
 using metal::acos; using metal::acosh; using metal::asin; using metal::asinh; using metal::exp; using metal::exp2; using metal::log; using metal::log2;
 using metal::log10; using metal::exp10; using metal::sqrt; using metal::rsqrt; using metal::ceil; using metal::floor; using metal::fract; using metal::trunc;

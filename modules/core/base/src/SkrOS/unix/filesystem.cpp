@@ -6,6 +6,9 @@
 #include <fcntl.h>
 #include <cstring>
 #include <cstdlib>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
 
 namespace skr::fs
 {
@@ -275,6 +278,49 @@ size_t File::write(const void* buffer, size_t size)
     return static_cast<size_t>(result);
 }
 
+bool File::seek(int64_t offset, SeekOrigin origin)
+{
+    if (!handle_)
+    {
+        last_error_ = Error::InvalidPath;
+        return false;
+    }
+    
+    int fd = static_cast<int>(reinterpret_cast<intptr_t>(handle_));
+    int whence = SEEK_SET;
+    switch (origin)
+    {
+        case SeekOrigin::Begin: whence = SEEK_SET; break;
+        case SeekOrigin::Current: whence = SEEK_CUR; break;
+        case SeekOrigin::End: whence = SEEK_END; break;
+    }
+    
+    if (lseek(fd, offset, whence) == -1)
+    {
+        last_error_ = posix_error_to_filesystem_error(errno);
+        return false;
+    }
+    
+    last_error_ = Error::None;
+    return true;
+}
+
+int64_t File::tell() const
+{
+    if (!handle_)
+        return -1;
+    
+    int fd = static_cast<int>(reinterpret_cast<intptr_t>(handle_));
+    off_t pos = lseek(fd, 0, SEEK_CUR);
+    if (pos == -1)
+    {
+        const_cast<File*>(this)->last_error_ = posix_error_to_filesystem_error(errno);
+        return -1;
+    }
+    
+    return static_cast<int64_t>(pos);
+}
+
 int64_t File::get_size() const
 {
     if (!handle_)
@@ -319,7 +365,7 @@ bool Directory::create(const Path& path, bool recursive)
     if (recursive)
     {
         auto parent = path.parent_directory();
-        if (!parent.empty() && !exists(parent))
+        if (!parent.is_empty() && !exists(parent))
         {
             if (!create(parent, true))
                 return false;
@@ -393,6 +439,38 @@ Path Directory::home()
     if (!home)
         return Path();
     return Path(skr::String(reinterpret_cast<const char8_t*>(home)));
+}
+
+Path Directory::executable()
+{
+#ifdef __APPLE__
+    // macOS-specific implementation using _NSGetExecutablePath
+    char buffer[PATH_MAX];
+    uint32_t size = sizeof(buffer);
+    if (_NSGetExecutablePath(buffer, &size) == 0)
+    {
+        // Resolve symlinks to get the real path
+        char resolved[PATH_MAX];
+        if (realpath(buffer, resolved) != nullptr)
+        {
+            return Path(skr::String(reinterpret_cast<const char8_t*>(resolved)));
+        }
+    }
+    return Path();
+#elif defined(__linux__)
+    // Linux-specific implementation using /proc/self/exe
+    char buffer[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+    if (len != -1)
+    {
+        buffer[len] = '\0';
+        return Path(skr::String(reinterpret_cast<const char8_t*>(buffer)));
+    }
+    return Path();
+#else
+    // Generic Unix fallback - not reliable
+    return Path();
+#endif
 }
 
 // ============================================================================
@@ -543,6 +621,31 @@ bool Symlink::exists(const Path& path)
         return false;
     }
     return S_ISLNK(st.st_mode);
+}
+
+bool Symlink::create(const Path& link, const Path& target)
+{
+    set_last_error(Error::None);
+    
+    if (symlink(reinterpret_cast<const char*>(target.string().data()), 
+                reinterpret_cast<const char*>(link.string().data())) != 0)
+    {
+        set_last_error(posix_error_to_filesystem_error(errno));
+        return false;
+    }
+    return true;
+}
+
+bool Symlink::remove(const Path& link)
+{
+    set_last_error(Error::None);
+    
+    if (unlink(reinterpret_cast<const char*>(link.string().data())) != 0)
+    {
+        set_last_error(posix_error_to_filesystem_error(errno));
+        return false;
+    }
+    return true;
 }
 
 Path Symlink::read(const Path& link)

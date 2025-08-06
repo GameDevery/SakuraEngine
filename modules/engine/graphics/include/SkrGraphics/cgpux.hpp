@@ -100,85 +100,85 @@ template <typename T> struct hash;
 template <typename T> struct equal_to;
 
 template <typename T, typename... Rest>
-void hash_combine(size_t& seed, const T& v, const Rest&... rest)
+void hash_combine(skr_hash& seed, const T& v, const Rest&... rest)
 {
     seed ^= cgpux::hash<T>{}(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     (hash_combine(seed, rest), ...);
 }
 
 template <>
-struct hash<size_t> {
-    size_t operator()(const size_t& val) const { return val; }
+struct hash<uint64_t> {
+    skr_hash operator()(const uint64_t& val) const { return val; }
 };
 template <>
 struct hash<const void*> {
-    size_t operator()(const void* val) const { return (size_t)val; }
+    skr_hash operator()(const void* val) const { return (skr_hash)val; }
 };
 template <>
 struct hash<CGPUVertexLayout> {
-    CGPU_API size_t operator()(const CGPUVertexLayout& val) const;
+    CGPU_API skr_hash operator()(const CGPUVertexLayout& val) const;
 };
 static const CGPUVertexLayout kZeroCGPUVertexLayout = make_zeroed<CGPUVertexLayout>();
 
 template <>
 struct equal_to<CGPUVertexLayout> {
-    CGPU_API size_t operator()(const CGPUVertexLayout& a, const CGPUVertexLayout& b) const;
+    CGPU_API skr_hash operator()(const CGPUVertexLayout& a, const CGPUVertexLayout& b) const;
 };
 
 template <>
 struct equal_to<CGPUDescriptorData> {
-    CGPU_API size_t operator()(const CGPUDescriptorData& a, const CGPUDescriptorData& b) const;
+    CGPU_API skr_hash operator()(const CGPUDescriptorData& a, const CGPUDescriptorData& b) const;
 };
 
 template <>
 struct equal_to<CGPUShaderEntryDescriptor> {
-    CGPU_API size_t operator()(const CGPUShaderEntryDescriptor& a, const CGPUShaderEntryDescriptor& b) const;
+    CGPU_API skr_hash operator()(const CGPUShaderEntryDescriptor& a, const CGPUShaderEntryDescriptor& b) const;
 };
 
 template <>
 struct hash<CGPUShaderEntryDescriptor> {
-    CGPU_API size_t operator()(const CGPUShaderEntryDescriptor& val) const;
+    CGPU_API skr_hash operator()(const CGPUShaderEntryDescriptor& val) const;
 };
 static const CGPUShaderEntryDescriptor kZeroCGPUShaderEntryDescriptor = make_zeroed<CGPUShaderEntryDescriptor>();
 
 template <>
 struct equal_to<CGPUBlendStateDescriptor> {
-    CGPU_API size_t operator()(const CGPUBlendStateDescriptor& a, const CGPUBlendStateDescriptor& b) const;
+    CGPU_API skr_hash operator()(const CGPUBlendStateDescriptor& a, const CGPUBlendStateDescriptor& b) const;
 
     uint32_t count = CGPU_MAX_MRT_COUNT;
 };
 
 template <>
 struct hash<CGPUBlendStateDescriptor> {
-    CGPU_API size_t operator()(const CGPUBlendStateDescriptor& val) const;
+    CGPU_API skr_hash operator()(const CGPUBlendStateDescriptor& val) const;
 };
 static const CGPUBlendStateDescriptor kZeroCGPUBlendStateDescriptor = make_zeroed<CGPUBlendStateDescriptor>();
 
 template <>
 struct equal_to<CGPUDepthStateDesc> {
-    CGPU_API size_t operator()(const CGPUDepthStateDesc& a, const CGPUDepthStateDesc& b) const;
+    CGPU_API skr_hash operator()(const CGPUDepthStateDesc& a, const CGPUDepthStateDesc& b) const;
 };
 
 template <>
 struct hash<CGPUDepthStateDesc> {
-    CGPU_API size_t operator()(const CGPUDepthStateDesc& val) const;
+    CGPU_API skr_hash operator()(const CGPUDepthStateDesc& val) const;
 };
 static const CGPUDepthStateDesc kZeroCGPUDepthStateDesc = make_zeroed<CGPUDepthStateDesc>();
 
 template <>
 struct equal_to<CGPURasterizerStateDescriptor> {
-    CGPU_API size_t operator()(const CGPURasterizerStateDescriptor& a, const CGPURasterizerStateDescriptor& b) const;
+    CGPU_API skr_hash operator()(const CGPURasterizerStateDescriptor& a, const CGPURasterizerStateDescriptor& b) const;
 };
 
 template <>
 struct hash<CGPURasterizerStateDescriptor> {
-    CGPU_API size_t operator()(const CGPURasterizerStateDescriptor& val) const;
+    CGPU_API skr_hash operator()(const CGPURasterizerStateDescriptor& val) const;
 };
 static const CGPURasterizerStateDescriptor kZeroCGPURasterizerStateDescriptor = make_zeroed<CGPURasterizerStateDescriptor>();
 
 template <>
 struct equal_to<CGPURenderPipelineDescriptor> {
-    CGPU_API size_t operator()(const CGPURenderPipelineDescriptor& a, const CGPURenderPipelineDescriptor& b) const;
+    CGPU_API skr_hash operator()(const CGPURenderPipelineDescriptor& a, const CGPURenderPipelineDescriptor& b) const;
 };
 
 template <>
@@ -197,11 +197,11 @@ struct hash<CGPURenderPipelineDescriptor> {
         const bool enable_indirect_command;
     };
 
-    CGPU_API size_t operator()(const CGPURenderPipelineDescriptor& a) const;
+    CGPU_API skr_hash operator()(const CGPURenderPipelineDescriptor& a) const;
 };
 
 template <>
 struct hash<hash<CGPURenderPipelineDescriptor>::ParameterBlock> {
-    CGPU_API size_t operator()(const hash<CGPURenderPipelineDescriptor>::ParameterBlock& val) const;
+    CGPU_API skr_hash operator()(const hash<CGPURenderPipelineDescriptor>::ParameterBlock& val) const;
 };
 } // namespace cgpux

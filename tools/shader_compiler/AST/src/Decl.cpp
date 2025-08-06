@@ -324,6 +324,11 @@ ConstructorDecl::ConstructorDecl(AST& ast, TypeDecl* owner, const Name& name, st
 
 }
 
+void ConstructorDecl::add_member_init(const FieldDecl* field, const Expr* init_expr)
+{
+    _member_inits.push_back({field, init_expr});
+}
+
 VarConceptDecl::VarConceptDecl(AST& ast, const Name& name)
     : NamedDecl(ast, name)
 {
