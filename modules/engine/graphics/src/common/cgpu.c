@@ -6,6 +6,7 @@
 
 #ifdef CGPU_USE_VULKAN
     #include "SkrGraphics/backend/vulkan/cgpu_vulkan.h"
+    #include "SkrGraphics/backend/vulkan/cgpu_vulkan_raytracing.h"
 #endif
 
 #ifdef CGPU_USE_D3D12
@@ -53,6 +54,7 @@ CGPU_API CGPUInstanceId cgpu_create_instance(const CGPUInstanceDescriptor* desc)
     {
         tbl = CGPU_VulkanProcTable();
         s_tbl = CGPU_VulkanSurfacesProcTable();
+        rt_tbl = CGPU_VulkanRayTracingProcTable();
     }
 #endif
 #ifdef CGPU_USE_METAL

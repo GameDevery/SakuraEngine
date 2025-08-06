@@ -7,6 +7,7 @@
     #include "vulkan/vulkan_utils.c"
     #include "vulkan/proc_table.c"
     #include "vulkan/cgpu_vulkan.c"
+    #include "vulkan/cgpu_vulkan_raytracing.c"
     #include "vulkan/cgpu_vulkan2.c"
     #include "vulkan/cgpu_vulkan_rdna2.c"
     #include "vulkan/cgpu_vulkan_resources.c"

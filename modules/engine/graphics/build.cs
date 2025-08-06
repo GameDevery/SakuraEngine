@@ -13,7 +13,8 @@ public static class SkrGraphics
         var SkrGraphics = Engine
             .Module("SkrGraphics")
             .Depend(Visibility.Public, "SkrCore")
-            .Depend(Visibility.Private, "VulkanHeaders")
+            .Require("VulkanHeaders", new PackageConfig { Version = new Version(1, 4, 324) })
+            .Depend(Visibility.Public, "VulkanHeaders@VulkanHeaders")
             .IncludeDirs(Visibility.Public, "include")
             .AddCFiles("src/build.*.c")
             .AddCppFiles("src/build.*.cpp");

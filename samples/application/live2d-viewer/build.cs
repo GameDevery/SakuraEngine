@@ -11,7 +11,7 @@ public static class SkrLive2DViewer
             .Depend(Visibility.Public, "SkrLive2D", "SkrImGui")
             .Depend(Visibility.Private, "AppSampleCommon")
             .IncludeDirs(Visibility.Private, "./../../common", "include")
-            .AddCppFiles("src/main.cpp", "src/viewer_module.cpp")
+            .AddCppFiles("src/main.cpp", "src/live2d_viewer.cpp")
             .CopyFilesWithRoot(
                 RootDir: "resources",
                 Destination: "resources/Live2DViewer",

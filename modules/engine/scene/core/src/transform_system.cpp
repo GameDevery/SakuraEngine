@@ -24,8 +24,6 @@ struct TransformJob
 
     void calculate(skr::ecs::Entity entity, const skr::scene::Transform& prev_transform)
     {
-        SKR_LOG_INFO(u8"Calculating transform for entity: {%u}", entity);
-
         auto pOptionalRotation = rotation_accessor.get(entity);
         auto pOptionalScale = scale_accessor.get(entity);
         const auto& Position = postion_accessor[entity];
