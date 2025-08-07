@@ -310,13 +310,6 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
         actor.lock()->GetScaleComponent()->set({ .8f, .8f, .8f });
     }
 
-    // auto actor2 = skr::MeshActor::CreateActor(skr::EActorType::Mesh).cast_static<skr::MeshActor>();
-    // actor2.lock()->SetDisplayName(u8"Actor 2");
-    // actor2.lock()->CreateEntity();
-    // actor2.lock()->AttachTo(actor1);
-    // actor2.lock()->GetPositionComponent()->set({ 5.0f, 0.0f, 0.0f });
-    // actor2.lock()->GetScaleComponent()->set({ 1.0f, 1.0f, 1.0f });
-
     transform_system->update();
     skr::ecs::TaskScheduler::Get()->sync_all();
 

@@ -174,11 +174,7 @@ public:
     ~SkelMeshActor() SKR_NOEXCEPT override;
 
 protected:
-    SkelMeshActor()
-        : MeshActor()
-    {
-        actor_type = EActorType::SkelMesh;
-    }
+    SkelMeshActor();
 };
 
 } // namespace skr
