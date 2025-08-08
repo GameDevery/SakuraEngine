@@ -41,10 +41,10 @@ struct SceneRenderJob
             // SKR_LOG_INFO(u8"Rendering entity: {%u}", entity);
             auto* mesh_component = mesh_accessor.get(entity);
             auto* transform_component = transform_accessor.get(entity);
-            auto transform = transform_component->get();
-            SKR_LOG_INFO(u8"Transform Position: ({%f}, {%f}, {%f})", transform.position.x, transform.position.y, transform.position.z);
-            SKR_LOG_INFO(u8"Transform Rotation: ({%f}, {%f}, {%f}, {%f})", transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w);
-            SKR_LOG_INFO(u8"Transform Scale: ({%f}, {%f}, {%f})", transform.scale.x, transform.scale.y, transform.scale.z);
+            // auto transform = transform_component->get();
+            // SKR_LOG_INFO(u8"Transform Position: ({%f}, {%f}, {%f})", transform.position.x, transform.position.y, transform.position.z);
+            // SKR_LOG_INFO(u8"Transform Rotation: ({%f}, {%f}, {%f}, {%f})", transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w);
+            // SKR_LOG_INFO(u8"Transform Scale: ({%f}, {%f}, {%f})", transform.scale.x, transform.scale.y, transform.scale.z);
             if (!mesh_component || !transform_component)
             {
                 continue;

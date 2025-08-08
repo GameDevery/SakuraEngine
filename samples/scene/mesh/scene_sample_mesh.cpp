@@ -46,7 +46,7 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     virtual int main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
 
-    void InitializeReosurceSystem();
+    void InitializeResourceSystem();
     void InitializeAssetSystem();
     void DestroyAssetSystem();
     void DestroyResourceSystem();
@@ -89,7 +89,7 @@ void SceneSampleMeshModule::DestroyAssetSystem()
     system.Shutdown();
 }
 
-void SceneSampleMeshModule::InitializeReosurceSystem()
+void SceneSampleMeshModule::InitializeResourceSystem()
 {
     using namespace skr::literals;
     auto resource_system = skr::resource::GetResourceSystem();
@@ -196,18 +196,24 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     vfs_desc.override_mount_dir = resourceRoot.c_str();
     resource_vfs = skr_create_vfs(&vfs_desc);
 
-    auto projectRoot = skr::fs::current_directory() / u8"../resources";
+    auto projectRoot = skr::fs::current_directory() / u8"../resources/scene/sample_mesh";
+    // if not exists, create the project root directory
+    if (!skr::fs::Directory::exists(projectRoot))
+    {
+        skr::fs::Directory::create(projectRoot, true);
+    }
     skd::SProjectConfig projectConfig = {
         .assetDirectory = (projectRoot / u8"assets").string().c_str(),
         .resourceDirectory = (projectRoot / u8"resources").string().c_str(),
         .artifactsDirectory = (projectRoot / u8"artifacts").string().c_str()
     };
+
     skr::String projectName = u8"SceneSampleMesh";
     skr::String rootPath = projectRoot.string().c_str();
-    project.OpenProject(u8"SceneSampleMesh", rootPath.c_str(), projectConfig);
+    project.OpenProject(projectName.c_str(), rootPath.c_str(), projectConfig);
 
     {
-        InitializeReosurceSystem();
+        InitializeResourceSystem();
         InitializeAssetSystem();
     }
     scene_renderer = skr::SceneRenderer::Create();
@@ -410,7 +416,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             scene_render_system->update();
             // Currently we just sync all, but this logic will be moved to Render Thread in the future
             skr::ecs::TaskScheduler::Get()->sync_all();
-            SKR_LOG_INFO(u8"Scene Render System has %d drawcalls", scene_render_system->get_drawcalls().size());
+            // SKR_LOG_INFO(u8"Scene Render System has %d drawcalls", scene_render_system->get_drawcalls().size());
             scene_renderer->draw_primitives(
                 render_graph,
                 scene_render_system->get_drawcalls());
