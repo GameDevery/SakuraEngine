@@ -45,8 +45,8 @@ int SceneSampleSimpleModule::main_module_exec(int argc, char8_t** argv)
     SKR_LOG_INFO(u8"Running Scene Sample Simple Module");
 
     auto root = skr::Actor::GetRoot();
-    auto actor1 = skr::Actor::CreateActor();
-    auto actor2 = skr::Actor::CreateActor();
+    auto actor1 = actor_manager.CreateActor<skr::Actor>();
+    auto actor2 = actor_manager.CreateActor<skr::Actor>();
     root.lock()->CreateEntity();
     actor1.lock()->CreateEntity();
     actor2.lock()->CreateEntity();

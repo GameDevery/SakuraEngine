@@ -17,8 +17,6 @@ SkelMeshActor::~SkelMeshActor() SKR_NOEXCEPT
 
 SkelMeshActor::SkelMeshActor()
 {
-    actor_type = EActorType::SkelMesh;
-    // Initialize the actor with default values
     display_name = u8"SkelMeshActor";
     // override spawner
     spawner = Spawner{

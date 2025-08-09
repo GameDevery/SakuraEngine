@@ -17,7 +17,6 @@ MeshActor::~MeshActor() SKR_NOEXCEPT
 }
 
 MeshActor::MeshActor()
-    : Actor(EActorType::Mesh)
 {
     // Initialize the actor with default values
     display_name = u8"MeshActor";

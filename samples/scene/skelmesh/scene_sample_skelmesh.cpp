@@ -269,7 +269,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
     constexpr int hierarchy_count = 3; // Number of actors in the hierarchy
 
     auto root = skr::Actor::GetRoot();
-    auto actor1 = skr::MeshActor::CreateActor(skr::EActorType::Mesh).cast_static<skr::MeshActor>();
+    auto actor1 = actor_manager.CreateActor<skr::SkelMeshActor>().cast_static<skr::SkelMeshActor>();
 
     actor1.lock()->SetDisplayName(u8"Actor 1");
 
@@ -285,7 +285,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
     actor1.lock()->GetRotationComponent()->set({ 0.0f, 0.0f, 0.0f });
     for (auto i = 0; i < hierarchy_count; ++i)
     {
-        auto actor = skr::MeshActor::CreateActor(skr::EActorType::Mesh).cast_static<skr::MeshActor>();
+        auto actor = actor_manager.CreateActor<skr::SkelMeshActor>().cast_static<skr::SkelMeshActor>();
         hierarchy_actors.push_back(actor);
 
         actor.lock()->SetDisplayName(skr::format(u8"Actor {}", i + 2).c_str());
