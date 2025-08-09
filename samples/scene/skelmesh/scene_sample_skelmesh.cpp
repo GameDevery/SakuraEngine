@@ -14,6 +14,7 @@
 
 #include <SkrOS/filesystem.hpp>
 #include "SkrCore/memory/impl/skr_new_delete.hpp"
+#include "SkrSceneCore/scene_components.h"
 #include "SkrSystem/advanced_input.h"
 #include <SkrRT/ecs/world.hpp>
 #include <SkrRT/resource/resource_system.h>
@@ -278,11 +279,11 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
 
     actor1.lock()->AttachTo(root);
 
-    root.lock()->GetPositionComponent()->set({ 0.0f, 0.0f, 0.0f });
+    root.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
-    actor1.lock()->GetPositionComponent()->set({ 0.0f, 1.0f, 0.0f });
-    actor1.lock()->GetScaleComponent()->set({ .1f, .1f, .1f });
-    actor1.lock()->GetRotationComponent()->set({ 0.0f, 0.0f, 0.0f });
+    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 1.0f, 0.0f });
+    actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
+    actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
     for (auto i = 0; i < hierarchy_count; ++i)
     {
         auto actor = actor_manager.CreateActor<skr::SkelMeshActor>().cast_static<skr::SkelMeshActor>();
@@ -299,8 +300,8 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
             actor.lock()->AttachTo(hierarchy_actors[i - 1]);
         }
 
-        actor.lock()->GetPositionComponent()->set({ 0.0f, 0.0f, (float)(i + 1) * 5.0f });
-        actor.lock()->GetScaleComponent()->set({ .8f, .8f, .8f });
+        actor.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, (float)(i + 1) * 5.0f });
+        actor.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .8f, .8f, .8f });
     }
 
     transform_system->update();

@@ -54,21 +54,23 @@ int SceneSampleSimpleModule::main_module_exec(int argc, char8_t** argv)
     actor1.lock()->AttachTo(root);
     actor2.lock()->AttachTo(actor1);
 
-    root.lock()->GetPositionComponent()->set({ 0.0f, 0.0f, 0.0f }); // trigger update for the first time
+    root.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f }); // trigger update for the first time
 
-    actor1.lock()->GetPositionComponent()->set({ 0.0f, 1.0f, 0.0f });
-    actor1.lock()->GetScaleComponent()->set({ 1.0f, 1.0f, 1.0f });
-    actor1.lock()->GetRotationComponent()->set({ 0.0f, 0.0f, 0.0f });
+    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 1.0f, 0.0f });
+    actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 1.0f, 1.0f, 1.0f });
+    actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
-    actor2.lock()->GetPositionComponent()->set({ 1.0f, 0.0f, 0.0f });
-    actor2.lock()->GetScaleComponent()->set({ 1.0f, 1.0f, 1.0f });
-    actor2.lock()->GetRotationComponent()->set({ 0.0f, 0.0f, 0.0f });
+    actor2.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 1.0f, 0.0f, 0.0f });
+    actor2.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 1.0f, 1.0f, 1.0f });
+    actor2.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
     transform_system->update();
     skr::ecs::TaskScheduler::Get()->flush_all();
     skr::ecs::TaskScheduler::Get()->sync_all();
 
-    auto transform = actor_manager.trans_accessor[(skr::ecs::Entity)actor2.lock()->GetEntity()].get();
+    auto trans_accessor = world.random_read<skr::scene::TransformComponent>();
+
+    auto transform = trans_accessor[(skr::ecs::Entity)actor2.lock()->GetEntity()].get();
     SKR_LOG_INFO(u8"Transform Position: ({%f}, {%f}, {%f})", transform.position.x, transform.position.y, transform.position.z);
     SKR_LOG_INFO(u8"Transform Rotation: ({%f}, {%f}, {%f}, {%f})", transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w);
     SKR_LOG_INFO(u8"Transform Scale: ({%f}, {%f}, {%f})", transform.scale.x, transform.scale.y, transform.scale.z);

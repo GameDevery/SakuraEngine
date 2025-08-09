@@ -13,8 +13,7 @@ namespace skr
 {
 
 Actor::Actor() SKR_NOEXCEPT
-    : _parent(nullptr),
-      attach_rule(EAttachRule::Default),
+    : attach_rule(EAttachRule::Default),
       spawner{
           [this](skr::ecs::ArchetypeBuilder& Builder) {
               Builder
@@ -99,46 +98,47 @@ void Actor::DetachFromParent()
     }
 }
 
-skr::scene::ScaleComponent* Actor::GetScaleComponent() const
-{
-    auto entity = GetEntity();
-    if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
-    {
-        return skr::ActorManager::GetInstance().scale_accessor.get(entity);
-    }
-    SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get ScaleComponent", display_name.c_str());
-    return nullptr;
-}
-skr::scene::PositionComponent* Actor::GetPositionComponent() const
-{
-    auto entity = GetEntity();
-    if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
-    {
-        return skr::ActorManager::GetInstance().pos_accessor.get(entity);
-    }
-    SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get PositionComponent", display_name.c_str());
-    return nullptr;
-}
-skr::scene::RotationComponent* Actor::GetRotationComponent() const
-{
-    auto entity = GetEntity();
-    if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
-    {
-        return skr::ActorManager::GetInstance().rot_accessor.get(entity);
-    }
-    SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get RotationComponent", display_name.c_str());
-    return nullptr;
-}
-skr::scene::TransformComponent* Actor::GetTransformComponent() const
-{
-    auto entity = GetEntity();
-    if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
-    {
-        return skr::ActorManager::GetInstance().trans_accessor.get(entity);
-    }
-    SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get TransformComponent", display_name.c_str());
-    return nullptr;
-}
+// skr::scene::ScaleComponent* Actor::GetScaleComponent() const
+// {
+//     auto entity = GetEntity();
+//     if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
+//     {
+//         // return skr::ActorManager::GetInstance().scale_accessor.get(entity);
+//         return world->random_readwrite<skr::scene::ScaleComponent>().get(entity);
+//     }
+//     SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get ScaleComponent", display_name.c_str());
+//     return nullptr;
+// }
+// skr::scene::PositionComponent* Actor::GetPositionComponent() const
+// {
+//     auto entity = GetEntity();
+//     if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
+//     {
+//         return skr::ActorManager::GetInstance().pos_accessor.get(entity);
+//     }
+//     SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get PositionComponent", display_name.c_str());
+//     return nullptr;
+// }
+// skr::scene::RotationComponent* Actor::GetRotationComponent() const
+// {
+//     auto entity = GetEntity();
+//     if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
+//     {
+//         return skr::ActorManager::GetInstance().rot_accessor.get(entity);
+//     }
+//     SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get RotationComponent", display_name.c_str());
+//     return nullptr;
+// }
+// skr::scene::TransformComponent* Actor::GetTransformComponent() const
+// {
+//     auto entity = GetEntity();
+//     if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
+//     {
+//         return skr::ActorManager::GetInstance().trans_accessor.get(entity);
+//     }
+//     SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get TransformComponent", display_name.c_str());
+//     return nullptr;
+// }
 
 /////////////////////
 // ActorManager Implementation
@@ -147,13 +147,13 @@ skr::scene::TransformComponent* Actor::GetTransformComponent() const
 void ActorManager::initialize(skr::ecs::World* world)
 {
     this->world = world; // Store the ECS world pointer for actor management
-    parent_accessor = world->random_readwrite<skr::scene::ParentComponent>();
-    children_accessor = world->random_readwrite<skr::scene::ChildrenComponent>();
-    pos_accessor = world->random_readwrite<skr::scene::PositionComponent>();
-    rot_accessor = world->random_readwrite<skr::scene::RotationComponent>();
-    scale_accessor = world->random_readwrite<skr::scene::ScaleComponent>();
-    trans_accessor = world->random_readwrite<skr::scene::TransformComponent>();
-    mesh_accessor = world->random_readwrite<skr::renderer::MeshComponent>();
+    // parent_accessor = world->random_readwrite<skr::scene::ParentComponent>();
+    // children_accessor = world->random_readwrite<skr::scene::ChildrenComponent>();
+    // pos_accessor = world->random_readwrite<skr::scene::PositionComponent>();
+    // rot_accessor = world->random_readwrite<skr::scene::RotationComponent>();
+    // scale_accessor = world->random_readwrite<skr::scene::ScaleComponent>();
+    // trans_accessor = world->random_readwrite<skr::scene::TransformComponent>();
+    // mesh_accessor = world->random_readwrite<skr::renderer::MeshComponent>();
 }
 
 bool ActorManager::DestroyActor(skr::GUID guid)
@@ -197,6 +197,8 @@ void ActorManager::DestroyActorEntity(skr::RCWeak<Actor> actor)
 
 void ActorManager::UpdateHierarchy(skr::RCWeak<Actor> parent, skr::RCWeak<Actor> child, EAttachRule rule)
 {
+    auto parent_accessor = world->random_readwrite<skr::scene::ParentComponent>();
+    auto children_accessor = world->random_readwrite<skr::scene::ChildrenComponent>();
     // update the parent/child components
     if (parent && child)
     {

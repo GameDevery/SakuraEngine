@@ -46,9 +46,12 @@ public:
     SKR_GENERATE_BODY()
     SKR_RC_IMPL();
 
+    Actor() SKR_NOEXCEPT;
+
     virtual ~Actor() SKR_NOEXCEPT;
     static RCWeak<Actor> GetRoot();
 
+    void BindWorld(skr::ecs::World * world) { this->world = world; }
     void CreateEntity();
     skr::ecs::Entity GetEntity() const;
     void AttachTo(RCWeak<Actor> parent, EAttachRule rule = EAttachRule::Default);
@@ -77,18 +80,31 @@ public:
         RunF f;
     };
     Spawner spawner;
+    skr::ecs::World* world = nullptr; // Pointer to the ECS world for actor management
 
     // getters & setters
     inline const skr::String GetDisplayName() const { return display_name; }
     inline void SetDisplayName(const skr::String& name) { display_name = name; }
     inline EActorType GetActorType() const { return actor_type; }
-    skr::scene::ScaleComponent* GetScaleComponent() const;
-    skr::scene::PositionComponent* GetPositionComponent() const;
-    skr::scene::RotationComponent* GetRotationComponent() const;
-    skr::scene::TransformComponent* GetTransformComponent() const;
-    skr::GUID GetGUID() const { return guid; }
 
-    explicit Actor() SKR_NOEXCEPT;
+    template <typename ComponentType>
+    ComponentType* GetComponent() const
+    {
+        auto entity = GetEntity();
+        if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
+        {
+            return world->random_readwrite<ComponentType>().get(entity);
+        }
+        SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get Component", display_name.c_str());
+        return nullptr;
+    }
+
+    // skr::scene::ScaleComponent* GetScaleComponent() const;
+    // skr::scene::PositionComponent* GetPositionComponent() const;
+    // skr::scene::RotationComponent* GetRotationComponent() const;
+    // skr::scene::TransformComponent* GetTransformComponent() const;
+
+    skr::GUID GetGUID() const { return guid; }
 
     skr::String display_name;             // for editor, profiler, and runtime dump
     skr::GUID guid = skr::GUID::Create(); // guid for each actor, used to identify actors in the scene
@@ -114,6 +130,7 @@ public:
     skr::RCWeak<Actor> CreateActor()
     {
         auto actor = CreateActorInstance<T>();
+        actor.get()->BindWorld(world);
         actors.add(actor->guid, actor);
         return actor;
     }
@@ -121,9 +138,8 @@ public:
     skr::RC<Actor> CreateActorInstance()
     {
         RTTRType* ActorType = skr::type_of<T>();
-        // TODO: pooling ?
-        void* actor_data = sakura_malloc_aligned(ActorType->size(), ActorType->alignment());
-        ActorType->find_default_ctor().invoke(actor_data);
+        void* actor_data = sakura_malloc_aligned(ActorType->size(), ActorType->alignment()); // TODO: leak?
+        ActorType->find_default_ctor().invoke(actor_data);                                   // TODO: pooling ?
         return skr::RC<Actor>(reinterpret_cast<Actor*>(actor_data));
     }
 
@@ -137,13 +153,13 @@ public:
 
     // accessors
     // TODO: we need a better way to manage these accessors
-    skr::ecs::RandomComponentReadWrite<skr::scene::ParentComponent> parent_accessor;
-    skr::ecs::RandomComponentReadWrite<skr::scene::ChildrenComponent> children_accessor;
-    skr::ecs::RandomComponentReadWrite<skr::scene::PositionComponent> pos_accessor;
-    skr::ecs::RandomComponentReadWrite<skr::scene::RotationComponent> rot_accessor;
-    skr::ecs::RandomComponentReadWrite<skr::scene::ScaleComponent> scale_accessor;
-    skr::ecs::RandomComponentReadWrite<skr::scene::TransformComponent> trans_accessor;
-    skr::ecs::RandomComponentReadWrite<skr::renderer::MeshComponent> mesh_accessor;
+    // skr::ecs::RandomComponentReadWrite<skr::scene::ParentComponent> parent_accessor;
+    // skr::ecs::RandomComponentReadWrite<skr::scene::ChildrenComponent> children_accessor;
+    // skr::ecs::RandomComponentReadWrite<skr::scene::PositionComponent> pos_accessor;
+    // skr::ecs::RandomComponentReadWrite<skr::scene::RotationComponent> rot_accessor;
+    // skr::ecs::RandomComponentReadWrite<skr::scene::ScaleComponent> scale_accessor;
+    // skr::ecs::RandomComponentReadWrite<skr::scene::TransformComponent> trans_accessor;
+    // skr::ecs::RandomComponentReadWrite<skr::renderer::MeshComponent> mesh_accessor;
 
 protected:
     // Factory method to create specific actor types
