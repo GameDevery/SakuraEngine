@@ -96,6 +96,7 @@ void SceneSampleMeshModule::InitializeResourceSystem()
     auto resource_system = skr::resource::GetResourceSystem();
     registry = SkrNew<skr::resource::LocalResourceRegistry>(project.GetResourceVFS());
     resource_system->Initialize(registry, project.GetRamService());
+
     const auto resource_root = project.GetResourceVFS()->mount_dir;
     {
         skr::String qn = u8"SceneSampleMesh-JobQueue";
@@ -253,7 +254,9 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
         skr::type_id_of<skr::renderer::MeshResource>(),
         skr::type_id_of<skd::asset::MeshCooker>());
     importer->assetPath = gltf_path.c_str();
+
     System.ImportAssetMeta(&project, asset, importer, metadata);
+
     auto event = System.EnsureCooked(asset->GetGUID());
     event.wait(true);
 }

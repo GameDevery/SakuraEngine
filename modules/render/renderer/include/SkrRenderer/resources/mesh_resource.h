@@ -135,6 +135,7 @@ struct SKR_RENDERER_API MeshFactory : public resource::ResourceFactory
     [[nodiscard]] static MeshFactory* Create(const Root& root);
     static void Destroy(MeshFactory* factory);
 };
+
 } // namespace skr::renderer
 #endif
 
