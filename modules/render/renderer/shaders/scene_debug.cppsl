@@ -5,6 +5,7 @@
 #include "SkrRenderer/shared/soa_layout.hpp"
 
 using namespace skr::shader;
+using namespace skr::renderer;
 
 // External resource bindings
 extern Image<float>& output_texture;
@@ -15,13 +16,7 @@ struct SceneDebugConstants
 {
     float2 screenSize;
     uint32 debug_mode;     // 0 = red fill, 1 = checkerboard, 2 = UV gradient, 3 = GPUScene color debug, 6 = 3D sphere rendering
-    uint32 color_segment_offset; // Offset to color component in page (for paged layout)
-    uint32 color_element_size;   // Size of each color element (typically 16 bytes for float4)
-    uint32 instance_count;       // Number of instances in GPUScene
-    uint32 transform_segment_offset; // Offset to transform component in page (for paged layout)
-    uint32 transform_element_size;   // Size of each transform element (typically 64 bytes for float4x4)
-    uint32 page_size;            // Page size in instances (UINT32_MAX for continuous layout)
-    uint32 page_stride_bytes;    // Size of each page in bytes
+    uint32 instance_count; // Number of instances in GPUScene
 };
 
 [[push_constant]]
@@ -80,28 +75,13 @@ void scene_debug([[sv_thread_id]] uint3 thread_id)
             uint instance_index = instance_y * instances_per_row + instance_x;
             
             if (instance_index < debug_constants.instance_count) {
-                // Use the DefaultGPUSceneLayout to calculate offset
-                // Color is at SOAIndex 1 in the layout
-                uint color_offset;
-                if (debug_constants.page_size == 0xFFFFFFFF) {
-                    // Continuous layout
-                    color_offset = debug_constants.color_segment_offset + 
-                                  (instance_index * debug_constants.color_element_size);
-                } else {
-                    // Paged layout - calculate using page logic
-                    uint page = instance_index / debug_constants.page_size;
-                    uint offset_in_page = instance_index % debug_constants.page_size;
-                    color_offset = page * debug_constants.page_stride_bytes +
-                                  debug_constants.color_segment_offset +
-                                  offset_in_page * debug_constants.color_element_size;
-                }
+                // Use DefaultGPUSceneLayout to calculate offset directly
+                uint color_offset = DefaultGPUSceneLayout::component_location<GPUSceneInstanceColor>(instance_index);
                 
-                // Read color data from GPU buffer (assuming float4 color)
-                float4 instance_color;
-                instance_color.x = gpu_scene_buffer.Load<float>(color_offset);
-                instance_color.y = gpu_scene_buffer.Load<float>(color_offset + 4);
-                instance_color.z = gpu_scene_buffer.Load<float>(color_offset + 8);
-                instance_color.w = gpu_scene_buffer.Load<float>(color_offset + 12);
+                // Read color data from GPU buffer
+                GPUSceneInstanceColor color_data = gpu_scene_buffer.Load<GPUSceneInstanceColor>(color_offset);
+                float4 instance_color = float4(color_data.color[0], color_data.color[1],
+                                              color_data.color[2], color_data.color[3]);
                 
                 // Draw border for each instance block
                 uint2 block_coord = pixel_coord % block_size;
@@ -121,13 +101,11 @@ void scene_debug([[sv_thread_id]] uint3 thread_id)
         case 4: // Simple GPUScene validation - show first instance color across entire screen
         {
             if (debug_constants.instance_count > 0) {
-                // Read the first instance's color (instance 0 is always at the beginning)
-                uint color_offset = debug_constants.color_segment_offset;
-                float4 first_color;
-                first_color.x = gpu_scene_buffer.Load<float>(color_offset);
-                first_color.y = gpu_scene_buffer.Load<float>(color_offset + 4);
-                first_color.z = gpu_scene_buffer.Load<float>(color_offset + 8);
-                first_color.w = gpu_scene_buffer.Load<float>(color_offset + 12);
+                // Read the first instance's color using DefaultGPUSceneLayout
+                constexpr uint color_offset = DefaultGPUSceneLayout::component_location<GPUSceneInstanceColor>(0);
+                GPUSceneInstanceColor color_data = gpu_scene_buffer.Load<GPUSceneInstanceColor>(color_offset);
+                float4 first_color = float4(color_data.color[0], color_data.color[1],
+                                           color_data.color[2], color_data.color[3]);
                 
                 pixel_color = first_color;
                 
@@ -161,9 +139,9 @@ void scene_debug([[sv_thread_id]] uint3 thread_id)
                             pixel_color = float4(0.0f, 1.0f, 0.0f, 1.0f); // Green
                         }
                     } else {
-                        // Show segment offset as blue gradient
-                        float offset_norm = float(debug_constants.color_segment_offset) / 65536.0f;
-                        pixel_color = float4(0.0f, 0.0f, offset_norm, 1.0f);
+                        // Show instance count as blue gradient
+                        float count_norm = float(debug_constants.instance_count) / 65536.0f;
+                        pixel_color = float4(0.0f, 0.0f, count_norm, 1.0f);
                     }
                 }
             } else {
@@ -187,35 +165,17 @@ void scene_debug([[sv_thread_id]] uint3 thread_id)
             
             // Check intersection with all sphere instances
             for (uint instance_index = 0; instance_index < debug_constants.instance_count; instance_index++) {
-                // Calculate transform offset based on layout type
-                // Transform is at SOAIndex 0 in the layout (part of bundle)
-                uint transform_offset;
-                if (debug_constants.page_size == 0xFFFFFFFF) {
-                    // Continuous layout
-                    transform_offset = debug_constants.transform_segment_offset + 
-                                      (instance_index * debug_constants.transform_element_size);
-                } else {
-                    // Paged layout - same calculation as PagedLayout::component_location
-                    uint page = instance_index / debug_constants.page_size;
-                    uint offset_in_page = instance_index % debug_constants.page_size;
-                    transform_offset = page * debug_constants.page_stride_bytes +
-                                      debug_constants.transform_segment_offset +
-                                      offset_in_page * debug_constants.transform_element_size;
-                }
+                // Use DefaultGPUSceneLayout to calculate transform offset
+                uint transform_offset = DefaultGPUSceneLayout::component_location<GPUSceneObjectToWorld>(instance_index);
                 
-                // Load 4x4 transform matrix (16 floats = 64 bytes)
-                float4x4 object_to_world;
-                for (uint row = 0; row < 4; row++) {
-                    for (uint col = 0; col < 4; col++) {
-                        uint matrix_offset = transform_offset + (row * 4 + col) * 4;
-                        object_to_world[row][col] = gpu_scene_buffer.Load<float>(matrix_offset);
-                    }
-                }
+                // Load transform data directly
+                GPUSceneObjectToWorld transform_data = gpu_scene_buffer.Load<GPUSceneObjectToWorld>(transform_offset);
+                float4x4 object_to_world = transform_data.matrix;
                 
                 // Extract position and scale from transform matrix
-                // Position is in the 4th row (translation part)
-                float3 sphere_center = float3(object_to_world[3][0], object_to_world[3][1], object_to_world[3][2]);
-                // Scale is the length of the first column vector
+                // Position is in the 4th column (translation part) - standard column-major matrix layout
+                float3 sphere_center = float3(object_to_world[0][3], object_to_world[1][3], object_to_world[2][3]);
+                // Scale is the length of the first column vector (X axis)
                 float sphere_radius = length(float3(object_to_world[0][0], object_to_world[1][0], object_to_world[2][0]));
                 
                 // Ray-sphere intersection test
@@ -230,26 +190,11 @@ void scene_debug([[sv_thread_id]] uint3 thread_id)
                     if (distance > 0.0f && distance < closest_distance) {
                         closest_distance = distance;
                         
-                        // Read color for this instance
-                        uint color_offset;
-                        if (debug_constants.page_size == 0xFFFFFFFF) {
-                            // Continuous layout
-                            color_offset = debug_constants.color_segment_offset + 
-                                          (instance_index * debug_constants.color_element_size);
-                        } else {
-                            // Paged layout
-                            uint page = instance_index / debug_constants.page_size;
-                            uint offset_in_page = instance_index % debug_constants.page_size;
-                            color_offset = page * debug_constants.page_stride_bytes +
-                                          debug_constants.color_segment_offset +
-                                          offset_in_page * debug_constants.color_element_size;
-                        }
-                        
-                        float4 sphere_color;
-                        sphere_color.x = gpu_scene_buffer.Load<float>(color_offset);
-                        sphere_color.y = gpu_scene_buffer.Load<float>(color_offset + 4);
-                        sphere_color.z = gpu_scene_buffer.Load<float>(color_offset + 8);
-                        sphere_color.w = gpu_scene_buffer.Load<float>(color_offset + 12);
+                        // Read color for this instance using DefaultGPUSceneLayout
+                        uint color_offset = DefaultGPUSceneLayout::component_location<GPUSceneInstanceColor>(instance_index);
+                        GPUSceneInstanceColor color_data = gpu_scene_buffer.Load<GPUSceneInstanceColor>(color_offset);
+                        float4 sphere_color = float4(color_data.color[0], color_data.color[1], 
+                                                    color_data.color[2], color_data.color[3]);
                         
                         // Simple lighting calculation
                         float3 hit_point = ray_origin + ray_direction * distance;

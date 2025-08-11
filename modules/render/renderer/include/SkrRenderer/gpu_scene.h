@@ -17,15 +17,6 @@ struct archetype_t;
 }
 namespace skr::renderer
 {
-// 默认的 GPU Scene 布局
-// 使用 PagedLayout，SOAIndex 自动分配为 0, 1, 2...
-using DefaultGPUSceneLayout = PagedLayout<16384, // 16K instances per page
-    BUNDLE(
-        GPUSceneObjectToWorld, // SOAIndex: 0 - 频繁一起访问的组件打包
-        GPUSceneInstanceColor  // SOAIndex: 1
-        ),
-    GPUSceneInstanceEmission // SOAIndex: 2 - 较少访问，独立存储
-    >;
 
 // 类型定义
 using GPUSceneInstanceID = uint32_t;
@@ -234,7 +225,6 @@ inline GPUSceneBuilder& GPUSceneBuilder::add_component(CPUTypeID cpu_type, SOAIn
     return *this;
 }
 
-// 从 Layout 提取组件信息
 template <typename Layout>
 inline GPUSceneBuilder& GPUSceneBuilder::from_layout(uint32_t initial_instances)
 {

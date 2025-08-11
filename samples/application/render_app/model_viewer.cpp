@@ -230,8 +230,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     GPUSceneBuilder cfg_builder;
     cfg_builder.from_layout<DefaultGPUSceneLayout>()
         .with_world(&world)
-        .with_device(render_device)
-        .with_page_size(128);
+        .with_device(render_device);
     GPUSceneConfig cfg = cfg_builder.build();
     GPUScene.Initialize(render_device->get_cgpu_device(), cfg);
 
@@ -283,38 +282,18 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                     .read(u8"gpu_scene_buffer", GPUScene.GetSceneBuffer());
             },
             [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
-                // Push constants
+                // Push constants - simplified structure now that shader uses DefaultGPUSceneLayout
                 struct SceneDebugConstants {
                     float screen_width;
                     float screen_height;
                     uint32_t debug_mode;    // 0 = red fill, 6 = 3D sphere rendering
-                    uint32_t color_segment_offset;
-                    uint32_t color_element_size;
                     uint32_t instance_count;
-                    uint32_t transform_segment_offset;
-                    uint32_t transform_element_size;
-                    uint32_t page_size;         // Page size (UINT32_MAX for continuous)
-                    uint32_t page_stride_bytes; // Bytes per page
                 } constants;
                 
                 constants.screen_width = static_cast<float>(screen_size.x);
                 constants.screen_height = static_cast<float>(screen_size.y);
                 constants.debug_mode = 6; // 3D sphere rendering mode
-                
-                // Get GPUScene color component info
-                auto color_type_id = GPUScene.GetComponentSOAIndex(sugoi_id_of<GPUSceneInstanceColor>::get());
-                constants.color_segment_offset = GPUScene.GetComponentSegmentOffset(color_type_id);
-                constants.color_element_size = sizeof(GPUSceneInstanceColor);
                 constants.instance_count = GPUScene.GetInstanceCount();
-                
-                // Get GPUScene transform component info
-                auto transform_type_id = GPUScene.GetComponentSOAIndex(sugoi_id_of<GPUSceneObjectToWorld>::get());
-                constants.transform_segment_offset = GPUScene.GetComponentSegmentOffset(transform_type_id);
-                constants.transform_element_size = sizeof(GPUSceneObjectToWorld);
-                
-                // Get page layout info
-                constants.page_size = GPUScene.GetPageSize();
-                constants.page_stride_bytes = GPUScene.GetPageStrideBytes();
                 
                 cgpu_compute_encoder_push_constants(ctx.encoder, root_signature, u8"debug_constants", &constants);
                 cgpu_compute_encoder_dispatch(ctx.encoder, group_count_x, group_count_y, 1);

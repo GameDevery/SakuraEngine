@@ -125,23 +125,15 @@ private:
     CGPUBufferId create_buffer_with_capacity(uint32_t instance_capacity);
 };
 
-// 模板方法实现
 template <typename Layout>
 inline SOASegmentBuffer::Builder& SOASegmentBuffer::Builder::from_layout(uint32_t initial_instances)
 {
-    // 设置页大小和初始实例数
     config_.page_size = Layout::page_size;
-    
-    // 清空现有组件
-    components_.clear();
-    
-    // 使用 Layout 的通用遍历方法
-    Layout::for_each_component([this](uint32_t id, uint32_t size, uint32_t align, uint32_t index) {
-        this->add_component(id, size, align);
-    });
-    
     config_.initial_instances = initial_instances;
-
+    components_.clear();
+    Layout::for_each_component([this](uint32_t id, uint32_t size, uint32_t align, uint32_t) {
+        add_component(id, size, align);
+    });
     return *this;
 }
 

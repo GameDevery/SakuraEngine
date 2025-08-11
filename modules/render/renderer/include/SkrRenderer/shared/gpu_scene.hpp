@@ -25,4 +25,12 @@ GPUSceneInstanceEmission
     data_layout::float4 color;
 };
 
+// 默认的 GPU Scene 布局
+// 使用 PagedLayout，SOAIndex 自动分配为 0, 1, 2...
+using DefaultGPUSceneLayout = PagedLayout<16384, // 16K instances per page
+        GPUSceneObjectToWorld, // SOAIndex: 0 - 频繁一起访问的组件打包
+        GPUSceneInstanceColor,  // SOAIndex: 1
+    GPUSceneInstanceEmission // SOAIndex: 2 - 较少访问，独立存储
+    >;
+
 } // namespace skr::renderer

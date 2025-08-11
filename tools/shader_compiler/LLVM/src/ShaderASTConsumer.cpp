@@ -8,30 +8,143 @@
 #include <format>
 #include <filesystem>
 
-namespace skr::CppSL {
-class DeferGuard 
+namespace skr::CppSL
+{
+// Helper function to generate unique names for variable template specializations
+inline std::string GetVarName(const clang::VarDecl* var)
+{
+    std::string name = var->getNameAsString();
+    
+    // Check if this is a variable template specialization
+    if (auto VTS = llvm::dyn_cast<clang::VarTemplateSpecializationDecl>(var))
+    {
+        const auto& Args = VTS->getTemplateArgs();
+        name += "_";
+        for (unsigned i = 0; i < Args.size(); ++i)
+        {
+            const auto& Arg = Args.get(i);
+            if (Arg.getKind() == clang::TemplateArgument::Type)
+            {
+                auto TypeName = Arg.getAsType().getAsString();
+                // Sanitize type name for use in identifier
+                std::replace(TypeName.begin(), TypeName.end(), ' ', '_');
+                std::replace(TypeName.begin(), TypeName.end(), '<', '_');
+                std::replace(TypeName.begin(), TypeName.end(), '>', '_');
+                std::replace(TypeName.begin(), TypeName.end(), ',', '_');
+                std::replace(TypeName.begin(), TypeName.end(), ':', '_');
+                std::replace(TypeName.begin(), TypeName.end(), '*', 'p');
+                std::replace(TypeName.begin(), TypeName.end(), '&', 'r');
+                name += TypeName;
+            }
+            else if (Arg.getKind() == clang::TemplateArgument::Integral)
+            {
+                name += std::to_string(Arg.getAsIntegral().getLimitedValue());
+            }
+            if (i < Args.size() - 1)
+                name += "_";
+        }
+    }
+    
+    return name;
+}
+
+// Helper function to generate unique names for template specializations
+inline std::string GetFunctionName(const clang::FunctionDecl* func)
+{
+    std::string name = func->getNameAsString();
+    
+    // Check if this is a function template specialization
+    if (auto FTS = func->getTemplateSpecializationInfo())
+    {
+        if (auto Args = FTS->TemplateArguments)
+        {
+            name += "_";
+            for (unsigned i = 0; i < Args->size(); ++i)
+            {
+                const auto& Arg = Args->get(i);
+                if (Arg.getKind() == clang::TemplateArgument::Type)
+                {
+                    auto TypeName = Arg.getAsType().getAsString();
+                    // Sanitize type name for use in identifier
+                    std::replace(TypeName.begin(), TypeName.end(), ' ', '_');
+                    std::replace(TypeName.begin(), TypeName.end(), '<', '_');
+                    std::replace(TypeName.begin(), TypeName.end(), '>', '_');
+                    std::replace(TypeName.begin(), TypeName.end(), ',', '_');
+                    std::replace(TypeName.begin(), TypeName.end(), ':', '_');
+                    std::replace(TypeName.begin(), TypeName.end(), '*', 'p');
+                    std::replace(TypeName.begin(), TypeName.end(), '&', 'r');
+                    name += TypeName;
+                }
+                else if (Arg.getKind() == clang::TemplateArgument::Integral)
+                {
+                    name += std::to_string(Arg.getAsIntegral().getLimitedValue());
+                }
+                if (i < Args->size() - 1)
+                    name += "_";
+            }
+        }
+    }
+    // Check if this is a method from a class template specialization
+    else if (auto Method = llvm::dyn_cast<clang::CXXMethodDecl>(func))
+    {
+        if (auto TSC = llvm::dyn_cast<clang::ClassTemplateSpecializationDecl>(Method->getParent()))
+        {
+            name += "_";
+            const auto& Args = TSC->getTemplateArgs();
+            for (unsigned i = 0; i < Args.size(); ++i)
+            {
+                const auto& Arg = Args.get(i);
+                if (Arg.getKind() == clang::TemplateArgument::Type)
+                {
+                    auto TypeName = Arg.getAsType().getAsString();
+                    // Sanitize type name for use in identifier
+                    std::replace(TypeName.begin(), TypeName.end(), ' ', '_');
+                    std::replace(TypeName.begin(), TypeName.end(), '<', '_');
+                    std::replace(TypeName.begin(), TypeName.end(), '>', '_');
+                    std::replace(TypeName.begin(), TypeName.end(), ',', '_');
+                    std::replace(TypeName.begin(), TypeName.end(), ':', '_');
+                    std::replace(TypeName.begin(), TypeName.end(), '*', 'p');
+                    std::replace(TypeName.begin(), TypeName.end(), '&', 'r');
+                    name += TypeName;
+                }
+                else if (Arg.getKind() == clang::TemplateArgument::Integral)
+                {
+                    name += std::to_string(Arg.getAsIntegral().getLimitedValue());
+                }
+                if (i < Args.size() - 1)
+                    name += "_";
+            }
+        }
+    }
+    
+    return name;
+}
+class DeferGuard
 {
 public:
-    template<typename F>
-    DeferGuard(F&& f) : func(std::forward<F>(f)) {}
-    
+    template <typename F>
+    DeferGuard(F&& f)
+        : func(std::forward<F>(f))
+    {
+    }
+
     ~DeferGuard() { func(); }
-    
+
 private:
     std::function<void()> func;
 };
 
-class MemberExprAnalyzer : public clang::RecursiveASTVisitor<MemberExprAnalyzer> 
+class MemberExprAnalyzer : public clang::RecursiveASTVisitor<MemberExprAnalyzer>
 {
 public:
-    bool VisitMemberExpr(clang::MemberExpr* memberExpr) 
+    bool VisitMemberExpr(clang::MemberExpr* memberExpr)
     {
         // 检查是否是通过 this 访问的成员
-        if (auto base = memberExpr->getBase()) 
+        if (auto base = memberExpr->getBase())
         {
-            if (isThisAccess(base)) 
+            if (isThisAccess(base))
             {
-                if (auto fieldDecl = llvm::dyn_cast<clang::FieldDecl>(memberExpr->getMemberDecl())) 
+                if (auto fieldDecl = llvm::dyn_cast<clang::FieldDecl>(memberExpr->getMemberDecl()))
                     member_redirects[fieldDecl].emplace_back(memberExpr);
             }
         }
@@ -40,7 +153,8 @@ public:
     std::map<const clang::FieldDecl*, std::vector<const clang::MemberExpr*>> member_redirects;
 
 private:
-    bool isThisAccess(const clang::Expr* expr) {
+    bool isThisAccess(const clang::Expr* expr)
+    {
         if (llvm::isa<clang::CXXThisExpr>(expr))
             return true;
         if (auto implicitCast = llvm::dyn_cast<clang::ImplicitCastExpr>(expr))
@@ -196,7 +310,7 @@ inline void ASTConsumer::ReportFatalError(const clang::Decl* decl, std::format_s
     ReportFatalError(_fmt, std::forward<Args>(args)...);
 }
 
-void ASTConsumer::DumpWithLocation(const clang::Stmt *stmt) const
+void ASTConsumer::DumpWithLocation(const clang::Stmt* stmt) const
 {
     stmt->getBeginLoc().dump(pASTContext->getSourceManager());
     stmt->dump();
@@ -217,17 +331,25 @@ inline static CppSL::UnaryOp TranslateUnaryOp(clang::UnaryOperatorKind op)
 {
     switch (op)
     {
-        case clang::UO_Plus: return CppSL::UnaryOp::PLUS;
-        case clang::UO_Minus: return CppSL::UnaryOp::MINUS;
-        case clang::UO_LNot: return CppSL::UnaryOp::NOT;
-        case clang::UO_Not: return CppSL::UnaryOp::BIT_NOT;
+    case clang::UO_Plus:
+        return CppSL::UnaryOp::PLUS;
+    case clang::UO_Minus:
+        return CppSL::UnaryOp::MINUS;
+    case clang::UO_LNot:
+        return CppSL::UnaryOp::NOT;
+    case clang::UO_Not:
+        return CppSL::UnaryOp::BIT_NOT;
 
-        case clang::UO_PreInc: return CppSL::UnaryOp::PRE_INC;
-        case clang::UO_PreDec: return CppSL::UnaryOp::PRE_DEC;
-        case clang::UO_PostInc: return CppSL::UnaryOp::POST_INC;
-        case clang::UO_PostDec: return CppSL::UnaryOp::POST_DEC;
-        default:
-            llvm::report_fatal_error("Unsupported unary operator");
+    case clang::UO_PreInc:
+        return CppSL::UnaryOp::PRE_INC;
+    case clang::UO_PreDec:
+        return CppSL::UnaryOp::PRE_DEC;
+    case clang::UO_PostInc:
+        return CppSL::UnaryOp::POST_INC;
+    case clang::UO_PostDec:
+        return CppSL::UnaryOp::POST_DEC;
+    default:
+        llvm::report_fatal_error("Unsupported unary operator");
     }
 }
 
@@ -235,73 +357,108 @@ inline static CppSL::BinaryOp TranslateBinaryOp(clang::BinaryOperatorKind op)
 {
     switch (op)
     {
-        case clang::BO_Add: return CppSL::BinaryOp::ADD;
-        case clang::BO_Sub: return CppSL::BinaryOp::SUB;
-        case clang::BO_Mul: return CppSL::BinaryOp::MUL;
-        case clang::BO_Div: return CppSL::BinaryOp::DIV;
-        case clang::BO_Rem: return CppSL::BinaryOp::MOD;
-        case clang::BO_Shl: return CppSL::BinaryOp::SHL;
-        case clang::BO_Shr: return CppSL::BinaryOp::SHR;
-        case clang::BO_And: return CppSL::BinaryOp::BIT_AND;
-        case clang::BO_Or: return CppSL::BinaryOp::BIT_OR;
-        case clang::BO_Xor: return CppSL::BinaryOp::BIT_XOR;
-        case clang::BO_LAnd: return CppSL::BinaryOp::AND;
-        case clang::BO_LOr: return CppSL::BinaryOp::OR;
+    case clang::BO_Add:
+        return CppSL::BinaryOp::ADD;
+    case clang::BO_Sub:
+        return CppSL::BinaryOp::SUB;
+    case clang::BO_Mul:
+        return CppSL::BinaryOp::MUL;
+    case clang::BO_Div:
+        return CppSL::BinaryOp::DIV;
+    case clang::BO_Rem:
+        return CppSL::BinaryOp::MOD;
+    case clang::BO_Shl:
+        return CppSL::BinaryOp::SHL;
+    case clang::BO_Shr:
+        return CppSL::BinaryOp::SHR;
+    case clang::BO_And:
+        return CppSL::BinaryOp::BIT_AND;
+    case clang::BO_Or:
+        return CppSL::BinaryOp::BIT_OR;
+    case clang::BO_Xor:
+        return CppSL::BinaryOp::BIT_XOR;
+    case clang::BO_LAnd:
+        return CppSL::BinaryOp::AND;
+    case clang::BO_LOr:
+        return CppSL::BinaryOp::OR;
 
-        case clang::BO_LT: return CppSL::BinaryOp::LESS; break;
-        case clang::BO_GT: return CppSL::BinaryOp::GREATER; break;
-        case clang::BO_LE: return CppSL::BinaryOp::LESS_EQUAL; break;
-        case clang::BO_GE: return CppSL::BinaryOp::GREATER_EQUAL; break;
-        case clang::BO_EQ: return CppSL::BinaryOp::EQUAL; break;
-        case clang::BO_NE: return CppSL::BinaryOp::NOT_EQUAL; break;
+    case clang::BO_LT:
+        return CppSL::BinaryOp::LESS;
+        break;
+    case clang::BO_GT:
+        return CppSL::BinaryOp::GREATER;
+        break;
+    case clang::BO_LE:
+        return CppSL::BinaryOp::LESS_EQUAL;
+        break;
+    case clang::BO_GE:
+        return CppSL::BinaryOp::GREATER_EQUAL;
+        break;
+    case clang::BO_EQ:
+        return CppSL::BinaryOp::EQUAL;
+        break;
+    case clang::BO_NE:
+        return CppSL::BinaryOp::NOT_EQUAL;
+        break;
 
-        case clang::BO_Assign: return CppSL::BinaryOp::ASSIGN;
-        case clang::BO_AddAssign: return CppSL::BinaryOp::ADD_ASSIGN;
-        case clang::BO_SubAssign: return CppSL::BinaryOp::SUB_ASSIGN;
-        case clang::BO_MulAssign: return CppSL::BinaryOp::MUL_ASSIGN;
-        case clang::BO_DivAssign: return CppSL::BinaryOp::DIV_ASSIGN;
-        case clang::BO_RemAssign: return CppSL::BinaryOp::MOD_ASSIGN;
-        case clang::BO_OrAssign: return CppSL::BinaryOp::BIT_OR_ASSIGN;
-        case clang::BO_XorAssign: return CppSL::BinaryOp::BIT_XOR_ASSIGN;
-        case clang::BO_ShlAssign: return CppSL::BinaryOp::SHL_ASSIGN;
+    case clang::BO_Assign:
+        return CppSL::BinaryOp::ASSIGN;
+    case clang::BO_AddAssign:
+        return CppSL::BinaryOp::ADD_ASSIGN;
+    case clang::BO_SubAssign:
+        return CppSL::BinaryOp::SUB_ASSIGN;
+    case clang::BO_MulAssign:
+        return CppSL::BinaryOp::MUL_ASSIGN;
+    case clang::BO_DivAssign:
+        return CppSL::BinaryOp::DIV_ASSIGN;
+    case clang::BO_RemAssign:
+        return CppSL::BinaryOp::MOD_ASSIGN;
+    case clang::BO_OrAssign:
+        return CppSL::BinaryOp::BIT_OR_ASSIGN;
+    case clang::BO_XorAssign:
+        return CppSL::BinaryOp::BIT_XOR_ASSIGN;
+    case clang::BO_ShlAssign:
+        return CppSL::BinaryOp::SHL_ASSIGN;
 
-        default:
-            llvm::report_fatal_error("Unsupported binary operator");
+    default:
+        llvm::report_fatal_error("Unsupported binary operator");
     }
 }
 
 CompileFrontendAction::CompileFrontendAction(skr::CppSL::AST& AST)
-    : clang::ASTFrontendAction(), AST(AST)
+    : clang::ASTFrontendAction()
+    , AST(AST)
 {
 }
 
 bool CompileFrontendAction::BeginInvocation(clang::CompilerInstance& CI)
 {
-    clang::DependencyOutputOptions &DepOpts = CI.getInvocation().getDependencyOutputOpts();
-        
+    clang::DependencyOutputOptions& DepOpts = CI.getInvocation().getDependencyOutputOpts();
+
     const auto& Input = CI.getFrontendOpts().Inputs[0];
-    
+
     std::filesystem::path P = Input.getFile().str();
     auto N = P.filename().replace_extension("").string();
     DepOpts.OutputFile = N + ".d";
     DepOpts.Targets.push_back(N + ".o");
     DepOpts.UsePhonyTargets = false;
     DepOpts.IncludeSystemHeaders = true;
-    
+
     return clang::ASTFrontendAction::BeginInvocation(CI);
 }
 
-std::unique_ptr<clang::ASTConsumer> CompileFrontendAction::CreateASTConsumer(clang::CompilerInstance &CI, llvm::StringRef InFile)
+std::unique_ptr<clang::ASTConsumer> CompileFrontendAction::CreateASTConsumer(clang::CompilerInstance& CI, llvm::StringRef InFile)
 {
-    auto &LO = CI.getLangOpts();
+    auto& LO = CI.getLangOpts();
     LO.CommentOpts.ParseAllComments = false;
     return std::make_unique<skr::CppSL::ASTConsumer>(AST);
 }
 
 ASTConsumer::ASTConsumer(skr::CppSL::AST& AST)
-    : clang::ASTConsumer(), AST(AST)
+    : clang::ASTConsumer()
+    , AST(AST)
 {
-    for (uint32_t i = 0; i < (uint32_t)BinaryOp::COUNT; i++) 
+    for (uint32_t i = 0; i < (uint32_t)BinaryOp::COUNT; i++)
     {
         const auto op = (BinaryOp)i;
         _bin_ops.emplace(magic_enum::enum_name(op), op);
@@ -326,7 +483,7 @@ FunctionStack* ASTConsumer::zzNewStack(const clang::FunctionDecl* func)
 void ASTConsumer::HandleTranslationUnit(clang::ASTContext& Context)
 {
     pASTContext = &Context;
-    
+
     DebugASTVisitor debug = {};
     debug.TraverseDecl(Context.getTranslationUnitDecl());
 
@@ -347,7 +504,7 @@ void ASTConsumer::HandleTranslationUnit(clang::ASTContext& Context)
     // translate from stage entries
     for (auto stage : _stages)
         TranslateStageEntry(stage);
-    
+
     // Assign translated types/functions/variables to their namespaces
     AssignDeclsToNamespaces();
 }
@@ -358,7 +515,7 @@ bool ASTConsumer::VisitEnumDecl(const clang::EnumDecl* enumDecl)
 }
 
 bool ASTConsumer::VisitRecordDecl(const clang::RecordDecl* recordDecl)
-{    
+{
     TranslateRecordDecl(recordDecl);
     return true;
 }
@@ -413,10 +570,10 @@ CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recor
     const auto* TSD_Partial = llvm::dyn_cast<clang::ClassTemplatePartialSpecializationDecl>(recordDecl);
     const auto* TemplateItSelf = recordDecl->getDescribedTemplate();
     if (auto Existed = getType(ThisType->getCanonicalTypeInternal())) return Existed; // already processed
-    if (recordDecl->isUnion()) return nullptr; // unions are not supported
-    if (IsIgnore(recordDecl)) return nullptr; // skip ignored types
-    if (TSD && TSD_Partial) return nullptr; // skip no-def template specs
-    
+    if (recordDecl->isUnion()) return nullptr;                                        // unions are not supported
+    if (IsIgnore(recordDecl)) return nullptr;                                         // skip ignored types
+    if (TSD && TSD_Partial) return nullptr;                                           // skip no-def template specs
+
     clang::AnnotateAttr* BuiltinAttr = IsBuiltin(recordDecl);
     if (TSD)
     {
@@ -429,14 +586,14 @@ CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recor
         if (TSD && What == "vec")
         {
             if (TSD && !TSD->isCompleteDefinition()) return nullptr; // skip no-def template specs
-            
+
             const auto& Arguments = TSD->getTemplateArgs();
             const auto ET = Arguments.get(0).getAsType().getCanonicalType();
             const uint64_t N = Arguments.get(1).getAsIntegral().getLimitedValue();
 
             if (getType(ET) == nullptr)
                 ReportFatalError(recordDecl, "Error element type!");
-            if (N <= 1 || N > 4) 
+            if (N <= 1 || N > 4)
                 ReportFatalError(TSD, "Unsupported vec size: {}", std::to_string(N));
 
             if (getType(ET) == AST.FloatType)
@@ -503,7 +660,7 @@ CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recor
             const auto ET = Arguments.get(0).getAsType();
             const auto CacheFlags = Arguments.get(1).getAsIntegral().getLimitedValue();
             const auto BufferFlag = (CacheFlags == 2) ? CppSL::BufferFlags::Read : CppSL::BufferFlags::ReadWrite;
-            
+
             if (getType(ET) == nullptr)
                 TranslateType(ET->getCanonicalTypeInternal());
 
@@ -516,7 +673,7 @@ CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recor
         {
             const auto& Arguments = TSD->getTemplateArgs();
             const auto ET = Arguments.get(0).getAsType();
-            
+
             if (getType(ET) == nullptr)
                 TranslateType(ET->getCanonicalTypeInternal());
 
@@ -555,15 +712,15 @@ CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recor
         {
             addType(ThisQualType, AST.DeclareBuiltinType(L"bindless_array", 0));
         }
-    } 
-    else 
+    }
+    else
     {
         if (!recordDecl->isCompleteDefinition()) return nullptr; // skip forward declares
         if (TSD && !TSD->isCompleteDefinition()) return nullptr; // skip no-def template specs
-        if (!TSD && TemplateItSelf) return nullptr; // skip template definitions
+        if (!TSD && TemplateItSelf) return nullptr;              // skip template definitions
 
         auto TypeName = TSD ? std::format("{}_{}", TSD->getName().str(), next_template_spec_id++) :
-                                recordDecl->getName().str(); // Use short name instead of qualified
+                              recordDecl->getName().str(); // Use short name instead of qualified
         if (getType(ThisQualType))
             ReportFatalError(recordDecl, "Duplicate type declaration: {}", TypeName);
 
@@ -579,7 +736,7 @@ CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recor
 
         for (auto field : recordDecl->fields())
         {
-            if (IsDump(field)) 
+            if (IsDump(field))
                 field->dump();
 
             auto fieldType = field->getType();
@@ -602,7 +759,7 @@ CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recor
             if (auto AsInterpolation = IsInterpolation(field))
             {
                 auto InterpolationModeString = GetArgumentAt<clang::StringRef>(AsInterpolation, 1);
-                auto InterpolationMode = AST.GetInterpolationModeFromString(InterpolationModeString.str().c_str()); 
+                auto InterpolationMode = AST.GetInterpolationModeFromString(InterpolationModeString.str().c_str());
                 if (AsStageInout != nullptr)
                     _f->add_attr(AST.DeclareAttr<CppSL::InterpolationAttr>(InterpolationMode));
                 else
@@ -619,33 +776,33 @@ CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recor
 CppSL::NamespaceDecl* ASTConsumer::TranslateNamespaceDecl(const clang::NamespaceDecl* namespaceDecl)
 {
     using namespace clang;
-    
+
     if (IsDump(namespaceDecl))
         namespaceDecl->dump();
-    
+
     // Use canonical declaration to handle namespace redeclarations
     const auto* CanonicalNS = namespaceDecl->getCanonicalDecl();
-    
+
     // Check if already processed using canonical declaration
     if (auto Existed = _namespaces.find(CanonicalNS); Existed != _namespaces.end())
         return Existed->second;
-    
+
     if (IsIgnore(namespaceDecl)) return nullptr; // skip ignored namespaces
-    
+
     // Get namespace name and parent
     auto NamespaceName = CanonicalNS->getName().str();
     CppSL::NamespaceDecl* ParentNamespace = nullptr;
-    
+
     // Handle nested namespaces using canonical declarations
     if (auto ParentNS = llvm::dyn_cast<clang::NamespaceDecl>(CanonicalNS->getParent()))
     {
         ParentNamespace = TranslateNamespaceDecl(ParentNS);
     }
-    
+
     // Create new namespace declaration (structure only, content will be assigned later)
     auto NewNamespace = AST.DeclareNamespace(ToText(NamespaceName), ParentNamespace);
     _namespaces[CanonicalNS] = NewNamespace;
-    
+
     // Process all redeclarations to collect nested namespace structures
     for (auto redecl : CanonicalNS->redecls())
     {
@@ -658,7 +815,7 @@ CppSL::NamespaceDecl* ASTConsumer::TranslateNamespaceDecl(const clang::Namespace
             }
         }
     }
-    
+
     return NewNamespace;
 }
 
@@ -679,8 +836,7 @@ const CppSL::TypeDecl* ASTConsumer::TranslateLambda(const clang::LambdaExpr* x)
 
 void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* expr)
 {
-    auto translateCaptureToParam = [&](clang::QualType _type, const CppSL::String& name, bool byref) 
-    {
+    auto translateCaptureToParam = [&](clang::QualType _type, const CppSL::String& name, bool byref) {
         return TranslateParam(current_stack->_captured_params, byref ? EVariableQualifier::Inout : EVariableQualifier::None, _type, L"cap_" + name);
     };
 
@@ -694,10 +850,9 @@ void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* expr)
             auto byRef = capture.getCaptureKind() == clang::LambdaCaptureKind::LCK_ByRef;
             byRef &= !capture.getCapturedVar()->getType().isConstQualified(); // const&
             auto newParam = translateCaptureToParam(
-                capture.getCapturedVar()->getType(), 
-                ToText(capture.getCapturedVar()->getName()), 
-                byRef
-            );
+                capture.getCapturedVar()->getType(),
+                ToText(capture.getCapturedVar()->getName()),
+                byRef);
             FunctionStack::CapturedParamInfo info = {
                 .owner = expr,
                 .asVar = clang::dyn_cast<clang::VarDecl>(capture.getCapturedVar()),
@@ -717,8 +872,7 @@ void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* expr)
                 auto newParam = translateCaptureToParam(
                     field->getType(),
                     ToText(field->getName()),
-                    true
-                );
+                    true);
                 FunctionStack::CapturedParamInfo info = {
                     .owner = expr,
                     .asVar = nullptr,
@@ -731,8 +885,8 @@ void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* expr)
                     current_stack->_member_redirects[expr] = newParam->ref();
                 }
             }
-        }  
-    }  
+        }
+    }
 }
 
 CppSL::GlobalVarDecl* ASTConsumer::TranslateGlobalVariable(const clang::VarDecl* Var)
@@ -740,7 +894,7 @@ CppSL::GlobalVarDecl* ASTConsumer::TranslateGlobalVariable(const clang::VarDecl*
     auto _type = getType(Var->getType());
     if (_type->is_resource())
     {
-        auto ShaderResource = AST.DeclareGlobalResource(getType(Var->getType()), ToText(Var->getName()));
+        auto ShaderResource = AST.DeclareGlobalResource(getType(Var->getType()), ToText(GetVarName(Var)));
         uint32_t group = ~0, binding = ~0;
         if (auto ResourceBind = IsResourceBind(Var))
         {
@@ -760,7 +914,11 @@ CppSL::GlobalVarDecl* ASTConsumer::TranslateGlobalVariable(const clang::VarDecl*
         auto _init = TranslateStmt<CppSL::Expr>(Var->getInit());
         if (!getType(Var->getType()))
             TranslateType(Var->getType());
-        auto _const = AST.DeclareGlobalConstant(getType(Var->getType()), ToText(Var->getName()), _init);
+        auto _const = AST.DeclareGlobalConstant(
+            getType(Var->getType()),
+            ToText(GetVarName(Var)),
+            _init
+        );
         addVar(Var, _const);
         return _const;
     }
@@ -779,9 +937,9 @@ CppSL::Stmt* ASTConsumer::TranslateCall(const clang::Decl* _funcDecl, const clan
 
     if (LanguageRule_UseAssignForImplicitCopyOrMove(funcDecl))
         return TranslateStmt(AsConstruct ? AsConstruct->getArg(0) : AsCall->getArg(0));
-    
+
     // some args carray types that function shall use (like lambdas, etc.)
-    // so we translate all args before translate & call the function 
+    // so we translate all args before translate & call the function
     std::vector<CppSL::Expr*> _args;
     _args.reserve(AsCall ? AsCall->getNumArgs() : AsConstruct->getNumArgs());
     for (auto arg : AsCall ? AsCall->arguments() : AsConstruct->arguments())
@@ -808,7 +966,7 @@ CppSL::Stmt* ASTConsumer::TranslateCall(const clang::Decl* _funcDecl, const clan
                 }
                 else
                 {
-                    _args.emplace_back(AST.Field(AST.This(current_stack->methodThisType()), 
+                    _args.emplace_back(AST.Field(AST.This(current_stack->methodThisType()),
                         current_stack->methodThisType()->get_field(ToText(info.asCaptureThisField->getName()))));
                 }
             }
@@ -820,7 +978,7 @@ CppSL::Stmt* ASTConsumer::TranslateCall(const clang::Decl* _funcDecl, const clan
         auto CppSLType = getType(AsConstruct->getType());
         return AST.Construct(CppSLType, _args);
     }
-    else if (auto AsMethod = clang::dyn_cast<clang::CXXMethodDecl>(funcDecl); 
+    else if (auto AsMethod = clang::dyn_cast<clang::CXXMethodDecl>(funcDecl);
         AsMethod && !LanguageRule_UseFunctionInsteadOfMethod(AsMethod))
     {
         CppSL::MemberExpr* _callee = nullptr;
@@ -855,7 +1013,7 @@ CppSL::Stmt* ASTConsumer::TranslateCall(const clang::Decl* _funcDecl, const clan
         else
         {
             auto _callee = TranslateStmt<CppSL::DeclRefExpr>(AsCall->getCallee());
-            return AST.CallFunction(_callee, _args); 
+            return AST.CallFunction(_callee, _args);
         }
     }
 }
@@ -943,10 +1101,10 @@ bool ASTConsumer::VisitVarDecl(const clang::VarDecl* x)
     return true;
 }
 
-CppSL::TypeDecl* ASTConsumer::TranslateType(clang::QualType type) 
+CppSL::TypeDecl* ASTConsumer::TranslateType(clang::QualType type)
 {
     type = Decay(type);
-    if (auto Existed = getType(type)) 
+    if (auto Existed = getType(type))
         return Existed; // already processed
 
     if (auto RecordDecl = type->getAsRecordDecl())
@@ -966,7 +1124,7 @@ CppSL::TypeDecl* ASTConsumer::TranslateType(clang::QualType type)
         type->dump();
         ReportFatalError("Unsupported type: " + std::string(type->getTypeClassName()));
     }
-    
+
     return getType(type);
 }
 
@@ -990,17 +1148,17 @@ void ASTConsumer::TranslateParams(std::vector<CppSL::ParamVarDecl*>& params, con
     for (auto param : func->parameters())
     {
         auto iter = _vars.find(param);
-        if (iter != _vars.end()) 
+        if (iter != _vars.end())
             continue;
 
         const bool isRef = param->getType()->isReferenceType() && !param->getType()->isRValueReferenceType();
         const auto ParamQualType = param->getType().getNonReferenceType();
         const bool isConst = ParamQualType.isConstQualified();
-        
-        const auto qualifier = 
-            (isRef && isConst) ? CppSL::EVariableQualifier::Const : 
-            (isRef && !isConst) ? CppSL::EVariableQualifier::Inout : 
-            CppSL::EVariableQualifier::None;
+
+        const auto qualifier =
+            (isRef && isConst)  ? CppSL::EVariableQualifier::Const :
+            (isRef && !isConst) ? CppSL::EVariableQualifier::Inout :
+                                  CppSL::EVariableQualifier::None;
 
         if (auto _paramType = getType(ParamQualType))
         {
@@ -1033,11 +1191,11 @@ void ASTConsumer::TranslateParams(std::vector<CppSL::ParamVarDecl*>& params, con
     }
 }
 
-CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x, llvm::StringRef override_name) 
+CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl* x, llvm::StringRef override_name)
 {
     if (IsDump(x))
         x->dump();
-    
+
     if (auto Existed = getFunc(x))
         return Existed;
     if (LanguageRule_UseAssignForImplicitCopyOrMove(x))
@@ -1049,7 +1207,7 @@ CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x
     DeferGuard deferGuard([this]() { popStack(); });
 
     std::string OVERRIDE_NAME = "OP_OVERLOAD";
-    if (bool AsOpOverload = LanguageRule_UseMethodForOperatorOverload(x, &OVERRIDE_NAME); 
+    if (bool AsOpOverload = LanguageRule_UseMethodForOperatorOverload(x, &OVERRIDE_NAME);
         AsOpOverload && override_name.empty())
     {
         override_name = OVERRIDE_NAME;
@@ -1078,9 +1236,8 @@ CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x
                 _parentType,
                 ConstructorDecl::kSymbolName,
                 params,
-                TranslateStmt<CppSL::CompoundStmt>(x->getBody())
-            );
-            
+                TranslateStmt<CppSL::CompoundStmt>(x->getBody()));
+
             // Process member initializers
             for (auto ctor_init : AsCtor->inits())
             {
@@ -1102,14 +1259,13 @@ CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x
         }
         else
         {
-            auto CxxMethodName = override_name.empty() ? AsMethod->getNameAsString() : override_name.str();
+            auto CxxMethodName = override_name.empty() ? GetFunctionName(AsMethod) : override_name.str();
             F = AST.DeclareMethod(
                 _parentType,
                 ToText(CxxMethodName),
                 getType(x->getReturnType()),
                 params,
-                TranslateStmt<CppSL::CompoundStmt>(x->getBody())
-            );
+                TranslateStmt<CppSL::CompoundStmt>(x->getBody()));
             _parentType->add_method((CppSL::MethodDecl*)F);
         }
     }
@@ -1128,17 +1284,11 @@ CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x
             current_stack->_this_redirect = _this->ref();
         }
 
-        auto CxxFunctionName = override_name.empty() ? x->getName().str() : override_name.str(); // Use short name
-        // Still need some character replacements for templates
-        std::replace(CxxFunctionName.begin(), CxxFunctionName.end(), '<', '_');
-        std::replace(CxxFunctionName.begin(), CxxFunctionName.end(), '>', '_');
-        std::replace(CxxFunctionName.begin(), CxxFunctionName.end(), ',', '_');
-        std::replace(CxxFunctionName.begin(), CxxFunctionName.end(), ' ', '_');
+        auto CxxFunctionName = override_name.empty() ? GetFunctionName(x) : override_name.str();
         F = AST.DeclareFunction(ToText(CxxFunctionName),
             getType(x->getReturnType()),
             params,
-            TranslateStmt<CppSL::CompoundStmt>(x->getBody())
-        );
+            TranslateStmt<CppSL::CompoundStmt>(x->getBody()));
 
         current_stack->_this_redirect = nullptr;
     }
@@ -1147,53 +1297,60 @@ CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x
 }
 
 template <typename T>
-T* ASTConsumer::TranslateStmt(const clang::Stmt *x) 
+T* ASTConsumer::TranslateStmt(const clang::Stmt* x)
 {
     return (T*)TranslateStmt(x);
 }
 
-Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x) 
+Stmt* ASTConsumer::TranslateStmt(const clang::Stmt* x)
 {
     using namespace clang;
     using namespace skr;
 
-    if (x == nullptr) 
+    if (x == nullptr)
         return nullptr;
 
-    if (auto cxxBranch = llvm::dyn_cast<clang::IfStmt>(x)) 
+    if (auto cxxBranch = llvm::dyn_cast<clang::IfStmt>(x))
     {
         auto cxxCond = cxxBranch->getCond();
         auto ifConstVar = cxxCond->getIntegerConstantExpr(*pASTContext);
-        if (ifConstVar) {
-            if (ifConstVar->getExtValue() != 0) {
+        if (ifConstVar)
+        {
+            if (ifConstVar->getExtValue() != 0)
+            {
                 if (cxxBranch->getThen())
                     return TranslateStmt(cxxBranch->getThen());
                 else
                     return AST.Comment(L"c++: here is an optimized if constexpr false branch");
-            } else {
+            }
+            else
+            {
                 if (cxxBranch->getElse())
                     return TranslateStmt(cxxBranch->getElse());
                 else
                     return AST.Comment(L"c++: here is an optimized if constexpr true branch");
             }
-        } else {
+        }
+        else
+        {
             auto cxxThen = cxxBranch->getThen();
             auto cxxElse = cxxBranch->getElse();
             auto _cond = TranslateStmt<CppSL::Expr>(cxxCond);
             auto _then = TranslateStmt(cxxThen);
             auto _else = TranslateStmt(cxxElse);
-            CppSL::CompoundStmt* _then_body = cxxThen ? llvm::dyn_cast<clang::CompoundStmt>(cxxThen) ? (CppSL::CompoundStmt*)_then : AST.Block({_then}) : nullptr;
-            CppSL::CompoundStmt* _else_body = cxxElse ? llvm::dyn_cast<clang::CompoundStmt>(cxxElse) ? (CppSL::CompoundStmt*)_else : AST.Block({_else}) : nullptr;
+            CppSL::CompoundStmt* _then_body = cxxThen ? llvm::dyn_cast<clang::CompoundStmt>(cxxThen) ? (CppSL::CompoundStmt*)_then : AST.Block({ _then }) : nullptr;
+            CppSL::CompoundStmt* _else_body = cxxElse ? llvm::dyn_cast<clang::CompoundStmt>(cxxElse) ? (CppSL::CompoundStmt*)_else : AST.Block({ _else }) : nullptr;
             return AST.If(_cond, _then_body, _else_body);
         }
-    } 
-    else if (auto cxxSwitch = llvm::dyn_cast<clang::SwitchStmt>(x)) 
+    }
+    else if (auto cxxSwitch = llvm::dyn_cast<clang::SwitchStmt>(x))
     {
         std::vector<CppSL::CaseStmt*> cases;
         std::vector<const clang::SwitchCase*> cxxCases;
-        if (auto caseList = cxxSwitch->getSwitchCaseList()) 
+        if (auto caseList = cxxSwitch->getSwitchCaseList())
         {
-            while (caseList) {
+            while (caseList)
+            {
                 cxxCases.emplace_back(caseList);
                 caseList = caseList->getNextSwitchCase();
             }
@@ -1203,38 +1360,38 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
                 cases.emplace_back(TranslateStmt<CppSL::CaseStmt>(cxxCase));
         }
         return AST.Switch(TranslateStmt<CppSL::Expr>(cxxSwitch->getCond()), cases);
-    } 
-    else if (auto cxxCase = llvm::dyn_cast<clang::CaseStmt>(x)) 
+    }
+    else if (auto cxxCase = llvm::dyn_cast<clang::CaseStmt>(x))
     {
         return AST.Case(TranslateStmt<CppSL::Expr>(cxxCase->getLHS()), TranslateStmt<CppSL::CompoundStmt>(cxxCase->getSubStmt()));
-    } 
-    else if (auto cxxDefault = llvm::dyn_cast<clang::DefaultStmt>(x)) 
+    }
+    else if (auto cxxDefault = llvm::dyn_cast<clang::DefaultStmt>(x))
     {
         auto _body = TranslateStmt<CppSL::CompoundStmt>(cxxDefault->getSubStmt());
         return AST.Default(_body);
-    } 
-    else if (auto cxxContinue = llvm::dyn_cast<clang::ContinueStmt>(x)) 
+    }
+    else if (auto cxxContinue = llvm::dyn_cast<clang::ContinueStmt>(x))
     {
         return AST.Continue();
-    } 
-    else if (auto cxxBreak = llvm::dyn_cast<clang::BreakStmt>(x)) 
+    }
+    else if (auto cxxBreak = llvm::dyn_cast<clang::BreakStmt>(x))
     {
         return AST.Break();
-    } 
-    else if (auto cxxWhile = llvm::dyn_cast<clang::WhileStmt>(x)) 
+    }
+    else if (auto cxxWhile = llvm::dyn_cast<clang::WhileStmt>(x))
     {
         auto _cond = TranslateStmt<CppSL::Expr>(cxxWhile->getCond());
         return AST.While(_cond, TranslateStmt<CppSL::CompoundStmt>(cxxWhile->getBody()));
-    } 
-    else if (auto cxxFor = llvm::dyn_cast<clang::ForStmt>(x)) 
+    }
+    else if (auto cxxFor = llvm::dyn_cast<clang::ForStmt>(x))
     {
         auto _init = TranslateStmt(cxxFor->getInit());
         auto _cond = TranslateStmt<CppSL::Expr>(cxxFor->getCond());
         auto _inc = TranslateStmt(cxxFor->getInc());
         auto _body = TranslateStmt<CppSL::CompoundStmt>(cxxFor->getBody());
         return AST.For(_init, _cond, _inc, _body);
-    } 
-    else if (auto cxxCompound = llvm::dyn_cast<clang::CompoundStmt>(x)) 
+    }
+    else if (auto cxxCompound = llvm::dyn_cast<clang::CompoundStmt>(x))
     {
         std::vector<CppSL::Stmt*> stmts;
         stmts.reserve(cxxCompound->size());
@@ -1251,16 +1408,16 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
         return TranslateStmt(cxxExprWithCleanup->getSubExpr());
     }
     ///////////////////////////////////// STMTS ///////////////////////////////////////////
-    else if (auto cxxDecl = llvm::dyn_cast<clang::DeclStmt>(x)) 
+    else if (auto cxxDecl = llvm::dyn_cast<clang::DeclStmt>(x))
     {
         const DeclGroupRef declGroup = cxxDecl->getDeclGroup();
         std::vector<CppSL::DeclStmt*> var_decls;
         std::vector<CppSL::CommentStmt*> comments;
-        for (auto decl : declGroup) 
+        for (auto decl : declGroup)
         {
             if (!decl) continue;
 
-            if (auto *varDecl = dyn_cast<clang::VarDecl>(decl)) 
+            if (auto* varDecl = dyn_cast<clang::VarDecl>(decl))
             {
                 const auto Ty = varDecl->getType();
 
@@ -1284,19 +1441,27 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
                     }
                     auto v = AST.Variable(isConst ? CppSL::EVariableQualifier::Const : CppSL::EVariableQualifier::None, CppSLType, _name, _init);
                     addVar(varDecl, (CppSL::VarDecl*)v->decl());
-                    var_decls.emplace_back(v); 
-                } 
+                    var_decls.emplace_back(v);
+                }
                 else
                 {
                     ReportFatalError("VarDecl with unfound type: [{}]", Ty.getAsString());
                 }
-            } else if (auto aliasDecl = dyn_cast<clang::TypeAliasDecl>(decl)) {// ignore
+            }
+            else if (auto aliasDecl = dyn_cast<clang::TypeAliasDecl>(decl))
+            { // ignore
                 comments.emplace_back(AST.Comment(L"c++: this line is a typedef"));
-            } else if (auto staticAssertDecl = dyn_cast<clang::StaticAssertDecl>(decl)) {// ignore
+            }
+            else if (auto staticAssertDecl = dyn_cast<clang::StaticAssertDecl>(decl))
+            { // ignore
                 comments.emplace_back(AST.Comment(L"c++: this line is a static_assert"));
-            } else if (auto UsingDirectiveDecl = dyn_cast<clang::UsingDirectiveDecl>(decl)) {
+            }
+            else if (auto UsingDirectiveDecl = dyn_cast<clang::UsingDirectiveDecl>(decl))
+            {
                 comments.emplace_back(AST.Comment(L"c++: this line is a using decl"));
-            } else {
+            }
+            else
+            {
                 ReportFatalError(x, "unsupported decl stmt: {}", cxxDecl->getStmtClassName());
             }
         }
@@ -1309,14 +1474,14 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
         else
             return AST.Comment(L"c++: this line is a decl stmt with no variables");
     }
-    else if (auto cxxReturn = llvm::dyn_cast<clang::ReturnStmt>(x)) 
+    else if (auto cxxReturn = llvm::dyn_cast<clang::ReturnStmt>(x))
     {
-        if(auto retExpr = cxxReturn->getRetValue())
+        if (auto retExpr = cxxReturn->getRetValue())
             return AST.Return(TranslateStmt<CppSL::Expr>(retExpr));
         return AST.Return(nullptr);
     }
     ///////////////////////////////////// EXPRS ///////////////////////////////////////////
-    else if (auto cxxDeclRef = llvm::dyn_cast<clang::DeclRefExpr>(x)) 
+    else if (auto cxxDeclRef = llvm::dyn_cast<clang::DeclRefExpr>(x))
     {
         auto _cxxDecl = cxxDeclRef->getDecl();
         if (auto Function = llvm::dyn_cast<clang::FunctionDecl>(_cxxDecl))
@@ -1346,7 +1511,7 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
                             {
                                 return AST.Ref(existed);
                             }
-                            else if (auto Evaluated = Decompressed->getEvaluatedValue()) 
+                            else if (auto Evaluated = Decompressed->getEvaluatedValue())
                             {
                                 if (Evaluated->isInt())
                                 {
@@ -1355,13 +1520,13 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
                                 else if (Evaluated->isFloat())
                                 {
                                     return AST.Constant(FloatValue(Evaluated->getFloat().convertToDouble()));
-                                }  
+                                }
                             }
                         }
                     }
                     ReportFatalError(cxxDeclRef, "Variable {} failed to instantiate", Var->getNameAsString());
                 }
-                else 
+                else
                 {
                     return AST.Ref(getVar(Var));
                 }
@@ -1375,10 +1540,10 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     else if (auto cxxConditional = llvm::dyn_cast<clang::ConditionalOperator>(x))
     {
         return AST.Conditional(TranslateStmt<CppSL::Expr>(cxxConditional->getCond()),
-                               TranslateStmt<CppSL::Expr>(cxxConditional->getTrueExpr()),
-                               TranslateStmt<CppSL::Expr>(cxxConditional->getFalseExpr()));
-    } 
-    else if (auto cxxLambda = llvm::dyn_cast<LambdaExpr>(x)) 
+            TranslateStmt<CppSL::Expr>(cxxConditional->getTrueExpr()),
+            TranslateStmt<CppSL::Expr>(cxxConditional->getFalseExpr()));
+    }
+    else if (auto cxxLambda = llvm::dyn_cast<LambdaExpr>(x))
     {
         current_stack->_local_lambdas.insert(cxxLambda);
         if (TranslateLambda(cxxLambda))
@@ -1530,8 +1695,8 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
             else
                 ReportFatalError(x, "Unsupported call operator: {}", name.str());
         }
-        else 
-        {            
+        else
+        {
             return TranslateCall(funcDecl, x);
         }
     }
@@ -1578,9 +1743,10 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
             {
                 auto swizzleResultType = getType(fieldDecl->getType());
                 auto swizzleText = fieldDecl->getName();
-                uint64_t swizzle_seq[] = {0u, 0u, 0u, 0u}; /*4*/
+                uint64_t swizzle_seq[] = { 0u, 0u, 0u, 0u }; /*4*/
                 int64_t swizzle_size = 0;
-                for (auto iter = swizzleText.begin(); iter != swizzleText.end(); iter++) {
+                for (auto iter = swizzleText.begin(); iter != swizzleText.end(); iter++)
+                {
                     if (*iter == 'x') swizzle_seq[swizzle_size] = 0u;
                     if (*iter == 'y') swizzle_seq[swizzle_size] = 1u;
                     if (*iter == 'z') swizzle_seq[swizzle_size] = 2u;
@@ -1612,7 +1778,7 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
                 return owner;
             }
         }
-        else 
+        else
         {
             ReportFatalError(x, "unsupported member expr: {}", memberExpr->getStmtClassName());
         }
@@ -1624,7 +1790,7 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     else if (auto THIS = llvm::dyn_cast<clang::CXXThisExpr>(x))
     {
         if (current_stack->_this_redirect)
-            return current_stack->_this_redirect; 
+            return current_stack->_this_redirect;
         return AST.This(getType(THIS->getType().getCanonicalType()));
     }
     else if (auto InitExpr = llvm::dyn_cast<CXXDefaultInitExpr>(x))
@@ -1636,13 +1802,13 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
         auto APV = CONSTANT->getAPValueResult();
         switch (APV.getKind())
         {
-            case clang::APValue::ValueKind::Int:
-                return AST.Constant(CppSL::IntValue(APV.getInt().getLimitedValue()));
-            case clang::APValue::ValueKind::Float:
-                return AST.Constant(CppSL::FloatValue(APV.getFloat().convertToDouble()));
-            case clang::APValue::ValueKind::Struct:
-            default:
-                ReportFatalError(x, "ConstantExpr with struct value is not supported: {}", CONSTANT->getStmtClassName());
+        case clang::APValue::ValueKind::Int:
+            return AST.Constant(CppSL::IntValue(APV.getInt().getLimitedValue()));
+        case clang::APValue::ValueKind::Float:
+            return AST.Constant(CppSL::FloatValue(APV.getFloat().convertToDouble()));
+        case clang::APValue::ValueKind::Struct:
+        default:
+            ReportFatalError(x, "ConstantExpr with struct value is not supported: {}", CONSTANT->getStmtClassName());
         }
     }
     else if (auto SCALAR = llvm::dyn_cast<clang::CXXScalarValueInitExpr>(x))
@@ -1747,10 +1913,9 @@ skr::CppSL::TypeDecl* ASTConsumer::getType(clang::QualType type) const
     {
         auto ConstantArrayType = pASTContext->getAsConstantArrayType(type);
         return (CppSL::TypeDecl*)AST.ArrayType(
-            getType(ConstantArrayType->getElementType()), 
-            ConstantArrayType->getSize().getLimitedValue(), 
-            ArrayFlags::None
-        );
+            getType(ConstantArrayType->getElementType()),
+            ConstantArrayType->getSize().getLimitedValue(),
+            ArrayFlags::None);
     }
     return nullptr;
 }
@@ -1776,17 +1941,16 @@ skr::CppSL::FunctionDecl* ASTConsumer::getFunc(const clang::FunctionDecl* func) 
 clang::QualType ASTConsumer::Decay(clang::QualType type) const
 {
     auto _type = type.getNonReferenceType()
-        .getUnqualifiedType()
-        .getDesugaredType(*pASTContext)
-        .getCanonicalType();
+                     .getUnqualifiedType()
+                     .getDesugaredType(*pASTContext)
+                     .getCanonicalType();
     return _type;
 }
 
 void ASTConsumer::CheckStageInputs(const clang::FunctionDecl* x, skr::CppSL::ShaderStage stage)
 {
     auto CheckParamIsBuiltin = [](const clang::ParmVarDecl* p) -> bool { return IsBuiltin(p); };
-    auto CheckParamTypeIsStageInout = [this](const clang::ParmVarDecl* p) -> bool 
-    {
+    auto CheckParamTypeIsStageInout = [this](const clang::ParmVarDecl* p) -> bool {
         auto Type = Decay(p->getType()).getTypePtr()->getAsRecordDecl();
         return Type ? (IsStageInout(Type) != nullptr) : false;
     };
@@ -1804,41 +1968,62 @@ void ASTConsumer::CheckStageInputs(const clang::FunctionDecl* x, skr::CppSL::Sha
 
 inline static std::string OpKindToName(clang::OverloadedOperatorKind op)
 {
-    switch (op) {
-        case clang::OO_PipeEqual: return "operator_pipe_equal";
-        case clang::OO_Pipe: return "operator_pipe";
-        case clang::OO_Amp: return "operator_amp";
-        case clang::OO_AmpEqual: return "operator_amp_assign";
-        case clang::OO_Plus: return "operator_plus";
-        case clang::OO_Minus: return "operator_minus";
-        case clang::OO_Star: return "operator_multiply";
-        case clang::OO_Slash: return "operator_divide";
-        case clang::OO_StarEqual: return "operator_multiply_assign";
-        case clang::OO_SlashEqual: return "operator_divide_assign";
-        case clang::OO_PlusEqual: return "operator_plus_assign";
-        case clang::OO_MinusEqual: return "operator_minus_assign";
-        case clang::OO_EqualEqual: return "operator_equal";
-        case clang::OO_ExclaimEqual: return "operator_not_equal";
-        case clang::OO_Less: return "operator_less";
-        case clang::OO_Greater: return "operator_greater";
-        case clang::OO_LessEqual: return "operator_less_equal";
-        case clang::OO_GreaterEqual: return "operator_greater_equal";
-        case clang::OO_Subscript: return "operator_subscript";
-        case clang::OO_Call: return "operator_call";
-        default: 
-            auto message = std::string("Unsupported operator kind: ") + std::to_string(op);
-            llvm::report_fatal_error(message.c_str());
-            return "operator_unknown";
+    switch (op)
+    {
+    case clang::OO_PipeEqual:
+        return "operator_pipe_equal";
+    case clang::OO_Pipe:
+        return "operator_pipe";
+    case clang::OO_Amp:
+        return "operator_amp";
+    case clang::OO_AmpEqual:
+        return "operator_amp_assign";
+    case clang::OO_Plus:
+        return "operator_plus";
+    case clang::OO_Minus:
+        return "operator_minus";
+    case clang::OO_Star:
+        return "operator_multiply";
+    case clang::OO_Slash:
+        return "operator_divide";
+    case clang::OO_StarEqual:
+        return "operator_multiply_assign";
+    case clang::OO_SlashEqual:
+        return "operator_divide_assign";
+    case clang::OO_PlusEqual:
+        return "operator_plus_assign";
+    case clang::OO_MinusEqual:
+        return "operator_minus_assign";
+    case clang::OO_EqualEqual:
+        return "operator_equal";
+    case clang::OO_ExclaimEqual:
+        return "operator_not_equal";
+    case clang::OO_Less:
+        return "operator_less";
+    case clang::OO_Greater:
+        return "operator_greater";
+    case clang::OO_LessEqual:
+        return "operator_less_equal";
+    case clang::OO_GreaterEqual:
+        return "operator_greater_equal";
+    case clang::OO_Subscript:
+        return "operator_subscript";
+    case clang::OO_Call:
+        return "operator_call";
+    default:
+        auto message = std::string("Unsupported operator kind: ") + std::to_string(op);
+        llvm::report_fatal_error(message.c_str());
+        return "operator_unknown";
     }
 }
 
 const clang::NamespaceDecl* ASTConsumer::GetDeclNamespace(const clang::Decl* decl) const
 {
     using namespace clang;
-    
-    if (!decl) 
+
+    if (!decl)
         return nullptr;
-    
+
     // Walk up the declaration context chain to find the namespace
     const DeclContext* ctx = decl->getDeclContext();
     while (ctx && !ctx->isTranslationUnit())
@@ -1847,14 +2032,14 @@ const clang::NamespaceDecl* ASTConsumer::GetDeclNamespace(const clang::Decl* dec
             return nsDecl->getCanonicalDecl(); // Return canonical declaration
         ctx = ctx->getParent();
     }
-    
+
     return nullptr; // Global scope
 }
 
 void ASTConsumer::AssignDeclsToNamespaces()
 {
     using namespace clang;
-    
+
     // Assign types to namespaces
     for (const auto& [clangDecl, cppslType] : _tag_types)
     {
@@ -1866,7 +2051,7 @@ void ASTConsumer::AssignDeclsToNamespaces()
             }
         }
     }
-    
+
     // Assign functions to namespaces (but exclude methods)
     for (const auto& [clangFunc, cppslFunc] : _funcs)
     {
@@ -1886,7 +2071,7 @@ void ASTConsumer::AssignDeclsToNamespaces()
             }
         }
     }
-    
+
     // Assign global variables to namespaces
     for (const auto& [clangVar, cppslVar] : _vars)
     {
@@ -1903,7 +2088,7 @@ void ASTConsumer::AssignDeclsToNamespaces()
             }
         }
     }
-    
+
     // Assign enum constants to namespaces
     for (const auto& [clangEnumConst, cppslGlobalVar] : _enum_constants)
     {

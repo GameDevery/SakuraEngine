@@ -53,8 +53,21 @@ void SOASegmentBuffer::initialize(const Builder& builder)
     component_infos = builder.components_;
     component_segments.resize_zeroed(component_infos.size());
     
-    // 使用配置的初始实例数
-    instance_capacity = config.initial_instances;
+    // 根据布局类型确定实际容量
+    if (config.page_size == UINT32_MAX)
+    {
+        // 连续布局：直接使用请求的容量
+        instance_capacity = config.initial_instances;
+        SKR_LOG_INFO(u8"SOASegmentBuffer: Continuous layout, capacity = %u instances", instance_capacity);
+    }
+    else
+    {
+        // 分页布局：容量必须是页大小的整数倍
+        uint32_t page_count = (config.initial_instances + config.page_size - 1) / config.page_size;
+        instance_capacity = page_count * config.page_size;
+        SKR_LOG_INFO(u8"SOASegmentBuffer: Paged layout, requested = %u, page_size = %u, page_count = %u, capacity = %u instances",
+                     config.initial_instances, config.page_size, page_count, instance_capacity);
+    }
     
     // 计算布局
     calculate_layout();
@@ -214,6 +227,13 @@ bool SOASegmentBuffer::needs_resize(uint32_t required_instances) const
 
 CGPUBufferId SOASegmentBuffer::resize(uint32_t new_instance_capacity)
 {
+    // 对于分页布局，确保容量是页大小的整数倍
+    if (config.page_size != UINT32_MAX)
+    {
+        uint32_t page_count = (new_instance_capacity + config.page_size - 1) / config.page_size;
+        new_instance_capacity = page_count * config.page_size;
+    }
+    
     if (new_instance_capacity <= instance_capacity)
     {
         SKR_LOG_WARN(u8"SOASegmentBuffer: New capacity %u not greater than current %u",

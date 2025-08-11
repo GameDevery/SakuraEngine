@@ -99,6 +99,7 @@ struct ScanGPUScene : public GPUSceneInstanceTask
 
                     const auto& component_info = pScene->component_types[gpu_type];
                     // Core Data处理
+                    // 66624 0 1041
                     const uint64_t dst_offset = pScene->core_data.get_component_offset(gpu_type, instance_data.instance_index);
                     const uint64_t src_offset = pScene->upload_ctx.upload_cursor.fetch_add(component_info.element_size);
                     if (src_offset + component_info.element_size <= pScene->upload_ctx.upload_buffer->info->size)
