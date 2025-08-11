@@ -168,15 +168,20 @@ void scene_debug([[sv_thread_id]] uint3 thread_id)
                 // Use DefaultGPUSceneLayout to calculate transform offset
                 uint transform_offset = DefaultGPUSceneLayout::component_location<GPUSceneObjectToWorld>(instance_index);
                 
-                // Load transform data directly
-                GPUSceneObjectToWorld transform_data = gpu_scene_buffer.Load<GPUSceneObjectToWorld>(transform_offset);
-                float4x4 object_to_world = transform_data.matrix;
+                // Load 4x4 transform matrix manually (16 floats = 64 bytes)
+                // This ensures we're reading in the expected memory layout
+                float4x4 object_to_world = gpu_scene_buffer.Load<float4x4>(transform_offset);
                 
                 // Extract position and scale from transform matrix
-                // Position is in the 4th column (translation part) - standard column-major matrix layout
-                float3 sphere_center = float3(object_to_world[0][3], object_to_world[1][3], object_to_world[2][3]);
+                // The matrix is stored row-major, so position is in the last row (row 3)
+                float3 sphere_center = float3(object_to_world[3][0], object_to_world[3][1], object_to_world[3][2]);
                 // Scale is the length of the first column vector (X axis)
                 float sphere_radius = length(float3(object_to_world[0][0], object_to_world[1][0], object_to_world[2][0]));
+                
+                // Skip invalid spheres (radius too small or position at origin)
+                if (sphere_radius < 0.001f) {
+                    continue;
+                }
                 
                 // Ray-sphere intersection test
                 float3 to_center = ray_origin - sphere_center;
