@@ -193,6 +193,7 @@ void GPUScene::AdjustBuffer(skr::render_graph::RenderGraph* graph)
         uint32_t new_capacity = static_cast<uint32_t>(required_instances * config.resize_growth_factor);
         
         // Resize and get old buffer
+        cgpu_wait_queue_idle(render_device->get_gfx_queue());
         auto old_buffer = core_data.resize(new_capacity);
         scene_buffer = core_data.import_buffer(graph, u8"scene_buffer");
         if (old_buffer && core_data.get_buffer())
@@ -220,23 +221,9 @@ void GPUScene::CreateDataBuffer(CGPUDeviceId device, const GPUSceneConfig& confi
 {
     SKR_LOG_DEBUG(u8"Creating core data buffer...");
 
-    // Calculate initial size based on instances and page size
-    size_t page_stride = 0;
-    for (const auto& comp : config.components)
-    {
-        page_stride = (page_stride + comp.element_align - 1) & ~(comp.element_align - 1);
-        page_stride += comp.element_size * config.page_size;
-    }
-    page_stride = (page_stride + 255) & ~255;  // Align to 256 bytes
-    
-    uint32_t initial_pages = (config.initial_instances + config.page_size - 1) / config.page_size;
-    uint32_t max_pages = (config.max_instances + config.page_size - 1) / config.page_size;
-    size_t initial_size = page_stride * initial_pages;
-    size_t max_size = page_stride * max_pages;
-
     // Use Builder to create SOA allocator
     auto builder = SOASegmentBuffer::Builder(device)
-        .with_size(initial_size, max_size)
+        .with_instances(config.initial_instances)
         .with_page_size(config.page_size);
     
     // Register core components
@@ -264,15 +251,6 @@ void GPUScene::CreateDataBuffer(CGPUDeviceId device, const GPUSceneConfig& confi
         core_data.get_capacity_bytes() / (1024 * 1024),
         core_data.get_segments().size(),
         core_data.get_instance_capacity());
-    
-    // 打印实际注册的组件类型
-    const auto& infos = core_data.get_infos();
-    SKR_LOG_INFO(u8"Registered %u core components in SOASegmentBuffer:", (uint32_t)infos.size());
-    for (size_t i = 0; i < infos.size(); ++i)
-    {
-        SKR_LOG_INFO(u8"  Component[%u]: type_id=%u, size=%u, align=%u",
-            (uint32_t)i, infos[i].type_id, infos[i].element_size, infos[i].element_align);
-    }
 }
 
 void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)

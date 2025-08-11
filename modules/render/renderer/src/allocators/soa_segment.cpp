@@ -11,16 +11,9 @@ SOASegmentBuffer::Builder::Builder(CGPUDeviceId device)
 {
 }
 
-SOASegmentBuffer::Builder& SOASegmentBuffer::Builder::with_config(const Config& cfg)
+SOASegmentBuffer::Builder& SOASegmentBuffer::Builder::with_instances(uint32_t initial_instances)
 {
-    config_ = cfg;
-    return *this;
-}
-
-SOASegmentBuffer::Builder& SOASegmentBuffer::Builder::with_size(size_t initial_size, size_t max_size)
-{
-    config_.initial_size = initial_size;
-    config_.max_size = max_size > 0 ? max_size : initial_size * 6; // 默认最大 6 倍
+    config_.initial_instances = initial_instances;
     return *this;
 }
 
@@ -58,9 +51,12 @@ void SOASegmentBuffer::initialize(const Builder& builder)
     device = builder.device_;
     config = builder.config_;
     component_infos = builder.components_;
-
+    component_segments.resize_zeroed(component_infos.size());
+    
+    // 使用配置的初始实例数
+    instance_capacity = config.initial_instances;
+    
     // 计算布局
-    capacity_bytes = config.initial_size;
     calculate_layout();
 
     // 创建 GPU 缓冲区
@@ -69,97 +65,58 @@ void SOASegmentBuffer::initialize(const Builder& builder)
 
 void SOASegmentBuffer::calculate_layout()
 {
-    component_segments.clear();
-
+    uint32_t offset = 0;
+    
     if (config.page_size == UINT32_MAX)
     {
         // 连续布局（传统 SOA）
-        // 计算每个实例的总大小（所有组件大小之和）
-        uint32_t total_instance_size = 0;
-        for (const auto& comp : component_infos)
+        for (size_t i = 0; i < component_infos.size(); ++i)
         {
-            // 考虑对齐
-            uint32_t aligned_size = (comp.element_size + comp.element_align - 1) & ~(comp.element_align - 1);
-            total_instance_size += aligned_size;
-        }
-
-        // 计算最大实例数
-        if (total_instance_size > 0)
-        {
-            instance_capacity = static_cast<uint32_t>(capacity_bytes / total_instance_size);
-        }
-
-        SKR_LOG_INFO(u8"SOASegmentBuffer: continuous layout, total_instance_size=%d bytes, max_instances=%d",
-            total_instance_size,
-            instance_capacity);
-
-        // 为每个组件分配连续的段
-        uint32_t current_offset = 0;
-        for (const auto& info : component_infos)
-        {
-            ComponentSegment segment;
+            const auto& info = component_infos[i];
+            auto& segment = component_segments[i];
+            
+            // 对齐
+            offset = (offset + info.element_align - 1) & ~(info.element_align - 1);
+            
+            segment.buffer_offset = offset;
             segment.element_count = instance_capacity;
-            segment.buffer_offset = current_offset;
-
-            component_segments.push_back(segment);
-
-            // 计算下一个组件的偏移（考虑对齐）
-            uint32_t segment_size = info.element_size * instance_capacity;
-            uint32_t aligned_size = (segment_size + info.element_align - 1) & ~(info.element_align - 1);
-            current_offset += aligned_size;
-
-            SKR_LOG_INFO(u8"  Segment for component %u: offset=%d, size=%d bytes, count=%d",
-                info.type_id,
-                segment.buffer_offset,
-                segment_size,
-                segment.element_count);
+            
+            offset += info.element_size * instance_capacity;
         }
+        
+        capacity_bytes = offset;
     }
     else
     {
         // 分页布局
-        // 计算每页的大小
+        // 基于 instance_capacity 计算需要的页数
+        uint32_t page_count = (instance_capacity + config.page_size - 1) / config.page_size;
+        
+        // 计算每页的字节大小
         page_stride_bytes = 0;
-        for (const auto& comp : component_infos)
-        {
-            // 对齐
-            page_stride_bytes = (page_stride_bytes + comp.element_align - 1) & ~(comp.element_align - 1);
-            // 添加组件段大小
-            page_stride_bytes += comp.element_size * config.page_size;
-        }
-        // 页边界对齐到 256 字节
-        page_stride_bytes = (page_stride_bytes + 255) & ~255;
-
-        // 计算能容纳的页数和实例数
-        uint32_t page_count = static_cast<uint32_t>(capacity_bytes / page_stride_bytes);
-        instance_capacity = page_count * config.page_size;
-
-        SKR_LOG_INFO(u8"SOASegmentBuffer: paged layout, page_size=%d, page_stride=%d bytes, pages=%d, max_instances=%d",
-            config.page_size,
-            page_stride_bytes,
-            page_count,
-            instance_capacity);
-
-        // 设置组件段信息（用于记录每个组件在页内的偏移）
-        uint32_t offset_in_page = 0;
         for (const auto& info : component_infos)
         {
-            ComponentSegment segment;
-            segment.element_count = instance_capacity;
-            segment.buffer_offset = offset_in_page;  // 在分页模式下，这是页内偏移
-
-            component_segments.push_back(segment);
-
-            // 对齐
-            offset_in_page = (offset_in_page + info.element_align - 1) & ~(info.element_align - 1);
-            // 下一个组件的偏移
-            offset_in_page += info.element_size * config.page_size;
-
-            SKR_LOG_INFO(u8"  Component %u: offset_in_page=%d, element_size=%d",
-                info.type_id,
-                segment.buffer_offset,
-                info.element_size);
+            page_stride_bytes = (page_stride_bytes + info.element_align - 1) & ~(info.element_align - 1);
+            page_stride_bytes += info.element_size * config.page_size;
         }
+        page_stride_bytes = (page_stride_bytes + 255) & ~255;  // 对齐 256 字节
+        
+        // 设置每个组件在页内的偏移
+        offset = 0;
+        for (size_t i = 0; i < component_infos.size(); ++i)
+        {
+            const auto& info = component_infos[i];
+            auto& segment = component_segments[i];
+            
+            offset = (offset + info.element_align - 1) & ~(info.element_align - 1);
+            segment.buffer_offset = offset;  // 页内偏移
+            segment.element_count = instance_capacity;  // 实际支持的实例数
+            
+            offset += info.element_size * config.page_size;
+        }
+        
+        // 总容量字节数
+        capacity_bytes = page_stride_bytes * page_count;
     }
 }
 
@@ -275,7 +232,6 @@ CGPUBufferId SOASegmentBuffer::resize(uint32_t new_instance_capacity)
     instance_capacity = new_instance_capacity;
     
     // 重新计算所有 segments 的布局
-    capacity_bytes = calculate_size_for_capacity(new_instance_capacity);
     calculate_layout();
     
     // 创建新 buffer
@@ -374,17 +330,6 @@ void SOASegmentBuffer::copy_segments(skr::render_graph::RenderGraph* graph,
     );
 }
 
-uint64_t SOASegmentBuffer::calculate_size_for_capacity(uint64_t capacity) const
-{
-    uint64_t buffer_size = 0;
-    for (const auto& segment : component_infos)
-    {
-        uint32_t segment_size = segment.element_size * capacity;
-        uint32_t aligned_size = (segment_size + segment.element_align - 1) & ~(segment.element_align - 1);
-        buffer_size += aligned_size;
-    }
-    return buffer_size;
-}
 
 CGPUBufferId SOASegmentBuffer::create_buffer_with_capacity(uint32_t capacity)
 {
@@ -394,10 +339,8 @@ CGPUBufferId SOASegmentBuffer::create_buffer_with_capacity(uint32_t capacity)
         return nullptr;
     }
     
-    // 计算所需缓冲区大小
-    uint64_t buffer_size = calculate_size_for_capacity(capacity);
-    
-    if (buffer_size == 0)
+    // capacity_bytes 已经在 calculate_layout 中计算
+    if (capacity_bytes == 0)
     {
         SKR_LOG_WARN(u8"SOASegmentBuffer: No data to allocate");
         return nullptr;
@@ -405,7 +348,7 @@ CGPUBufferId SOASegmentBuffer::create_buffer_with_capacity(uint32_t capacity)
     
     CGPUBufferDescriptor buffer_desc = {};
     buffer_desc.name = u8"SOASegmentBuffer";
-    buffer_desc.size = buffer_size;
+    buffer_desc.size = capacity_bytes;
     buffer_desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
     buffer_desc.descriptors = CGPU_RESOURCE_TYPE_BUFFER_RAW | CGPU_RESOURCE_TYPE_RW_BUFFER_RAW;
     buffer_desc.flags = CGPU_BCF_DEDICATED_BIT;

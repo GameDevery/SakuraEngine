@@ -36,9 +36,8 @@ public:
     // 配置
     struct Config
     {
-        size_t initial_size = 256 * 1024 * 1024; // 初始大小 256MB
-        size_t max_size = 1536 * 1024 * 1024;    // 最大大小 1.5GB
-        uint32_t page_size = UINT32_MAX;         // 页大小，UINT32_MAX表示连续布局
+        uint32_t initial_instances = 16384;      // 初始实例容量
+        uint32_t page_size = UINT32_MAX;         // 页大小（实例数），UINT32_MAX表示连续布局
     };
 
     // Builder 模式初始化器
@@ -47,11 +46,8 @@ public:
     public:
         Builder(CGPUDeviceId device);
 
-        // 设置配置
-        Builder& with_config(const Config& config);
-
-        // 单独设置配置项
-        Builder& with_size(size_t initial_size, size_t max_size = 0);
+        // 设置实例容量和页大小
+        Builder& with_instances(uint32_t initial_instances);
         Builder& with_page_size(uint32_t page_size);
 
         // 添加组件
@@ -122,7 +118,6 @@ private:
     mutable bool first_use = true;
 
     // 辅助函数
-    uint64_t calculate_size_for_capacity(uint64_t capacity) const;
     void calculate_layout();
     void create_buffer();
     void release_buffer();
@@ -133,22 +128,9 @@ private:
 template <typename Layout>
 inline SOASegmentBuffer::Builder& SOASegmentBuffer::Builder::from_layout(uint32_t initial_instances)
 {
-    // 设置页大小
+    // 设置页大小和初始实例数
     config_.page_size = Layout::page_size;
-
-    // 计算初始大小
-    if (Layout::page_size == UINT32_MAX)
-    {
-        // 连续布局：简单设置初始大小
-        config_.initial_size = 256 * 1024 * 1024;
-    }
-    else
-    {
-        // 分页布局：根据页数计算
-        uint32_t initial_pages = (initial_instances + Layout::page_size - 1) / Layout::page_size;
-        config_.initial_size = Layout::page_size_in_bytes() * initial_pages;
-    }
-
+    
     // 清空现有组件
     components_.clear();
     
@@ -156,6 +138,8 @@ inline SOASegmentBuffer::Builder& SOASegmentBuffer::Builder::from_layout(uint32_
     Layout::for_each_component([this](uint32_t id, uint32_t size, uint32_t align, uint32_t index) {
         this->add_component(id, size, align);
     });
+    
+    config_.initial_instances = initial_instances;
 
     return *this;
 }

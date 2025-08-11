@@ -36,9 +36,6 @@ void GPUScene::Initialize(CGPUDeviceId device, const GPUSceneConfig& cfg)
     CreateDataBuffer(device, config);
 
     SKR_LOG_INFO(u8"GPUScene initialized successfully");
-    SKR_LOG_INFO(u8"  - Instances: %u initial, %u max",
-        config.initial_instances,
-        config.max_instances);
 }
 
 void GPUScene::AddEntity(skr::ecs::Entity entity)

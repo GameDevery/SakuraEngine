@@ -85,12 +85,9 @@ struct GPUSceneConfig
     
     skr::ecs::World* world = nullptr;
     skr::RendererDevice* render_device = nullptr;
-    uint32_t initial_instances = 65536;
-    uint32_t max_instances = 1024 * 1024;
-    uint32_t page_size = 16384;
-    bool enable_async_updates = true;
+    uint32_t initial_instances = 16384;
+    uint32_t page_size = UINT32_MAX;  // 默认连续布局
     skr::Vector<ComponentInfo> components;
-    float auto_resize_threshold = 0.9f;
     float resize_growth_factor = 1.5f;
 };
 
@@ -107,7 +104,12 @@ public:
         config_.render_device = d;
         return *this;
     }
-    GPUSceneBuilder& with_instances(uint32_t initial, uint32_t max = 0);
+    GPUSceneBuilder& with_instances(uint32_t initial)
+    {
+        config_.initial_instances = initial;
+        return *this;
+    }
+    
     GPUSceneBuilder& with_page_size(uint32_t size)
     {
         config_.page_size = size;
@@ -116,7 +118,7 @@ public:
     GPUSceneBuilder& add_component(CPUTypeID cpu_type, SOAIndex local_id, uint32_t size, uint32_t align);
 
     template <typename Layout>
-    GPUSceneBuilder& from_layout();
+    GPUSceneBuilder& from_layout(uint32_t initial_instances = 256);
     
     GPUSceneConfig build() { return config_; }
     
@@ -218,13 +220,6 @@ private:
 };
 
 // Builder 实现
-inline GPUSceneBuilder& GPUSceneBuilder::with_instances(uint32_t initial, uint32_t max)
-{
-    config_.initial_instances = initial;
-    config_.max_instances = max > 0 ? max : initial * 2;
-    return *this;
-}
-
 inline GPUSceneBuilder& GPUSceneBuilder::add_component(CPUTypeID cpu_type, SOAIndex local_id, uint32_t size, uint32_t align)
 {
     config_.components.add({ cpu_type, local_id, size, align });
@@ -233,9 +228,10 @@ inline GPUSceneBuilder& GPUSceneBuilder::add_component(CPUTypeID cpu_type, SOAIn
 
 // 从 Layout 提取组件信息
 template <typename Layout>
-inline GPUSceneBuilder& GPUSceneBuilder::from_layout()
+inline GPUSceneBuilder& GPUSceneBuilder::from_layout(uint32_t initial_instances)
 {
     config_.page_size = Layout::page_size;
+    config_.initial_instances = initial_instances;
     config_.components.clear();
     
     [this]<typename... Cs>(typename Layout::template TypePack<Cs...>*) {

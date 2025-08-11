@@ -66,7 +66,7 @@ void PassDependencyAnalysis::analyze_pass_dependencies(RenderGraph* graph)
             auto& last_access = resource_last_access_[resource];
 
             // If this resource was accessed before, create dependency
-            if (last_access.last_pass != nullptr)
+            if (last_access.last_pass != nullptr && last_access.last_pass != current_pass)
             {
                 ResourceDependency dep;
                 dep.dependent_pass = last_access.last_pass;
