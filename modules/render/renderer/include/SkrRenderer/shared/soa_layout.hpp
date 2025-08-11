@@ -1,8 +1,8 @@
 #pragma once
 #ifdef __CPPSL__
-#include "detail/type_usings.hppsl"
+    #include "detail/type_usings.hppsl"
 #else
-#include "detail/type_usings.hpp"
+    #include "detail/type_usings.hpp"
 #endif
 
 namespace skr::renderer
@@ -11,162 +11,138 @@ namespace skr::renderer
 using uint32_t = skr::data_layout::uint32_t;
 using AddressType = skr::data_layout::AddressType;
 
-// 组件束：将多个组件打包在一起（AOS 布局）
-template<typename... BundledComponents>
-struct ComponentBundle {
-    static constexpr size_t component_count = sizeof...(BundledComponents);
+template <AddressType v, AddressType a>
+constexpr AddressType align_up = (v + a - 1) & ~(a - 1);
+
+// 组件束：将多个组件打包在一起（AOSOA 布局）
+template <typename... Cs>
+struct ComponentBundle
+{
+    static constexpr size_t component_count = sizeof...(Cs);
     
-    // Bundle 的总大小（所有组件紧密排列）
-    static constexpr AddressType size() {
-        AddressType total = 0;
-        ((total = align_up(total, alignof(BundledComponents)) + sizeof(BundledComponents)), ...);
+    static constexpr AddressType size()
+    {
+        constexpr AddressType total = 0;
+        ((total = align_up<total, alignof(Cs)> + sizeof(Cs)), ...);
         return total;
     }
     
-    // Bundle 的对齐要求（取最大值）
-    static constexpr AddressType alignment() {
+    static constexpr AddressType alignment()
+    {
         AddressType max_align = 1;
-        ((max_align = (alignof(BundledComponents) > max_align) ? alignof(BundledComponents) : max_align), ...);
+        ((max_align = (alignof(Cs) > max_align) ? alignof(Cs) : max_align), ...);
         return max_align;
     }
     
-    // 组件在 Bundle 内的偏移
-    template<typename T>
-    static constexpr AddressType offset_in_bundle() {
-        return calculate_offset<T, 0, BundledComponents...>();
+    template <typename T>
+    static constexpr bool contains()
+    {
+        return (std::is_same_v<T, Cs> || ...);
     }
     
-    // 检查类型是否在 Bundle 中
-    template<typename T>
-    static constexpr bool contains() {
-        return ((std::is_same_v<T, BundledComponents>) || ...);
+    template <typename T>
+    static constexpr AddressType offset_in_bundle()
+    {
+        return offset_helper<T, 0, Cs...>();
     }
     
 private:
-    template<typename Target, AddressType Offset, typename First, typename... Rest>
-    static constexpr AddressType calculate_offset() {
-        constexpr AddressType aligned = align_up(Offset, alignof(First));
-        if constexpr (std::is_same_v<Target, First>) {
-            return aligned;
-        } else if constexpr (sizeof...(Rest) > 0) {
-            return calculate_offset<Target, aligned + sizeof(First), Rest...>();
-        } else {
-            return AddressType(-1);
-        }
-    }
-    
-    static constexpr AddressType align_up(AddressType value, AddressType alignment) {
-        return (value + alignment - 1) & ~(alignment - 1);
+    template <typename T, AddressType Off, typename F, typename... Rs>
+    static constexpr AddressType offset_helper()
+    {
+        constexpr auto aligned = align_up<Off, alignof(F)>;
+        if constexpr (std::is_same_v<T, F>) return aligned;
+        else if constexpr (sizeof...(Rs) > 0) return offset_helper<T, aligned + sizeof(F), Rs...>();
+        else return AddressType(-1);
     }
 };
 
-// 类型特征：检测是否是 ComponentBundle
-template<typename T>
-struct is_bundle : std::false_type {};
+// 类型特征
+template <typename T> struct is_bundle : std::false_type {};
+template <typename... Ts> struct is_bundle<ComponentBundle<Ts...>> : std::true_type {};
+template <typename T> inline constexpr bool is_bundle_v = is_bundle<T>::value;
 
-template<typename... Ts>
-struct is_bundle<ComponentBundle<Ts...>> : std::true_type {};
-
-template<typename T>
-inline constexpr bool is_bundle_v = is_bundle<T>::value;
-
-// 统一的分页布局：支持 SOA 和 AOSOA
-template<uint32_t PageSize = 16384, typename... Elements>
-struct PagedLayout 
+// 分页布局：支持 SOA 和 AOSOA
+template <uint32_t PageSize = 16384, typename... Es>
+struct PagedLayout
 {
-public:
-    static constexpr AddressType element_count = sizeof...(Elements);
+    template <typename... T> struct TypePack {};
+    using Elements = TypePack<Es...>;
     static constexpr uint32_t page_size = PageSize;
     
-    // 获取组件位置（自动处理 Bundle 和独立组件）
-    template<typename T>
-    inline static constexpr AddressType component_location(uint32_t instance_id) {
+    template <typename E>
+    static constexpr AddressType elem_size = is_bundle_v<E> ? E::size() : sizeof(E);
+    
+    template <typename E>
+    static constexpr AddressType elem_align = is_bundle_v<E> ? E::alignment() : alignof(E);
+    
+    template <typename T>
+    static constexpr AddressType component_location(uint32_t instance_id)
+    {
         uint32_t page = instance_id / page_size;
         uint32_t offset = instance_id % page_size;
-        AddressType page_start = page * page_size_in_bytes();
-        return page_start + find_component_offset<T, 0, Elements...>(offset);
+        return page * page_stride() + find_offset<T, 0, Es...>(offset);
+    }
+
+    static constexpr AddressType page_stride()
+    {
+        constexpr AddressType total = 0;
+        ((total = align_up<total, elem_align<Es>> + elem_size<Es> * page_size), ...);
+        return align_up<total, 256>;
+    }
+
+    template <typename Cb>
+    static void for_each_component(Cb cb)
+    {
+        for_each_impl<0, Es...>(cb, 0);
     }
     
-    inline static constexpr AddressType page_size_in_bytes() {
-        AddressType total = 0;
-        ((total = align_up(total, element_alignment<Elements>()) + element_size<Elements>() * page_size), ...);
-        return align_up(total, 256);
-    }
-    
-    inline static constexpr AddressType total_size_in_bytes(uint32_t instance_count) {
-        uint32_t page_count = (instance_count + page_size - 1) / page_size;
-        return page_size_in_bytes() * page_count;
+    static constexpr uint32_t get_component_count()
+    {
+        return ((is_bundle_v<Es> ? Es::component_count : 1) + ...);
     }
     
 private:
-    // 获取元素大小（Bundle 或单个组件）
-    template<typename E>
-    inline static constexpr AddressType element_size() {
-        if constexpr (is_bundle_v<E>) {
-            return E::size();
-        } else {
-            return sizeof(E);
+    template <uint32_t ID, typename E, typename... Rs, typename Cb>
+    static void for_each_impl(Cb cb, uint32_t idx)
+    {
+        if constexpr (is_bundle_v<E>)
+        {
+            []<typename... Bs>(ComponentBundle<Bs...>, auto cb, uint32_t id, uint32_t idx) {
+                uint32_t i = id, j = idx;
+                ((cb(i++, sizeof(Bs), alignof(Bs), j++), ...));
+            }(E{}, cb, ID, idx);
+            if constexpr (sizeof...(Rs) > 0)
+                for_each_impl<ID + E::component_count, Rs...>(cb, idx + E::component_count);
+        }
+        else
+        {
+            cb(ID, sizeof(E), alignof(E), idx);
+            if constexpr (sizeof...(Rs) > 0)
+                for_each_impl<ID + 1, Rs...>(cb, idx + 1);
         }
     }
     
-    // 获取元素对齐（Bundle 或单个组件）
-    template<typename E>
-    inline static constexpr AddressType element_alignment() {
-        if constexpr (is_bundle_v<E>) {
-            return E::alignment();
-        } else {
-            return alignof(E);
+private:
+    template <typename T, AddressType Off, typename E, typename... Rs>
+    static constexpr AddressType find_offset(uint32_t inst_off)
+    {
+        constexpr auto aligned = align_up<Off, elem_align<E>>;
+        if constexpr (is_bundle_v<E>)
+        {
+            if constexpr (E::template contains<T>())
+                return aligned + inst_off * E::size() + E::template offset_in_bundle<T>();
         }
-    }
-    
-    // 查找组件偏移
-    template<typename Target, AddressType Offset, typename First, typename... Rest>
-    inline static constexpr AddressType find_component_offset(uint32_t instance_offset) {
-        constexpr AddressType aligned = align_up(Offset, element_alignment<First>());
-        
-        if constexpr (is_bundle_v<First>) {
-            // Bundle：检查目标是否在其中
-            if constexpr (First::template contains<Target>()) {
-                constexpr AddressType bundle_offset = First::template offset_in_bundle<Target>();
-                return aligned + instance_offset * First::size() + bundle_offset;
-            }
-        } else if constexpr (std::is_same_v<Target, First>) {
-            // 独立组件
-            return aligned + instance_offset * sizeof(First);
+        else if constexpr (std::is_same_v<T, E>)
+        {
+            return aligned + inst_off * sizeof(E);
         }
-        
-        // 继续查找
-        if constexpr (sizeof...(Rest) > 0) {
-            constexpr AddressType next = aligned + element_size<First>() * page_size;
-            return find_component_offset<Target, next, Rest...>(instance_offset);
-        } else {
-            return AddressType(-1);
-        }
-    }
-    
-    inline static constexpr AddressType align_up(AddressType value, AddressType alignment) {
-        return (value + alignment - 1) & ~(alignment - 1);
+        if constexpr (sizeof...(Rs) > 0)
+            return find_offset<T, aligned + elem_size<E> * page_size, Rs...>(inst_off);
+        return AddressType(-1);
     }
 };
 
-// 向后兼容的别名
-template<uint32_t PageSize = 16384, typename... Components>
-using PagedSOALayout = PagedLayout<PageSize, Components...>;
-
-// 便捷宏
 #define BUNDLE(...) skr::renderer::ComponentBundle<__VA_ARGS__>
-
-#define DECLARE_PAGED_LAYOUT(name, ...) \
-    using name = skr::renderer::PagedLayout<16384, __VA_ARGS__>
-
-#define DECLARE_PAGED_LAYOUT_WITH_PAGE_SIZE(name, page_size, ...) \
-    using name = skr::renderer::PagedLayout<page_size, __VA_ARGS__>
-
-// 向后兼容
-#define DECLARE_PAGED_SOA(name, ...) \
-    using name = skr::renderer::PagedLayout<16384, __VA_ARGS__>
-
-#define DECLARE_PAGED_SOA_WITH_PAGE_SIZE(name, page_size, ...) \
-    using name = skr::renderer::PagedLayout<page_size, __VA_ARGS__>
 
 } // namespace skr::renderer

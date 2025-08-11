@@ -36,9 +36,9 @@ void GPUScene::Initialize(CGPUDeviceId device, const GPUSceneConfig& cfg)
     CreateDataBuffer(device, config);
 
     SKR_LOG_INFO(u8"GPUScene initialized successfully");
-    SKR_LOG_INFO(u8"  - Core data: %lldMB initial, %lldMB max",
-        config.initial_size / (1024 * 1024),
-        config.max_size / (1024 * 1024));
+    SKR_LOG_INFO(u8"  - Instances: %u initial, %u max",
+        config.initial_instances,
+        config.max_instances);
 }
 
 void GPUScene::AddEntity(skr::ecs::Entity entity)
@@ -80,26 +80,26 @@ void GPUScene::InitializeComponentTypes(const GPUSceneConfig& config)
     type_registry.clear();
     component_types.clear();
 
-    // Register core data component types
-    for (const auto& [cpu_type, gpu_type_id] : config.types)
+    // Register components from config
+    for (const auto& comp_info : config.components)
     {
         GPUSceneComponentType component_type;
-        component_type.cpu_type_guid = cpu_type;
-        component_type.gpu_type_id = gpu_type_id;
-        component_type.element_size = ecs_world->GetComponentSize(cpu_type);
-        component_type.element_align = ecs_world->GetComponentAlign(cpu_type);
-        component_type.name = ecs_world->GetComponentName(cpu_type);
+        component_type.cpu_type_guid = comp_info.cpu_type;
+        component_type.soa_index = comp_info.soa_index;
+        component_type.element_size = comp_info.element_size;
+        component_type.element_align = comp_info.element_align;
+        component_type.name = ecs_world->GetComponentName(comp_info.cpu_type);
 
         // Add to registry
-        type_registry.add(cpu_type, component_type.gpu_type_id);
+        type_registry.add(comp_info.cpu_type, comp_info.soa_index);
         component_types.push_back(component_type);
 
-        SKR_LOG_INFO(u8"  Registered core component: %s (size: %d, align: %d, cpu_type_id:%d, gpu_type_id: %d)",
+        SKR_LOG_INFO(u8"  Registered component: %s (size: %d, align: %d, cpu_type:%d, local_id: %d)",
             component_type.name,
             component_type.element_size,
             component_type.element_align,
             component_type.cpu_type_guid,
-            component_type.gpu_type_id);
+            component_type.soa_index);
     }
 
     SKR_LOG_DEBUG(u8"Component type registry initialized with %lld types", component_types.size());
@@ -168,15 +168,15 @@ uint64_t GPUScene::CalculateDirtySize() const
     return total_size;
 }
 
-uint32_t GPUScene::GetComponentSegmentOffset(GPUComponentTypeID type_id) const
+uint32_t GPUScene::GetComponentSegmentOffset(SOAIndex soa_index) const
 {
     // Get the segment offset from SOASegmentBuffer
-    const auto* segment = core_data.get_segment(type_id);
+    const auto* segment = core_data.get_segment(soa_index);
     if (segment)
     {
         return segment->buffer_offset;
     }
-    SKR_LOG_WARN(u8"Component type %u not found in core data segments", type_id);
+    SKR_LOG_WARN(u8"Component SOAIndex %u not found in core data segments", soa_index);
     return 0;
 }
 
@@ -201,12 +201,12 @@ uint32_t GPUScene::GetComponentTypeCount() const
     return count;
 }
 
-const skr::Map<CPUTypeID, GPUComponentTypeID>& GPUScene::GetTypeRegistry() const
+const skr::Map<CPUTypeID, SOAIndex>& GPUScene::GetTypeRegistry() const
 {
     return type_registry;
 }
 
-GPUComponentTypeID GPUScene::GetComponentTypeID(const CPUTypeID& type_guid) const
+SOAIndex GPUScene::GetComponentSOAIndex(const CPUTypeID& type_guid) const
 {
     auto found = type_registry.find(type_guid);
     return found ? found.value() : UINT16_MAX;
@@ -217,11 +217,11 @@ bool GPUScene::IsComponentTypeRegistered(const CPUTypeID& type_guid) const
     return type_registry.contains(type_guid);
 }
 
-const GPUSceneComponentType* GPUScene::GetComponentType(GPUComponentTypeID type_id) const
+const GPUSceneComponentType* GPUScene::GetComponentType(SOAIndex soa_index) const
 {
     for (const auto& component_type : component_types)
     {
-        if (component_type.gpu_type_id == type_id)
+        if (component_type.soa_index == soa_index)
             return &component_type;
     }
     return nullptr;

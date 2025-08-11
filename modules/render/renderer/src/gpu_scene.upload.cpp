@@ -220,21 +220,35 @@ void GPUScene::CreateDataBuffer(CGPUDeviceId device, const GPUSceneConfig& confi
 {
     SKR_LOG_DEBUG(u8"Creating core data buffer...");
 
+    // Calculate initial size based on instances and page size
+    size_t page_stride = 0;
+    for (const auto& comp : config.components)
+    {
+        page_stride = (page_stride + comp.element_align - 1) & ~(comp.element_align - 1);
+        page_stride += comp.element_size * config.page_size;
+    }
+    page_stride = (page_stride + 255) & ~255;  // Align to 256 bytes
+    
+    uint32_t initial_pages = (config.initial_instances + config.page_size - 1) / config.page_size;
+    uint32_t max_pages = (config.max_instances + config.page_size - 1) / config.page_size;
+    size_t initial_size = page_stride * initial_pages;
+    size_t max_size = page_stride * max_pages;
+
     // Use Builder to create SOA allocator
     auto builder = SOASegmentBuffer::Builder(device)
-        .with_size(config.initial_size, config.max_size)
-        .allow_resize(config.enable_auto_resize);
+        .with_size(initial_size, max_size)
+        .with_page_size(config.page_size);
     
     // Register core components
     for (const auto& component_type : component_types)
     {
         builder.add_component(
-            component_type.gpu_type_id,
+            component_type.soa_index,
             component_type.element_size,
             component_type.element_align
         );
-        SKR_LOG_DEBUG(u8"  Added core component to SOASegmentBuffer: gpu_type_id=%u, size=%u, align=%u",
-            component_type.gpu_type_id, component_type.element_size, component_type.element_align);
+        SKR_LOG_DEBUG(u8"  Added core component to SOASegmentBuffer: local_id=%u, size=%u, align=%u",
+            component_type.soa_index, component_type.element_size, component_type.element_align);
     }
     
     // Build the allocator
@@ -296,7 +310,6 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
             SkrZoneScopedN("GPUScene::ScanGPUScene");
             upload_ctx.DRAMCache.resize_unsafe(upload_ctx.upload_buffer->info->size);
             
-            // 预估分配大小
             uint64_t total_dirty_count = dirty_comp_count.load();
             upload_ctx.core_data_uploads.resize_unsafe(total_dirty_count);
             upload_ctx.additional_data_uploads.resize_unsafe(total_dirty_count);

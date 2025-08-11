@@ -186,7 +186,7 @@ void ModelViewerModule::on_load(int argc, char8_t** argv)
         InitializeAssetSystem();
     }
 
-    CookAndLoadGLTF();
+    // CookAndLoadGLTF();
 
     world.initialize();
 }
@@ -227,14 +227,11 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     // Create compute pipeline for debug rendering
     CreateComputePipeline();
 
-    GPUSceneConfig cfg = {
-        .world = &world,
-        .render_device = render_device,
-        .types = {
-            { sugoi_id_of<GPUSceneInstanceColor>::get(), 0 },
-            { sugoi_id_of<GPUSceneObjectToWorld>::get(), 1 }
-        }
-    };
+    GPUSceneBuilder cfg_builder;
+    cfg_builder.from_layout<DefaultGPUSceneLayout>()
+        .with_world(&world)
+        .with_device(render_device);
+    GPUSceneConfig cfg = cfg_builder.build();
     GPUScene.Initialize(render_device->get_cgpu_device(), cfg);
 
     // AsyncResource<> is a handle can be constructed by any resource type & ids
@@ -257,12 +254,11 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
 
         auto render_graph = render_app->render_graph();
         // Simple render loop using compute shader to fill screen red
-        const auto screen_width = static_cast<uint32_t>(window_config.size.x);
-        const auto screen_height = static_cast<uint32_t>(window_config.size.y);
+        const auto screen_size = render_app->get_main_window()->get_physical_size();
         
         // Calculate dispatch groups for 16x16 kernel
-        const uint32_t group_count_x = (screen_width + 15) / 16;
-        const uint32_t group_count_y = (screen_height + 15) / 16;
+        const uint32_t group_count_x = (screen_size.x + 15) / 16;
+        const uint32_t group_count_y = (screen_size.y + 15) / 16;
 
         // Update GPUScene
         GPUScene.ExecuteUpload(render_graph);
@@ -271,7 +267,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
         auto render_target_handle = render_graph->create_texture(
             [=](skr::render_graph::RenderGraph& g, skr::render_graph::TextureBuilder& builder) {
                 builder.set_name(u8"render_target")
-                    .extent(screen_width, screen_height)
+                    .extent(screen_size.x, screen_size.y)
                     .format(CGPU_FORMAT_R8G8B8A8_UNORM)
                     .allow_readwrite();
             }
@@ -298,18 +294,18 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                     uint32_t transform_element_size;
                 } constants;
                 
-                constants.screen_width = static_cast<float>(screen_width);
-                constants.screen_height = static_cast<float>(screen_height);
+                constants.screen_width = static_cast<float>(screen_size.x);
+                constants.screen_height = static_cast<float>(screen_size.y);
                 constants.debug_mode = 6; // 3D sphere rendering mode
                 
                 // Get GPUScene color component info
-                auto color_type_id = GPUScene.GetComponentTypeID(sugoi_id_of<GPUSceneInstanceColor>::get());
+                auto color_type_id = GPUScene.GetComponentSOAIndex(sugoi_id_of<GPUSceneInstanceColor>::get());
                 constants.color_segment_offset = GPUScene.GetComponentSegmentOffset(color_type_id);
                 constants.color_element_size = sizeof(GPUSceneInstanceColor);
                 constants.instance_count = GPUScene.GetInstanceCount();
                 
                 // Get GPUScene transform component info
-                auto transform_type_id = GPUScene.GetComponentTypeID(sugoi_id_of<GPUSceneObjectToWorld>::get());
+                auto transform_type_id = GPUScene.GetComponentSOAIndex(sugoi_id_of<GPUSceneObjectToWorld>::get());
                 constants.transform_segment_offset = GPUScene.GetComponentSegmentOffset(transform_type_id);
                 constants.transform_element_size = sizeof(GPUSceneObjectToWorld);
                 

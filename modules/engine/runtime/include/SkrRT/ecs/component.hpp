@@ -91,7 +91,7 @@ public:
 
     const uint8_t* at(uint32_t i)
     {
-        return (const uint8_t*)_ptr + (_offset + i) * _size;
+        return _ptr ? (const uint8_t*)_ptr + (_offset + i) * _size : nullptr;
     }
     
     ComponentView()

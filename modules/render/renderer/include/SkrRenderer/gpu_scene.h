@@ -5,6 +5,8 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderer/fwd_types.h"
 #include "SkrRenderer/allocators/soa_segment.hpp"
+#include "SkrRenderer/shared/soa_layout.hpp"
+#include "SkrRenderer/shared/gpu_scene.hpp"
 #ifndef __meta__
     #include "SkrRenderer/gpu_scene.generated.h" // IWYU pragma: export
 #endif
@@ -15,49 +17,31 @@ struct archetype_t;
 }
 namespace skr::renderer
 {
-// 基础类型定义
-struct GPUScenePageAllocator;
-struct GPUSceneArchetype;
-using GPUSceneInstanceID = uint32_t; // 32位足够，节省空间
-using GPUArchetypeID = uint16_t;     // 最多 65536 个 archetype
-using GPUPageID = uint32_t;          // 页面索引
-using GPUComponentTypeID = uint16_t; // 组件类型 ID
-using CPUTypeID = skr::ecs::TypeIndex;
+// 默认的 GPU Scene 布局
+// 使用 PagedLayout，SOAIndex 自动分配为 0, 1, 2...
+using DefaultGPUSceneLayout = PagedLayout<16384, // 16K instances per page
+    BUNDLE(
+        GPUSceneObjectToWorld, // SOAIndex: 0 - 频繁一起访问的组件打包
+        GPUSceneInstanceColor  // SOAIndex: 1
+        ),
+    GPUSceneInstanceEmission // SOAIndex: 2 - 较少访问，独立存储
+    >;
 
-// 特殊值定义
+// 类型定义
+using GPUSceneInstanceID = uint32_t;
+using GPUArchetypeID = uint16_t;
+using SOAIndex = uint32_t;
+using CPUTypeID = skr::ecs::TypeIndex;
 static constexpr GPUSceneInstanceID INVALID_GPU_SCENE_INSTANCE_ID = 0xFFFFFFFF;
 
-// 实例 ID 编码（用于光线追踪等需要紧凑索引的场景）
-// D3D12 限制 InstanceID 为 24 位，我们遵循这个限制
+// D3D12 24位 InstanceID 限制
 struct GPUSceneCustomIndex
 {
-    GPUSceneCustomIndex()
-    {
-        packed = 0x00FFFFFF;
-    }
-
-    GPUSceneCustomIndex(uint32_t index)
-    {
-        SKR_ASSERT(index <= 0x00FFFFFF); // 24位限制
-        packed = index;
-    }
-
-    inline uint32_t GetInstanceID() const
-    {
-        return packed & 0x00FFFFFF;
-    }
-
+    GPUSceneCustomIndex() : packed(0x00FFFFFF) {}
+    GPUSceneCustomIndex(uint32_t index) : packed(index) { SKR_ASSERT(index <= 0x00FFFFFF); }
+    uint32_t GetInstanceID() const { return packed & 0x00FFFFFF; }
 private:
-    union
-    {
-        uint32_t packed;
-        struct
-        {
-            uint32_t archetype_index : 10; // 1024 个 archetype
-            uint32_t entity_index : 14;    // 16K 个实体/archetype
-            uint32_t dontuse : 8;          // 保留，确保只使用 24 位
-        };
-    };
+    uint32_t packed;
 };
 
 sreflect_managed_component(guid = "fd6cd47d-bb68-4d1c-bd26-ad3717f10ea7")
@@ -68,44 +52,79 @@ GPUSceneInstance
     GPUSceneCustomIndex custom_index;
 };
 
-// 组件类型描述
 struct GPUSceneComponentType
 {
-    CPUTypeID cpu_type_guid;        // CPU 端组件类型
-    GPUComponentTypeID gpu_type_id; // GPU 端类型 ID
-    uint16_t element_size;          // 组件大小（字节）
-    uint16_t element_align;         // 对齐要求
-    const char8_t* name;            // 调试用名称
+    CPUTypeID cpu_type_guid;
+    SOAIndex soa_index;
+    uint16_t element_size;
+    uint16_t element_align;
+    const char8_t* name;
 };
 
-// Archetype 的 GPU 映射
 struct GPUSceneArchetype
 {
-    GPUSceneArchetype(sugoi::archetype_t* a, GPUArchetypeID i, skr::Vector<GPUComponentTypeID>&& types);
-
-    // 基本标识
-    const sugoi::archetype_t* cpu_archetype = nullptr;     // ECS archetype
-    const GPUArchetypeID gpu_archetype_id = 0;             // GPU 端 ID
-    const skr::Vector<GPUComponentTypeID> component_types; // 这个 Archetype 包含的组件类型
-    std::atomic<GPUSceneInstanceID> latest_index = 0;      // 当前实体总数
-    skr::ConcurrentQueue<GPUComponentTypeID> free_ids;     // free id
+    GPUSceneArchetype(sugoi::archetype_t* a, GPUArchetypeID i, skr::Vector<SOAIndex>&& types)
+        : cpu_archetype(a), gpu_archetype_id(i), component_types(std::move(types)) {}
+    
+    const sugoi::archetype_t* cpu_archetype = nullptr;
+    const GPUArchetypeID gpu_archetype_id = 0;
+    const skr::Vector<SOAIndex> component_types;
+    std::atomic<GPUSceneInstanceID> latest_index = 0;
+    skr::ConcurrentQueue<SOAIndex> free_ids;
 };
 
-// 配置结构（分层设计）
 struct GPUSceneConfig
 {
+    struct ComponentInfo
+    {
+        CPUTypeID cpu_type;
+        SOAIndex soa_index;
+        uint32_t element_size;
+        uint32_t element_align;
+    };
+    
     skr::ecs::World* world = nullptr;
     skr::RendererDevice* render_device = nullptr;
-    size_t initial_size = 256 * 1024 * 1024;       // 256MB 核心数据
-    size_t max_size = 1536 * 1024 * 1024;          // 1.5GB 最大核心数据
-    bool enable_async_updates = true;                        // 异步更新
-    skr::Map<CPUTypeID, GPUComponentTypeID> types; // 默认核心组件类型
-    bool enable_auto_resize = true;                          // 是否开启自动扩容
-    float auto_resize_threshold = 0.9f;                      // 自动扩容阈值
-    float resize_growth_factor = 1.5f;                       // 扩容倍数
+    uint32_t initial_instances = 65536;
+    uint32_t max_instances = 1024 * 1024;
+    uint32_t page_size = 16384;
+    bool enable_async_updates = true;
+    skr::Vector<ComponentInfo> components;
+    float auto_resize_threshold = 0.9f;
+    float resize_growth_factor = 1.5f;
 };
 
-// 主管理器（分层设计）
+class GPUSceneBuilder
+{
+public:
+    GPUSceneBuilder& with_world(skr::ecs::World* w)
+    {
+        config_.world = w;
+        return *this;
+    }
+    GPUSceneBuilder& with_device(skr::RendererDevice* d)
+    {
+        config_.render_device = d;
+        return *this;
+    }
+    GPUSceneBuilder& with_instances(uint32_t initial, uint32_t max = 0);
+    GPUSceneBuilder& with_page_size(uint32_t size)
+    {
+        config_.page_size = size;
+        return *this;
+    }
+    GPUSceneBuilder& add_component(CPUTypeID cpu_type, SOAIndex local_id, uint32_t size, uint32_t align);
+
+    template <typename Layout>
+    GPUSceneBuilder& from_layout();
+    
+    GPUSceneConfig build() { return config_; }
+    
+private:
+    GPUSceneConfig config_;
+};
+
+// 主管理器
 struct SKR_RENDERER_API GPUScene final
 {
 public:
@@ -118,15 +137,15 @@ public:
     void RequireUpload(skr::ecs::Entity entity, CPUTypeID component);
     void ExecuteUpload(skr::render_graph::RenderGraph* graph);
 
-    const skr::Map<CPUTypeID, GPUComponentTypeID>& GetTypeRegistry() const;
-    GPUComponentTypeID GetComponentTypeID(const CPUTypeID& type_guid) const;
+    const skr::Map<CPUTypeID, SOAIndex>& GetTypeRegistry() const;
+    SOAIndex GetComponentSOAIndex(const CPUTypeID& type_guid) const;
     bool IsComponentTypeRegistered(const CPUTypeID& type_guid) const;
-    const GPUSceneComponentType* GetComponentType(GPUComponentTypeID type_id) const;
+    const GPUSceneComponentType* GetComponentType(SOAIndex local_id) const;
 
     inline skr::render_graph::BufferHandle GetSceneBuffer() const { return scene_buffer; }
     inline uint32_t GetInstanceCount() const { return instance_count; }
 
-    uint32_t GetComponentSegmentOffset(GPUComponentTypeID type_id) const;
+    uint32_t GetComponentSegmentOffset(SOAIndex local_id) const;
     uint32_t GetInstanceStride() const;
 
 protected:
@@ -157,7 +176,7 @@ private:
     skr::RendererDevice* render_device = nullptr;
 
     // 类型注册表
-    skr::Map<CPUTypeID, GPUComponentTypeID> type_registry;
+    skr::Map<CPUTypeID, SOAIndex> type_registry;
     skr::Vector<GPUSceneComponentType> component_types;
 
     // Archetype 管理
@@ -202,11 +221,45 @@ private:
     CGPUComputePipelineId sparse_upload_pipeline = nullptr;
 };
 
-inline GPUSceneArchetype::GPUSceneArchetype(sugoi::archetype_t* a, GPUArchetypeID i, skr::Vector<GPUComponentTypeID>&& types)
-    : cpu_archetype(a)
-    , gpu_archetype_id(i)
-    , component_types(std::move(types))
+// Builder 实现
+inline GPUSceneBuilder& GPUSceneBuilder::with_instances(uint32_t initial, uint32_t max)
 {
+    config_.initial_instances = initial;
+    config_.max_instances = max > 0 ? max : initial * 2;
+    return *this;
+}
+
+inline GPUSceneBuilder& GPUSceneBuilder::add_component(CPUTypeID cpu_type, SOAIndex local_id, uint32_t size, uint32_t align)
+{
+    config_.components.add({ cpu_type, local_id, size, align });
+    return *this;
+}
+
+// 从 Layout 提取组件信息
+template <typename Layout>
+inline GPUSceneBuilder& GPUSceneBuilder::from_layout()
+{
+    config_.page_size = Layout::page_size;
+    config_.components.clear();
+    
+    [this]<typename... Cs>(typename Layout::template TypePack<Cs...>*) {
+        skr::Vector<CPUTypeID> types;
+        auto collect = [&types]<typename T>() {
+            if constexpr (is_bundle_v<T>)
+                []<typename... Bs>(ComponentBundle<Bs...>, auto& v) {
+                    (v.add(sugoi_id_of<Bs>::get()), ...);
+                }(T{}, types);
+            else
+                types.add(sugoi_id_of<T>::get());
+        };
+        (collect.template operator()<Cs>(), ...);
+        
+        Layout::for_each_component([this, &types](uint32_t id, uint32_t size, uint32_t align, uint32_t idx) {
+            config_.components.add({types[idx], id, size, align});
+        });
+    }(static_cast<typename Layout::Elements*>(nullptr));
+    
+    return *this;
 }
 
 } // namespace skr::renderer
