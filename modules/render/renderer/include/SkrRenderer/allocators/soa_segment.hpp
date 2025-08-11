@@ -82,6 +82,7 @@ public:
     inline uint32_t get_page_size() const { return config.page_size; }
     inline uint64_t get_capacity_bytes() const { return capacity_bytes; }
     inline uint32_t get_instance_capacity() const { return instance_capacity; }
+    inline uint32_t get_page_stride_bytes() const { return page_stride_bytes; }
 
     inline const skr::Vector<ComponentSegment>& get_segments() const { return component_segments; }
     inline const skr::Vector<ComponentInfo>& get_infos() const { return component_infos; }

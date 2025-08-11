@@ -230,7 +230,8 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     GPUSceneBuilder cfg_builder;
     cfg_builder.from_layout<DefaultGPUSceneLayout>()
         .with_world(&world)
-        .with_device(render_device);
+        .with_device(render_device)
+        .with_page_size(128);
     GPUSceneConfig cfg = cfg_builder.build();
     GPUScene.Initialize(render_device->get_cgpu_device(), cfg);
 
@@ -292,6 +293,8 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                     uint32_t instance_count;
                     uint32_t transform_segment_offset;
                     uint32_t transform_element_size;
+                    uint32_t page_size;         // Page size (UINT32_MAX for continuous)
+                    uint32_t page_stride_bytes; // Bytes per page
                 } constants;
                 
                 constants.screen_width = static_cast<float>(screen_size.x);
@@ -308,6 +311,10 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                 auto transform_type_id = GPUScene.GetComponentSOAIndex(sugoi_id_of<GPUSceneObjectToWorld>::get());
                 constants.transform_segment_offset = GPUScene.GetComponentSegmentOffset(transform_type_id);
                 constants.transform_element_size = sizeof(GPUSceneObjectToWorld);
+                
+                // Get page layout info
+                constants.page_size = GPUScene.GetPageSize();
+                constants.page_stride_bytes = GPUScene.GetPageStrideBytes();
                 
                 cgpu_compute_encoder_push_constants(ctx.encoder, root_signature, u8"debug_constants", &constants);
                 cgpu_compute_encoder_dispatch(ctx.encoder, group_count_x, group_count_y, 1);

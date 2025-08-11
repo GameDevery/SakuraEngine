@@ -149,6 +149,8 @@ public:
 
     uint32_t GetComponentSegmentOffset(SOAIndex local_id) const;
     uint32_t GetInstanceStride() const;
+    inline uint32_t GetPageSize() const { return core_data.get_page_size(); }
+    inline uint32_t GetPageStrideBytes() const { return core_data.get_page_stride_bytes(); }
 
 protected:
     void InitializeComponentTypes(const GPUSceneConfig& config);
@@ -190,6 +192,12 @@ private:
 
     // 1. 核心数据：完全连续的大块（预分段）
     SOASegmentBuffer core_data; // SOA 分配器（包含 buffer）
+    
+public:
+    // 获取页布局信息的辅助方法
+    uint32_t get_page_stride_bytes() const { return core_data.get_page_stride_bytes(); }
+    
+private:
 
     // dirties
     shared_atomic_mutex add_mtx;
