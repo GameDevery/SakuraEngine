@@ -179,10 +179,6 @@ private:
     skr::Map<CPUTypeID, SOAIndex> type_registry;
     skr::Vector<GPUSceneComponentType> component_types;
 
-    // Archetype 管理
-    shared_atomic_mutex archetype_mutex;
-    skr::Map<sugoi::archetype_t*, skr::SP<GPUSceneArchetype>> archetype_registry;
-
     // instance counters
     GPUSceneInstanceID instance_count = 0;
     std::atomic<GPUSceneInstanceID> latest_index = 0;

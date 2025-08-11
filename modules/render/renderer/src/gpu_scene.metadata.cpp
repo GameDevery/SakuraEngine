@@ -140,7 +140,6 @@ void GPUScene::Shutdown()
     // Clear data structures
     type_registry.clear();
     component_types.clear();
-    archetype_registry.clear();
 
     ecs_world = nullptr;
     render_device = nullptr;
