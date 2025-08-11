@@ -3,11 +3,14 @@
 #include <std/types/matrix.hpp>
 #include <std/resources/buffer.hpp>
 
+#define sreflect_managed_component(...) struct 
+
 namespace skr::data_layout
 {
 using namespace skr::shader;
 using uint32_t = uint;
 using uint64_t = uint64;
+using AddressType = uint32_t;
 
 template <bool Writable = false>
 struct DataAccessor

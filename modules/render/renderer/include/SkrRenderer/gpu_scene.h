@@ -5,7 +5,6 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderer/fwd_types.h"
 #include "SkrRenderer/allocators/soa_segment.hpp"
-#include "SkrRenderer/allocators/page_pool.hpp"
 #ifndef __meta__
     #include "SkrRenderer/gpu_scene.generated.h" // IWYU pragma: export
 #endif
@@ -59,24 +58,6 @@ private:
             uint32_t dontuse : 8;          // 保留，确保只使用 24 位
         };
     };
-};
-
-sreflect_managed_component(guid = "7d7ae068-1c62-46a0-a3bc-e6b141c8e56d")
-GPUSceneObjectToWorld
-{
-    skr::float4x4 matrix;
-};
-
-sreflect_managed_component(guid = "d108318f-a1c2-4f64-b82f-63e7914773c8")
-GPUSceneInstanceColor
-{
-    skr::float4 color;
-};
-
-sreflect_managed_component(guid = "e72c5ea1-9e31-4649-b190-45733b176760")
-GPUSceneInstanceEmission
-{
-    skr::float4 color;
 };
 
 sreflect_managed_component(guid = "fd6cd47d-bb68-4d1c-bd26-ad3717f10ea7")

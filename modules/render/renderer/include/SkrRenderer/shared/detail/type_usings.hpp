@@ -1,10 +1,13 @@
 #pragma once
-#include "SkrBase/math.h"
+#include "SkrBase/math.h" // IWYU pragma: export
+#include "SkrRT/ecs/component.hpp" // IWYU pragma: export
 #include "SkrContainersDef/vector.hpp"
 
 namespace skr::data_layout
 {
 using namespace skr;
+using uint32_t = ::uint32_t;
+using AddressType = uint32_t;
 
 struct DataReader
 {

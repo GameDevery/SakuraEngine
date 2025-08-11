@@ -1,6 +1,7 @@
 #include <std/std.hpp>
 #include <std2/attributes.hpp>
 #include <std2/constant_buffer.hpp>
+#include "SkrRenderer/shared/gpu_scene.hpp"
 
 using namespace skr::shader;
 
@@ -27,6 +28,8 @@ extern ConstantBuffer<SceneDebugConstants>& debug_constants;
 [[compute_shader("scene_debug"), kernel_2d(16, 16)]]
 void scene_debug([[sv_thread_id]] uint3 thread_id) 
 {
+    skr::renderer::GPUSceneObjectToWorld d;
+
     uint2 screen_size = uint2(debug_constants.screenSize);
     uint2 pixel_coord = thread_id.xy;
     

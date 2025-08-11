@@ -1,6 +1,8 @@
 #pragma once
 #include "./../attributes.hpp"
 
+namespace std
+{
 using int16 = short;
 using uint16 = unsigned short;
 using int32 = int;
@@ -110,6 +112,9 @@ trait integral_constant {
 };
 typedef integral_constant<bool, true> true_type;
 typedef integral_constant<bool, false> false_type;
+
+} // namespace std
+using namespace std;
 
 namespace skr::shader {
 

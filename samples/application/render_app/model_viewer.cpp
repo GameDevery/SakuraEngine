@@ -18,6 +18,7 @@
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderer/render_app.hpp"
 #include "SkrRenderer/gpu_scene.h"
+#include "SkrRenderer/shared/gpu_scene.hpp"
 
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrMeshCore/mesh_processing.hpp"
