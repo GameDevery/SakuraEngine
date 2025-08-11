@@ -68,7 +68,7 @@ int SceneSampleSimpleModule::main_module_exec(int argc, char8_t** argv)
     skr::ecs::TaskScheduler::Get()->flush_all();
     skr::ecs::TaskScheduler::Get()->sync_all();
 
-    auto trans_accessor = world.random_read<skr::scene::TransformComponent>();
+    auto trans_accessor = world.random_read<const skr::scene::TransformComponent>();
 
     auto transform = trans_accessor[(skr::ecs::Entity)actor2.lock()->GetEntity()].get();
     SKR_LOG_INFO(u8"Transform Position: ({%f}, {%f}, {%f})", transform.position.x, transform.position.y, transform.position.z);
