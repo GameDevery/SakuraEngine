@@ -1,8 +1,8 @@
-using Microsoft.Extensions.FileSystemGlobbing;
-using System.Text;
+using System.Runtime.Versioning;
 using System.Diagnostics;
 using System.Collections;
 using Serilog;
+using System.Runtime.InteropServices;
 
 namespace SB.Core
 {
@@ -29,87 +29,50 @@ namespace SB.Core
 
         internal void FindVCVars()
         {
+            if (!OperatingSystem.IsWindows())
+                return;
+
             Log.Information("VisualStudio version ... {VSVersion}", VSVersion);
-
-            var fastMatcher = new Matcher();
-            var slowMatcher = new Matcher();
-            if (FastFind)
+            if (VSVersion == 2022)
             {
-                fastMatcher.AddIncludePatterns(new[] {
-                    "*/Common7/Tools/vsdevcmd/ext/vcvars.bat",
-                    "*/Common7/Tools/vsdevcmd/core/winsdk.bat"
-                });
-                slowMatcher.AddIncludePatterns(new[] {
-                    "./**/Tools/vsdevcmd/ext/vcvars.bat",
-                    "./**/Tools/vsdevcmd/core/winsdk.bat"
-                });
-            }
-            else
-            {
-                fastMatcher.AddIncludePatterns(new[] {
-                    "./Program Files/Microsoft Visual Studio/2022/*/VC/Auxiliary/Build/vcvarsall.bat",
-                });
-                slowMatcher.AddIncludePatterns(new[] {
-                    "./**/VC/Auxiliary/Build/vcvarsall.bat"
-                });
-            }
-            foreach (var Disk in Windows.EnumLogicalDrives())
-            {
-                bool FoundVS = false;
-                var FindWithMatcher = (Matcher matcher) =>
+                var vsInstance = SearchVS2022.FindBestInstance();
+                
+                if (vsInstance != null && vsInstance.IsValid)
                 {
-                    var VersionPostfix = (VSVersion == 2022) ? "/2022" : "";
-                    var searchDirectory = $"{Disk}:/Program Files/Microsoft Visual Studio{VersionPostfix}";
-                    IEnumerable<string> matchingFiles = matcher.GetResultsInFullPath(searchDirectory);
-                    foreach (string file in matchingFiles)
+                    // 重要：VS 批处理文件期望 VSINSTALLDIR 以斜杠结尾
+                    VSInstallDir = vsInstance.InstallPath;
+                    if (!VSInstallDir!.EndsWith("/") && !VSInstallDir.EndsWith("\\"))
                     {
-                        var FileName = Path.GetFileName(file);
-                        switch (FileName)
-                        {
-                            case "vcvarsall.bat":
-                                FoundVS = true;
-                                VCVarsAllBat = file; //file.Contains("Preview") ? file : VCVarsAllBat;
-                                break;
-                            case "vcvars.bat":
-                                FoundVS = true;
-                                VCVarsBat = file; //file.Contains("Preview") ? file : VCVarsBat;
-                                break;
-                            case "winsdk.bat":
-                                FoundVS = true;
-                                WindowsSDKBat = file; //file.Contains("Preview") ? file : WindowsSDKBat;
-                                break;
-                        }
+                        VSInstallDir = VSInstallDir.Replace("\\", "/") + "/";
                     }
-                    return searchDirectory;
-                };
-
-                var SDKRoot = FindWithMatcher(fastMatcher);
-                if (!FoundVS)
-                {
-                    Log.Verbose("Fast find failed, trying slow find in {SDKRoot}", SDKRoot);
-                    FindWithMatcher(slowMatcher);
+                    else
+                    {
+                        VSInstallDir = VSInstallDir.Replace("\\", "/");
+                    }
+                    
+                    VCVarsAllBat = vsInstance.VCVarsAllBat;
+                    VCVarsBat = vsInstance.VCVarsBat;
+                    WindowsSDKBat = vsInstance.WindowsSDKBat;
+                    
+                    Log.Verbose("Found VS2022 at: {InstallDir}", VSInstallDir);
+                    if (FastFind)
+                    {
+                        Log.Verbose("Found VCVarsBat: {VCVarsBat}", VCVarsBat);
+                        Log.Verbose("Found WindowsSDKBat: {WindowsSDKBat}", WindowsSDKBat);
+                    }
+                    else
+                    {
+                        Log.Verbose("Found VCVarsAllBat: {VCVarsAllBat}", VCVarsAllBat);
+                    }
                 }
-
-                if (FoundVS)
+                else
                 {
-                    // "*/Visual Studio/2022/*/**"
-                    var SomeBatPath = VCVarsAllBat ?? VCVarsBat;
-                    var PayInfo = SomeBatPath!
-                        .Replace("\\", "/")
-                        .Replace(SDKRoot, "")
-                        .Split('/')[1];
-                    VSInstallDir = $"{SDKRoot}/{PayInfo}/";
-                    break;
+                    Log.Error("Visual Studio 2022 not found");
                 }
-            }
-            if (FastFind)
-            {
-                Log.Verbose("Found VCVarsBat: {VCVarsBat}", VCVarsBat);
-                Log.Verbose("Found WindowsSDKBat: {WindowsSDKBat}", WindowsSDKBat);
             }
             else
             {
-                Log.Verbose("Found VCVarsAllBat: {VCVarsAllBat}", VCVarsAllBat);
+                Log.Error("VS Version not supported!");
             }
         }
 
@@ -343,6 +306,9 @@ namespace SB.Core
     {
         public void Setup()
         {
+            if (!OperatingSystem.IsWindows())
+                return;
+                
             if (BuildSystem.TargetOS == OSPlatform.Windows && BuildSystem.HostOS == OSPlatform.Windows)
             {
                 using (Profiler.BeginZone("InitializeVisualStudio", color: (uint)Profiler.ColorType.WebMaroon))
@@ -352,7 +318,6 @@ namespace SB.Core
                     VisualStudio.FindVCVars();
                     sw.Stop();
                     Log.Information("Find VCVars took {ElapsedMilliseconds}s", sw.ElapsedMilliseconds / 1000.0f);
-
                     sw.Restart();
                     VisualStudio.RunVCVars();
                     sw.Stop();
