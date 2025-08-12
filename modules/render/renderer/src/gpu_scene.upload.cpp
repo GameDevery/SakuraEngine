@@ -95,13 +95,25 @@ struct ScanGPUScene : public GPUSceneInstanceTask
                 for (auto [cpu_type, gpu_type] : pScene->type_registry)
                 {
                     const auto data = Context.read(cpu_type).at(i);
+                    const auto& component_info = pScene->component_types[gpu_type];
+                    
+                    // 调试信息：显示组件映射
+                    if (instance_data.instance_index < 5) {
+                        SKR_LOG_WARN(u8"Entity %d, Instance %u: cpu_type=%u → gpu_type=%u (%s), has_data=%s", 
+                            entity, instance_data.instance_index, cpu_type, gpu_type, component_info.name,
+                            data ? "YES" : "NO");
+                    }
+                    
                     if (!data) continue;
 
-                    const auto& component_info = pScene->component_types[gpu_type];
-                    // Core Data处理
-                    // 66624 0 1041
                     const uint64_t dst_offset = pScene->core_data.get_component_offset(gpu_type, instance_data.instance_index);
                     const uint64_t src_offset = pScene->upload_ctx.upload_cursor.fetch_add(component_info.element_size);
+                    
+                    // 调试信息：显示地址计算
+                    if (instance_data.instance_index < 5) {
+                        SKR_LOG_WARN(u8"  → Upload: gpu_type=%u, size=%u, src_offset=%llu, dst_offset=%llu",
+                            gpu_type, component_info.element_size, src_offset, dst_offset);
+                    }
                     if (src_offset + component_info.element_size <= pScene->upload_ctx.upload_buffer->info->size)
                     {
                         memcpy(DRAMCache->data() + src_offset, data, component_info.element_size);
@@ -215,43 +227,6 @@ void GPUScene::AdjustBuffer(skr::render_graph::RenderGraph* graph)
         // Import scene buffer with proper state management
         scene_buffer = core_data.import_buffer(graph, u8"scene_buffer");
     }
-}
-
-
-void GPUScene::CreateDataBuffer(CGPUDeviceId device, const GPUSceneConfig& config)
-{
-    SKR_LOG_DEBUG(u8"Creating core data buffer...");
-
-    // Use Builder to create SOA allocator
-    auto builder = SOASegmentBuffer::Builder(device)
-        .with_instances(config.initial_instances)
-        .with_page_size(config.page_size);
-    
-    // Register core components
-    for (const auto& component_type : component_types)
-    {
-        builder.add_component(
-            component_type.soa_index,
-            component_type.element_size,
-            component_type.element_align
-        );
-        SKR_LOG_DEBUG(u8"  Added core component to SOASegmentBuffer: local_id=%u, size=%u, align=%u",
-            component_type.soa_index, component_type.element_size, component_type.element_align);
-    }
-    
-    // Build the allocator
-    core_data.initialize(builder);
-    
-    if (!core_data.get_buffer())
-    {
-        SKR_LOG_ERROR(u8"Failed to create core data buffer!");
-        return;
-    }
-
-    SKR_LOG_INFO(u8"Core data buffer created: %lldMB, %d segments, %d instances capacity",
-        core_data.get_capacity_bytes() / (1024 * 1024),
-        core_data.get_segments().size(),
-        core_data.get_instance_capacity());
 }
 
 void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)

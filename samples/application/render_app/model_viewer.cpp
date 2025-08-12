@@ -228,11 +228,10 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     CreateComputePipeline();
 
     GPUSceneBuilder cfg_builder;
-    cfg_builder.from_layout<DefaultGPUSceneLayout>()
+    cfg_builder.with_device(render_device)
         .with_world(&world)
-        .with_device(render_device);
-    GPUSceneConfig cfg = cfg_builder.build();
-    GPUScene.Initialize(render_device->get_cgpu_device(), cfg);
+        .from_layout<DefaultGPUSceneLayout>();
+    GPUScene.Initialize(cfg_builder.build_config(), cfg_builder.get_soa_builder());
 
     // AsyncResource<> is a handle can be constructed by any resource type & ids
     skr::resource::AsyncResource<MeshResource> mesh_resource;

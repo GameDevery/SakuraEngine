@@ -6,7 +6,7 @@
 namespace skr::renderer
 {
 
-void GPUScene::Initialize(CGPUDeviceId device, const GPUSceneConfig& cfg)
+void GPUScene::Initialize(const GPUSceneConfig& cfg, const SOASegmentBuffer::Builder& soa_builder)
 {
     SKR_LOG_INFO(u8"Initializing GPUScene...");
 
@@ -29,11 +29,11 @@ void GPUScene::Initialize(CGPUDeviceId device, const GPUSceneConfig& cfg)
     render_device = config.render_device;
 
     // 0. Create sparse upload compute pipeline
-    CreateSparseUploadPipeline(device);
-    // 1. Initialize component type registry
-    InitializeComponentTypes(config);
-    // 2. Create core data buffer and calculate segments
-    CreateDataBuffer(device, config);
+    CreateSparseUploadPipeline(render_device->get_cgpu_device());
+    // 1. Initialize component type registry from config
+    InitializeComponentTypes(cfg);
+    // 2. Create core data buffer using provided SOA builder
+    core_data.initialize(soa_builder);
 
     SKR_LOG_INFO(u8"GPUScene initialized successfully");
 }
@@ -91,7 +91,7 @@ void GPUScene::InitializeComponentTypes(const GPUSceneConfig& config)
         type_registry.add(comp_info.cpu_type, comp_info.soa_index);
         component_types.push_back(component_type);
 
-        SKR_LOG_INFO(u8"  Registered component: %s (size: %d, align: %d, cpu_type:%d, local_id: %d)",
+        SKR_LOG_WARN(u8"  Registered component: %s (size: %d, align: %d, cpu_type:%u, soa_index: %u)",
             component_type.name,
             component_type.element_size,
             component_type.element_align,
@@ -162,39 +162,6 @@ uint64_t GPUScene::CalculateDirtySize() const
         }
     }
     return total_size;
-}
-
-uint32_t GPUScene::GetComponentSegmentOffset(SOAIndex soa_index) const
-{
-    // Get the segment offset from SOASegmentBuffer
-    const auto* segment = core_data.get_segment(soa_index);
-    if (segment)
-    {
-        return segment->buffer_offset;
-    }
-    SKR_LOG_WARN(u8"Component SOAIndex %u not found in core data segments", soa_index);
-    return 0;
-}
-
-uint32_t GPUScene::GetInstanceStride() const
-{
-    // Total size of all core components per instance
-    uint32_t stride = 0;
-    for (const auto& info : core_data.get_infos())
-    {
-        stride += info.element_size;
-    }
-    return stride;
-}
-
-uint32_t GPUScene::GetComponentTypeCount() const
-{
-    uint32_t count = 0;
-    for (const auto& component_type : component_types)
-    {
-        count++;
-    }
-    return count;
 }
 
 const skr::Map<CPUTypeID, SOAIndex>& GPUScene::GetTypeRegistry() const

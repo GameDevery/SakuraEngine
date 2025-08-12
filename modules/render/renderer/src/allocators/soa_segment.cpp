@@ -25,7 +25,84 @@ SOASegmentBuffer::Builder& SOASegmentBuffer::Builder::with_page_size(uint32_t pa
 
 SOASegmentBuffer::Builder& SOASegmentBuffer::Builder::add_component(SegmentID type_id, uint32_t element_size, uint32_t element_align)
 {
-    components_.push_back({ type_id, element_size, element_align });
+    SKR_ASSERT(!bundle_builder_.active && "Cannot add component while building a bundle");
+    
+    // 创建独立的Segment
+    Segment segment;
+    segment.stride = element_size;
+    segment.align = element_align;
+    segment.buffer_offset = 0;  // 将在calculate_layout中计算
+    segment.element_count = 0;  // 将在initialize中设置
+    
+    uint32_t segment_index = segments_.size();
+    segments_.add(segment);
+    
+    // 创建Component到Segment的映射
+    ComponentMapping mapping;
+    mapping.component_id = type_id;
+    mapping.segment_index = segment_index;
+    mapping.element_offset = 0;  // 独立Segment，偏移为0
+    mapping.element_size = element_size;
+    mapping.element_align = element_align;
+    
+    mappings_.add(mapping);
+    
+    return *this;
+}
+
+SOASegmentBuffer::Builder& SOASegmentBuffer::Builder::begin_bundle()
+{
+    SKR_ASSERT(!bundle_builder_.active && "Bundle already started");
+    bundle_builder_.reset();
+    bundle_builder_.active = true;
+    return *this;
+}
+
+SOASegmentBuffer::Builder& SOASegmentBuffer::Builder::add_bundle_component(SegmentID type_id, uint32_t element_size, uint32_t element_align)
+{
+    SKR_ASSERT(bundle_builder_.active && "Must call begin_bundle first");
+    
+    // 计算在bundle内的偏移
+    uint32_t offset = bundle_builder_.stride;
+    offset = (offset + element_align - 1) & ~(element_align - 1);
+    
+    ComponentMapping mapping;
+    mapping.component_id = type_id;
+    mapping.segment_index = UINT32_MAX;  // 暂时设置为无效值，end_bundle时更新
+    mapping.element_offset = offset;
+    mapping.element_size = element_size;
+    mapping.element_align = element_align;
+    
+    bundle_builder_.components.add(mapping);
+    bundle_builder_.stride = offset + element_size;
+    bundle_builder_.align = (element_align > bundle_builder_.align) ? element_align : bundle_builder_.align;
+    
+    return *this;
+}
+
+SOASegmentBuffer::Builder& SOASegmentBuffer::Builder::end_bundle()
+{
+    SKR_ASSERT(bundle_builder_.active && "No bundle to end");
+    SKR_ASSERT(!bundle_builder_.components.is_empty() && "Bundle must have at least one component");
+    
+    // 创建共享的Segment
+    Segment segment;
+    segment.stride = bundle_builder_.stride;
+    segment.align = bundle_builder_.align;
+    segment.buffer_offset = 0;  // 将在calculate_layout中计算
+    segment.element_count = 0;  // 将在initialize中设置
+    
+    uint32_t segment_index = segments_.size();
+    segments_.add(segment);
+    
+    // 更新所有bundle组件的segment_index并添加到映射
+    for (auto& mapping : bundle_builder_.components) {
+        mapping.segment_index = segment_index;
+        mappings_.add(mapping);
+    }
+    
+    bundle_builder_.reset();  // 清理并标记为非活动
+    
     return *this;
 }
 
@@ -43,15 +120,16 @@ void SOASegmentBuffer::shutdown()
     device = nullptr;
     capacity_bytes = 0;
     instance_capacity = 0;
-    component_segments.clear();
+    segments.clear();
+    component_mappings.clear();
 }
 
 void SOASegmentBuffer::initialize(const Builder& builder)
 {
     device = builder.device_;
     config = builder.config_;
-    component_infos = builder.components_;
-    component_segments.resize_zeroed(component_infos.size());
+    segments = builder.segments_;
+    component_mappings = builder.mappings_;
     
     // 根据布局类型确定实际容量
     if (config.page_size == UINT32_MAX)
@@ -69,6 +147,11 @@ void SOASegmentBuffer::initialize(const Builder& builder)
                      config.initial_instances, config.page_size, page_count, instance_capacity);
     }
     
+    // 设置所有Segment的element_count
+    for (auto& segment : segments) {
+        segment.element_count = instance_capacity;
+    }
+    
     // 计算布局
     calculate_layout();
 
@@ -83,18 +166,14 @@ void SOASegmentBuffer::calculate_layout()
     if (config.page_size == UINT32_MAX)
     {
         // 连续布局（传统 SOA）
-        for (size_t i = 0; i < component_infos.size(); ++i)
+        for (auto& segment : segments)
         {
-            const auto& info = component_infos[i];
-            auto& segment = component_segments[i];
-            
             // 对齐
-            offset = (offset + info.element_align - 1) & ~(info.element_align - 1);
+            offset = (offset + segment.align - 1) & ~(segment.align - 1);
             
             segment.buffer_offset = offset;
-            segment.element_count = instance_capacity;
             
-            offset += info.element_size * instance_capacity;
+            offset += segment.stride * instance_capacity;
         }
         
         capacity_bytes = offset;
@@ -107,25 +186,21 @@ void SOASegmentBuffer::calculate_layout()
         
         // 计算每页的字节大小
         page_stride_bytes = 0;
-        for (const auto& info : component_infos)
+        for (const auto& segment : segments)
         {
-            page_stride_bytes = (page_stride_bytes + info.element_align - 1) & ~(info.element_align - 1);
-            page_stride_bytes += info.element_size * config.page_size;
+            page_stride_bytes = (page_stride_bytes + segment.align - 1) & ~(segment.align - 1);
+            page_stride_bytes += segment.stride * config.page_size;
         }
         page_stride_bytes = (page_stride_bytes + 255) & ~255;  // 对齐 256 字节
         
-        // 设置每个组件在页内的偏移
+        // 设置每个Segment在页内的偏移
         offset = 0;
-        for (size_t i = 0; i < component_infos.size(); ++i)
+        for (auto& segment : segments)
         {
-            const auto& info = component_infos[i];
-            auto& segment = component_segments[i];
-            
-            offset = (offset + info.element_align - 1) & ~(info.element_align - 1);
+            offset = (offset + segment.align - 1) & ~(segment.align - 1);
             segment.buffer_offset = offset;  // 页内偏移
-            segment.element_count = instance_capacity;  // 实际支持的实例数
             
-            offset += info.element_size * config.page_size;
+            offset += segment.stride * config.page_size;
         }
         
         // 总容量字节数
@@ -133,30 +208,20 @@ void SOASegmentBuffer::calculate_layout()
     }
 }
 
-const SOASegmentBuffer::ComponentSegment* SOASegmentBuffer::get_segment(SegmentID type_id) const
+uint32_t SOASegmentBuffer::get_component_offset(SegmentID component_id, InstanceID instance_id) const
 {
-    for (uint32_t i = 0; i < component_infos.size(); i++)
+    // 查找组件映射
+    for (const auto& mapping : component_mappings)
     {
-        const auto& info = component_infos[i];
-        if (info.type_id == type_id)
-            return &component_segments[i];
-    }
-    return nullptr;
-}
-
-uint32_t SOASegmentBuffer::get_component_offset(SegmentID type_id, InstanceID instance_id) const
-{
-    for (uint32_t i = 0; i < component_infos.size(); i++)
-    {
-        const auto& info = component_infos[i];
-        if (info.type_id == type_id)
+        if (mapping.component_id == component_id)
         {
-            const auto& segment = component_segments[i];
+            const auto& segment = segments[mapping.segment_index];
             
             if (config.page_size == UINT32_MAX)
             {
                 // 连续布局
-                return segment.buffer_offset + (instance_id * info.element_size);
+                // 地址 = Segment基址 + 实例偏移 * Segment步长 + 组件在Segment内的偏移
+                return segment.buffer_offset + (instance_id * segment.stride) + mapping.element_offset;
             }
             else
             {
@@ -164,11 +229,22 @@ uint32_t SOASegmentBuffer::get_component_offset(SegmentID type_id, InstanceID in
                 uint32_t page = instance_id / config.page_size;
                 uint32_t offset_in_page = instance_id % config.page_size;
                 uint32_t page_start = page * page_stride_bytes;
-                return page_start + segment.buffer_offset + (offset_in_page * info.element_size);
+                
+                // 地址 = 页起始 + Segment在页内基址 + 页内实例偏移 * Segment步长 + 组件在Segment内的偏移
+                uint32_t result = page_start + segment.buffer_offset + (offset_in_page * segment.stride) + mapping.element_offset;
+                
+                // 调试日志
+                if (instance_id < 5) {
+                    SKR_LOG_WARN(u8"SOA: Component %u, Instance %u → page=%u, offset_in_page=%u, page_start=%u, segment.buffer_offset=%u, segment.stride=%u, element_offset=%u → result=%u",
+                        component_id, instance_id, page, offset_in_page, page_start, segment.buffer_offset, segment.stride, mapping.element_offset, result);
+                }
+                
+                return result;
             }
         }
     }
-    SKR_LOG_WARN(u8"SOASegmentBuffer: Component type %u not found", type_id);
+    
+    SKR_LOG_WARN(u8"SOASegmentBuffer: Component %u not found", component_id);
     return 0;
 }
 
@@ -251,7 +327,12 @@ CGPUBufferId SOASegmentBuffer::resize(uint32_t new_instance_capacity)
     uint32_t old_instance_capacity = instance_capacity;
     instance_capacity = new_instance_capacity;
     
-    // 重新计算所有 segments 的布局
+    // 更新所有Segment的element_count
+    for (auto& segment : segments) {
+        segment.element_count = instance_capacity;
+    }
+    
+    // 重新计算布局
     calculate_layout();
     
     // 创建新 buffer
@@ -278,20 +359,14 @@ void SOASegmentBuffer::copy_segments(skr::render_graph::RenderGraph* graph,
             
             if (config.page_size == UINT32_MAX)
             {
-                // 连续布局：按组件段拷贝
-                // 注意：这里假设源和目标都是相同的连续布局
-                for (uint32_t i = 0; i < component_infos.size(); i++)
+                // 连续布局：按Segment拷贝
+                for (const auto& segment : segments)
                 {
-                    const auto& info = component_infos[i];
-                    const auto& segment = component_segments[i];
-
-                    // 计算要拷贝的大小
-                    uint32_t copy_size = info.element_size * instance_count;
-                    
-                    // 源和目标使用相同的偏移（都是连续布局）
+                    // 计算要拷贝的大小（Segment步长 * 实例数）
+                    uint32_t copy_size = segment.stride * instance_count;
                     uint32_t offset = segment.buffer_offset;
                     
-                    // 拷贝这个组件段
+                    // 拷贝整个Segment
                     builder.buffer_to_buffer(
                         src_buffer.range(offset, offset + copy_size),
                         dst_buffer.range(offset, offset + copy_size)
@@ -322,26 +397,26 @@ void SOASegmentBuffer::copy_segments(skr::render_graph::RenderGraph* graph,
                     else
                     {
                         // 最后一页：可能需要部分拷贝
-                        // 按组件拷贝以避免越界
+                        // 按Segment拷贝以避免越界
                         uint32_t offset_in_page = 0;
-                        for (const auto& info : component_infos)
+                        for (const auto& segment : segments)
                         {
                             // 对齐
-                            offset_in_page = (offset_in_page + info.element_align - 1) & ~(info.element_align - 1);
+                            offset_in_page = (offset_in_page + segment.align - 1) & ~(segment.align - 1);
                             
-                            // 计算这个组件在最后一页的大小
-                            uint32_t component_size = info.element_size * last_page_instances;
+                            // 计算这个Segment在最后一页的大小
+                            uint32_t segment_size = segment.stride * last_page_instances;
                             
                             // 拷贝
                             builder.buffer_to_buffer(
                                 src_buffer.range(page_offset + offset_in_page, 
-                                               page_offset + offset_in_page + component_size),
+                                               page_offset + offset_in_page + segment_size),
                                 dst_buffer.range(page_offset + offset_in_page, 
-                                               page_offset + offset_in_page + component_size)
+                                               page_offset + offset_in_page + segment_size)
                             );
                             
-                            // 下一个组件的偏移
-                            offset_in_page += info.element_size * config.page_size;
+                            // 下一个Segment的偏移
+                            offset_in_page += segment.stride * config.page_size;
                         }
                     }
                 }

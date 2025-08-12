@@ -26,8 +26,6 @@ extern ConstantBuffer<SceneDebugConstants>& debug_constants;
 [[compute_shader("scene_debug"), kernel_2d(16, 16)]]
 void scene_debug([[sv_thread_id]] uint3 thread_id) 
 {
-    skr::renderer::GPUSceneObjectToWorld d;
-
     uint2 screen_size = uint2(debug_constants.screenSize);
     uint2 pixel_coord = thread_id.xy;
     
@@ -170,18 +168,23 @@ void scene_debug([[sv_thread_id]] uint3 thread_id)
                 
                 // Load 4x4 transform matrix manually (16 floats = 64 bytes)
                 // This ensures we're reading in the expected memory layout
-                float4x4 object_to_world = gpu_scene_buffer.Load<float4x4>(transform_offset);
-                
+                float4x4 object_to_world = gpu_scene_buffer.Load<GPUSceneObjectToWorld>(transform_offset).matrix;
+                object_to_world = transpose(object_to_world);
+                /*
+                float4x4 object_to_world;
+                for (uint row = 0; row < 4; row++) {
+                    for (uint col = 0; col < 4; col++) {
+                        uint matrix_offset = transform_offset + (row * 4 + col) * 4;
+                        object_to_world[row][col] = gpu_scene_buffer.Load<float>(matrix_offset);
+                    }
+                }
+                */
+
                 // Extract position and scale from transform matrix
                 // The matrix is stored row-major, so position is in the last row (row 3)
                 float3 sphere_center = float3(object_to_world[3][0], object_to_world[3][1], object_to_world[3][2]);
                 // Scale is the length of the first column vector (X axis)
                 float sphere_radius = length(float3(object_to_world[0][0], object_to_world[1][0], object_to_world[2][0]));
-                
-                // Skip invalid spheres (radius too small or position at origin)
-                if (sphere_radius < 0.001f) {
-                    continue;
-                }
                 
                 // Ray-sphere intersection test
                 float3 to_center = ray_origin - sphere_center;
@@ -194,7 +197,7 @@ void scene_debug([[sv_thread_id]] uint3 thread_id)
                     float distance = (-b - sqrt(discriminant)) / (2.0f * a);
                     if (distance > 0.0f && distance < closest_distance) {
                         closest_distance = distance;
-                        
+
                         // Read color for this instance using DefaultGPUSceneLayout
                         uint color_offset = DefaultGPUSceneLayout::component_location<GPUSceneInstanceColor>(instance_index);
                         GPUSceneInstanceColor color_data = gpu_scene_buffer.Load<GPUSceneInstanceColor>(color_offset);

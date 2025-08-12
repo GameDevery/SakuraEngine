@@ -4,6 +4,7 @@
 #include "SkrRT/ecs/world.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderer/fwd_types.h"
+#include "SkrRenderer/render_device.h"
 #include "SkrRenderer/allocators/soa_segment.hpp"
 #include "SkrRenderer/shared/soa_layout.hpp"
 #include "SkrRenderer/shared/gpu_scene.hpp"
@@ -52,18 +53,6 @@ struct GPUSceneComponentType
     const char8_t* name;
 };
 
-struct GPUSceneArchetype
-{
-    GPUSceneArchetype(sugoi::archetype_t* a, GPUArchetypeID i, skr::Vector<SOAIndex>&& types)
-        : cpu_archetype(a), gpu_archetype_id(i), component_types(std::move(types)) {}
-    
-    const sugoi::archetype_t* cpu_archetype = nullptr;
-    const GPUArchetypeID gpu_archetype_id = 0;
-    const skr::Vector<SOAIndex> component_types;
-    std::atomic<GPUSceneInstanceID> latest_index = 0;
-    skr::ConcurrentQueue<SOAIndex> free_ids;
-};
-
 struct GPUSceneConfig
 {
     struct ComponentInfo
@@ -76,13 +65,11 @@ struct GPUSceneConfig
     
     skr::ecs::World* world = nullptr;
     skr::RendererDevice* render_device = nullptr;
-    uint32_t initial_instances = 16384;
-    uint32_t page_size = UINT32_MAX;  // 默认连续布局
-    skr::Vector<ComponentInfo> components;
+    skr::Vector<ComponentInfo> components;  // 保留组件映射信息
     float resize_growth_factor = 1.5f;
 };
 
-class GPUSceneBuilder
+class SKR_RENDERER_API GPUSceneBuilder
 {
 public:
     GPUSceneBuilder& with_world(skr::ecs::World* w)
@@ -93,35 +80,28 @@ public:
     GPUSceneBuilder& with_device(skr::RendererDevice* d)
     {
         config_.render_device = d;
+        // 重新构造 soa_builder_ 以设置正确的 device
+        soa_builder_.~Builder();
+        new (&soa_builder_) SOASegmentBuffer::Builder(d->get_cgpu_device());
         return *this;
     }
-    GPUSceneBuilder& with_instances(uint32_t initial)
-    {
-        config_.initial_instances = initial;
-        return *this;
-    }
-    
-    GPUSceneBuilder& with_page_size(uint32_t size)
-    {
-        config_.page_size = size;
-        return *this;
-    }
-    GPUSceneBuilder& add_component(CPUTypeID cpu_type, SOAIndex local_id, uint32_t size, uint32_t align);
-
     template <typename Layout>
     GPUSceneBuilder& from_layout(uint32_t initial_instances = 256);
     
-    GPUSceneConfig build() { return config_; }
+    GPUSceneConfig build_config() { return config_; }
+    const SOASegmentBuffer::Builder& get_soa_builder() const { return soa_builder_; }
     
 private:
+    friend struct GPUScene;
     GPUSceneConfig config_;
+    SOASegmentBuffer::Builder soa_builder_;
 };
 
 // 主管理器
 struct SKR_RENDERER_API GPUScene final
 {
 public:
-    void Initialize(CGPUDeviceId device, const struct GPUSceneConfig& config);
+    void Initialize(const struct GPUSceneConfig& config, const SOASegmentBuffer::Builder& soa_builder);
     void Shutdown();
 
     void AddEntity(skr::ecs::Entity entity);
@@ -138,16 +118,9 @@ public:
     inline skr::render_graph::BufferHandle GetSceneBuffer() const { return scene_buffer; }
     inline uint32_t GetInstanceCount() const { return instance_count; }
 
-    uint32_t GetComponentSegmentOffset(SOAIndex local_id) const;
-    uint32_t GetInstanceStride() const;
-    inline uint32_t GetPageSize() const { return core_data.get_page_size(); }
-    inline uint32_t GetPageStrideBytes() const { return core_data.get_page_stride_bytes(); }
-
 protected:
     void InitializeComponentTypes(const GPUSceneConfig& config);
-    void CreateDataBuffer(CGPUDeviceId device, const GPUSceneConfig& config);
     void AdjustBuffer(skr::render_graph::RenderGraph* graph);
-    uint32_t GetComponentTypeCount() const;
     uint64_t CalculateDirtySize() const;
 
 private:
@@ -179,15 +152,11 @@ private:
     std::atomic<GPUSceneInstanceID> latest_index = 0;
     skr::ConcurrentQueue<GPUSceneInstanceID> free_ids;
 
-    skr::render_graph::BufferHandle scene_buffer; // core data 的 graph handle
+    // core data 的 graph handle
+    skr::render_graph::BufferHandle scene_buffer; 
+    // SOA 分配器（包含 buffer）
+    SOASegmentBuffer core_data;
 
-    // 1. 核心数据：完全连续的大块（预分段）
-    SOASegmentBuffer core_data; // SOA 分配器（包含 buffer）
-    
-public:
-    // 获取页布局信息的辅助方法
-    uint32_t get_page_stride_bytes() const { return core_data.get_page_stride_bytes(); }
-    
 private:
 
     // dirties
@@ -218,20 +187,18 @@ private:
     CGPUComputePipelineId sparse_upload_pipeline = nullptr;
 };
 
-// Builder 实现
-inline GPUSceneBuilder& GPUSceneBuilder::add_component(CPUTypeID cpu_type, SOAIndex local_id, uint32_t size, uint32_t align)
-{
-    config_.components.add({ cpu_type, local_id, size, align });
-    return *this;
-}
+// Builder 实现已移至 SOASegmentBuffer::Builder
 
 template <typename Layout>
 inline GPUSceneBuilder& GPUSceneBuilder::from_layout(uint32_t initial_instances)
 {
-    config_.page_size = Layout::page_size;
-    config_.initial_instances = initial_instances;
+    // 清空现有配置
     config_.components.clear();
     
+    // 让 SOASegmentBuffer::Builder 处理布局
+    soa_builder_.from_layout<Layout>(initial_instances);
+    
+    // 同时构建组件映射信息
     [this]<typename... Cs>(typename Layout::template TypePack<Cs...>*) {
         skr::Vector<CPUTypeID> types;
         auto collect = [&types]<typename T>() {
