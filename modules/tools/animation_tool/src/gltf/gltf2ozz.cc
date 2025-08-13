@@ -30,8 +30,6 @@
 // https://github.com/guillaumeblanc/ozz-animation/pull/70                    //
 //----------------------------------------------------------------------------//
 
-/// TODO: NEED UPDATE
-
 #include <cassert>
 #include <cstring>
 
@@ -410,23 +408,35 @@ bool CreateNodeTransform(const tinygltf::Node& _node, ozz::math::Transform* _tra
     if (!_node.matrix.empty())
     {
         const ozz::math::Float4x4 matrix = {
-            { ozz::math::simd_float4::Load(static_cast<float>(_node.matrix[0]), static_cast<float>(_node.matrix[1]), static_cast<float>(_node.matrix[2]), static_cast<float>(_node.matrix[3])),
-                ozz::math::simd_float4::Load(static_cast<float>(_node.matrix[4]), static_cast<float>(_node.matrix[5]), static_cast<float>(_node.matrix[6]), static_cast<float>(_node.matrix[7])),
-                ozz::math::simd_float4::Load(static_cast<float>(_node.matrix[8]), static_cast<float>(_node.matrix[9]), static_cast<float>(_node.matrix[10]), static_cast<float>(_node.matrix[11])),
-                ozz::math::simd_float4::Load(static_cast<float>(_node.matrix[12]), static_cast<float>(_node.matrix[13]), static_cast<float>(_node.matrix[14]), static_cast<float>(_node.matrix[15])) }
+            { ozz::math::simd_float4::Load(
+                  static_cast<float>(_node.matrix[0]),
+                  static_cast<float>(_node.matrix[1]),
+                  static_cast<float>(_node.matrix[2]),
+                  static_cast<float>(_node.matrix[3])),
+                ozz::math::simd_float4::Load(
+                    static_cast<float>(_node.matrix[4]),
+                    static_cast<float>(_node.matrix[5]),
+                    static_cast<float>(_node.matrix[6]),
+                    static_cast<float>(_node.matrix[7])),
+                ozz::math::simd_float4::Load(
+                    static_cast<float>(_node.matrix[8]),
+                    static_cast<float>(_node.matrix[9]),
+                    static_cast<float>(_node.matrix[10]),
+                    static_cast<float>(_node.matrix[11])),
+                ozz::math::simd_float4::Load(
+                    static_cast<float>(_node.matrix[12]),
+                    static_cast<float>(_node.matrix[13]),
+                    static_cast<float>(_node.matrix[14]),
+                    static_cast<float>(_node.matrix[15])) }
         };
-        ozz::math::SimdFloat4 translation, rotation, scale;
-        if (ToAffine(matrix, &translation, &rotation, &scale))
-        {
-            ozz::math::Store3PtrU(translation, &_transform->translation.x);
-            ozz::math::StorePtrU(rotation, &_transform->rotation.x);
-            ozz::math::Store3PtrU(scale, &_transform->scale.x);
-            return true;
-        }
 
-        ozz::log::Err() << "Failed to extract transformation from node \""
-                        << _node.name << "\"." << std::endl;
-        return false;
+        if (!ToAffine(matrix, _transform))
+        {
+            ozz::log::Err() << "Failed to extract transformation from node \""
+                            << _node.name << "\"." << std::endl;
+            return false;
+        }
+        return true;
     }
 
     if (!_node.translation.empty())

@@ -34,65 +34,73 @@
 // forced.
 #if !defined(OZZ_BUILD_SIMD_REF)
 
-// Try to match a SSE2+ version.
-#if defined(__AVX2__) || defined(OZZ_SIMD_AVX2)
-#include <immintrin.h>
-#define OZZ_SIMD_AVX2
-#define OZZ_SIMD_AVX  // avx is available if avx2 is.
-#endif
+    // Try to match a SSE2+ version.
+    #if defined(__AVX2__) || defined(OZZ_SIMD_AVX2)
+        #include <immintrin.h>
+        #define OZZ_SIMD_AVX2
+        #define OZZ_SIMD_AVX // avx is available if avx2 is.
+    #endif
 
-#if defined(__FMA__) || defined(OZZ_SIMD_FMA)
-#include <immintrin.h>
-#define OZZ_SIMD_FMA
-#endif
+    #if defined(__FMA__) || defined(OZZ_SIMD_FMA)
+        #include <immintrin.h>
+        #define OZZ_SIMD_FMA
+    #endif
 
-#if defined(__AVX__) || defined(OZZ_SIMD_AVX)
-#include <immintrin.h>
-#define OZZ_SIMD_AVX
-#define OZZ_SIMD_SSE4_2  // SSE4.2 is available if avx is.
-#endif
+    #if defined(__AVX__) || defined(OZZ_SIMD_AVX)
+        #include <immintrin.h>
+        #define OZZ_SIMD_AVX
+        #define OZZ_SIMD_SSE4_2 // SSE4.2 is available if avx is.
+    #endif
 
-#if defined(__SSE4_2__) || defined(OZZ_SIMD_SSE4_2)
-#include <nmmintrin.h>
-#define OZZ_SIMD_SSE4_2
-#define OZZ_SIMD_SSE4_1  // SSE4.1 is available if SSE4.2 is.
-#endif
+    #if defined(__SSE4_2__) || defined(OZZ_SIMD_SSE4_2)
+        #include <nmmintrin.h>
+        #define OZZ_SIMD_SSE4_2
+        #define OZZ_SIMD_SSE4_1 // SSE4.1 is available if SSE4.2 is.
+    #endif
 
-#if defined(__SSE4_1__) || defined(OZZ_SIMD_SSE4_1)
-#include <smmintrin.h>
-#define OZZ_SIMD_SSE4_1
-#define OZZ_SIMD_SSSE3  // SSSE3 is available if SSE4.1 is.
-#endif
+    #if defined(__SSE4_1__) || defined(OZZ_SIMD_SSE4_1)
+        #include <smmintrin.h>
+        #define OZZ_SIMD_SSE4_1
+        #define OZZ_SIMD_SSSE3 // SSSE3 is available if SSE4.1 is.
+    #endif
 
-#if defined(__SSSE3__) || defined(OZZ_SIMD_SSSE3)
-#include <tmmintrin.h>
-#define OZZ_SIMD_SSSE3
-#define OZZ_SIMD_SSE3  // SSE3 is available if SSSE3 is.
-#endif
+    #if defined(__SSSE3__) || defined(OZZ_SIMD_SSSE3)
+        #include <tmmintrin.h>
+        #define OZZ_SIMD_SSSE3
+        #define OZZ_SIMD_SSE3 // SSE3 is available if SSSE3 is.
+    #endif
 
-#if defined(__SSE3__) || defined(OZZ_SIMD_SSE3)
-#include <pmmintrin.h>
-#define OZZ_SIMD_SSE3
-#define OZZ_SIMD_SSE2  // SSE2 is available if SSE3 is.
-#endif
+    #if defined(__SSE3__) || defined(OZZ_SIMD_SSE3)
+        #include <pmmintrin.h>
+        #define OZZ_SIMD_SSE3
+        #define OZZ_SIMD_SSE2 // SSE2 is available if SSE3 is.
+    #endif
 
-// x64/amd64 have SSE2 instructions
-// _M_IX86_FP is 2 if /arch:SSE2, /arch:AVX or /arch:AVX2 was used.
-#if defined(__SSE2__) || defined(_M_AMD64) || defined(_M_X64) || \
-    (_M_IX86_FP >= 2) || defined(OZZ_SIMD_SSE2)
-#include <emmintrin.h>
-#define OZZ_SIMD_SSE2
-#define OZZ_SIMD_SSEx  // OZZ_SIMD_SSEx is the generic flag for SSE support
-#endif
+    // x64/amd64 have SSE2 instructions
+    // _M_IX86_FP is 2 if /arch:SSE2, /arch:AVX or /arch:AVX2 was used.
+    #if defined(__SSE2__) || defined(_M_AMD64) || defined(_M_X64) || \
+        (_M_IX86_FP >= 2) || defined(OZZ_SIMD_SSE2)
+        #include <emmintrin.h>
+        #define OZZ_SIMD_SSE2
+        #define OZZ_SIMD_SSEx // OZZ_SIMD_SSEx is the generic flag for SSE support
+    #endif
+
+    // Try to match a Arm NEON
+    #if defined(__ARM_NEON) || defined(OZZ_SIMD_ARM_NEON)
+    // #include <arm_neon.h>
+    // #define OZZ_SIMD_ARM_NEON
+    #endif
 
 // End of SIMD instruction detection
-#endif  // !OZZ_BUILD_SIMD_REF
+#endif // !OZZ_BUILD_SIMD_REF
 
 // SEE* intrinsics available
 #if defined(OZZ_SIMD_SSEx)
 
-namespace ozz {
-namespace math {
+namespace ozz
+{
+namespace math
+{
 
 // Vector of four floating point values.
 typedef __m128 SimdFloat4;
@@ -105,36 +113,40 @@ typedef __m128i SimdInt4;
 
 // Argument type for Int4.
 typedef const __m128i _SimdInt4;
-}  // namespace math
-}  // namespace ozz
+} // namespace math
+} // namespace ozz
 
-#else  // No builtin simd available
+#else // No builtin simd available
 
-// No simd instruction set detected, switch back to reference implementation.
-// OZZ_SIMD_REF is the generic flag for SIMD reference implementation.
-#define OZZ_SIMD_REF
+    // No simd instruction set detected, switch back to reference implementation.
+    // OZZ_SIMD_REF is the generic flag for SIMD reference implementation.
+    #define OZZ_SIMD_REF
 
 // Declares reference simd float and integer vectors outside of ozz::math, in
 // order to match non-reference implementation details.
 
 // Vector of four floating point values.
-struct SimdFloat4Def {
-  alignas(16) float x;
-  float y;
-  float z;
-  float w;
+struct SimdFloat4Def
+{
+    alignas(16) float x;
+    float y;
+    float z;
+    float w;
 };
 
 // Vector of four integer values.
-struct SimdInt4Def {
-  alignas(16) int x;
-  int y;
-  int z;
-  int w;
+struct SimdInt4Def
+{
+    alignas(16) int x;
+    int y;
+    int z;
+    int w;
 };
 
-namespace ozz {
-namespace math {
+namespace ozz
+{
+namespace math
+{
 
 // Vector of four floating point values.
 typedef SimdFloat4Def SimdFloat4;
@@ -148,13 +160,13 @@ typedef SimdInt4Def SimdInt4;
 // Argument type for SimdInt4.
 typedef const SimdInt4& _SimdInt4;
 
-}  // namespace math
-}  // namespace ozz
-#endif  // OZZ_SIMD_x
+} // namespace math
+} // namespace ozz
+#endif // OZZ_SIMD_x
 
 // Native SIMD operator already exist on some compilers, so they have to be
 // disable from ozz implementation
 #if !defined(OZZ_SIMD_REF) && (defined(__GNUC__) || defined(__llvm__))
-#define OZZ_DISABLE_SSE_NATIVE_OPERATORS
+    #define OZZ_DISABLE_SSE_NATIVE_OPERATORS
 #endif
-#endif  // OZZ_OZZ_BASE_MATHS_INTERNAL_SIMD_MATH_CONFIG_H_
+#endif // OZZ_OZZ_BASE_MATHS_INTERNAL_SIMD_MATH_CONFIG_H_

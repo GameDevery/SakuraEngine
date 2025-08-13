@@ -25,40 +25,9 @@
 //                                                                            //
 //----------------------------------------------------------------------------//
 
-#ifndef OZZ_OZZ_BASE_MATHS_SIMD_MATH_ARCHIVE_H_
-#define OZZ_OZZ_BASE_MATHS_SIMD_MATH_ARCHIVE_H_
+#ifndef OZZ_OZZ_OPTIONS_EXPORT_H_
+#define OZZ_OZZ_OPTIONS_EXPORT_H_
+#include "SkrBase/config.h"
+#define OZZ_OPTIONS_DLL SKR_OZZ_API
 
-#include "SkrAnim/ozz/base/io/archive_traits.h"
-#include "SkrAnim/ozz/base/maths/simd_math.h"
-#include "SkrAnim/ozz/base/platform.h"
-
-namespace ozz
-{
-namespace io
-{
-OZZ_IO_TYPE_NOT_VERSIONABLE(math::SimdFloat4)
-template <>
-struct OZZ_BASE_DLL Extern<math::SimdFloat4>
-{
-    static void Save(OArchive& _archive, const math::SimdFloat4* _values, size_t _count);
-    static void Load(IArchive& _archive, math::SimdFloat4* _values, size_t _count, uint32_t _version);
-};
-
-OZZ_IO_TYPE_NOT_VERSIONABLE(math::SimdInt4)
-template <>
-struct OZZ_BASE_DLL Extern<math::SimdInt4>
-{
-    static void Save(OArchive& _archive, const math::SimdInt4* _values, size_t _count);
-    static void Load(IArchive& _archive, math::SimdInt4* _values, size_t _count, uint32_t _version);
-};
-
-OZZ_IO_TYPE_NOT_VERSIONABLE(math::Float4x4)
-template <>
-struct OZZ_BASE_DLL Extern<math::Float4x4>
-{
-    static void Save(OArchive& _archive, const math::Float4x4* _values, size_t _count);
-    static void Load(IArchive& _archive, math::Float4x4* _values, size_t _count, uint32_t _version);
-};
-} // namespace io
-} // namespace ozz
-#endif // OZZ_OZZ_BASE_MATHS_SIMD_MATH_ARCHIVE_H_
+#endif // OZZ_OZZ_OPTIONS_EXPORT_H_

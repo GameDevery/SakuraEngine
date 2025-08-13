@@ -25,40 +25,61 @@
 //                                                                            //
 //----------------------------------------------------------------------------//
 
-#ifndef OZZ_OZZ_BASE_MATHS_SIMD_MATH_ARCHIVE_H_
-#define OZZ_OZZ_BASE_MATHS_SIMD_MATH_ARCHIVE_H_
+#ifndef OZZ_ANIMATION_OFFLINE_TOOLS_IMPORT2OZZ_TRACK_H_
+#define OZZ_ANIMATION_OFFLINE_TOOLS_IMPORT2OZZ_TRACK_H_
 
-#include "SkrAnim/ozz/base/io/archive_traits.h"
-#include "SkrAnim/ozz/base/maths/simd_math.h"
+#include "./import2ozz_config.h"
+
+#include "SkrAnimTool/ozz/motion_extractor.h"
+#include "SkrAnimTool/ozz/tools/export.h"
+#include "SkrAnimTool/ozz/tools/import2ozz.h"
+#include "SkrAnim/ozz/base/endianness.h"
 #include "SkrAnim/ozz/base/platform.h"
+
+namespace Json
+{
+class Value;
+}
 
 namespace ozz
 {
-namespace io
+namespace animation
 {
-OZZ_IO_TYPE_NOT_VERSIONABLE(math::SimdFloat4)
-template <>
-struct OZZ_BASE_DLL Extern<math::SimdFloat4>
+class Skeleton;
+namespace offline
 {
-    static void Save(OArchive& _archive, const math::SimdFloat4* _values, size_t _count);
-    static void Load(IArchive& _archive, math::SimdFloat4* _values, size_t _count, uint32_t _version);
+
+class OzzImporter;
+
+OZZ_ANIMTOOLS_DLL bool ProcessImportTrack(OzzImporter& _importer,
+    const char* _clip_name,
+    const Skeleton& _skeleton,
+    const Json::Value& _config,
+    const ozz::Endianness _endianness);
+
+OZZ_ANIMTOOLS_DLL bool ProcessMotionTrack(OzzImporter& _importer,
+    const char* _clip_name,
+    const RawAnimation& _animation,
+    const Skeleton& _skeleton,
+    const Json::Value& _config,
+    const ozz::Endianness _endianness,
+    RawAnimation* _baked_animation);
+
+// Property type enum to config string conversions.
+struct OZZ_ANIMTOOLS_DLL PropertyTypeConfig
+    : JsonEnum<PropertyTypeConfig, OzzImporter::NodeProperty::Type>
+{
+    static EnumNames GetNames();
 };
 
-OZZ_IO_TYPE_NOT_VERSIONABLE(math::SimdInt4)
-template <>
-struct OZZ_BASE_DLL Extern<math::SimdInt4>
+// Root motion reference enum to config string conversions.
+struct OZZ_ANIMTOOLS_DLL RootMotionReferenceConfig
+    : JsonEnum<RootMotionReferenceConfig,
+          ozz::animation::offline::MotionExtractor::Reference>
 {
-    static void Save(OArchive& _archive, const math::SimdInt4* _values, size_t _count);
-    static void Load(IArchive& _archive, math::SimdInt4* _values, size_t _count, uint32_t _version);
+    static EnumNames GetNames();
 };
-
-OZZ_IO_TYPE_NOT_VERSIONABLE(math::Float4x4)
-template <>
-struct OZZ_BASE_DLL Extern<math::Float4x4>
-{
-    static void Save(OArchive& _archive, const math::Float4x4* _values, size_t _count);
-    static void Load(IArchive& _archive, math::Float4x4* _values, size_t _count, uint32_t _version);
-};
-} // namespace io
+} // namespace offline
+} // namespace animation
 } // namespace ozz
-#endif // OZZ_OZZ_BASE_MATHS_SIMD_MATH_ARCHIVE_H_
+#endif // OZZ_ANIMATION_OFFLINE_TOOLS_IMPORT2OZZ_TRACK_H_

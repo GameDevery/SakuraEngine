@@ -25,40 +25,32 @@
 //                                                                            //
 //----------------------------------------------------------------------------//
 
-#ifndef OZZ_OZZ_BASE_MATHS_SIMD_MATH_ARCHIVE_H_
-#define OZZ_OZZ_BASE_MATHS_SIMD_MATH_ARCHIVE_H_
+#ifndef OZZ_ANIMATION_OFFLINE_TOOLS_IMPORT2OZZ_SKEL_H_
+#define OZZ_ANIMATION_OFFLINE_TOOLS_IMPORT2OZZ_SKEL_H_
 
-#include "SkrAnim/ozz/base/io/archive_traits.h"
-#include "SkrAnim/ozz/base/maths/simd_math.h"
+#include "SkrAnimTool/ozz/tools/export.h"
+#include "SkrAnim/ozz/base/endianness.h"
 #include "SkrAnim/ozz/base/platform.h"
+
+namespace Json
+{
+class Value;
+}
 
 namespace ozz
 {
-namespace io
+namespace animation
 {
-OZZ_IO_TYPE_NOT_VERSIONABLE(math::SimdFloat4)
-template <>
-struct OZZ_BASE_DLL Extern<math::SimdFloat4>
+namespace offline
 {
-    static void Save(OArchive& _archive, const math::SimdFloat4* _values, size_t _count);
-    static void Load(IArchive& _archive, math::SimdFloat4* _values, size_t _count, uint32_t _version);
-};
 
-OZZ_IO_TYPE_NOT_VERSIONABLE(math::SimdInt4)
-template <>
-struct OZZ_BASE_DLL Extern<math::SimdInt4>
-{
-    static void Save(OArchive& _archive, const math::SimdInt4* _values, size_t _count);
-    static void Load(IArchive& _archive, math::SimdInt4* _values, size_t _count, uint32_t _version);
-};
+class OzzImporter;
 
-OZZ_IO_TYPE_NOT_VERSIONABLE(math::Float4x4)
-template <>
-struct OZZ_BASE_DLL Extern<math::Float4x4>
-{
-    static void Save(OArchive& _archive, const math::Float4x4* _values, size_t _count);
-    static void Load(IArchive& _archive, math::Float4x4* _values, size_t _count, uint32_t _version);
-};
-} // namespace io
+OZZ_ANIMTOOLS_DLL bool ImportSkeleton(const Json::Value& _config,
+    OzzImporter* _importer,
+    const ozz::Endianness _endianness);
+
+} // namespace offline
+} // namespace animation
 } // namespace ozz
-#endif // OZZ_OZZ_BASE_MATHS_SIMD_MATH_ARCHIVE_H_
+#endif // OZZ_ANIMATION_OFFLINE_TOOLS_IMPORT2OZZ_SKEL_H_

@@ -25,40 +25,71 @@
 //                                                                            //
 //----------------------------------------------------------------------------//
 
-#ifndef OZZ_OZZ_BASE_MATHS_SIMD_MATH_ARCHIVE_H_
-#define OZZ_OZZ_BASE_MATHS_SIMD_MATH_ARCHIVE_H_
+#ifndef OZZ_ANIMATION_OFFLINE_TOOLS_IMPORT2OZZ_CONFIG_H_
+#define OZZ_ANIMATION_OFFLINE_TOOLS_IMPORT2OZZ_CONFIG_H_
 
-#include "SkrAnim/ozz/base/io/archive_traits.h"
-#include "SkrAnim/ozz/base/maths/simd_math.h"
+#include "./json/json-forwards.h"
+#include "SkrAnimTool/ozz/tools/export.h"
 #include "SkrAnim/ozz/base/platform.h"
 
 namespace ozz
 {
-namespace io
+namespace animation
 {
-OZZ_IO_TYPE_NOT_VERSIONABLE(math::SimdFloat4)
-template <>
-struct OZZ_BASE_DLL Extern<math::SimdFloat4>
+namespace offline
 {
-    static void Save(OArchive& _archive, const math::SimdFloat4* _values, size_t _count);
-    static void Load(IArchive& _archive, math::SimdFloat4* _values, size_t _count, uint32_t _version);
+
+// Get the sanitized (all members are set, with the right types) configuration.
+OZZ_ANIMTOOLS_DLL bool ProcessConfiguration(Json::Value* _config);
+
+// Internal function used to compare enum names.
+OZZ_ANIMTOOLS_DLL bool CompareName(const char* _a, const char* _b);
+
+// Struct allowing inheriting class to provide enum names.
+template <typename _Type, typename _Enum>
+struct JsonEnum
+{
+    // Struct allowing inheriting class to provide enum names.
+    struct EnumNames
+    {
+        size_t count;
+        const char** names;
+    };
+
+    static bool GetEnumFromName(const char* _name, _Enum* _enum)
+    {
+        const EnumNames enums = _Type::GetNames();
+        for (size_t i = 0; i < enums.count; ++i)
+        {
+            if (CompareName(enums.names[i], _name))
+            {
+                *_enum = static_cast<_Enum>(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static const char* GetEnumName(_Enum _enum)
+    {
+        const EnumNames enums = _Type::GetNames();
+        assert(static_cast<size_t>(_enum) < enums.count);
+        return enums.names[static_cast<size_t>(_enum)];
+    }
+
+    static bool IsValidEnumName(const char* _name)
+    {
+        const EnumNames enums = _Type::GetNames();
+        bool valid = false;
+        for (size_t i = 0; !valid && i < enums.count; ++i)
+        {
+            valid = CompareName(enums.names[i], _name);
+        }
+        return valid;
+    }
 };
 
-OZZ_IO_TYPE_NOT_VERSIONABLE(math::SimdInt4)
-template <>
-struct OZZ_BASE_DLL Extern<math::SimdInt4>
-{
-    static void Save(OArchive& _archive, const math::SimdInt4* _values, size_t _count);
-    static void Load(IArchive& _archive, math::SimdInt4* _values, size_t _count, uint32_t _version);
-};
-
-OZZ_IO_TYPE_NOT_VERSIONABLE(math::Float4x4)
-template <>
-struct OZZ_BASE_DLL Extern<math::Float4x4>
-{
-    static void Save(OArchive& _archive, const math::Float4x4* _values, size_t _count);
-    static void Load(IArchive& _archive, math::Float4x4* _values, size_t _count, uint32_t _version);
-};
-} // namespace io
+} // namespace offline
+} // namespace animation
 } // namespace ozz
-#endif // OZZ_OZZ_BASE_MATHS_SIMD_MATH_ARCHIVE_H_
+#endif // OZZ_ANIMATION_OFFLINE_TOOLS_IMPORT2OZZ_CONFIG_H_

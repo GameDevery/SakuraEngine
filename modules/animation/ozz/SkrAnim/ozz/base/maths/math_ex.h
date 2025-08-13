@@ -33,93 +33,112 @@
 
 #include "SkrAnim/ozz/base/platform.h"
 
-namespace ozz {
-namespace math {
+namespace ozz
+{
+namespace math
+{
 
 // Returns the linear interpolation of _a and _b with coefficient _f.
 // _f is not limited to range [0,1].
-OZZ_INLINE float Lerp(float _a, float _b, float _f) {
-  return (_b - _a) * _f + _a;
+OZZ_INLINE float Lerp(float _a, float _b, float _f)
+{
+    return (_b - _a) * _f + _a;
 }
 
 // Returns the minimum of _a and _b. Comparison's based on operator <.
 template <typename _Ty>
-OZZ_INLINE _Ty Min(_Ty _a, _Ty _b) {
-  return (_a < _b) ? _a : _b;
+OZZ_INLINE _Ty Min(_Ty _a, _Ty _b)
+{
+    return (_a < _b) ? _a : _b;
 }
 
 // Returns the maximum of _a and _b. Comparison's based on operator <.
 template <typename _Ty>
-OZZ_INLINE _Ty Max(_Ty _a, _Ty _b) {
-  return (_b < _a) ? _a : _b;
+OZZ_INLINE _Ty Max(_Ty _a, _Ty _b)
+{
+    return (_b < _a) ? _a : _b;
 }
 
 // Clamps _x between _a and _b. Comparison's based on operator <.
 // Result is unknown if _a is not less or equal to _b.
 template <typename _Ty>
-OZZ_INLINE _Ty Clamp(_Ty _a, _Ty _x, _Ty _b) {
-  const _Ty min = _x < _b ? _x : _b;
-  return min < _a ? _a : min;
+OZZ_INLINE _Ty Clamp(_Ty _a, _Ty _x, _Ty _b)
+{
+    const _Ty min = _x < _b ? _x : _b;
+    return min < _a ? _a : min;
 }
 
 // Implements int selection, avoiding branching.
-OZZ_INLINE int Select(bool _b, int _true, int _false) {
-  return _false ^ (-static_cast<int>(_b) & (_true ^ _false));
+OZZ_INLINE int Select(bool _b, int _true, int _false)
+{
+    return _false ^ (-static_cast<int>(_b) & (_true ^ _false));
 }
 
 // Implements float selection, avoiding branching.
-OZZ_INLINE float Select(bool _b, float _true, float _false) {
-  union {
-    float f;
-    int32_t i;
-  } t = {_true};
-  union {
-    float f;
-    int32_t i;
-  } f = {_false};
-  union {
-    int32_t i;
-    float f;
-  } r = {f.i ^ (-static_cast<int32_t>(_b) & (t.i ^ f.i))};
-  return r.f;
+OZZ_INLINE float Select(bool _b, float _true, float _false)
+{
+    union
+    {
+        float f;
+        int32_t i;
+    } t = { _true };
+    union
+    {
+        float f;
+        int32_t i;
+    } f = { _false };
+    union
+    {
+        int32_t i;
+        float f;
+    } r = { f.i ^ (-static_cast<int32_t>(_b) & (t.i ^ f.i)) };
+    return r.f;
 }
 
 // Implements pointer selection, avoiding branching.
 template <typename _Ty>
-OZZ_INLINE _Ty* Select(bool _b, _Ty* _true, _Ty* _false) {
-  union {
-    _Ty* p;
-    intptr_t i;
-  } t = {_true};
-  union {
-    _Ty* p;
-    intptr_t i;
-  } f = {_false};
-  union {
-    intptr_t i;
-    _Ty* p;
-  } r = {f.i ^ (-static_cast<intptr_t>(_b) & (t.i ^ f.i))};
-  return r.p;
+OZZ_INLINE _Ty* Select(bool _b, _Ty* _true, _Ty* _false)
+{
+    union
+    {
+        _Ty* p;
+        intptr_t i;
+    } t = { _true };
+    union
+    {
+        _Ty* p;
+        intptr_t i;
+    } f = { _false };
+    union
+    {
+        intptr_t i;
+        _Ty* p;
+    } r = { f.i ^ (-static_cast<intptr_t>(_b) & (t.i ^ f.i)) };
+    return r.p;
 }
 
 // Implements const pointer selection, avoiding branching.
 template <typename _Ty>
-OZZ_INLINE const _Ty* Select(bool _b, const _Ty* _true, const _Ty* _false) {
-  union {
-    const _Ty* p;
-    intptr_t i;
-  } t = {_true};
-  union {
-    const _Ty* p;
-    intptr_t i;
-  } f = {_false};
-  union {
-    intptr_t i;
-    const _Ty* p;
-  } r = {f.i ^ (-static_cast<intptr_t>(_b) & (t.i ^ f.i))};
-  return r.p;
+OZZ_INLINE const _Ty* Select(bool _b, const _Ty* _true, const _Ty* _false)
+{
+    union
+    {
+        const _Ty* p;
+        intptr_t i;
+    } t = { _true };
+    union
+    {
+        const _Ty* p;
+        intptr_t i;
+    } f = { _false };
+    union
+    {
+        intptr_t i;
+        const _Ty* p;
+    } r = { f.i ^ (-static_cast<intptr_t>(_b) & (t.i ^ f.i)) };
+    return r.p;
 }
 
-}  // namespace math
-}  // namespace ozz
-#endif  // OZZ_OZZ_BASE_MATHS_MATH_EX_H_
+} // namespace math
+} // namespace ozz
+#endif // OZZ_OZZ_BASE_MATHS_MATH_EX_H_

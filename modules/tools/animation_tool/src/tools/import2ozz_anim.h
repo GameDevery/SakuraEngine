@@ -25,40 +25,48 @@
 //                                                                            //
 //----------------------------------------------------------------------------//
 
-#ifndef OZZ_OZZ_BASE_MATHS_SIMD_MATH_ARCHIVE_H_
-#define OZZ_OZZ_BASE_MATHS_SIMD_MATH_ARCHIVE_H_
+#ifndef OZZ_ANIMATION_OFFLINE_TOOLS_IMPORT2OZZ_ANIM_H_
+#define OZZ_ANIMATION_OFFLINE_TOOLS_IMPORT2OZZ_ANIM_H_
 
-#include "SkrAnim/ozz/base/io/archive_traits.h"
-#include "SkrAnim/ozz/base/maths/simd_math.h"
+#include "SkrAnimTool/ozz/tools/export.h"
+#include "SkrAnim/ozz/base/endianness.h"
 #include "SkrAnim/ozz/base/platform.h"
+
+#include "SkrAnimTool/ozz/tools/import2ozz.h"
+#include "./import2ozz_config.h"
+
+namespace Json
+{
+class Value;
+}
 
 namespace ozz
 {
-namespace io
+namespace animation
 {
-OZZ_IO_TYPE_NOT_VERSIONABLE(math::SimdFloat4)
-template <>
-struct OZZ_BASE_DLL Extern<math::SimdFloat4>
+namespace offline
 {
-    static void Save(OArchive& _archive, const math::SimdFloat4* _values, size_t _count);
-    static void Load(IArchive& _archive, math::SimdFloat4* _values, size_t _count, uint32_t _version);
-};
 
-OZZ_IO_TYPE_NOT_VERSIONABLE(math::SimdInt4)
-template <>
-struct OZZ_BASE_DLL Extern<math::SimdInt4>
-{
-    static void Save(OArchive& _archive, const math::SimdInt4* _values, size_t _count);
-    static void Load(IArchive& _archive, math::SimdInt4* _values, size_t _count, uint32_t _version);
-};
+class OzzImporter;
+OZZ_ANIMTOOLS_DLL bool ImportAnimations(const Json::Value& _config,
+    OzzImporter* _importer,
+    const ozz::Endianness _endianness);
 
-OZZ_IO_TYPE_NOT_VERSIONABLE(math::Float4x4)
-template <>
-struct OZZ_BASE_DLL Extern<math::Float4x4>
+// Additive reference enum to config string conversions.
+struct AdditiveReferenceEnum
 {
-    static void Save(OArchive& _archive, const math::Float4x4* _values, size_t _count);
-    static void Load(IArchive& _archive, math::Float4x4* _values, size_t _count, uint32_t _version);
+    enum Value
+    {
+        kAnimation,
+        kSkeleton
+    };
 };
-} // namespace io
+struct OZZ_ANIMTOOLS_DLL AdditiveReference
+    : JsonEnum<AdditiveReference, AdditiveReferenceEnum::Value>
+{
+    static EnumNames GetNames();
+};
+} // namespace offline
+} // namespace animation
 } // namespace ozz
-#endif // OZZ_OZZ_BASE_MATHS_SIMD_MATH_ARCHIVE_H_
+#endif // OZZ_ANIMATION_OFFLINE_TOOLS_IMPORT2OZZ_ANIM_H_

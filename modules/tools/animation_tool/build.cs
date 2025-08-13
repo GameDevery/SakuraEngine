@@ -19,8 +19,9 @@ public static class SkrAnimTool
             .IncludeDirs(Visibility.Public, "include", "ozz")
             .IncludeDirs(Visibility.Private, "src")
             .AddCppFiles(new CFamilyFileOptions { UnityGroup = "utils" }, "src/*.cc")
-            .AddCppFiles(new CFamilyFileOptions { UnityGroup = "tool" }, "src/tools/*.cc", "src/*.cpp")
+            .AddCppFiles(new CFamilyFileOptions { UnityGroup = "tool" }, "src/tools/*.cc", "src/tools/jsoncpp.cpp", "src/*.cpp")
             .AddCppFiles(Gltf2OzzOptions, "src/gltf/**.cc", "src/gltf/**.cpp")
+
             .UsePrivatePCH("src/pch.hpp")
 
             .AddMetaHeaders("include/**.h")
