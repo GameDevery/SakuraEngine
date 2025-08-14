@@ -85,7 +85,7 @@ void SResourceHandle::set_guid(const skr_guid_t& inGUID)
 
 bool SResourceHandle::is_resolved() const
 {
-    return padding == 0 && get_record() != nullptr;
+    return padding == 0 && get_resolved() != nullptr;
 }
 
 void* SResourceHandle::get_ptr() const

@@ -77,6 +77,7 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
             if (!pos_vb) continue;
 
             CGPUAccelerationStructureGeometryDesc geom = {};
+            geom.flags = CGPU_ACCELERATION_STRUCTURE_GEOMETRY_FLAG_OPAQUE;
             geom.vertex_buffer = render_mesh->buffers[pos_vb->buffer_index];
             geom.vertex_offset = pos_vb->offset;
             geom.vertex_count = primitive.vertex_count;
@@ -84,8 +85,10 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
             geom.vertex_format = CGPU_FORMAT_R32G32B32_SFLOAT;
             geom.index_buffer = render_mesh->buffers[primitive.index_buffer.buffer_index];
             geom.index_offset = primitive.index_buffer.index_offset;
-            geom.index_count = primitive.vertex_count / 3;
-            geom.index_stride = primitive.index_buffer.stride;
+            geom.index_count = primitive.index_buffer.index_count;
+            // D3D12 expects index_stride to be 2 (uint16) or 4 (uint32)
+            // primitive.index_buffer.stride should already be 2 or 4, but let's ensure it
+            geom.index_stride = (primitive.index_buffer.stride == 2) ? sizeof(uint16_t) : sizeof(uint32_t);
             geoms.add(geom);
         }
 

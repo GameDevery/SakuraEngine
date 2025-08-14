@@ -307,7 +307,6 @@ void cgpu_cmd_build_acceleration_structures_d3d12(CGPUCommandBufferId cmd, const
             cgpu_free(BufferBarriers);
     }
 
-
     SAFE_RELEASE(dxrCmd);
 }
 

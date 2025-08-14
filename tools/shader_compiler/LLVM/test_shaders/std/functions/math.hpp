@@ -7,7 +7,7 @@
 namespace skr::shader {
 
 template<concepts::arithmetic T, concepts::arithmetic U>
-    requires(sizeof(T) == sizeof(U))
+	requires(sizeof(T) == sizeof(U))
 [[expr("bit_cast")]] extern T bit_cast(U v);
 
 template<concepts::bool_family T>
@@ -17,29 +17,29 @@ template<concepts::bool_family T>
 [[callop("ANY")]] extern bool any(const T& x);
 
 template<concepts::primitive T, concepts::bool_family B>
-    requires(same_dim_v<T, B> || is_scalar_v<B>)
+	requires(same_dim_v<T, B> || is_scalar_v<B>)
 [[callop("SELECT")]] extern T select(const T& false_v, const T& true_v, const B& bool_v);
 
 template<concepts::primitive T, concepts::bool_family B>
 	requires(vec_dim_v<T> == vec_dim_v<B> || vec_dim_v<B> == 1)
-extern T ite(B bool_v, T true_v, T false_v) {
+inline T ite(B bool_v, T true_v, T false_v) {
 	return select(false_v, true_v, bool_v);
 }
 
 template<concepts::arithmetic T, concepts::arithmetic A, concepts::arithmetic B>
-    requires((same_dim_v<T, B> || is_scalar_v<B>) && (same_dim_v<T, A> || is_scalar_v<A>))
+	requires((same_dim_v<T, B> || is_scalar_v<B>) && (same_dim_v<T, A> || is_scalar_v<A>))
 [[callop("CLAMP")]] extern T clamp(const T& v, const A& min_v, const B& max_v);
 
 template<concepts::float_family T, concepts::float_family B>
-    requires(same_dim_v<T, B> || is_scalar_v<B>)
+	requires(same_dim_v<T, B> || is_scalar_v<B>)
 [[callop("LERP")]] extern T lerp(const T& left_v, const T& right_v, const B& step);
 
 template<concepts::float_family T, concepts::float_family B>
-    requires(same_dim_v<T, B> || is_scalar_v<B>)
+	requires(same_dim_v<T, B> || is_scalar_v<B>)
 [[callop("SMOOTHSTEP")]] extern T smoothstep(const T& left_v, const B& right_v, const B& step);
 
 template<concepts::float_family T, concepts::float_family B>
-    requires(same_dim_v<T, B> || is_scalar_v<B>)
+	requires(same_dim_v<T, B> || is_scalar_v<B>)
 [[callop("STEP")]] extern T step(const T& left_v, const B& right_v);
 
 template<concepts::float_family T>
@@ -49,10 +49,12 @@ template<concepts::signed_arithmetic T>
 [[callop("ABS")]] extern T abs(const T& v);
 
 template<concepts::arithmetic T, concepts::arithmetic U>
-[[callop("MIN")]] extern T min(const T& a, U b) requires(vec_dim_v<T> == vec_dim_v<U>);
+[[callop("MIN")]] extern T min(const T& a, U b)
+	requires(vec_dim_v<T> == vec_dim_v<U>);
 
 template<concepts::arithmetic T, concepts::arithmetic U>
-[[callop("MAX")]] extern T max(const T& v, U b) requires(vec_dim_v<T> == vec_dim_v<U>);
+[[callop("MAX")]] extern T max(const T& v, U b)
+	requires(vec_dim_v<T> == vec_dim_v<U>);
 
 template<concepts::uint_family T>
 [[callop("CLZ")]] extern T clz(const T& v);
@@ -92,7 +94,8 @@ template<concepts::float_family T>
 [[callop("ATAN")]] extern T atan(const T& v);
 
 template<concepts::float_family T, concepts::float_family U>
-[[callop("ATAN2")]] extern T atan2(const T& a, const U& b) requires(vec_dim_v<T> == vec_dim_v<U>);
+[[callop("ATAN2")]] extern T atan2(const T& a, const U& b)
+	requires(vec_dim_v<T> == vec_dim_v<U>);
 
 template<concepts::float_family T>
 [[callop("ATANH")]] extern T atanh(const T& v);
@@ -134,15 +137,31 @@ template<concepts::float_family T>
 [[callop("LOG10")]] extern T log10(const T& v);
 
 template<concepts::float_family T, concepts::float_family B>
-    requires(same_dim_v<T, B> || is_scalar_v<B>)
+	requires(same_dim_v<T, B> || is_scalar_v<B>)
 [[callop("POW")]] extern T pow(const T& base, const B& rate);
 
 template<concepts::float_family T>
 [[callop("SQRT")]] extern T sqrt(const T& v);
 
 template<concepts::float_family T>
-inline T sqr(const T& v) {
-    return v * v;
+constexpr T sqr(const T& v) {
+	return v * v;
+}
+
+template<concepts::float_family T>
+constexpr T pow4(T x) {
+	return sqr(sqr(x));
+}
+
+template<concepts::float_family T>
+constexpr T pow5(T x) {
+	return pow4(x) * x;
+}
+
+template<concepts::float_family T>
+constexpr T pow6(T x) {
+	T x2 = sqr(x);
+	return sqr(x2) * x2;
 }
 
 template<concepts::float_family T>
@@ -185,7 +204,7 @@ template<concepts::float_vec_family T>
 [[callop("LENGTH")]] extern scalar_type<T> length(const T& v);
 
 template<concepts::float_vec_family T>
-scalar_type<T> distance(const T& a, const T& b) { return length(a - b);}
+scalar_type<T> distance(const T& a, const T& b) { return length(a - b); }
 
 template<concepts::float_vec_family T>
 [[callop("LENGTH_SQUARED")]] extern scalar_type<T> length_squared(const T& v);
@@ -220,28 +239,43 @@ template<concepts::float_family T>
 template<concepts::float_family T>
 [[callop("DDY")]] extern T ddy();
 
-float3 refract(float3 I, float3 N, float eta)
-{
-	float3 result = float3(0.0);
-	float k = 1.0 - eta * eta * (1.0 - dot(N, I) * dot(N, I));
-    if (k > 0.0)
-        result = eta * I - (eta * dot(N, I) + sqrt(k)) * N;
+template<concepts::float_family T>
+auto sign(T v) {
+	using Type = copy_dim<int, T>::type;
+	using MaskType = copy_dim<uint, T>::type;
+	auto low = select(Type(1), Type(0), (bit_cast<MaskType>(v) & MaskType(0x7fffffffu)) == MaskType(0));
+	auto high = select(Type(2), Type(0), (bit_cast<MaskType>(v) & MaskType(0x80000000u)) == MaskType(0));
+	return low - high;
+}
+
+template<concepts::float_family T>
+constexpr T rcp(T t) {
+	return T(1.f) / t;
+}
+
+template<concepts::float_family T>
+constexpr T inverse_smoothstep(T y) { return T(0.5f) - sin(asin(T(1.0f) - T(2.0f) * y) / T(3.0f)); }
+
+inline float abgam(float x) {
+	constexpr float const gam0 = 1.0f / 12.0f;
+	constexpr float const gam1 = 1.0f / 30.0f;
+	constexpr float const gam2 = 53.0f / 210.0f;
+	constexpr float const gam3 = 195.0f / 371.0f;
+	constexpr float const gam4 = 22999.0f / 22737.0f;
+	constexpr float const gam5 = 29944523.0f / 19733142.0f;
+	constexpr float const gam6 = 109535241009.0f / 48264275462.0f;
+
+	return 0.5f * log(2 * pi) - x + (x - 0.5f) * log(x) + gam0 / (x + gam1 / (x + gam2 / (x + gam3 / (x + gam4 / (x + gam5 / (x + gam6 / x))))));
+}
+
+inline float gamma(float x) {
+	float result;
+	result = exp(abgam(x + 5)) / (x * (x + 1) * (x + 2) * (x + 3) * (x + 4));
 	return result;
 }
 
-template<concepts::float_family T>
-auto sign(T v) 
-{
-    using Type = copy_dim<int, T>::type;
-    using MaskType = copy_dim<uint, T>::type;
-    auto low = select(Type(1), Type(0), (bit_cast<MaskType>(v) & MaskType(0x7fffffffu)) == MaskType(0));
-    auto high = select(Type(2), Type(0), (bit_cast<MaskType>(v) & MaskType(0x80000000u)) == MaskType(0));
-    return low - high;
+inline float beta(float m, float n) {
+	return (gamma(m) * gamma(n) / gamma(m + n));
 }
 
-template<concepts::float_family T>
-T rcp(T t) 
-{
-    return T(1.f) / t;
-}
-}
+}// namespace skr::shader

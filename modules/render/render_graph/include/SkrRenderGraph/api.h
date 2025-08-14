@@ -1,6 +1,7 @@
 #pragma once
 #ifdef __cplusplus
     #include "SkrRenderGraph/frontend/render_graph.hpp"
+    #include "SkrRenderGraph/frame_resource.hpp"
     #include "SkrCore/module/module.hpp"
 
     class SKR_RENDER_GRAPH_API SkrRenderGraphModule : public skr::IDynamicModule

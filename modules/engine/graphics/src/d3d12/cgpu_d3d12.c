@@ -1,6 +1,7 @@
 // clang-format off
 #include "SkrGraphics/backend/d3d12/cgpu_d3d12.h"
 #include "SkrGraphics/backend/d3d12/cgpu_d3d12_raytracing.h"
+#include "SkrGraphics/extensions/cgpu_nsight.h"
 #include "../common/common_utils.h"
 #include "d3d12_utils.h"
 
@@ -141,6 +142,11 @@ CGPUDeviceId cgpu_create_device_d3d12(CGPUAdapterId adapter, const CGPUDeviceDes
     {
         cgpu_assert("[D3D12 Fatal]: Create D3D12Device Failed!");
     }
+    
+#ifdef _WIN32
+    // Initialize NSight Aftermath for DX12 with shader debug info generation
+    cgpu_nsight_initialize_dx12_aftermath(A->super.instance, D->pDxDevice);
+#endif
 
     // Create Requested Queues.
     for (uint32_t i = 0u; i < desc->queue_group_count; i++)

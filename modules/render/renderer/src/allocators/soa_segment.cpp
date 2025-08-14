@@ -232,18 +232,11 @@ uint32_t SOASegmentBuffer::get_component_offset(SegmentID component_id, Instance
                 
                 // 地址 = 页起始 + Segment在页内基址 + 页内实例偏移 * Segment步长 + 组件在Segment内的偏移
                 uint32_t result = page_start + segment.buffer_offset + (offset_in_page * segment.stride) + mapping.element_offset;
-                
-                // 调试日志
-                if (instance_id < 5) {
-                    SKR_LOG_WARN(u8"SOA: Component %u, Instance %u → page=%u, offset_in_page=%u, page_start=%u, segment.buffer_offset=%u, segment.stride=%u, element_offset=%u → result=%u",
-                        component_id, instance_id, page, offset_in_page, page_start, segment.buffer_offset, segment.stride, mapping.element_offset, result);
-                }
-                
+
                 return result;
             }
         }
     }
-    
     SKR_LOG_WARN(u8"SOASegmentBuffer: Component %u not found", component_id);
     return 0;
 }

@@ -18,4 +18,4 @@ struct [[builtin("accel")]] Accel {
     [[callop("RAY_TRACING_QUERY_ALL")]] RayQueryAll query_all(Ray ray, uint32 mask = ~0);
     [[callop("RAY_TRACING_QUERY_ANY")]] RayQueryAny query_any(Ray ray, uint32 mask = ~0);
 };
-} // namespace skr::shader
+}// namespace skr::shader

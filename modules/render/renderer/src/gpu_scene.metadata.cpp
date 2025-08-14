@@ -33,7 +33,7 @@ void GPUScene::Initialize(const GPUSceneConfig& cfg, const SOASegmentBuffer::Bui
     // 1. Initialize component type registry from config
     InitializeComponentTypes(cfg);
     // 2. Create core data buffer using provided SOA builder
-    core_data.initialize(soa_builder);
+    soa_segments.initialize(soa_builder);
 
     SKR_LOG_INFO(u8"GPUScene initialized successfully");
 }
@@ -91,7 +91,7 @@ void GPUScene::InitializeComponentTypes(const GPUSceneConfig& config)
         type_registry.add(comp_info.cpu_type, comp_info.soa_index);
         component_types.push_back(component_type);
 
-        SKR_LOG_WARN(u8"  Registered component: %s (size: %d, align: %d, cpu_type:%u, soa_index: %u)",
+        SKR_LOG_DEBUG(u8"  Registered component: %s (size: %d, align: %d, cpu_type:%u, soa_index: %u)",
             component_type.name,
             component_type.element_size,
             component_type.element_align,
@@ -107,12 +107,17 @@ void GPUScene::Shutdown()
     SKR_LOG_INFO(u8"Shutting down GPUScene...");
 
     // Shutdown allocators (will release buffers)
-    core_data.shutdown();
+    soa_segments.shutdown();
 
-    if (upload_ctx.upload_buffer)
+    // Release upload buffers for all frames
+    for (uint32_t i = 0; i < upload_ctx.max_frames_in_flight(); ++i)
     {
-        cgpu_free_buffer(upload_ctx.upload_buffer);
-        upload_ctx.upload_buffer = nullptr;
+        auto& ctx = upload_ctx[i];
+        if (ctx.upload_buffer)
+        {
+            cgpu_free_buffer(ctx.upload_buffer);
+            ctx.upload_buffer = nullptr;
+        }
     }
 
     // Release SparseUpload pipeline resources

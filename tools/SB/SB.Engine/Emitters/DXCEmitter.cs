@@ -60,7 +60,9 @@ namespace SB
                     TargetProfile.StartsWith("lib") ? "-Vd" : $"-E {Entry}",
                     $"-Fo{DxilFile}",
                     $"-T{TargetProfile}",
-                    SourceFile
+                    SourceFile,
+                    // "/Zi",
+                    // $"-Fd{DxilFile}.pdb"
                 };
                 int ExitCode = BuildSystem.RunProcess(DXCSetup.DXC!, string.Join(" ", Arguments), out var Output, out var Error);
                 if (ExitCode != 0)

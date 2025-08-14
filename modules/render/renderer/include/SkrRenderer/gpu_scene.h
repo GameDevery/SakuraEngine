@@ -1,13 +1,14 @@
 #pragma once
 #include "SkrContainersDef/map.hpp"
 #include "SkrGraphics/api.h"
+#include "SkrGraphics/raytracing.h"
 #include "SkrRT/ecs/world.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
+#include "SkrRenderGraph/frame_resource.hpp"
 #include "SkrRenderer/fwd_types.h"
 #include "SkrRenderer/render_device.h"
 #include "SkrRenderer/allocators/soa_segment.hpp"
 #include "SkrRenderer/shared/soa_layout.hpp"
-#include "SkrRenderer/shared/gpu_scene.hpp"
 #ifndef __meta__
     #include "SkrRenderer/gpu_scene.generated.h" // IWYU pragma: export
 #endif
@@ -115,7 +116,13 @@ public:
     bool IsComponentTypeRegistered(const CPUTypeID& type_guid) const;
     const GPUSceneComponentType* GetComponentType(SOAIndex local_id) const;
 
+    inline skr::ecs::World* GetECSWorld() const { return ecs_world; }
     inline skr::render_graph::BufferHandle GetSceneBuffer() const { return scene_buffer; }
+    skr::render_graph::AccelerationStructureHandle GetTLAS(skr::render_graph::RenderGraph* graph) const 
+    { 
+        // Return the current frame's TLAS handle
+        return tlas_ctx.get(graph).tlas_handle;
+    }
     inline uint32_t GetInstanceCount() const { return instance_count; }
 
 protected:
@@ -131,7 +138,7 @@ private:
         uint32_t data_size;  // 数据大小
     };
     void CreateSparseUploadPipeline(CGPUDeviceId device);
-    void PrepareUploadBuffer();
+    void PrepareUploadBuffer(skr::render_graph::RenderGraph* graph);
     void DispatchSparseUpload(skr::render_graph::RenderGraph* graph, skr::Vector<Upload>&& core_uploads, skr::Vector<Upload>&& additional_uploads);
 
     friend struct GPUSceneInstanceTask;
@@ -143,6 +150,43 @@ private:
     skr::ecs::World* ecs_world = nullptr;
     skr::RendererDevice* render_device = nullptr;
 
+    // TLAS
+    skr::ConcurrentQueue<CGPUAccelerationStructureId> dirty_blases;
+    skr::Vector<CGPUAccelerationStructureInstanceDesc> tlas_instances;
+    
+    // TLAS with FrameResource for automatic lifecycle management
+    struct TLASContext
+    {
+        CGPUAccelerationStructureId tlas = nullptr;
+        skr::render_graph::AccelerationStructureHandle tlas_handle;
+        uint32_t instance_count = 0; // Track instance count for this TLAS
+        
+        // Single TLAS to discard when this frame comes around again
+        CGPUAccelerationStructureId tlas_to_discard = nullptr;
+        
+        ~TLASContext()
+        {
+            // Cleanup any remaining TLAS when context is destroyed
+            if (tlas_to_discard) cgpu_free_acceleration_structure(tlas_to_discard);
+            if (tlas) cgpu_free_acceleration_structure(tlas);
+        }
+    };
+    skr::render_graph::FrameResource<TLASContext> tlas_ctx;
+    
+    // Buffer with FrameResource for deferred destruction
+    struct BufferContext
+    {
+        // Single buffer to discard when this frame comes around again
+        CGPUBufferId buffer_to_discard = nullptr;
+        
+        ~BufferContext()
+        {
+            // Cleanup any remaining buffer when context is destroyed
+            if (buffer_to_discard) cgpu_free_buffer(buffer_to_discard);
+        }
+    };
+    skr::render_graph::FrameResource<BufferContext> buffer_ctx;
+
     // 类型注册表
     skr::Map<CPUTypeID, SOAIndex> type_registry;
     skr::Vector<GPUSceneComponentType> component_types;
@@ -153,12 +197,10 @@ private:
     skr::ConcurrentQueue<GPUSceneInstanceID> free_ids;
 
     // core data 的 graph handle
+    SOASegmentBuffer soa_segments;
     skr::render_graph::BufferHandle scene_buffer; 
-    // SOA 分配器（包含 buffer）
-    SOASegmentBuffer core_data;
 
 private:
-
     // dirties
     shared_atomic_mutex add_mtx;
     skr::Vector<skr::ecs::Entity> add_ents;
@@ -175,11 +217,12 @@ private:
     struct UploadContext
     {
         CGPUBufferId upload_buffer = nullptr;
-        skr::Vector<Upload> core_data_uploads;       // Core Data上传操作
+        skr::Vector<Upload> soa_segments_uploads;       // Core Data上传操作
         skr::Vector<Upload> additional_data_uploads; // Additional Data上传操作
         skr::Vector<uint8_t> DRAMCache;
         std::atomic<uint64_t> upload_cursor = 0; // upload_buffer 中的当前写入位置
-    } upload_ctx;
+    };
+    skr::render_graph::FrameResource<UploadContext> upload_ctx;
 
     // SparseUpload compute pipeline resources
     CGPUShaderLibraryId sparse_upload_shader = nullptr;

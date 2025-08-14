@@ -14,7 +14,7 @@
         return _v[idx];
 }
 
-[[nodiscard,]] constexpr T get(uint32 row, uint32 col) const noexcept {
+[[nodiscard, noignore]] constexpr T get(uint32 row, uint32 col) const noexcept {
     return access_(row).access_(col);
 }
 

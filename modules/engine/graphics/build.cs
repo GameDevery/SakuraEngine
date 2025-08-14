@@ -60,7 +60,7 @@ public class SkrGraphicsSetup : ISetup
                 Install.SDK("dxc-2025_02_21"),
                 Install.SDK("amdags"),
                 Install.SDK("nvapi"),
-                Install.SDK("nsight"),
+                Install.SDK("nsight-2025.1.0.25009"),
                 Install.SDK("WinPixEventRuntime")
             );
         }

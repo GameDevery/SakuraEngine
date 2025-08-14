@@ -8,7 +8,7 @@
 - 不再提供 AllocateInstance/FreeInstance 接口
 
 ### 2. 统一布局 + 稀疏数据策略
-- **分配所有 core_data 的空间段**，保证 GPU 端布局完全一致
+- **分配所有 soa_segments 的空间段**，保证 GPU 端布局完全一致
 - 如果 Entity 只有 GPUSceneInstance 没有其他 CoreData，保留空间但不拷贝数据
 - 允许数据段冗余，但换来了超高效的 GPU 访问性能
 
@@ -45,7 +45,7 @@ struct GPUSceneConfig {
     skr::ecs::World* world;
     
     // 类型映射（启动时固定）
-    skr::Map<CPUTypeID, GPUComponentTypeID> core_data_types;
+    skr::Map<CPUTypeID, GPUComponentTypeID> soa_segments_types;
     skr::Map<CPUTypeID, GPUComponentTypeID> additional_data_types;
     
     // 自动 Resize 配置
@@ -65,8 +65,8 @@ struct GPUSceneConfig {
 
 ## 实现要点
 
-1. **启动时**：根据 config 注册所有 core_data 和 additional_data 类型
-2. **运行时**：查询带 GPUSceneInstance 的 Archetype，为每个分配完整的 core_data 空间
+1. **启动时**：根据 config 注册所有 soa_segments 和 additional_data 类型
+2. **运行时**：查询带 GPUSceneInstance 的 Archetype，为每个分配完整的 soa_segments 空间
 3. **更新时**：根据 RequireUpload 标记，SparseUpload 只更新变化的组件
 4. **Resize 时**：在 ExecuteUpload 中根据配置自动执行扩容策略
 

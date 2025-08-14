@@ -1,3 +1,5 @@
+#include <d3d12.h>
+
 #include <iostream>
 #include <fstream>
 #include "SkrGraphics/containers.hpp"
@@ -58,6 +60,28 @@ struct CGPUNSightSingletonImpl : public CGPUNSightSingleton
 {
     CGPUNSightSingletonImpl() SKR_NOEXCEPT;
     ~CGPUNSightSingletonImpl() SKR_NOEXCEPT;
+    
+    void WriteShaderDebugInfoToFile(const void* pShaderDebugInfo, const uint32_t shaderDebugInfoSize)
+    {
+        // Create a unique file name for writing the shader debug info to a file.
+        static int count = 0;
+        const cgpu::String baseFileName = skr::format(u8"CGPUShaderDebugInfo-{}", ++count);
+        
+        // Write the shader debug info data to a file using the .nvdbg extension
+        cgpu::String shaderDebugFileName = baseFileName;
+        shaderDebugFileName.append(u8".nvdbg");
+        std::ofstream debugFile(shaderDebugFileName.c_str_raw(), std::ios::out | std::ios::binary);
+        if (debugFile)
+        {
+            debugFile.write((const char*)pShaderDebugInfo, shaderDebugInfoSize);
+            debugFile.close();
+            cgpu_trace(u8"NSIGHT Shader Debug Info File Saved: %s", shaderDebugFileName.c_str());
+        }
+        else
+        {
+            cgpu_error(u8"Failed to write shader debug info to file: %s", shaderDebugFileName.c_str());
+        }
+    }
     
     void WriteGpuCrashDumpToFile(const void* pGpuCrashDump, const uint32_t gpuCrashDumpSize)
     {
@@ -147,6 +171,8 @@ struct CGPUNSightSingletonImpl : public CGPUNSightSingleton
             if (auto callback = tracker_impl->descriptor.shader_debug_info_callback)
                 callback(pShaderDebugInfo, shaderDebugInfoSize, tracker_impl->descriptor.user_data);
         }
+        // Write shader debug info to file
+        ((CGPUNSightSingletonImpl*)_this)->WriteShaderDebugInfoToFile(pShaderDebugInfo, shaderDebugInfoSize);
     }
 
     // GPU crash dump description callback.
@@ -168,6 +194,7 @@ struct CGPUNSightSingletonImpl : public CGPUNSightSingleton
     // Markers are deprecated now, we use vkCmdFillBuffer & ID3D12GraphicsCommandList2::WriteBufferImmediate instead
     static void ResolveMarkerCallback(
         const void* pMarker,
+        const unsigned int,
         void* pUserData,
         void** resolvedMarkerData,
         uint32_t* markerSize
@@ -185,14 +212,14 @@ struct CGPUNSightSingletonImpl : public CGPUNSightSingleton
     SKR_SHARED_LIB_API_PFN(GFSDK_Aftermath_GpuCrashDump_GetDescriptionSize) aftermath_GpuCrashDump_GetDescriptionSize = nullptr;
     SKR_SHARED_LIB_API_PFN(GFSDK_Aftermath_GpuCrashDump_GetDescription) aftermath_GpuCrashDump_GetDescription = nullptr;
     SKR_SHARED_LIB_API_PFN(GFSDK_Aftermath_GpuCrashDump_DestroyDecoder) aftermath_GpuCrashDump_DestroyDecoder = nullptr;
+    SKR_SHARED_LIB_API_PFN(GFSDK_Aftermath_DX12_Initialize) aftermath_DX12_Initialize = nullptr;
 };
 
 
 static std::uint32_t counter = 0;
 CGPUNSightSingletonImpl::CGPUNSightSingletonImpl() SKR_NOEXCEPT
 {
-    bool llvm = llvm_library.load(u8"llvm_7_0_1.dll");
-    bool nsight = nsight_library.load(u8"GFSDK_Aftermath_Lib.dll") && llvm;
+    bool nsight = nsight_library.load(u8"GFSDK_Aftermath_Lib.x64.dll");
     if (nsight)
     {
         cgpu_trace(u8"NSIGHT loaded");
@@ -203,6 +230,7 @@ CGPUNSightSingletonImpl::CGPUNSightSingletonImpl() SKR_NOEXCEPT
         aftermath_GpuCrashDump_GetDescriptionSize = SKR_SHARED_LIB_LOAD_API(nsight_library, GFSDK_Aftermath_GpuCrashDump_GetDescriptionSize);
         aftermath_GpuCrashDump_GetDescription = SKR_SHARED_LIB_LOAD_API(nsight_library, GFSDK_Aftermath_GpuCrashDump_GetDescription);
         aftermath_GpuCrashDump_DestroyDecoder = SKR_SHARED_LIB_LOAD_API(nsight_library, GFSDK_Aftermath_GpuCrashDump_DestroyDecoder);
+        aftermath_DX12_Initialize = SKR_SHARED_LIB_LOAD_API(nsight_library, GFSDK_Aftermath_DX12_Initialize);
     }
     else
     {
@@ -245,6 +273,35 @@ CGPUNSightSingleton* CGPUNSightSingleton::Get(CGPUInstanceId instance) SKR_NOEXC
         cgpu_runtime_table_add_custom_data(instance->runtime_table, (const char8_t*)CGPU_NSIGNT_SINGLETON_NAME, _this);
     }
     return _this;
+}
+
+void cgpu_nsight_initialize_dx12_aftermath(CGPUInstanceId instance, ID3D12Device* device) 
+{
+    // Get the singleton instance
+    auto singleton = CGPUNSightSingleton::Get(instance);
+    auto impl = static_cast<CGPUNSightSingletonImpl*>(singleton);
+    if (impl && impl->aftermath_DX12_Initialize)
+    {
+        const uint32_t aftermathFlags = 
+            GFSDK_Aftermath_FeatureFlags_EnableMarkers |             // Enable event marker tracking.
+            GFSDK_Aftermath_FeatureFlags_EnableResourceTracking |    // Enable tracking of resources.
+            GFSDK_Aftermath_FeatureFlags_CallStackCapturing |        // Capture call stacks for all draw calls, compute dispatches, and resource copies.
+            GFSDK_Aftermath_FeatureFlags_GenerateShaderDebugInfo;    // Generate shader debug info for better debugging
+        
+        GFSDK_Aftermath_Result result = impl->aftermath_DX12_Initialize(
+            GFSDK_Aftermath_Version_API,
+            aftermathFlags,
+            device);
+        
+        if (GFSDK_Aftermath_SUCCEED(result))
+        {
+            cgpu_trace(u8"NSIGHT Aftermath DX12 initialized with shader debug info generation");
+        }
+        else
+        {
+            cgpu_error(u8"Failed to initialize NSIGHT Aftermath for DX12: 0x%x", result);
+        }
+    }
 }
 
 CGPUNSightTrackerBase::CGPUNSightTrackerBase(CGPUInstanceId instance, const CGPUNSightTrackerDescriptor* pdesc) SKR_NOEXCEPT

@@ -3,3 +3,4 @@
 #include "types/vec.hpp"
 #include "types/matrix.hpp"
 #include "types/ray.hpp"
+#include "types/pair.hpp"

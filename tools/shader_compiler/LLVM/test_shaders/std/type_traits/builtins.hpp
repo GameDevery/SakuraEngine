@@ -36,8 +36,21 @@ T declval_(long);
 template<class T>
 decltype(detail::declval_<T>(0)) declval() noexcept;
 
+template<class T, template<class...> class Z, class... Ts>
+concept require = Z<T, Ts...>::value;
+
+template<class T, class U>
+concept same_as = is_same_v<T, U> && is_same_v<U, T>;
+
+template<class Fn, class... Args>
+concept invocable = requires(
+	Fn&& fn, Args&&... args) { static_cast<Fn &&>(fn)(static_cast<Args &&>(args)...); };
+
 template <typename T, typename Arg>
 inline constexpr bool is_assignable_v = __is_assignable(T, Arg);
+
+template<class T, class... Args>
+constexpr bool is_constructible_v = __is_constructible(T, Args...);
 
 template <typename T, template <typename...> typename Template>
 inline constexpr bool is_specialization_v = false; // true if && only if T is a specialization of Template
@@ -112,6 +125,17 @@ trait integral_constant {
 };
 typedef integral_constant<bool, true> true_type;
 typedef integral_constant<bool, false> false_type;
+
+template<bool B, class T, class F>
+trait conditional {
+	using type = T;
+};
+template<class T, class F>
+trait conditional<false, T, F> {
+	using type = F;
+};
+template<bool B, class T, class F>
+using conditional_t = typename conditional<B, T, F>::type;
 
 } // namespace std
 using namespace std;

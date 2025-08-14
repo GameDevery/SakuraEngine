@@ -25,8 +25,6 @@ GPUSceneInstanceEmission
     data_layout::float4 color;
 };
 
-// 默认的 GPU Scene 布局
-// 使用 PagedLayout，SOAIndex 自动分配为 0, 1, 2...
 using DefaultGPUSceneLayout = PagedLayout<16384, // 16K instances per page
     GPUSceneObjectToWorld,
     GPUSceneInstanceColor,

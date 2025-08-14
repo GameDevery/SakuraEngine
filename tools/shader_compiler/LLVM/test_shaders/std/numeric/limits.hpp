@@ -1,8 +1,7 @@
 #pragma once
-#include "./..//type_traits.hpp"
+#include "../type_traits.hpp"
 
 namespace skr::shader {
-
 constexpr static float min_float32 =  -0x1.fffffe0000000p+127f;
 constexpr static float max_float32 = 0x1.fffffe0000000p+127f;
 constexpr static double min_float64 = -0x1.fffffffffffffp+1023;
@@ -19,5 +18,4 @@ constexpr static uint32 max_uint32 = 4294967295u;
 constexpr static uint32 min_uint32 = 0;
 constexpr static uint64 max_uint64 = 18446744073709551615ull;
 constexpr static uint64 min_uint64 = 0;
-
 }// namespace skr::shader

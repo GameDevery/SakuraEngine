@@ -201,7 +201,7 @@ int RGRaytracingSampleModule::main_module_exec(int argc, char8_t** argv)
     create_swapchain(main_window);
 
     static bool want_quit = false;
-    struct QuitListener : public skr::ISystemEventHandler
+    struct eventListener : public skr::ISystemEventHandler
     {
         RGRaytracingSampleModule* module = nullptr;
 
@@ -258,11 +258,11 @@ int RGRaytracingSampleModule::main_module_exec(int argc, char8_t** argv)
             }
         }
         skr::SystemWindow* main_window = nullptr;
-    } quitListener;
-    quitListener.main_window = main_window;
-    quitListener.module = this;
-    eq->add_handler(&quitListener);
-    SKR_DEFER({ eq->remove_handler(&quitListener); });
+    } eventListener;
+    eventListener.main_window = main_window;
+    eventListener.module = this;
+    eq->add_handler(&eventListener);
+    SKR_DEFER({ eq->remove_handler(&eventListener); });
 
     // 初始化相机控制器
     this->camera_controller.initialize_from_lookat(

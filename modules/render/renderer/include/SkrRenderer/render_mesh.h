@@ -23,6 +23,7 @@ struct RenderMesh
     skr::Vector<skr_index_buffer_view_t> index_buffer_views;
     skr::Vector<PrimitiveCommand> primitive_commands;
     CGPUAccelerationStructureId blas = nullptr;
+    std::atomic_bool need_build_blas = true;
 };
 
 sreflect_managed_component(guid = "c66ab7ef-bde9-4e0f-8023-a2d99ba5134c")
