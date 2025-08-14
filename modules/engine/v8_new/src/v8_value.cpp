@@ -51,7 +51,7 @@ bool V8Value::is_function() const
 }
 
 // get field
-V8Value V8Value::get(StringView name) const
+V8Value V8Value::get_field(StringView name) const
 {
     using namespace ::v8;
 
@@ -78,12 +78,36 @@ V8Value V8Value::get(StringView name) const
     }
     else
     {
-        Global<Value> result(isolate, found.ToLocalChecked());
+        auto value = found.ToLocalChecked();
+        if (value->IsNullOrUndefined()) { return {}; }
         return {
-            std::move(result),
+            { isolate, value },
             _context
         };
     }
+}
+bool V8Value::set_field_value(StringView name, const V8Value& value) const
+{
+    using namespace ::v8;
+
+    // scopes
+    auto*          isolate = _context->isolate()->v8_isolate();
+    Isolate::Scope isolate_scope(isolate);
+    HandleScope    handle_scope(isolate);
+    auto           context = _context->v8_context().Get(isolate);
+
+    // check object
+    if (!_v8_value.Get(isolate)->IsObject()) { return false; }
+
+    // get object
+    Local<Object> obj = _v8_value.Get(isolate)->ToObject(context).ToLocalChecked();
+
+    auto result = obj->Set(
+        context,
+        V8Bind::to_v8(name, true),
+        value.v8_value().Get(isolate)
+    );
+    return result.IsJust();
 }
 
 // helper

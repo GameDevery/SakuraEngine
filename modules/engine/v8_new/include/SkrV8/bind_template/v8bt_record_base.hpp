@@ -11,6 +11,13 @@ struct V8BTRecordBase : V8BindTemplate {
             _dtor(address);
         }
     }
+    inline const V8BTDataMethod* find_method(
+        StringView name
+    ) const
+    {
+        auto found = _methods.find(name);
+        return found ? &found.value() : nullptr;
+    }
 
 protected:
     void _setup(V8Isolate* isolate, const RTTRType* type);

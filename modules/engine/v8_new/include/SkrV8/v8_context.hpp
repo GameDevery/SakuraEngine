@@ -34,6 +34,10 @@ struct SKR_V8_NEW_API V8Context {
     inline V8Isolate*           isolate() const { return _isolate; }
     inline const String&        name() const { return _name; }
 
+    // context op
+    void enter();
+    void exit();
+
     // build export
     void build_export(FunctionRef<void(V8VirtualModule&)> build_func);
     bool is_export_built() const;
@@ -43,7 +47,7 @@ struct SKR_V8_NEW_API V8Context {
     V8Value get_global(StringView name);
     bool    set_global_value(StringView name, const V8Value& value);
     template <typename T>
-    inline bool set_global(StringView name, T& value)
+    inline bool set_global(StringView name, const T& value)
     {
         V8Value v(this);
         if (!v.set<T>(value)) { return false; }

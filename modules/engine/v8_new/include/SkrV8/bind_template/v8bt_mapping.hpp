@@ -112,10 +112,12 @@ private:
         const V8BTDataModifier& modifiers,
         V8ErrorCache&           errors
     ) const;
+    void _make_template();
 
 private:
-    const RTTRType*            _rttr_type    = nullptr;
-    RTTRInvokerDefaultCtor     _default_ctor = nullptr;
-    Map<String, V8BTDataField> _fields       = {};
+    const RTTRType*                    _rttr_type    = nullptr;
+    RTTRInvokerDefaultCtor             _default_ctor = nullptr;
+    Map<String, V8BTDataField>         _fields       = {};
+    v8::Global<::v8::FunctionTemplate> _v8_template  = {};
 };
 } // namespace skr

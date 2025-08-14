@@ -18,6 +18,8 @@ V8BTValue* V8BTValue::TryCreate(V8Isolate* isolate, const RTTRType* type)
     V8BTValue* result = SkrNew<V8BTValue>();
     result->_setup(isolate, type);
     result->_make_template();
+    result->_copy_ctor = type->find_copy_ctor();
+    result->_assign    = type->find_assign();
     return result;
 }
 
@@ -421,6 +423,7 @@ V8BPValue* V8BTValue::_new_bind_proxy(void* address, v8::Local<v8::Object> self)
     bind_proxy->isolate   = this->isolate();
     bind_proxy->bind_tp   = this;
     bind_proxy->address   = address;
+    bind_proxy->v8_object.Reset(isolate, object);
 
     // setup gc callback
     bind_proxy->v8_object.SetWeak(

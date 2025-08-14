@@ -41,6 +41,9 @@ struct V8BTDataField {
     V8BTDataModifier      modifiers   = {};
     V8ErrorCache          errors      = {};
 
+    v8::Global<v8::FunctionTemplate> v8_tp_getter = {};
+    v8::Global<v8::FunctionTemplate> v8_tp_setter = {};
+
     inline bool  any_error() const { return errors.has_error(); }
     inline void  dump_error(V8ErrorBuilderTreeStyle& builder) const { builder.dump_errors(errors); }
     inline void* solve_address(void* obj, const RTTRType* obj_type) const
@@ -60,6 +63,9 @@ struct V8BTDataStaticField {
     const RTTRStaticFieldData* rttr_data   = nullptr;
     V8BTDataModifier           modifiers   = {};
     V8ErrorCache               errors      = {};
+
+    v8::Global<v8::FunctionTemplate> v8_tp_getter = {};
+    v8::Global<v8::FunctionTemplate> v8_tp_setter = {};
 
     inline bool  any_error() const { return errors.has_error(); }
     inline void  dump_error(V8ErrorBuilderTreeStyle& builder) const { builder.dump_errors(errors); }
@@ -114,11 +120,24 @@ struct V8BTDataFunctionBase {
     V8ErrorCache          errors       = {};
     inline bool           any_error() const { return errors.has_error(); }
     inline void           dump_error(V8ErrorBuilderTreeStyle& builder) const { builder.dump_errors(errors); }
+
+    bool call_v8_read_return(
+        span<const StackProxy>    params,
+        StackProxy                return_value,
+        v8::MaybeLocal<v8::Value> v8_return_value
+    ) const;
+    void call_v8_setup(
+        V8Isolate*             isolate,
+        span<const StackProxy> params,
+        StackProxy             return_value
+    );
 };
 struct V8BTDataMethod : V8BTDataFunctionBase {
     const RTTRType*       method_owner         = nullptr;
     const RTTRMethodData* rttr_data            = nullptr;
     const RTTRMethodData* rttr_data_mixin_impl = nullptr;
+
+    v8::Global<v8::FunctionTemplate> v8_tp = {};
 
     inline bool is_valid() const
     {
@@ -142,6 +161,8 @@ struct V8BTDataMethod : V8BTDataFunctionBase {
 struct V8BTDataStaticMethod : V8BTDataFunctionBase {
     const RTTRType*             method_owner = nullptr;
     const RTTRStaticMethodData* rttr_data    = nullptr;
+
+    v8::Global<v8::FunctionTemplate> v8_tp = {};
 
     inline bool is_valid() const
     {
@@ -221,6 +242,8 @@ struct V8BTDataCtor {
     Vector<V8BTDataParam> params_data = {};
     V8ErrorCache          errors      = {};
 
+    v8::Global<v8::FunctionTemplate> v8_tp = {};
+
     inline bool is_valid() const
     {
         return rttr_data != nullptr;
@@ -244,18 +267,6 @@ struct V8BTDataCtor {
     void setup(
         V8Isolate*          isolate,
         const RTTRCtorData* ctor_data
-    );
-};
-struct V8BTDataCallScript : V8BTDataFunctionBase {
-    bool read_return(
-        span<const StackProxy>    params,
-        StackProxy                return_value,
-        v8::MaybeLocal<v8::Value> v8_return_value
-    );
-    void setup(
-        V8Isolate*             isolate,
-        span<const StackProxy> params,
-        StackProxy             return_value
     );
 };
 

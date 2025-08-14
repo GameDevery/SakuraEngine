@@ -17,6 +17,14 @@ struct SKR_V8_NEW_API V8Value {
     V8Value(v8::Global<v8::Value> v8_value, V8Context* context);
     ~V8Value();
 
+    // copy & move
+    inline V8Value(const V8Value&) = delete;
+    inline V8Value(V8Value&&)      = default;
+
+    // assign & move assign
+    inline V8Value& operator=(const V8Value&) = delete;
+    inline V8Value& operator=(V8Value&&)      = default;
+
     // ops
     inline bool is_empty() const
     {
@@ -36,6 +44,7 @@ struct SKR_V8_NEW_API V8Value {
     template <typename T>
     inline bool is() const
     {
+        if (is_empty()) { return false; }
         if constexpr (std::is_pointer_v<T>)
         {
             using RawType = std::remove_pointer_t<T>;
@@ -91,7 +100,7 @@ struct SKR_V8_NEW_API V8Value {
 
     // set
     template <typename T>
-    inline bool set(T& value)
+    inline bool set(const T& value)
     {
         if constexpr (std::is_pointer_v<T>)
         {
@@ -100,7 +109,7 @@ struct SKR_V8_NEW_API V8Value {
             if constexpr (std::derived_from<RawType, ScriptbleObject>)
             { // object case
                 TypeSignatureTyped<RawType> sig;
-                return _set(sig, &value);
+                return _set(sig, const_cast<T*>(&value));
             }
             else
             {
@@ -111,12 +120,20 @@ struct SKR_V8_NEW_API V8Value {
         else
         {
             TypeSignatureTyped<T> sig;
-            return _set(sig.view(), &value);
+            return _set(sig.view(), const_cast<T*>(&value));
         }
     };
 
     // get field
-    V8Value get(StringView name) const;
+    V8Value get_field(StringView name) const;
+    bool    set_field_value(StringView name, const V8Value& value) const;
+    template <typename T>
+    bool set_field(StringView name, const T& v)
+    {
+        V8Value value{ _context };
+        value.set<T>(v);
+        return set_field_value(name, value);
+    }
 
     // invoke
     template <typename Ret, typename... Args>
@@ -133,10 +150,13 @@ struct SKR_V8_NEW_API V8Value {
         else
         {
             if (!is_function()) { return Optional<Ret>{}; }
-            return _call(
+            Placeholder<Ret> result;
+            bool             success = _call(
                 { StackProxyMaker<Args>::Make(std::forward<Args>(args))... },
-                { .data = Placeholder<Ret>::make(), .signature = type_signature_of<Ret>() }
+                { .data = result.data(), .signature = type_signature_of<Ret>() }
             );
+            if (!success) { return Optional<Ret>{}; }
+            return Optional<Ret>{ std::move(*result.data_typed()) };
         }
     }
     template <typename Ret, typename... Args>
@@ -154,17 +174,20 @@ struct SKR_V8_NEW_API V8Value {
         else
         {
             if (!is_object()) { return Optional<Ret>{}; }
-            return _call_method(
+            Placeholder<Ret> result;
+            bool             success = _call_method(
                 name,
                 { StackProxyMaker<Args>::Make(std::forward<Args>(args))... },
-                { .data = Placeholder<Ret>::make(), .signature = type_signature_of<Ret>() }
+                { .data = result.data(), .signature = type_signature_of<Ret>() }
             );
+            if (!success) { return Optional<Ret>{}; }
+            return Optional<Ret>{ std::move(*result.data_typed()) };
         }
     }
 
     // getter
-    inline const v8::Global<v8::Value>& v8_value() const { return _v8_value; }
-    inline V8Context*                   context() const { return _context; }
+    inline const auto& v8_value() const { return _v8_value; }
+    inline V8Context*  context() const { return _context; }
 
 private:
     void _get(TypeSignatureView sig, void* ptr) const;

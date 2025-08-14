@@ -30,7 +30,8 @@ V8BTMapping* V8BTMapping::TryCreate(V8Isolate* isolate, const RTTRType* type)
 
     auto* result = SkrNew<V8BTMapping>();
     result->set_isolate(isolate);
-    result->_rttr_type = type;
+    result->_rttr_type    = type;
+    result->_default_ctor = type->find_default_ctor();
 
     // each field
     type->each_field([&](const RTTRFieldData* field, const RTTRType* owner_type) {
@@ -38,6 +39,8 @@ V8BTMapping* V8BTMapping::TryCreate(V8Isolate* isolate, const RTTRType* type)
         auto& field_data = result->_fields.try_add_default(field->name).value();
         field_data.setup(isolate, field, owner_type);
     });
+
+    result->_make_template();
     return result;
 }
 
@@ -350,13 +353,16 @@ bool V8BTMapping::check_static_field(
 bool V8BTMapping::has_v8_export_obj(
 ) const
 {
-    return false;
+    return true;
 }
 v8::Local<v8::Value> V8BTMapping::get_v8_export_obj(
 ) const
 {
-    SKR_UNREACHABLE_CODE();
-    return {};
+    using namespace ::v8;
+
+    auto isolate = Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+    return _v8_template.Get(isolate)->GetFunction(context).ToLocalChecked();
 }
 
 void V8BTMapping::_init_native(
@@ -365,7 +371,6 @@ void V8BTMapping::_init_native(
 {
     _default_ctor.invoke(native_data);
 }
-
 bool V8BTMapping::_basic_type_check(
     const V8BTDataModifier& modifiers,
     V8ErrorCache&           errors
@@ -380,5 +385,22 @@ bool V8BTMapping::_basic_type_check(
         return false;
     }
     return true;
+}
+void V8BTMapping::_make_template()
+{
+    using namespace ::v8;
+    auto* isolate = Isolate::GetCurrent();
+
+    HandleScope handle_scope(isolate);
+
+    auto tp = FunctionTemplate::New(
+        isolate,
+        +[](const ::v8::FunctionCallbackInfo<::v8::Value>& info) {
+            info.GetIsolate()->ThrowError("mappint object cannot be constructed with new");
+        },
+        External::New(isolate, this)
+    );
+
+    _v8_template.Reset(isolate, tp);
 }
 } // namespace skr

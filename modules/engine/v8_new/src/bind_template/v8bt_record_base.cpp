@@ -278,6 +278,7 @@ void V8BTRecordBase::_fill_template(
             _call_method,
             External::New(isolate, &method_binder)
         );
+        method_binder.v8_tp.Reset(isolate, v8_template);
         ctor_template->PrototypeTemplate()->Set(
             V8Bind::to_v8(method_name, true),
             v8_template
@@ -292,6 +293,7 @@ void V8BTRecordBase::_fill_template(
             _call_static_method,
             External::New(isolate, &static_method_binder)
         );
+        static_method_binder.v8_tp.Reset(isolate, v8_template);
         ctor_template->Set(
             V8Bind::to_v8(static_method_name, true),
             v8_template
@@ -311,6 +313,8 @@ void V8BTRecordBase::_fill_template(
             _set_field,
             External::New(isolate, &field_binder)
         );
+        field_binder.v8_tp_getter.Reset(isolate, getter_template);
+        field_binder.v8_tp_setter.Reset(isolate, setter_template);
         ctor_template->PrototypeTemplate()->SetAccessorProperty(
             V8Bind::to_v8(field_name, true),
             getter_template,
@@ -331,6 +335,8 @@ void V8BTRecordBase::_fill_template(
             _set_static_field,
             External::New(isolate, &static_field_binder)
         );
+        static_field_binder.v8_tp_getter.Reset(isolate, getter_template);
+        static_field_binder.v8_tp_setter.Reset(isolate, setter_template);
         ctor_template->SetAccessorProperty(
             V8Bind::to_v8(static_field_name, true),
             getter_template,
@@ -351,6 +357,7 @@ void V8BTRecordBase::_fill_template(
                 _get_prop,
                 External::New(isolate, &property_binder)
             );
+            property_binder.getter.v8_tp.Reset(isolate, getter_template);
         }
         if (property_binder.setter.is_valid())
         {
@@ -359,6 +366,7 @@ void V8BTRecordBase::_fill_template(
                 _set_prop,
                 External::New(isolate, &property_binder)
             );
+            property_binder.setter.v8_tp.Reset(isolate, setter_template);
         }
         ctor_template->PrototypeTemplate()->SetAccessorProperty(
             V8Bind::to_v8(property_name, true),
@@ -380,6 +388,7 @@ void V8BTRecordBase::_fill_template(
                 _get_static_prop,
                 External::New(isolate, &static_property_binder)
             );
+            static_property_binder.getter.v8_tp.Reset(isolate, getter_template);
         }
         if (static_property_binder.setter.is_valid())
         {
@@ -388,6 +397,7 @@ void V8BTRecordBase::_fill_template(
                 _set_static_prop,
                 External::New(isolate, &static_property_binder)
             );
+            static_property_binder.setter.v8_tp.Reset(isolate, setter_template);
         }
         ctor_template->SetAccessorProperty(
             V8Bind::to_v8(static_property_name, true),

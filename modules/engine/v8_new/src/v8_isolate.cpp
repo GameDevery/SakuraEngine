@@ -208,8 +208,8 @@ bool V8Isolate::invoke_v8(
     HandleScope handle_scope(isolate);
 
     // solve bind template
-    V8BTDataCallScript bind_tp;
-    bind_tp.setup(this, params, return_value);
+    V8BTDataFunctionBase bind_tp;
+    bind_tp.call_v8_setup(this, params, return_value);
 
     push_param_scope();
 
@@ -235,7 +235,7 @@ bool V8Isolate::invoke_v8(
     );
 
     // check return
-    bool success_read_return = bind_tp.read_return(
+    bool success_read_return = bind_tp.call_v8_read_return(
         params,
         return_value,
         v8_ret
@@ -258,12 +258,104 @@ void V8Isolate::on_object_destroyed(
 bool V8Isolate::try_invoke_mixin(
     ScriptbleObject*             obj,
     StringView                   name,
-    const span<const StackProxy> args,
+    const span<const StackProxy> params,
     StackProxy                   result
 )
 {
-    SKR_UNIMPLEMENTED_FUNCTION();
-    return false;
+    using namespace ::v8;
+
+    Isolate::Scope isolate_scope(_isolate);
+    HandleScope    handle_scope(_isolate);
+
+    auto* isolate = _isolate;
+    auto  context = isolate->GetCurrentContext();
+    if (context.IsEmpty())
+    {
+        context = _main_context->v8_context().Get(isolate);
+    }
+
+    // find bound object
+    if (auto found_bp = _bind_proxy_map.find(obj->iobject_get_head_ptr()))
+    {
+        auto* bind_proxy = found_bp.value()->type_cast_fast<V8BPObject>();
+
+        // find method export data
+        auto found_method = bind_proxy->bind_tp->find_method(name);
+        if (!found_method)
+        {
+            SKR_LOG_FMT_ERROR(u8"mixin method {} data not found", name);
+            return false;
+        }
+
+        // find method in object
+        auto v8_object           = bind_proxy->v8_object.Get(isolate);
+        auto maybe_v8_func_value = v8_object->Get(
+            context,
+            V8Bind::to_v8(name, true)
+        );
+
+        // check exist
+        if (maybe_v8_func_value.IsEmpty())
+        {
+            return false;
+        }
+
+        // check type
+        auto v8_func_value = maybe_v8_func_value.ToLocalChecked();
+        if (!v8_func_value->IsFunction())
+        {
+            return false;
+        }
+
+        // filter native function
+        auto v8_func = v8_func_value.As<v8::Function>();
+        if (found_method->v8_tp.Get(isolate)->GetFunction(context).ToLocalChecked() == v8_func)
+        {
+            return false;
+        }
+
+        // call script
+        {
+            push_param_scope();
+
+            // push params
+            InlineVector<Local<v8::Value>, 16> v8_params;
+            for (const auto& param : found_method->params_data)
+            {
+                if (!param.appare_in_param) { continue; }
+                v8_params.add(
+                    param.bind_tp->make_param_v8(
+                        params[param.index].data,
+                        param
+                    )
+                );
+            }
+
+            // call script
+            auto v8_ret = v8_func->Call(
+                context,
+                v8_object,
+                v8_params.size(),
+                v8_params.data()
+            );
+
+            // check return
+            bool success_read_return = found_method->call_v8_read_return(
+                params,
+                result,
+                v8_ret
+            );
+
+            pop_param_scope();
+
+            return success_read_return;
+        }
+    }
+    else
+    {
+        SKR_LOG_ERROR(u8"V8Isolate::try_invoke_mixin: bind proxy not found for object {}", obj->iobject_get_head_ptr());
+        return false;
+    }
 }
 //==> IScriptMixinCore API
 
@@ -394,7 +486,6 @@ void V8Isolate::pop_param_scope()
     {
         auto proxy = _call_v8_param_proxy.pop_back_get();
         proxy->invalidate();
-        SkrDelete(proxy);
     }
 }
 void V8Isolate::push_param_proxy(

@@ -29,6 +29,20 @@ V8Context::~V8Context()
     return ::v8::Global<::v8::Context>(_isolate->v8_isolate(), _context);
 }
 
+// context op
+void V8Context::enter()
+{
+    using namespace ::v8;
+    HandleScope handle_scope(_isolate->v8_isolate());
+    _context.Get(_isolate->v8_isolate())->Enter();
+}
+void V8Context::exit()
+{
+    using namespace ::v8;
+    HandleScope handle_scope(_isolate->v8_isolate());
+    _context.Get(_isolate->v8_isolate())->Exit();
+}
+
 // build export
 void V8Context::build_export(FunctionRef<void(V8VirtualModule&)> build_func)
 {
@@ -88,8 +102,10 @@ V8Value V8Context::get_global(StringView name)
     }
     else
     {
+        auto value = maybe_value.ToLocalChecked();
+        if (value->IsNullOrUndefined()) { return {}; }
         return {
-            { isolate, maybe_value.ToLocalChecked() },
+            { isolate, value },
             this
         };
     }
