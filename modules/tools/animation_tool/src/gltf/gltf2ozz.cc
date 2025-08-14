@@ -458,7 +458,10 @@ bool CreateNodeTransform(const tinygltf::Node& _node, ozz::math::Transform* _tra
 }
 } // namespace
 
-GltfImporter::GltfImporter()
+namespace skd
+{
+
+GltfOzzImporter::GltfOzzImporter()
 {
     // We don't care about image data but we have to provide this callback
     // because we're not loading the stb library
@@ -466,7 +469,7 @@ GltfImporter::GltfImporter()
     m_loader.SetImageLoader(image_loader, NULL);
 }
 
-bool GltfImporter::Load(const char* _filename)
+bool GltfOzzImporter::Load(const char* _filename)
 {
     bool success = false;
     std::string errors;
@@ -523,7 +526,7 @@ bool GltfImporter::Load(const char* _filename)
 
 // Find all unique root joints of skeletons used by given skins and add them
 // to `roots`
-void GltfImporter::FindSkinRootJointIndices(const ozz::vector<tinygltf::Skin>& skins, ozz::vector<int>& roots)
+void GltfOzzImporter::FindSkinRootJointIndices(const ozz::vector<tinygltf::Skin>& skins, ozz::vector<int>& roots)
 {
     static constexpr int no_parent = -1;
     static constexpr int visited = -2;
@@ -562,7 +565,7 @@ void GltfImporter::FindSkinRootJointIndices(const ozz::vector<tinygltf::Skin>& s
     }
 }
 
-bool GltfImporter::Import(ozz::animation::offline::RawSkeleton* _skeleton, const NodeType& _types)
+bool GltfOzzImporter::Import(ozz::animation::offline::RawSkeleton* _skeleton, const NodeType& _types)
 {
     (void)_types;
 
@@ -647,7 +650,7 @@ bool GltfImporter::Import(ozz::animation::offline::RawSkeleton* _skeleton, const
 }
 
 // Recursively import a node's children
-bool GltfImporter::ImportNode(const tinygltf::Node& _node, ozz::animation::offline::RawSkeleton::Joint* _joint)
+bool GltfOzzImporter::ImportNode(const tinygltf::Node& _node, ozz::animation::offline::RawSkeleton::Joint* _joint)
 {
     // Names joint.
     _joint->name = _node.name.c_str();
@@ -678,7 +681,7 @@ bool GltfImporter::ImportNode(const tinygltf::Node& _node, ozz::animation::offli
 }
 
 // Returns all animations in the gltf document.
-GltfImporter::AnimationNames GltfImporter::GetAnimationNames()
+GltfOzzImporter::AnimationNames GltfOzzImporter::GetAnimationNames()
 {
     AnimationNames animNames;
     for (size_t i = 0; i < m_model.animations.size(); ++i)
@@ -691,7 +694,7 @@ GltfImporter::AnimationNames GltfImporter::GetAnimationNames()
     return animNames;
 }
 
-bool GltfImporter::Import(const char* _animation_name, const ozz::animation::Skeleton& skeleton, float _sampling_rate, ozz::animation::offline::RawAnimation* _animation)
+bool GltfOzzImporter::Import(const char* _animation_name, const ozz::animation::Skeleton& skeleton, float _sampling_rate, ozz::animation::offline::RawAnimation* _animation)
 {
     if (_sampling_rate == 0.0f)
     {
@@ -806,7 +809,7 @@ bool GltfImporter::Import(const char* _animation_name, const ozz::animation::Ske
     return true;
 }
 
-bool GltfImporter::SampleAnimationChannel(
+bool GltfOzzImporter::SampleAnimationChannel(
     const tinygltf::Model& _model, const tinygltf::AnimationSampler& _sampler, const std::string& _target_path, float _sampling_rate, float* _duration, ozz::animation::offline::RawAnimation::JointTrack* _track)
 {
     // Validate interpolation type.
@@ -876,7 +879,7 @@ bool GltfImporter::SampleAnimationChannel(
 }
 
 // Returns all skins belonging to a given gltf scene
-ozz::vector<tinygltf::Skin> GltfImporter::GetSkinsForScene(
+ozz::vector<tinygltf::Skin> GltfOzzImporter::GetSkinsForScene(
     const tinygltf::Scene& _scene) const
 {
     ozz::set<int> open;
@@ -912,7 +915,7 @@ ozz::vector<tinygltf::Skin> GltfImporter::GetSkinsForScene(
     return skins;
 }
 
-const tinygltf::Node* GltfImporter::FindNodeByName(const std::string& _name) const
+const tinygltf::Node* GltfOzzImporter::FindNodeByName(const std::string& _name) const
 {
     for (const tinygltf::Node& node : m_model.nodes)
     {
@@ -925,7 +928,10 @@ const tinygltf::Node* GltfImporter::FindNodeByName(const std::string& _name) con
     return nullptr;
 }
 
+} // namespace skd
+
+// use case
 // int main(int _argc, const char** _argv) {
-//   GltfImporter converter;
+//   GltfOzzImporter converter;
 //   return converter(_argc, _argv);
 // }

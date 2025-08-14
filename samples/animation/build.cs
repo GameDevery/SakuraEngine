@@ -23,6 +23,7 @@ public static class AnimSamples {
         Engine.Program("AnimSampleCook")
             .Depend(Visibility.Private, "SkrAnim")
             .Depend(Visibility.Private, "SkrGLTFTool")
+            .Depend(Visibility.Private, "SkrAnimTool")
             .AddCppFiles("cook/*.cpp");
     }
 }

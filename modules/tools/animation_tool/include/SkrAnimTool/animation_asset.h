@@ -74,14 +74,14 @@ AnimAsset : public skd::asset::AssetMetadata
             }
         ]
     */
-    skr::resource::AsyncResource<skr::anim::SkeletonResource> skeletonAsset;
-    bool additive = false;                                                        //  Creates a delta animation that can be used for additive blending.
+    skr::resource::AsyncResource<skr::anim::SkeletonResource> skeletonAsset;    // The skeleton asset should exist inside cook system before cooking this animation asset.
+    bool additive = false;                                                      //  Creates a delta animation that can be used for additive blending.
     AnimAdditiveReference additiveReference = AnimAdditiveReference::animation; //  Select reference pose to use to build additive/delta animation. Can be "animation" to use the 1st animation keyframe as reference, or "skeleton" to use skeleton rest pose.
-    float samplingRate = 0.f;                                                     //  Selects animation sampling rate in hertz. Set a value <= 0 to use imported scene default frame rate.
-    bool optimize = true;                                                         //  Activates keyframes reduction optimization.
-    float tolerance = 0.001f;                                                     //  The maximum error that an optimization is allowed to generate on a whole joint hierarchy.
-    float distance = 0.1f;                                                        //  The distance (from the joint) at which error is measured. This allows to emulate effect on skinning.
-    skr::Vector<AnimOptimizationOverride> override;                              //  Per joint optimization setting override
+    float samplingRate = 0.f;                                                   //  Selects animation sampling rate in hertz. Set a value <= 0 to use imported scene default frame rate.
+    bool optimize = true;                                                       //  Activates keyframes reduction optimization.
+    float tolerance = 0.001f;                                                   //  The maximum error that an optimization is allowed to generate on a whole joint hierarchy.
+    float distance = 0.1f;                                                      //  The distance (from the joint) at which error is measured. This allows to emulate effect on skinning.
+    skr::Vector<AnimOptimizationOverride> override;                             //  Per joint optimization setting override
 };
 
 sreflect_struct(guid = "81F1C813-1ABA-41BE-8D7A-F6C88E73E891")

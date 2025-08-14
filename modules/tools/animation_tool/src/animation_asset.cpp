@@ -33,6 +33,7 @@ bool AnimCooker::Cook(CookContext* ctx)
         return false;
     }
     auto idx = ctx->AddStaticDependency(anim_asset.skeletonAsset.get_serialized(), true);
+
     if (ctx->GetStaticDependency(idx).get_status() == SKR_LOADING_STATUS_ERROR)
         return false;
     SkeletonResource* skeletonResource = (SkeletonResource*)ctx->GetStaticDependency(idx).get_ptr();
@@ -135,6 +136,7 @@ bool AnimCooker::Cook(CookContext* ctx)
     // no runtime dependencies
     //------write resource object
     ctx->Save(resource);
+
     return true;
 }
 } // namespace skd::asset

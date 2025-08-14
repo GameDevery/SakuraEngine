@@ -5,6 +5,7 @@
 #include <SkrCore/platform/vfs.h>
 #include <SkrCore/time.h>
 #include <SkrCore/async/thread_job.hpp>
+#include "SkrCore/memory/impl/skr_new_delete.hpp"
 #include <SkrRT/io/vram_io.hpp>
 #include "SkrOS/thread.h"
 #include "SkrProfile/profile.h"
@@ -13,7 +14,6 @@
 #include "SkrRTTR/rttr_traits.hpp"
 
 #include <SkrOS/filesystem.hpp>
-#include "SkrCore/memory/impl/skr_new_delete.hpp"
 #include "SkrSystem/advanced_input.h"
 #include <SkrRT/ecs/world.hpp>
 #include <SkrRT/resource/resource_system.h>
@@ -213,7 +213,6 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     skr::String projectName = u8"SceneSampleMesh";
     skr::String rootPath = projectRoot.string().c_str();
     project.OpenProject(projectName.c_str(), rootPath.c_str(), projectConfig);
-
     {
         InitializeResourceSystem();
         InitializeAssetSystem();
@@ -247,6 +246,7 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
     auto& System = *skd::asset::GetCookSystem();
     auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
     auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
+
     metadata->vertexType = u8"1b357a40-83ff-471c-8903-23e99d95b273"_guid; // GLTFVertexLayoutWithoutTangentId
     auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"girl.gltf.meta",

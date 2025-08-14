@@ -15,12 +15,12 @@ void GltfAnimImporter::Destroy(void* data)
 
 void* GltfAnimImporter::Import(skr::io::IRAMService*, CookContext* context)
 {
-    GltfImporter                          impl;
-    ozz::animation::offline::OzzImporter& impoter          = impl;
-    auto&                                 skeletonResource = context->GetStaticDependency(0);
-    ozz::animation::Skeleton&             skeleton         = *(ozz::animation::Skeleton*)skeletonResource.get_ptr();
-    auto                                  path             = context->AddSourceFile(assetPath.c_str());
-    auto                                  fullAssetPath    = context->GetAssetMetaFile()->GetProject()->GetAssetPath() / path;
+    GltfOzzImporter impl;
+    ozz::animation::offline::OzzImporter& impoter = impl;
+    auto& skeletonResource = context->GetStaticDependency(0);
+    ozz::animation::Skeleton& skeleton = *(ozz::animation::Skeleton*)skeletonResource.get_ptr();
+    auto path = context->AddSourceFile(assetPath.c_str());
+    auto fullAssetPath = context->GetAssetMetaFile()->GetProject()->GetAssetPath() / path;
     if (!impoter.Load(reinterpret_cast<const char*>(fullAssetPath.string().c_str())))
     {
         SKR_LOG_ERROR(u8"Failed to load gltf file %s for asset %s.", assetPath.c_str(), context->GetAssetPath().c_str());
