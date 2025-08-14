@@ -375,6 +375,19 @@ GlobalVarDecl* AST::DeclareGlobalConstant(const TypeDecl* type, const Name& name
     return decl;
 }
 
+GlobalVarDecl* AST::DeclareGroupShared(const TypeDecl* type, const Name& name, Expr* initializer)
+{
+    // TODO: CHECK THIS IS NOT RESOURCE TYPE
+    if (type == nullptr) 
+        ReportFatalError(L"GlobalConstant {}: Type cannot be null for global constant declaration", name);
+    
+    ReservedWordsCheck(name);
+    auto decl = new GlobalVarDecl(*this, EVariableQualifier::GroupShared, type, name, initializer);
+    emplace_decl(decl);
+    _globals.emplace_back(decl);
+    return decl;
+}
+
 GlobalVarDecl* AST::DeclareGlobalResource(const TypeDecl* type, const Name& name)
 {
     // TODO: CHECK THIS IS RESOURCE TYPE
@@ -939,19 +952,22 @@ void AST::DeclareIntrinsics()
     auto AtomicReturnSpec = [=](auto pts) {
         if (auto bufferType = dynamic_cast<const StructuredBufferTypeDecl*>(pts[0])) 
             return &bufferType->element();
+        else
+            return pts[0];
         return pts[0];
     };
-    std::array<VarConceptDecl*, 3> AtomicParams = { AtomicOperableFamily, IntScalar, IntScalar };
-    std::array<VarConceptDecl*, 4> CompareExchangeParams = { AtomicOperableFamily, IntScalar, IntScalar, IntScalar };
-    _intrinsics["ATOMIC_EXCHANGE"] = DeclareTemplateFunction(L"atomic_exchange", AtomicReturnSpec, AtomicParams);
-    _intrinsics["ATOMIC_COMPARE_EXCHANGE"] = DeclareTemplateFunction(L"atomic_compare_exchange", AtomicReturnSpec, CompareExchangeParams);
-    _intrinsics["ATOMIC_FETCH_ADD"] = DeclareTemplateFunction(L"atomic_fetch_add", AtomicReturnSpec, AtomicParams);
-    _intrinsics["ATOMIC_FETCH_SUB"] = DeclareTemplateFunction(L"atomic_fetch_sub", AtomicReturnSpec, AtomicParams);
-    _intrinsics["ATOMIC_FETCH_AND"] = DeclareTemplateFunction(L"atomic_fetch_and", AtomicReturnSpec, AtomicParams);
-    _intrinsics["ATOMIC_FETCH_OR"] = DeclareTemplateFunction(L"atomic_fetch_or", AtomicReturnSpec, AtomicParams);
-    _intrinsics["ATOMIC_FETCH_XOR"] = DeclareTemplateFunction(L"atomic_fetch_xor", AtomicReturnSpec, AtomicParams);
-    _intrinsics["ATOMIC_FETCH_MIN"] = DeclareTemplateFunction(L"atomic_fetch_min", AtomicReturnSpec, AtomicParams);
-    _intrinsics["ATOMIC_FETCH_MAX"] = DeclareTemplateFunction(L"atomic_fetch_max", AtomicReturnSpec, AtomicParams);
+    std::array<VarConceptDecl*, 3> AtomicParamsTLS = { ValueFamily, ValueFamily, ValueFamily };
+    std::array<VarConceptDecl*, 4> CompareStoreParamsTLS = { ValueFamily, ValueFamily, ValueFamily };
+    std::array<VarConceptDecl*, 4> CompareExchangeParamsTLS = { ValueFamily, ValueFamily, ValueFamily, ValueFamily };
+    _intrinsics["InterlockedExchange"] = DeclareTemplateFunction(L"InterlockedExchange", VoidType, AtomicParamsTLS);
+    _intrinsics["InterlockedCompareExchange"] = DeclareTemplateFunction(L"InterlockedCompareExchange", VoidType, CompareExchangeParamsTLS);
+    _intrinsics["InterlockedCompareStore"] = DeclareTemplateFunction(L"InterlockedCompareStore", VoidType, CompareStoreParamsTLS);
+    _intrinsics["InterlockedAdd"] = DeclareTemplateFunction(L"InterlockedAdd", VoidType, AtomicParamsTLS);
+    _intrinsics["InterlockedAnd"] = DeclareTemplateFunction(L"InterlockedAnd", VoidType, AtomicParamsTLS);
+    _intrinsics["InterlockedOr"] = DeclareTemplateFunction(L"InterlockedOr", VoidType, AtomicParamsTLS);
+    _intrinsics["InterlockedXor"] = DeclareTemplateFunction(L"InterlockedXor", VoidType, AtomicParamsTLS);
+    _intrinsics["InterlockedMin"] = DeclareTemplateFunction(L"InterlockedMin", VoidType, AtomicParamsTLS);
+    _intrinsics["InterlockedMax"] = DeclareTemplateFunction(L"InterlockedMax", VoidType, AtomicParamsTLS);
 
     std::array<VarConceptDecl*, 2> TextureReadParams = { TextureFamily, IntVector };
     _intrinsics["TEXTURE_READ"] = DeclareTemplateFunction(L"texture_read", 
@@ -1027,7 +1043,7 @@ void AST::DeclareIntrinsics()
     _intrinsics["AllMemoryBarrierWithGroupSync"] = DeclareTemplateFunction(L"AllMemoryBarrierWithGroupSync", VoidType, {});
 
 
-    // SM 6.1 Wave Intrinsics
+    // SM 6.1 Wave Intrinstics
     std::array<VarConceptDecl*, 2> ReadLaneAtArgs = { ValueFamily, IntScalar };
     _intrinsics["QuadReadAcrossDiagonal"] = DeclareTemplateFunction(L"QuadReadAcrossDiagonal", ReturnFirstArgType, OneValue);
     _intrinsics["QuadReadLaneAt"] = DeclareTemplateFunction(L"QuadReadLaneAt", ReturnFirstArgType, ReadLaneAtArgs);

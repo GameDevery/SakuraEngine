@@ -35,5 +35,5 @@ void kernel([[sv_thread_id]] uint2 tid)
         const float3 g = float3(0.0f, 0.1f, 0.0f);
         return float4(d + (e * cos(((f * t) + g) * 2.f * pi)), 1.0f);
     };
-    buf.store(tid.x + tid.y * row_pitch, mandelbrot());
+    buf.Store(tid.x + tid.y * row_pitch, mandelbrot());
 }

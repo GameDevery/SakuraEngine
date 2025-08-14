@@ -30,3 +30,6 @@
 #define expr(name) clang::annotate("skr-shader", "expr", (name))
 
 #define trait struct [[ignore]]
+
+#define groupshared __attribute__((opencl_local))
+#define devicespace __attribute__((opencl_global))

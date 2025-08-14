@@ -8,7 +8,8 @@ enum struct EVariableQualifier : uint32_t {
     None = 0,
     Const = 1,
     Inout = 2,
-    Out = 3
+    Out = 3,
+    GroupShared = 4
 };
 
 enum struct UnaryOp : uint32_t {

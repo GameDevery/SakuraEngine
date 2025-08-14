@@ -4,12 +4,6 @@
 
 namespace skr::shader {
 
-trait ArrayFlags
-{
-    static constexpr uint32 None = 0;
-    static constexpr uint32 Shared = 1;
-};
-
 trait BufferFlags
 {
     static constexpr uint32 ReadOnly = 1;
@@ -28,7 +22,7 @@ struct vec;
 template<uint64 N>
 struct matrix;
 
-template<typename Type, uint32 size, uint32 Flags>
+template<typename Type, uint32 size>
 struct Array;
 
 template<typename Type, uint32 cache_flags>
@@ -90,19 +84,16 @@ template<typename T>
 static constexpr bool is_vec_or_matrix_v = detail::vec_or_matrix<decay_t<T>>::value;
 
 template<typename T>
-inline constexpr bool is_shared_array_v = false;
-
-template<typename U, uint32 N, uint32 F>
-inline constexpr bool is_shared_array_v<Array<U, N, F>> = F & ArrayFlags::Shared;
-
-template<typename T>
 inline constexpr bool is_array_v = false;
 
-template<typename U, uint32 N, uint32 F>
-inline constexpr bool is_array_v<Array<U, N, F>> = true;
+template<typename U, uint32 N>
+inline constexpr bool is_array_v<Array<U, N>> = true;
 
 template<typename T>
 inline constexpr bool is_buffer_v = is_specialization_resource_v<T, Buffer>;
+
+template<typename T>
+inline constexpr bool is_rwbuffer_v = is_buffer_v<T> && (T::flags == BufferFlags::ReadWrite);
 
 template<typename T>
 static constexpr bool is_float_family_v = is_same_v<scalar_type<T>, float> | is_same_v<scalar_type<T>, double> | is_same_v<scalar_type<T>, half>;
@@ -147,6 +138,15 @@ concept buffer = is_buffer_v<T>;
 
 template<typename T>
 concept rw_buffer = is_buffer_v<T> && (T::flags == BufferFlags::ReadWrite);
+
+template<typename T>
+concept group_shared = is_groupshared_v<T>;
+
+template<typename T>
+concept device_space = is_devicespace_v<T>;
+
+template<typename T>
+concept atomic_operandable = is_groupshared_v<T> || is_devicespace_v<T>;
 
 template<typename T>
 concept float_family = is_float_family_v<T>;
@@ -205,21 +205,21 @@ template<concepts::arithmetic_scalar T, uint32 cache_flag>
 struct Volume;
 
 template<typename T>
-inline constexpr bool is_image_v = is_specialization_resource_v<T, Image>;
+inline constexpr bool is_texture2d_v = is_specialization_resource_v<T, Image>;
 
 template<typename T>
-inline constexpr bool is_volume_v = is_specialization_resource_v<T, Volume>;
+inline constexpr bool is_texture3d_v = is_specialization_resource_v<T, Volume>;
 
 template<typename T>
-inline constexpr bool is_texture_v = is_image_v<T> || is_volume_v<T>;
+inline constexpr bool is_texture_v = is_texture2d_v<T> || is_texture3d_v<T>;
 
 namespace concepts {
 
 template<typename T>
-concept image = is_image_v<T>;
+concept texture2d = is_texture2d_v<T>;
 
 template<typename T>
-concept volume = is_volume_v<T>;
+concept texture3d = is_texture3d_v<T>;
 
 template<typename T>
 concept texture = is_texture_v<T>;

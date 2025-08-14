@@ -312,6 +312,8 @@ void HLSLGenerator::VisitVariable(SourceBuilderNew& sb, const skr::CppSL::VarDec
         sb.append(isGlobal ? L"static const " : L"const ");
     else if (varDecl->qualifier() == EVariableQualifier::Inout)
         sb.append(L"inout ");
+    else if (varDecl->qualifier() == EVariableQualifier::GroupShared)
+        sb.append(L"groupshared ");
 
     sb.append(GetQualifiedTypeName(&varDecl->type()) + L" " + varDecl->name());
     if (auto init = varDecl->initializer())
@@ -355,6 +357,9 @@ void HLSLGenerator::VisitParameter(SourceBuilderNew& sb, const skr::CppSL::Funct
     String prefix = L"";
     switch (qualifier)
     {
+    case EVariableQualifier::None:
+        prefix = L"";
+        break;
     case EVariableQualifier::Const:
         prefix = L"const ";
         break;
@@ -364,8 +369,8 @@ void HLSLGenerator::VisitParameter(SourceBuilderNew& sb, const skr::CppSL::Funct
     case EVariableQualifier::Inout:
         prefix = L"inout ";
         break;
-    case EVariableQualifier::None:
-        prefix = L"";
+    case EVariableQualifier::GroupShared:
+        prefix = L"groupshared ";
         break;
     }
     String content = prefix + GetQualifiedTypeName(&param->type()) + L" " + param->name();
@@ -467,6 +472,9 @@ template <typename T> T buffer_read(StructuredBuffer<T> buffer, uint index) { re
 template <typename T> T byte_buffer_read(ByteAddressBuffer b, uint i) { return b.Load<T>(i); }
 template <typename T> T byte_buffer_read(RWByteAddressBuffer b, uint i) { return b.Load<T>(i); }
 template <typename T> void byte_buffer_write(RWByteAddressBuffer b, uint i, T v) { b.Store<T>(i, v); }
+
+template <typename B, typename T> T atomic_fetch_add(B buffer, uint offset, T value) { T prev = 0; InterlockedAdd(buffer[offset], value, prev); return prev; }
+template <typename G, typename T> T atomic_fetch_add(inout G shared_v, T value) { T prev = 0; InterlockedAdd(shared_v, value, prev); return prev; }
 
 // template <typename TEX> float4 texture2d_sample(TEX tex, uint2 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
 // template <typename TEX> float4 texture3d_sample(TEX tex, uint3 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }

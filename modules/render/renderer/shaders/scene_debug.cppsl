@@ -20,7 +20,7 @@ struct SceneDebugConstants
 };
 
 [[push_constant]]
-extern ConstantBuffer<SceneDebugConstants>& debug_constants;
+ConstantBuffer<SceneDebugConstants> debug_constants;
 
 // Simple red fill compute shader
 [[compute_shader("scene_debug"), kernel_2d(16, 16)]]
@@ -28,7 +28,7 @@ void scene_debug([[sv_thread_id]] uint3 thread_id)
 {
     uint2 screen_size = uint2(debug_constants.screenSize);
     uint2 pixel_coord = thread_id.xy;
-    
+
     // Boundary check
     if (any(pixel_coord >= screen_size)) {
         return;

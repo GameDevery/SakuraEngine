@@ -4,8 +4,8 @@
 
 using namespace skr::shader;
 
-extern RWBuffer<float4>& buf;
-extern Accel& AS;
+RWBuffer<float4> buf;
+Accel AS;
 
 // 常量定义
 trait RayTracingConstants {
@@ -53,5 +53,5 @@ void compute_main([[builtin("ThreadID")]] uint3 tid)
     
     // 计算线性索引并写入结果
     uint32 index = tid.x + (tid.y * row_pitch);
-    buf.store(index, trace(tid.xy, tsize));
+    buf.Store(index, trace(tid.xy, tsize));
 }

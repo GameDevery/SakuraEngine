@@ -1,6 +1,7 @@
 #pragma once
 #include "./../resources/buffer.hpp"
 #include "./../intrinsics/math.hpp"
+#include "./dispatch.hpp"
 
 namespace skr::shader {
 template<typename T>
@@ -20,22 +21,27 @@ static typename copy_dim<float, T>::type uint_unpack_to_float(T val) {
 }
 
 static float float_atomic_min(RWBuffer<uint>& buffer, uint index, float value) {
-	return uint_unpack_to_float(buffer.atomic_fetch_min(index, float_pack_to_uint(value)));
+	uint prev;
+	InterlockedMin(buffer[index], float_pack_to_uint(value), prev);
+	return uint_unpack_to_float(prev);
 }
 static float float_atomic_max(RWBuffer<uint>& buffer, uint index, float value) {
-	return uint_unpack_to_float(buffer.atomic_fetch_max(index, float_pack_to_uint(value)));
+	uint prev;
+	InterlockedMax(buffer[index], float_pack_to_uint(value), prev);
+	return uint_unpack_to_float(prev);
 }
 static float float_atomic_add(
 	RWBuffer<uint>& buffer,
 	uint index,
 	float value) {
-	uint old = buffer.load(index);
+	uint old = buffer.Load(index);
 	while (true) {
-		uint r = buffer.atomic_compare_exchange(index, old, bit_cast<uint>(bit_cast<float>(old) + value));
-		if (r == old) {
+		uint prev;
+		InterlockedCompareExchange(buffer[index], old, bit_cast<uint>(bit_cast<float>(old) + value), prev);
+		if (prev == old) {
 			break;
 		}
-		old = r;
+		old = prev;
 	}
 	return bit_cast<float>(old);
 }

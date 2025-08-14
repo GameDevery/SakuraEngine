@@ -633,12 +633,11 @@ CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recor
             const auto& Arguments = TSD->getTemplateArgs();
             const auto ET = Arguments.get(0).getAsType();
             const auto N = Arguments.get(1).getAsIntegral().getLimitedValue();
-            const auto ArrayFlags = Arguments.get(2).getAsIntegral().getLimitedValue();
 
             if (getType(ET) == nullptr)
                 TranslateType(ET->getCanonicalTypeInternal());
 
-            auto ArrayType = AST.ArrayType(getType(ET), uint32_t(N), (CppSL::ArrayFlags)ArrayFlags);
+            auto ArrayType = AST.ArrayType(getType(ET), uint32_t(N), CppSL::ArrayFlags::None);
             addType(ThisQualType, ArrayType);
         }
         else if (TSD && What == "matrix")
@@ -914,13 +913,28 @@ CppSL::GlobalVarDecl* ASTConsumer::TranslateGlobalVariable(const clang::VarDecl*
         auto _init = TranslateStmt<CppSL::Expr>(Var->getInit());
         if (!getType(Var->getType()))
             TranslateType(Var->getType());
-        auto _const = AST.DeclareGlobalConstant(
-            getType(Var->getType()),
-            ToText(GetVarName(Var)),
-            _init
-        );
-        addVar(Var, _const);
-        return _const;
+        
+        // groupshared!
+        if (Var->getType().getAddressSpace() == clang::LangAS::opencl_local)
+        {
+            auto _groupshared = AST.DeclareGroupShared(
+                getType(Var->getType()),
+                ToText(GetVarName(Var)),
+                _init
+            );
+            addVar(Var, _groupshared);
+            return _groupshared;
+        }
+        else
+        {
+            auto _const = AST.DeclareGlobalConstant(
+                getType(Var->getType()),
+                ToText(GetVarName(Var)),
+                _init
+            );
+            addVar(Var, _const);
+            return _const;
+        }
     }
     return nullptr;
 }
