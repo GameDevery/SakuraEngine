@@ -284,7 +284,7 @@ V8BPObject* V8BTObject::_get_or_make_proxy(void* address) const
     using namespace ::v8;
 
     // find exist bind proxy
-    if (auto found = isolate()->find_bind_proxy(address))
+    if (auto found = isolate()->map_bind_proxy(address))
     {
         return static_cast<V8BPObject*>(found);
     }
@@ -317,7 +317,7 @@ V8BPObject* V8BTObject::_new_bind_proxy(void* address, v8::Local<v8::Object> sel
                     self;
 
     // make bind proxy
-    V8BPObject* bind_proxy = SkrNew<V8BPObject>();
+    V8BPObject* bind_proxy = this->isolate()->create_bind_proxy<V8BPObject>();
     bind_proxy->rttr_type  = _rttr_type;
     bind_proxy->isolate    = this->isolate();
     bind_proxy->bind_tp    = this;
@@ -336,7 +336,7 @@ V8BPObject* V8BTObject::_new_bind_proxy(void* address, v8::Local<v8::Object> sel
     object->SetInternalField(0, ::v8::External::New(isolate, bind_proxy));
 
     // register bind proxy
-    this->isolate()->add_bind_proxy(address, bind_proxy);
+    this->isolate()->register_bind_proxy(address, bind_proxy);
 
     // bind mixin core
     scriptble_object->set_mixin_core(this->isolate()->get_mixin_core());
@@ -374,30 +374,9 @@ void V8BTObject::_make_template()
 // v8 callback
 void V8BTObject::_gc_callback(const ::v8::WeakCallbackInfo<V8BPObject>& data)
 {
-    using namespace ::v8;
-
     auto* bind_proxy = data.GetParameter();
-
-    // do release
-    if (bind_proxy->is_valid())
-    {
-        // remove mixin first, for prevent delete callback
-        bind_proxy->object->set_mixin_core(nullptr);
-
-        // release object
-        if (bind_proxy->object->ownership() == EScriptbleObjectOwnership::Script)
-        {
-            SkrDelete(bind_proxy->object);
-        }
-    }
-
-    // unregister bind proxy
-    bind_proxy->isolate->remove_bind_proxy(bind_proxy->address, bind_proxy);
-
-    // delete bind proxy
-    bind_proxy->v8_object.Reset();
     bind_proxy->invalidate();
-    SkrDelete(bind_proxy);
+    bind_proxy->isolate->destroy_bind_proxy(bind_proxy);
 }
 void V8BTObject::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {

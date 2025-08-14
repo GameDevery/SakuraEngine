@@ -1,5 +1,4 @@
 #include "SkrTestFramework/framework.hpp"
-#include "SkrRTTR/rttr_traits.hpp"
 #include "SkrCore/log.hpp"
 #include "test_v8_types_new.hpp"
 #include "SkrV8/v8_isolate.hpp"

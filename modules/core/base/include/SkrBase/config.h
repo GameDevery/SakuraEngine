@@ -26,3 +26,6 @@
 
 // character
 #include "SkrBase/config/character.h" // IWYU pragma: export
+
+// misc
+#include "SkrBase/misc.h"

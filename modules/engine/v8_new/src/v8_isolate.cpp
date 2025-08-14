@@ -140,12 +140,11 @@ void V8Isolate::shutdown()
     }
     _bind_tp_map_generic.clear();
 
+    // clean up bind proxy cache
+    _bind_proxy_map.clear();
+
     // clean up bind proxies
-    for (const auto& [native_ptr, bind_proxy] : _bind_proxy_map)
-    {
-        bind_proxy->invalidate();
-        SkrDelete(bind_proxy);
-    }
+    _bind_proxy_pools.clear();
 
     // dispose isolate
     _isolate->Dispose();
@@ -255,8 +254,6 @@ void V8Isolate::on_object_destroyed(
     auto found = _bind_proxy_map.find(obj->iobject_get_head_ptr());
     SKR_ASSERT(found);
     found.value()->invalidate();
-    _deleted_bind_proxy.add(found.value());
-    _bind_proxy_map.remove_at(found.index());
 }
 bool V8Isolate::try_invoke_mixin(
     ScriptbleObject*             obj,
@@ -352,32 +349,29 @@ V8BindTemplate* V8Isolate::solve_bind_tp(
     return nullptr;
 }
 
+// bind proxy pool
+void V8Isolate::destroy_bind_proxy(V8BindProxy* bind_proxy)
+{
+    auto& pool = _bind_proxy_pools.find(bind_proxy->iobject_get_typeid()).value();
+    pool.take_back(bind_proxy);
+}
+
 // bind proxy management
-void V8Isolate::add_bind_proxy(
+void V8Isolate::register_bind_proxy(
     void*        native_ptr,
     V8BindProxy* bind_proxy
 )
 {
     _bind_proxy_map.add(native_ptr, bind_proxy);
 }
-void V8Isolate::remove_bind_proxy(
+void V8Isolate::unregister_bind_proxy(
     void*        native_ptr,
     V8BindProxy* bind_proxy
 )
 {
-    // remove in proxy map case
-    if (auto found = _bind_proxy_map.find(native_ptr))
-    {
-        if (found.value() == bind_proxy)
-        {
-            _bind_proxy_map.remove_at(found.index());
-        }
-    }
-
-    // remove in deleted map case
-    SKR_ASSERT(_deleted_bind_proxy.remove(bind_proxy));
+    _bind_proxy_map.remove(native_ptr);
 }
-V8BindProxy* V8Isolate::find_bind_proxy(
+V8BindProxy* V8Isolate::map_bind_proxy(
     void* native_ptr
 ) const
 {

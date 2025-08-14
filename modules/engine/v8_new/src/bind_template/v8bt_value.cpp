@@ -201,7 +201,7 @@ v8::Local<v8::Value> V8BTValue::read_return_from_out_param(
 
     // get created value proxy
     native_data            = *reinterpret_cast<void**>(native_data);
-    auto  bind_proxy       = isolate()->find_bind_proxy(native_data);
+    auto  bind_proxy       = isolate()->map_bind_proxy(native_data);
     auto* bind_proxy_value = static_cast<V8BPValue*>(bind_proxy);
     return bind_proxy_value->v8_object.Get(v8::Isolate::GetCurrent());
 }
@@ -232,7 +232,7 @@ v8::Local<v8::Value> V8BTValue::get_field(
 {
     // find cache
     void* field_address = field_bind_tp.solve_address(obj, obj_type);
-    if (auto found = isolate()->find_bind_proxy(field_address))
+    if (auto found = isolate()->map_bind_proxy(field_address))
     {
         auto* bind_proxy = static_cast<V8BPValue*>(found);
         return bind_proxy->v8_object.Get(v8::Isolate::GetCurrent());
@@ -243,7 +243,7 @@ v8::Local<v8::Value> V8BTValue::get_field(
     bind_proxy->need_delete = false;
 
     // setup owner ship
-    auto* parent_bind_proxy = isolate()->find_bind_proxy(obj);
+    auto* parent_bind_proxy = isolate()->map_bind_proxy(obj);
     bind_proxy->set_parent(parent_bind_proxy);
 
     return bind_proxy->v8_object.Get(v8::Isolate::GetCurrent());
@@ -267,7 +267,7 @@ v8::Local<v8::Value> V8BTValue::get_static_field(
 {
     // find cache
     void* field_address = field_bind_tp.solve_address();
-    if (auto found = isolate()->find_bind_proxy(field_address))
+    if (auto found = isolate()->map_bind_proxy(field_address))
     {
         auto* bind_proxy = static_cast<V8BPValue*>(found);
         return bind_proxy->v8_object.Get(v8::Isolate::GetCurrent());
@@ -416,7 +416,7 @@ V8BPValue* V8BTValue::_new_bind_proxy(void* address, v8::Local<v8::Object> self)
                     self;
 
     // make bind core
-    V8BPValue* bind_proxy = SkrNew<V8BPValue>();
+    V8BPValue* bind_proxy = this->isolate()->create_bind_proxy<V8BPValue>();
     bind_proxy->rttr_type = _rttr_type;
     bind_proxy->isolate   = this->isolate();
     bind_proxy->bind_tp   = this;
@@ -433,7 +433,7 @@ V8BPValue* V8BTValue::_new_bind_proxy(void* address, v8::Local<v8::Object> self)
     object->SetInternalField(0, External::New(isolate, bind_proxy));
 
     // register bind proxy
-    this->isolate()->add_bind_proxy(address, bind_proxy);
+    this->isolate()->register_bind_proxy(address, bind_proxy);
 
     return bind_proxy;
 }
@@ -468,30 +468,9 @@ void V8BTValue::_make_template()
 // v8 callback
 void V8BTValue::_gc_callback(const ::v8::WeakCallbackInfo<V8BPValue>& data)
 {
-    using namespace ::v8;
-
     auto* bind_proxy = data.GetParameter();
-
-    // do release
-    if (bind_proxy->need_delete)
-    {
-        // call dtor
-        if (bind_proxy->bind_tp->_dtor)
-        {
-            bind_proxy->bind_tp->_dtor(bind_proxy->address);
-        }
-
-        // free memory
-        bind_proxy->rttr_type->free(bind_proxy->address);
-    }
-
-    // unregister bind proxy
-    bind_proxy->isolate->remove_bind_proxy(bind_proxy->address, bind_proxy);
-
-    // delete bind proxy
-    bind_proxy->v8_object.Reset();
     bind_proxy->invalidate();
-    SkrDelete(bind_proxy);
+    bind_proxy->isolate->destroy_bind_proxy(bind_proxy);
 }
 void V8BTValue::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {

@@ -4,6 +4,13 @@
 namespace skr
 {
 struct V8BTRecordBase : V8BindTemplate {
+    inline void call_dtor(void* address) const
+    {
+        if (_dtor)
+        {
+            _dtor(address);
+        }
+    }
 
 protected:
     void _setup(V8Isolate* isolate, const RTTRType* type);

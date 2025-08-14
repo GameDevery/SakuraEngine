@@ -15,8 +15,8 @@ EScriptbleObjectOwnership
 // clang-format on
 {
     None   = 0,
-    Native = 1 >> 0,
-    Script = 1 >> 1,
+    Native = 1 << 0,
+    Script = 1 << 1,
 };
 
 // clang-format off
