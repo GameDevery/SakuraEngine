@@ -5,6 +5,7 @@
 #include <SkrCore/error_collector.hpp>
 #include <SkrV8/v8_fwd.hpp>
 #include <SkrV8/bind_template/v8_bind_template.hpp>
+#include <SkrContainers/set.hpp>
 
 // v8 includes
 #include <v8-isolate.h>
@@ -126,7 +127,8 @@ private:
     Map<TypeSignature, V8BindTemplate*> _bind_tp_map_generic = {};
 
     // bind proxy cache
-    Map<void*, V8BindProxy*> _bind_proxy_map = {};
+    Map<void*, V8BindProxy*> _bind_proxy_map     = {};
+    Set<V8BindProxy*>        _deleted_bind_proxy = {};
 
     // context manage
     V8Context*              _main_context = nullptr;

@@ -323,6 +323,7 @@ V8BPObject* V8BTObject::_new_bind_proxy(void* address, v8::Local<v8::Object> sel
     bind_proxy->bind_tp    = this;
     bind_proxy->address    = address;
     bind_proxy->object     = scriptble_object;
+    bind_proxy->v8_object.Reset(isolate, object);
 
     // setup gc callback
     bind_proxy->v8_object.SetWeak(
@@ -390,6 +391,9 @@ void V8BTObject::_gc_callback(const ::v8::WeakCallbackInfo<V8BPObject>& data)
         }
     }
 
+    // unregister bind proxy
+    bind_proxy->isolate->remove_bind_proxy(bind_proxy->address, bind_proxy);
+
     // delete bind proxy
     bind_proxy->v8_object.Reset();
     bind_proxy->invalidate();
@@ -416,6 +420,13 @@ void V8BTObject::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     if (!bind_tp->_is_script_newable)
     {
         Isolate->ThrowError("object is not constructable");
+        return;
+    }
+
+    // check ctor
+    if (!bind_tp->_ctor.is_valid())
+    {
+        Isolate->ThrowError("object has no exported ctor");
         return;
     }
 

@@ -94,6 +94,24 @@ V8Value V8Context::get_global(StringView name)
         };
     }
 }
+bool V8Context::set_global_value(StringView name, const V8Value& value)
+{
+    using namespace ::v8;
+
+    // scopes
+    auto           isolate = _isolate->v8_isolate();
+    Isolate::Scope isolate_scope(isolate);
+    HandleScope    handle_scope(isolate);
+    Local<Context> context = _context.Get(isolate);
+    Context::Scope context_scope(context);
+
+    auto result = context->Global()->Set(
+        context,
+        V8Bind::to_v8(name, true),
+        value.v8_value().Get(isolate)
+    );
+    return result.IsJust();
+}
 
 // exec
 V8Value V8Context::exec(StringView script, bool as_module)

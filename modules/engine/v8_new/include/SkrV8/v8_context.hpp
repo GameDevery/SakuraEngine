@@ -41,6 +41,14 @@ struct SKR_V8_NEW_API V8Context {
 
     // set & get global value
     V8Value get_global(StringView name);
+    bool    set_global_value(StringView name, const V8Value& value);
+    template <typename T>
+    inline bool set_global(StringView name, T& value)
+    {
+        V8Value v(this);
+        if (!v.set<T>(value)) { return false; }
+        return set_global_value(name, v);
+    }
 
     // exec
     V8Value exec(StringView script, bool as_module = false);

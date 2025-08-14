@@ -13,6 +13,7 @@ namespace skr
 struct SKR_V8_NEW_API V8Value {
     // ctor & dtor
     V8Value();
+    V8Value(V8Context* context);
     V8Value(v8::Global<v8::Value> v8_value, V8Context* context);
     ~V8Value();
 
@@ -56,7 +57,7 @@ struct SKR_V8_NEW_API V8Value {
         }
     }
     template <typename T>
-    inline Optional<T> as() const
+    inline Optional<T> get() const
     {
         if (is<T>())
         {
@@ -68,7 +69,7 @@ struct SKR_V8_NEW_API V8Value {
                 if constexpr (std::derived_from<RawType, ScriptbleObject>)
                 { // object case
                     TypeSignatureTyped<RawType> sig;
-                    return _as(sig, result_holder.data());
+                    _get(sig, result_holder.data());
                 }
                 else
                 {
@@ -78,7 +79,7 @@ struct SKR_V8_NEW_API V8Value {
             else
             {
                 TypeSignatureTyped<T> sig;
-                return _as(sig.view(), result_holder.data());
+                _get(sig.view(), result_holder.data());
             }
             return { std::move(*result_holder.data_typed()) };
         }
@@ -87,6 +88,32 @@ struct SKR_V8_NEW_API V8Value {
             return {};
         }
     }
+
+    // set
+    template <typename T>
+    inline bool set(T& value)
+    {
+        if constexpr (std::is_pointer_v<T>)
+        {
+            using RawType = std::remove_pointer_t<T>;
+
+            if constexpr (std::derived_from<RawType, ScriptbleObject>)
+            { // object case
+                TypeSignatureTyped<RawType> sig;
+                return _set(sig, &value);
+            }
+            else
+            {
+                SKR_UNREACHABLE_CODE();
+                return false;
+            }
+        }
+        else
+        {
+            TypeSignatureTyped<T> sig;
+            return _set(sig.view(), &value);
+        }
+    };
 
     // get field
     V8Value get(StringView name) const;
@@ -135,9 +162,14 @@ struct SKR_V8_NEW_API V8Value {
         }
     }
 
+    // getter
+    inline const v8::Global<v8::Value>& v8_value() const { return _v8_value; }
+    inline V8Context*                   context() const { return _context; }
+
 private:
-    void _as(TypeSignatureView sig, void* ptr) const;
+    void _get(TypeSignatureView sig, void* ptr) const;
     bool _is(TypeSignatureView sig) const;
+    bool _set(TypeSignatureView sig, void* ptr);
     bool _call(
         const span<const StackProxy> params,
         StackProxy                   return_value

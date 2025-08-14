@@ -28,14 +28,13 @@ void V8BTRecordBase::_setup(V8Isolate* isolate, const RTTRType* type)
     // export ctor
     _is_script_newable = flag_all(type->record_flag(), ERTTRRecordFlag::ScriptNewable);
     type->each_ctor([&](const RTTRCtorData* ctor) {
-        type->each_ctor([&](const RTTRCtorData* ctor) {
-            if (!flag_all(ctor->flag, ERTTRCtorFlag::ScriptVisible)) { return; }
-            if (_ctor.is_valid())
-            {
-                _errors.error(u8"overload is not supported yet for ctor '{}'", type->name());
-                return;
-            }
-        });
+        if (!flag_all(ctor->flag, ERTTRCtorFlag::ScriptVisible)) { return; }
+        if (_ctor.is_valid())
+        {
+            _errors.error(u8"overload is not supported yet for ctor '{}'", type->name());
+            return;
+        }
+        _ctor.setup(isolate, ctor);
     });
 
     // export mixin
