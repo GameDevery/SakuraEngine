@@ -278,4 +278,12 @@ inline float beta(float m, float n) {
 	return (gamma(m) * gamma(n) / gamma(m + n));
 }
 
+template<typename T>
+auto sum(T v) { return v; }
+
+template<typename T, typename... Args>
+auto sum(T v, Args... args) {
+    return v + sum(args...);
+}
+
 }// namespace skr::shader

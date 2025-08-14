@@ -8,8 +8,8 @@ using namespace skr::shader;
 using namespace skr::renderer;
 
 // External resource bindings
-extern Image<float>& output_texture;
-extern ByteBuffer<CacheFlags::ReadOnly>& gpu_scene_buffer; // Core data buffer from GPUScene
+RWTexture2D<float> output_texture;
+ByteAddressBuffer gpu_scene_buffer; // Core data buffer from GPUScene
 
 // Push constants for debug parameters
 struct SceneDebugConstants 

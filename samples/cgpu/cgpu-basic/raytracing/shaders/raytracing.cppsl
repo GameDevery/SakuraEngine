@@ -4,7 +4,7 @@
 
 using namespace skr::shader;
 
-extern Buffer<float4>& buf;
+extern RWBuffer<float4>& buf;
 extern Accel& AS;
 
 // 常量定义

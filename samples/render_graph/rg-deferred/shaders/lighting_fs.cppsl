@@ -16,16 +16,16 @@ struct RootConstants
 };
 
 [[push_constant]]
-extern ConstantBuffer<RootConstants>& push_constants;
+ConstantBuffer<RootConstants> push_constants;
 
 [[binding(0, 0)]]
-extern SampleImage& gbuffer_color;
+Texture2D<float> gbuffer_color;
 
 [[binding(1, 0)]]
-extern SampleImage& gbuffer_normal;
+Texture2D<float> gbuffer_normal;
 
 [[binding(2, 0)]]
-extern SampleImage& gbuffer_depth;
+Texture2D<float> gbuffer_depth;
 
 [[binding(0, 1)]]
 extern Sampler& texture_sampler;

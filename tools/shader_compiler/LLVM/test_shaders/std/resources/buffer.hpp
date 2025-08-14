@@ -4,19 +4,22 @@
 #include "./../types/vec.hpp"
 
 namespace skr::shader {
-template<typename Type, uint32 cache_flags = CacheFlags::None>
+
+template<typename Type, uint32 cache_flags = BufferFlags::ReadOnly>
 struct [[builtin("buffer")]] Buffer {
 	using ElementType = Type;
+	inline static constexpr auto flags = cache_flags;
 
 	[[callop("BUFFER_READ")]] const Type& load(uint32 loc);
-	[[callop("BUFFER_WRITE")]] void store(uint32 loc, const Type& value);
+	[[callop("BUFFER_WRITE")]] void store(uint32 loc, const Type& value) requires((cache_flags & BufferFlags::ReadWrite) != 0);
 };
-template<uint32 cache_flags>
-struct [[builtin("buffer")]] Buffer<int32, cache_flags> {
+template<>
+struct [[builtin("buffer")]] Buffer<int32, BufferFlags::ReadWrite> {
 	using ElementType = int32;
 
 	[[callop("BUFFER_READ")]] int32 load(uint32 loc);
 	[[callop("BUFFER_WRITE")]] void store(uint32 loc, int32 value);
+
 	[[callop("ATOMIC_EXCHANGE")]] int32 atomic_exchange(uint32 loc, int32 desired);
 	[[callop("ATOMIC_COMPARE_EXCHANGE")]] int32 atomic_compare_exchange(uint32 loc, int32 expected, int32 desired);
 	[[callop("ATOMIC_FETCH_ADD")]] int32 atomic_fetch_add(uint32 loc, int32 val);
@@ -27,8 +30,8 @@ struct [[builtin("buffer")]] Buffer<int32, cache_flags> {
 	[[callop("ATOMIC_FETCH_MIN")]] int32 atomic_fetch_min(uint32 loc, int32 val);
 	[[callop("ATOMIC_FETCH_MAX")]] int32 atomic_fetch_max(uint32 loc, int32 val);
 };
-template<uint32 cache_flags>
-struct [[builtin("buffer")]] Buffer<uint32, cache_flags> {
+template<>
+struct [[builtin("buffer")]] Buffer<uint32, BufferFlags::ReadWrite> {
 	using ElementType = uint32;
 
 	[[callop("BUFFER_READ")]] uint32 load(uint32 loc);
@@ -43,8 +46,8 @@ struct [[builtin("buffer")]] Buffer<uint32, cache_flags> {
 	[[callop("ATOMIC_FETCH_MIN")]] uint32 atomic_fetch_min(uint32 loc, uint32 val);
 	[[callop("ATOMIC_FETCH_MAX")]] uint32 atomic_fetch_max(uint32 loc, uint32 val);
 };
-template<uint32 cache_flags>
-struct [[builtin("buffer")]] Buffer<float, cache_flags> {
+template<>
+struct [[builtin("buffer")]] Buffer<float, BufferFlags::ReadWrite> {
 	using ElementType = float;
 
 	[[callop("BUFFER_READ")]] float load(uint32 loc);
@@ -64,18 +67,23 @@ struct [[builtin("buffer")]] Buffer<void, cache_flags> {
 	[[callop("BYTE_BUFFER_READ")]] T Load(uint32 byte_index);
 	
 	template<typename T = uint>
-	[[callop("BYTE_BUFFER_WRITE")]] void Store(uint32 byte_index, const T& val);
+	[[callop("BYTE_BUFFER_WRITE")]] void Store(uint32 byte_index, const T& val) requires((cache_flags & BufferFlags::ReadWrite) != 0);
 
 	[[callop("BYTE_BUFFER_LOAD")]] uint Load(uint byte_index);
 	[[callop("BYTE_BUFFER_LOAD2")]] uint2 Load2(uint byte_index);
 	[[callop("BYTE_BUFFER_LOAD3")]] uint3 Load3(uint byte_index);
 	[[callop("BYTE_BUFFER_LOAD4")]] uint4 Load4(uint byte_index);
 
-	[[callop("BYTE_BUFFER_STORE")]] void Store(uint byte_index, uint value);
-	[[callop("BYTE_BUFFER_STORE2")]] void Store2(uint byte_index, uint2 value);
-	[[callop("BYTE_BUFFER_STORE3")]] void Store3(uint byte_index, uint3 value);
-	[[callop("BYTE_BUFFER_STORE4")]] void Store4(uint byte_index, uint4 value);
+	[[callop("BYTE_BUFFER_STORE")]] void Store(uint byte_index, uint value) requires((cache_flags & BufferFlags::ReadWrite) != 0);
+	[[callop("BYTE_BUFFER_STORE2")]] void Store2(uint byte_index, uint2 value) requires((cache_flags & BufferFlags::ReadWrite) != 0);
+	[[callop("BYTE_BUFFER_STORE3")]] void Store3(uint byte_index, uint3 value) requires((cache_flags & BufferFlags::ReadWrite) != 0);
+	[[callop("BYTE_BUFFER_STORE4")]] void Store4(uint byte_index, uint4 value) requires((cache_flags & BufferFlags::ReadWrite) != 0);
 };
-template<uint32 cache_flags = CacheFlags::None>
-using ByteBuffer = Buffer<void, cache_flags>;
+
+template<typename Type>
+using RWBuffer = Buffer<Type, BufferFlags::ReadWrite>;
+
+using ByteAddressBuffer = Buffer<void, BufferFlags::ReadOnly>;
+using RWByteAddressBuffer = Buffer<void, BufferFlags::ReadWrite>;
+
 }// namespace skr::shader

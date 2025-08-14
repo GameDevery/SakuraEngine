@@ -5,7 +5,7 @@
 using namespace skr::shader;
 
 // External resource bindings
-extern Image<float>& output_texture;
+extern RWTexture2D<float>& output_texture;
 extern Accel& scene_tlas;
 
 // Push constants - camera parameters

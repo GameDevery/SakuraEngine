@@ -59,7 +59,7 @@ struct AST {
     
 private:
     // 内置函数注册表 - 在构造函数中填充
-    std::unordered_map<std::string, TemplateCallableDecl*> _intrinstics;
+    std::unordered_map<std::string, TemplateCallableDecl*> _intrinsics;
 };
 ```
 
@@ -113,35 +113,35 @@ struct ray_query {
 AST::AST() {
     // 数学函数
     std::array<VarConceptDecl*, 1> OneFloatFamily = { FloatFamily };
-    _intrinstics["SQRT"] = DeclareTemplateFunction(L"sqrt", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["SIN"] = DeclareTemplateFunction(L"sin", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["COS"] = DeclareTemplateFunction(L"cos", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["SQRT"] = DeclareTemplateFunction(L"sqrt", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["SIN"] = DeclareTemplateFunction(L"sin", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["COS"] = DeclareTemplateFunction(L"cos", ReturnFirstArgType, OneFloatFamily);
     
     // RayQuery 控制方法
-    _intrinstics["RAY_QUERY_PROCEED"] = DeclareTemplateMethod(nullptr, L"ray_query_proceed", BoolType, {});
-    _intrinstics["RAY_QUERY_TERMINATE"] = DeclareTemplateMethod(nullptr, L"ray_query_terminate", VoidType, {});
-    _intrinstics["RAY_QUERY_TRACE_RAY_INLINE"] = DeclareTemplateMethod(nullptr, L"ray_query_trace_ray_inline", VoidType, 
+    _intrinsics["RAY_QUERY_PROCEED"] = DeclareTemplateMethod(nullptr, L"ray_query_proceed", BoolType, {});
+    _intrinsics["RAY_QUERY_TERMINATE"] = DeclareTemplateMethod(nullptr, L"ray_query_terminate", VoidType, {});
+    _intrinsics["RAY_QUERY_TRACE_RAY_INLINE"] = DeclareTemplateMethod(nullptr, L"ray_query_trace_ray_inline", VoidType, 
         { ASType, UIntType, UIntType, RayDescType });
     
     // RayQuery 状态查询
-    _intrinstics["RAY_QUERY_COMMITTED_STATUS"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_status", UIntType, {});
-    _intrinstics["RAY_QUERY_COMMITTED_RAY_T"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_ray_t", FloatType, {});
-    _intrinstics["RAY_QUERY_WORLD_RAY_ORIGIN"] = DeclareTemplateMethod(nullptr, L"ray_query_world_ray_origin", Float3Type, {});
-    _intrinstics["RAY_QUERY_WORLD_RAY_DIRECTION"] = DeclareTemplateMethod(nullptr, L"ray_query_world_ray_direction", Float3Type, {});
+    _intrinsics["RAY_QUERY_COMMITTED_STATUS"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_status", UIntType, {});
+    _intrinsics["RAY_QUERY_COMMITTED_RAY_T"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_ray_t", FloatType, {});
+    _intrinsics["RAY_QUERY_WORLD_RAY_ORIGIN"] = DeclareTemplateMethod(nullptr, L"ray_query_world_ray_origin", Float3Type, {});
+    _intrinsics["RAY_QUERY_WORLD_RAY_DIRECTION"] = DeclareTemplateMethod(nullptr, L"ray_query_world_ray_direction", Float3Type, {});
     
     // RayQuery 几何信息
-    _intrinstics["RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_triangle_barycentrics", Float2Type, {});
-    _intrinstics["RAY_QUERY_COMMITTED_INSTANCE_INDEX"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_instance_index", UIntType, {});
-    _intrinstics["RAY_QUERY_COMMITTED_GEOMETRY_INDEX"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_geometry_index", UIntType, {});
-    _intrinstics["RAY_QUERY_COMMITTED_PRIMITIVE_INDEX"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_primitive_index", UIntType, {});
+    _intrinsics["RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_triangle_barycentrics", Float2Type, {});
+    _intrinsics["RAY_QUERY_COMMITTED_INSTANCE_INDEX"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_instance_index", UIntType, {});
+    _intrinsics["RAY_QUERY_COMMITTED_GEOMETRY_INDEX"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_geometry_index", UIntType, {});
+    _intrinsics["RAY_QUERY_COMMITTED_PRIMITIVE_INDEX"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_primitive_index", UIntType, {});
     
     // RayQuery 变换矩阵
-    _intrinstics["RAY_QUERY_COMMITTED_OBJECT_TO_WORLD_3X4"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_object_to_world_3x4", Float3x4Type, {});
-    _intrinstics["RAY_QUERY_COMMITTED_WORLD_TO_OBJECT_3X4"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_world_to_object_3x4", Float3x4Type, {});
+    _intrinsics["RAY_QUERY_COMMITTED_OBJECT_TO_WORLD_3X4"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_object_to_world_3x4", Float3x4Type, {});
+    _intrinsics["RAY_QUERY_COMMITTED_WORLD_TO_OBJECT_3X4"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_world_to_object_3x4", Float3x4Type, {});
     
     // RayQuery 特殊查询（布尔表达式）
-    _intrinstics["RAY_QUERY_IS_TRIANGLE_CANDIDATE"] = DeclareTemplateMethod(nullptr, L"ray_query_is_triangle_candidate", BoolType, {});
-    _intrinstics["RAY_QUERY_IS_PROCEDURAL_CANDIDATE"] = DeclareTemplateMethod(nullptr, L"ray_query_is_procedural_candidate", BoolType, {});
+    _intrinsics["RAY_QUERY_IS_TRIANGLE_CANDIDATE"] = DeclareTemplateMethod(nullptr, L"ray_query_is_triangle_candidate", BoolType, {});
+    _intrinsics["RAY_QUERY_IS_PROCEDURAL_CANDIDATE"] = DeclareTemplateMethod(nullptr, L"ray_query_is_procedural_candidate", BoolType, {});
 }
 ```
 

@@ -659,7 +659,7 @@ CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recor
             const auto& Arguments = TSD->getTemplateArgs();
             const auto ET = Arguments.get(0).getAsType();
             const auto CacheFlags = Arguments.get(1).getAsIntegral().getLimitedValue();
-            const auto BufferFlag = (CacheFlags == 2) ? CppSL::BufferFlags::Read : CppSL::BufferFlags::ReadWrite;
+            const auto BufferFlag = (CacheFlags == 1) ? CppSL::BufferFlags::Read : CppSL::BufferFlags::ReadWrite;
 
             if (getType(ET) == nullptr)
                 TranslateType(ET->getCanonicalTypeInternal());
@@ -687,7 +687,7 @@ CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recor
             const auto& Arguments = TSD->getTemplateArgs();
             const auto ET = Arguments.get(0).getAsType();
             const auto CacheFlags = Arguments.get(1).getAsIntegral().getLimitedValue();
-            const auto TextureFlag = (CacheFlags == 2) ? CppSL::TextureFlags::Read : CppSL::TextureFlags::ReadWrite;
+            const auto TextureFlag = (CacheFlags == 1) ? CppSL::TextureFlags::Read : CppSL::TextureFlags::ReadWrite;
             if (What == "image")
                 addType(ThisQualType, AST.Texture2D(getType(ET), (CppSL::TextureFlags)TextureFlag));
             else

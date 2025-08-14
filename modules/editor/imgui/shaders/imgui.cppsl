@@ -22,9 +22,9 @@ struct [[stage_inout]] VSOut
     float2 uv;
 };
 
-extern ConstantBuffer<Constants>& Constants;
-extern SampleImage& texture0;
-extern Sampler& sampler0;
+ConstantBuffer<Constants> Constants;
+Texture2D<float> texture0;
+Sampler sampler0;
 
 [[vertex_shader("vs")]]
 VSOut vs(VSIn input, [[sv_position]] float4& position)

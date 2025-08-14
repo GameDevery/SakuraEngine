@@ -3,10 +3,10 @@
 
 using namespace skr::shader;
 
-extern SampleImage& input_color;
+Texture2D<float> input_color;
 
 [[binding(0, 1)]]
-extern Sampler& texture_sampler;
+Sampler texture_sampler;
 
 struct [[stage_inout]] VSOut
 {

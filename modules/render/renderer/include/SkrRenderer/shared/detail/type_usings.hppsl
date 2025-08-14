@@ -19,7 +19,7 @@ public:
     uint32_t GetCapacity() const { return _capacity; }
     uint32_t GetSize() const { return _size; }
 
-    DataAccessor(ByteBuffer<CacheFlags::ReadOnly> b)
+    DataAccessor(ByteAddressBuffer b)
         : buffer(b)
     {
         _size = buffer.Load(0);
@@ -27,7 +27,7 @@ public:
     }
 
 protected:
-    ByteBuffer<CacheFlags::ReadOnly> buffer;
+    ByteAddressBuffer buffer;
     uint32_t _size = 0;
     uint32_t _capacity = 0;
 };

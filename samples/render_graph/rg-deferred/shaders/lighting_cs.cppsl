@@ -4,10 +4,10 @@
 
 using namespace skr::shader;
 
-extern SampleImage& gbuffer_color;
-extern SampleImage& gbuffer_normal;
-extern SampleImage& gbuffer_depth;
-extern Image<float>& lighting_output;
+Texture2D<float> gbuffer_color;
+Texture2D<float> gbuffer_normal;
+Texture2D<float> gbuffer_depth;
+RWTexture2D<float> lighting_output;
 
 struct RootConstants
 {

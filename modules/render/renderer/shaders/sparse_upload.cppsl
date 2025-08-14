@@ -12,9 +12,9 @@ struct Upload
 };
 
 // External resource bindings
-extern ByteBuffer<CacheFlags::ReadOnly>& upload_buffer;     // Source data buffer
-extern ByteBuffer<CacheFlags::ReadOnly>& upload_operations; // Copy operations list
-extern ByteBuffer<>& target_buffer;                         // Target buffer (Core Data)
+ByteAddressBuffer upload_buffer;     // Source data buffer
+ByteAddressBuffer upload_operations; // Copy operations list
+RWByteAddressBuffer target_buffer;                         // Target buffer (Core Data)
 
 // Push constants
 struct SparseUploadConstants

@@ -619,8 +619,8 @@ SpecializedFunctionDecl* AST::SpecializeTemplateFunction(const TemplateCallableD
 
 const TemplateCallableDecl* AST::FindIntrinsic(const char* name) const
 {
-    auto it = _intrinstics.find(name);
-    if (it != _intrinstics.end())
+    auto it = _intrinsics.find(name);
+    if (it != _intrinsics.end())
         return it->second;
     return nullptr;
 }
@@ -671,10 +671,10 @@ AST::AST(ASTDatabase& db) :
     INIT_BUILTIN_TYPE(U64, uint64_t, uint64)
 {
     DoubleType = FloatType; // Shaders normally does not support double, so we use FloatType for DoubleType
-    DeclareIntrinstics();
+    DeclareIntrinsics();
 }
 
-void AST::DeclareIntrinstics()
+void AST::DeclareIntrinsics()
 {
     auto Vector2D = DeclareVarConcept(L"Vector2D", 
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
@@ -818,122 +818,123 @@ void AST::DeclareIntrinstics()
         return BoolType; 
     };
 
+    std::array<VarConceptDecl*, 1> OneValue = { ValueFamily };
     std::array<VarConceptDecl*, 1> OneArithmetic = { ArthmeticFamily };
-    _intrinstics["ABS"] = DeclareTemplateFunction(L"abs", ReturnFirstArgType, OneArithmetic);
+    _intrinsics["ABS"] = DeclareTemplateFunction(L"abs", ReturnFirstArgType, OneArithmetic);
 
     std::array<VarConceptDecl*, 2> TwoArithmetic = { ArthmeticFamily, ArthmeticFamily };
-    _intrinstics["MIN"] = DeclareTemplateFunction(L"min", ReturnFirstArgType, TwoArithmetic);
-    _intrinstics["MAX"] = DeclareTemplateFunction(L"max", ReturnFirstArgType, TwoArithmetic);
+    _intrinsics["MIN"] = DeclareTemplateFunction(L"min", ReturnFirstArgType, TwoArithmetic);
+    _intrinsics["MAX"] = DeclareTemplateFunction(L"max", ReturnFirstArgType, TwoArithmetic);
     
     std::array<VarConceptDecl*, 3> ThreeArithmetic = { ArthmeticFamily, ArthmeticFamily, ArthmeticFamily };
-    _intrinstics["CLAMP"] = DeclareTemplateFunction(L"clamp", ReturnFirstArgType, ThreeArithmetic);
-    _intrinstics["LERP"] = DeclareTemplateFunction(L"lerp", ReturnFirstArgType, ThreeArithmetic);
+    _intrinsics["CLAMP"] = DeclareTemplateFunction(L"clamp", ReturnFirstArgType, ThreeArithmetic);
+    _intrinsics["LERP"] = DeclareTemplateFunction(L"lerp", ReturnFirstArgType, ThreeArithmetic);
 
     std::array<VarConceptDecl*, 1> OneArithmeticVec = { ArthmeticVectorFamily };
-    _intrinstics["REDUCE_SUM"] = DeclareTemplateFunction(L"reduce_sum", FloatType, OneArithmeticVec);
-    _intrinstics["REDUCE_PRODUCT"] = DeclareTemplateFunction(L"reduce_product", FloatType, OneArithmeticVec);
-    _intrinstics["REDUCE_MIN"] = DeclareTemplateFunction(L"reduce_min", FloatType, OneArithmeticVec);
-    _intrinstics["REDUCE_MAX"] = DeclareTemplateFunction(L"reduce_max", FloatType, OneArithmeticVec);
+    _intrinsics["REDUCE_SUM"] = DeclareTemplateFunction(L"reduce_sum", FloatType, OneArithmeticVec);
+    _intrinsics["REDUCE_PRODUCT"] = DeclareTemplateFunction(L"reduce_product", FloatType, OneArithmeticVec);
+    _intrinsics["REDUCE_MIN"] = DeclareTemplateFunction(L"reduce_min", FloatType, OneArithmeticVec);
+    _intrinsics["REDUCE_MAX"] = DeclareTemplateFunction(L"reduce_max", FloatType, OneArithmeticVec);
 
     std::array<VarConceptDecl*, 1> OneBoolFamily = { BoolFamily };
-    _intrinstics["ALL"] = DeclareTemplateFunction(L"all", BoolType, OneBoolFamily);
-    _intrinstics["ANY"] = DeclareTemplateFunction(L"any", BoolType, OneBoolFamily);
+    _intrinsics["ALL"] = DeclareTemplateFunction(L"all", BoolType, OneBoolFamily);
+    _intrinsics["ANY"] = DeclareTemplateFunction(L"any", BoolType, OneBoolFamily);
 
     std::array<VarConceptDecl*, 1> OneIntFamily = { IntFamily };
-    _intrinstics["CLZ"] = DeclareTemplateFunction(L"clz", ReturnFirstArgType, OneIntFamily);
-    _intrinstics["CTZ"] = DeclareTemplateFunction(L"ctz", ReturnFirstArgType, OneIntFamily);
-    _intrinstics["POPCOUNT"] = DeclareTemplateFunction(L"popcount", ReturnFirstArgType, OneIntFamily);
-    _intrinstics["REVERSE"] = DeclareTemplateFunction(L"reverse", ReturnFirstArgType, OneIntFamily);
+    _intrinsics["CLZ"] = DeclareTemplateFunction(L"clz", ReturnFirstArgType, OneIntFamily);
+    _intrinsics["CTZ"] = DeclareTemplateFunction(L"ctz", ReturnFirstArgType, OneIntFamily);
+    _intrinsics["POPCOUNT"] = DeclareTemplateFunction(L"popcount", ReturnFirstArgType, OneIntFamily);
+    _intrinsics["REVERSE"] = DeclareTemplateFunction(L"reverse", ReturnFirstArgType, OneIntFamily);
 
     std::array<VarConceptDecl*, 1> OneFloatFamily = { FloatFamily };
-    _intrinstics["SIN"] = DeclareTemplateFunction(L"sin", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["SINH"] = DeclareTemplateFunction(L"sinh", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["COS"] = DeclareTemplateFunction(L"cos", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["COSH"] = DeclareTemplateFunction(L"cosh", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["ATAN"] = DeclareTemplateFunction(L"atan", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["ATANH"] = DeclareTemplateFunction(L"atanh", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["TAN"] = DeclareTemplateFunction(L"tan", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["TANH"] = DeclareTemplateFunction(L"tanh", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["ACOS"] = DeclareTemplateFunction(L"acos", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["ACOSH"] = DeclareTemplateFunction(L"acosh", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["ASIN"] = DeclareTemplateFunction(L"asin", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["ASINH"] = DeclareTemplateFunction(L"asinh", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["EXP"] = DeclareTemplateFunction(L"exp", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["EXP2"] = DeclareTemplateFunction(L"exp2", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["LOG"] = DeclareTemplateFunction(L"log", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["LOG2"] = DeclareTemplateFunction(L"log2", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["LOG10"] = DeclareTemplateFunction(L"log10", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["EXP10"] = DeclareTemplateFunction(L"exp10", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["SQRT"] = DeclareTemplateFunction(L"sqrt", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["RSQRT"] = DeclareTemplateFunction(L"rsqrt", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["CEIL"] = DeclareTemplateFunction(L"ceil", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["FLOOR"] = DeclareTemplateFunction(L"floor", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["FRACT"] = DeclareTemplateFunction(L"fract", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["TRUNC"] = DeclareTemplateFunction(L"trunc", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["ROUND"] = DeclareTemplateFunction(L"round", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["LENGTH"] = DeclareTemplateFunction(L"length", FloatType, OneFloatFamily);
-    _intrinstics["SATURATE"] = DeclareTemplateFunction(L"saturate", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["DDX"] = DeclareTemplateFunction(L"ddx", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["DDY"] = DeclareTemplateFunction(L"ddy", ReturnFirstArgType, OneFloatFamily);
-    _intrinstics["ISINF"] = DeclareTemplateFunction(L"is_inf", ReturnBoolVecWithSameDim, OneFloatFamily);
-    _intrinstics["ISNAN"] = DeclareTemplateFunction(L"is_nan", ReturnBoolVecWithSameDim, OneFloatFamily);
+    _intrinsics["SIN"] = DeclareTemplateFunction(L"sin", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["SINH"] = DeclareTemplateFunction(L"sinh", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["COS"] = DeclareTemplateFunction(L"cos", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["COSH"] = DeclareTemplateFunction(L"cosh", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["ATAN"] = DeclareTemplateFunction(L"atan", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["ATANH"] = DeclareTemplateFunction(L"atanh", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["TAN"] = DeclareTemplateFunction(L"tan", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["TANH"] = DeclareTemplateFunction(L"tanh", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["ACOS"] = DeclareTemplateFunction(L"acos", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["ACOSH"] = DeclareTemplateFunction(L"acosh", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["ASIN"] = DeclareTemplateFunction(L"asin", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["ASINH"] = DeclareTemplateFunction(L"asinh", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["EXP"] = DeclareTemplateFunction(L"exp", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["EXP2"] = DeclareTemplateFunction(L"exp2", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["LOG"] = DeclareTemplateFunction(L"log", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["LOG2"] = DeclareTemplateFunction(L"log2", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["LOG10"] = DeclareTemplateFunction(L"log10", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["EXP10"] = DeclareTemplateFunction(L"exp10", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["SQRT"] = DeclareTemplateFunction(L"sqrt", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["RSQRT"] = DeclareTemplateFunction(L"rsqrt", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["CEIL"] = DeclareTemplateFunction(L"ceil", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["FLOOR"] = DeclareTemplateFunction(L"floor", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["FRACT"] = DeclareTemplateFunction(L"fract", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["TRUNC"] = DeclareTemplateFunction(L"trunc", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["ROUND"] = DeclareTemplateFunction(L"round", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["LENGTH"] = DeclareTemplateFunction(L"length", FloatType, OneFloatFamily);
+    _intrinsics["SATURATE"] = DeclareTemplateFunction(L"saturate", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["DDX"] = DeclareTemplateFunction(L"ddx", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["DDY"] = DeclareTemplateFunction(L"ddy", ReturnFirstArgType, OneFloatFamily);
+    _intrinsics["ISINF"] = DeclareTemplateFunction(L"is_inf", ReturnBoolVecWithSameDim, OneFloatFamily);
+    _intrinsics["ISNAN"] = DeclareTemplateFunction(L"is_nan", ReturnBoolVecWithSameDim, OneFloatFamily);
 
     std::array<VarConceptDecl*, 2> TwoFloatFamily = { FloatFamily, FloatFamily };
-    _intrinstics["POW"] = DeclareTemplateFunction(L"pow", ReturnFirstArgType, TwoFloatFamily);
-    _intrinstics["COPYSIGN"] = DeclareTemplateFunction(L"copysign", ReturnFirstArgType, TwoFloatFamily);
-    _intrinstics["ATAN2"] = DeclareTemplateFunction(L"atan2", ReturnFirstArgType, TwoFloatFamily);
-    _intrinstics["STEP"] = DeclareTemplateFunction(L"step", ReturnFirstArgType, TwoFloatFamily);
+    _intrinsics["POW"] = DeclareTemplateFunction(L"pow", ReturnFirstArgType, TwoFloatFamily);
+    _intrinsics["COPYSIGN"] = DeclareTemplateFunction(L"copysign", ReturnFirstArgType, TwoFloatFamily);
+    _intrinsics["ATAN2"] = DeclareTemplateFunction(L"atan2", ReturnFirstArgType, TwoFloatFamily);
+    _intrinsics["STEP"] = DeclareTemplateFunction(L"step", ReturnFirstArgType, TwoFloatFamily);
 
     std::array<VarConceptDecl*, 3> ThreeFloatFamily = { FloatFamily, FloatFamily, FloatFamily };
-    _intrinstics["FMA"] = DeclareTemplateFunction(L"fma", ReturnFirstArgType, ThreeFloatFamily);
-    _intrinstics["SMOOTHSTEP"] = DeclareTemplateFunction(L"smoothstep", ReturnFirstArgType, ThreeFloatFamily);
+    _intrinsics["FMA"] = DeclareTemplateFunction(L"fma", ReturnFirstArgType, ThreeFloatFamily);
+    _intrinsics["SMOOTHSTEP"] = DeclareTemplateFunction(L"smoothstep", ReturnFirstArgType, ThreeFloatFamily);
 
     std::array<VarConceptDecl*, 1> OneFloatVector = { FloatVector };
-    _intrinstics["NORMALIZE"] = DeclareTemplateFunction(L"normalize", ReturnFirstArgType, OneFloatVector);
-    _intrinstics["LENGTH_SQUARED"] = DeclareTemplateFunction(L"length_squared", FloatType, OneFloatVector);
+    _intrinsics["NORMALIZE"] = DeclareTemplateFunction(L"normalize", ReturnFirstArgType, OneFloatVector);
+    _intrinsics["LENGTH_SQUARED"] = DeclareTemplateFunction(L"length_squared", FloatType, OneFloatVector);
 
     std::array<VarConceptDecl*, 2> TwoFloatVec = { FloatVector, FloatVector };
-    _intrinstics["DOT"] = DeclareTemplateFunction(L"dot", FloatType, TwoFloatVec);
-    _intrinstics["CROSS"] = DeclareTemplateFunction(L"cross", ReturnFirstArgType, TwoFloatVec);
+    _intrinsics["DOT"] = DeclareTemplateFunction(L"dot", FloatType, TwoFloatVec);
+    _intrinsics["CROSS"] = DeclareTemplateFunction(L"cross", ReturnFirstArgType, TwoFloatVec);
 
     std::array<VarConceptDecl*, 3> ThreeFloat3 = { FloatVector3D, FloatVector3D, FloatVector3D };
-    _intrinstics["FACEFORWARD"] = DeclareTemplateFunction(L"faceforward", Float3Type, ThreeFloat3);
+    _intrinsics["FACEFORWARD"] = DeclareTemplateFunction(L"faceforward", Float3Type, ThreeFloat3);
     std::array<VarConceptDecl*, 2> TwoFloat3 = { FloatVector3D, FloatVector3D };
-    _intrinstics["REFLECT"] = DeclareTemplateFunction(L"reflect", Float3Type, TwoFloat3);
+    _intrinsics["REFLECT"] = DeclareTemplateFunction(L"reflect", Float3Type, TwoFloat3);
 
     std::array<VarConceptDecl*, 1> OneMatrix = { MatrixFamily };
-    _intrinstics["TRANSPOSE"] = DeclareTemplateFunction(L"transpose", ReturnFirstArgType, OneMatrix);
-    _intrinstics["DETERMINANT"] = DeclareTemplateFunction(L"determinant", ReturnFirstArgType, OneMatrix);
-    _intrinstics["INVERSE"] = DeclareTemplateFunction(L"inverse", ReturnFirstArgType, OneMatrix);
+    _intrinsics["TRANSPOSE"] = DeclareTemplateFunction(L"transpose", ReturnFirstArgType, OneMatrix);
+    _intrinsics["DETERMINANT"] = DeclareTemplateFunction(L"determinant", ReturnFirstArgType, OneMatrix);
+    _intrinsics["INVERSE"] = DeclareTemplateFunction(L"inverse", ReturnFirstArgType, OneMatrix);
 
     std::array<VarConceptDecl*, 3> SelectParams = { ValueFamily, ValueFamily, BoolFamily };
-    _intrinstics["SELECT"] = DeclareTemplateFunction(L"select", ReturnFirstArgType, SelectParams);
+    _intrinsics["SELECT"] = DeclareTemplateFunction(L"select", ReturnFirstArgType, SelectParams);
 
     std::array<VarConceptDecl*, 2> BufferReadParams = { BufferFamily, IntScalar };
-    _intrinstics["BUFFER_READ"] = DeclareTemplateFunction(L"buffer_read", 
+    _intrinsics["BUFFER_READ"] = DeclareTemplateFunction(L"buffer_read", 
         [=](auto pts) { 
             return &dynamic_cast<const StructuredBufferTypeDecl*>(pts[0])->element(); 
         }, BufferReadParams);
 
     std::array<VarConceptDecl*, 3> BufferWriteParams = { BufferFamily, IntScalar, ValueFamily };
-    _intrinstics["BUFFER_WRITE"] = DeclareTemplateFunction(L"buffer_write", VoidType, BufferWriteParams);
+    _intrinsics["BUFFER_WRITE"] = DeclareTemplateFunction(L"buffer_write", VoidType, BufferWriteParams);
 
     std::array<VarConceptDecl*, 2> ByteBufferLoadParams = { ByteBufferFamily, IntScalar };
     // Load<T> Type will be specialized when being called
-    _intrinstics["BYTE_BUFFER_READ"] = DeclareTemplateFunction(L"byte_buffer_read", VoidType, ByteBufferLoadParams);
-    _intrinstics["BYTE_BUFFER_LOAD"] = DeclareTemplateFunction(L"byte_buffer_load", UIntType, ByteBufferLoadParams);
-    _intrinstics["BYTE_BUFFER_LOAD2"] = DeclareTemplateFunction(L"byte_buffer_load2", UIntType, ByteBufferLoadParams);
-    _intrinstics["BYTE_BUFFER_LOAD3"] = DeclareTemplateFunction(L"byte_buffer_load3", UIntType, ByteBufferLoadParams);
-    _intrinstics["BYTE_BUFFER_LOAD4"] = DeclareTemplateFunction(L"byte_buffer_load4", UIntType, ByteBufferLoadParams);
+    _intrinsics["BYTE_BUFFER_READ"] = DeclareTemplateFunction(L"byte_buffer_read", VoidType, ByteBufferLoadParams);
+    _intrinsics["BYTE_BUFFER_LOAD"] = DeclareTemplateFunction(L"byte_buffer_load", UIntType, ByteBufferLoadParams);
+    _intrinsics["BYTE_BUFFER_LOAD2"] = DeclareTemplateFunction(L"byte_buffer_load2", UIntType, ByteBufferLoadParams);
+    _intrinsics["BYTE_BUFFER_LOAD3"] = DeclareTemplateFunction(L"byte_buffer_load3", UIntType, ByteBufferLoadParams);
+    _intrinsics["BYTE_BUFFER_LOAD4"] = DeclareTemplateFunction(L"byte_buffer_load4", UIntType, ByteBufferLoadParams);
 
     std::array<VarConceptDecl*, 3> ByteBufferWriteParams = { ByteBufferFamily, IntScalar, ValueFamily };
-    _intrinstics["BYTE_BUFFER_WRITE"] = DeclareTemplateFunction(L"byte_buffer_write", VoidType, ByteBufferWriteParams);
+    _intrinsics["BYTE_BUFFER_WRITE"] = DeclareTemplateFunction(L"byte_buffer_write", VoidType, ByteBufferWriteParams);
 
     std::array<VarConceptDecl*, 3> ByteBufferStoreParams = { ByteBufferFamily, IntScalar, IntFamily };
-    _intrinstics["BYTE_BUFFER_STORE"] = DeclareTemplateFunction(L"byte_buffer_store", VoidType, ByteBufferStoreParams);
-    _intrinstics["BYTE_BUFFER_STORE2"] = DeclareTemplateFunction(L"byte_buffer_store2", VoidType, ByteBufferStoreParams);
-    _intrinstics["BYTE_BUFFER_STORE3"] = DeclareTemplateFunction(L"byte_buffer_store3", VoidType, ByteBufferStoreParams);
-    _intrinstics["BYTE_BUFFER_STORE4"] = DeclareTemplateFunction(L"byte_buffer_store4", VoidType, ByteBufferStoreParams);
+    _intrinsics["BYTE_BUFFER_STORE"] = DeclareTemplateFunction(L"byte_buffer_store", VoidType, ByteBufferStoreParams);
+    _intrinsics["BYTE_BUFFER_STORE2"] = DeclareTemplateFunction(L"byte_buffer_store2", VoidType, ByteBufferStoreParams);
+    _intrinsics["BYTE_BUFFER_STORE3"] = DeclareTemplateFunction(L"byte_buffer_store3", VoidType, ByteBufferStoreParams);
+    _intrinsics["BYTE_BUFFER_STORE4"] = DeclareTemplateFunction(L"byte_buffer_store4", VoidType, ByteBufferStoreParams);
     
     auto AtomicReturnSpec = [=](auto pts) {
         if (auto bufferType = dynamic_cast<const StructuredBufferTypeDecl*>(pts[0])) 
@@ -942,47 +943,47 @@ void AST::DeclareIntrinstics()
     };
     std::array<VarConceptDecl*, 3> AtomicParams = { AtomicOperableFamily, IntScalar, IntScalar };
     std::array<VarConceptDecl*, 4> CompareExchangeParams = { AtomicOperableFamily, IntScalar, IntScalar, IntScalar };
-    _intrinstics["ATOMIC_EXCHANGE"] = DeclareTemplateFunction(L"atomic_exchange", AtomicReturnSpec, AtomicParams);
-    _intrinstics["ATOMIC_COMPARE_EXCHANGE"] = DeclareTemplateFunction(L"atomic_compare_exchange", AtomicReturnSpec, CompareExchangeParams);
-    _intrinstics["ATOMIC_FETCH_ADD"] = DeclareTemplateFunction(L"atomic_fetch_add", AtomicReturnSpec, AtomicParams);
-    _intrinstics["ATOMIC_FETCH_SUB"] = DeclareTemplateFunction(L"atomic_fetch_sub", AtomicReturnSpec, AtomicParams);
-    _intrinstics["ATOMIC_FETCH_AND"] = DeclareTemplateFunction(L"atomic_fetch_and", AtomicReturnSpec, AtomicParams);
-    _intrinstics["ATOMIC_FETCH_OR"] = DeclareTemplateFunction(L"atomic_fetch_or", AtomicReturnSpec, AtomicParams);
-    _intrinstics["ATOMIC_FETCH_XOR"] = DeclareTemplateFunction(L"atomic_fetch_xor", AtomicReturnSpec, AtomicParams);
-    _intrinstics["ATOMIC_FETCH_MIN"] = DeclareTemplateFunction(L"atomic_fetch_min", AtomicReturnSpec, AtomicParams);
-    _intrinstics["ATOMIC_FETCH_MAX"] = DeclareTemplateFunction(L"atomic_fetch_max", AtomicReturnSpec, AtomicParams);
+    _intrinsics["ATOMIC_EXCHANGE"] = DeclareTemplateFunction(L"atomic_exchange", AtomicReturnSpec, AtomicParams);
+    _intrinsics["ATOMIC_COMPARE_EXCHANGE"] = DeclareTemplateFunction(L"atomic_compare_exchange", AtomicReturnSpec, CompareExchangeParams);
+    _intrinsics["ATOMIC_FETCH_ADD"] = DeclareTemplateFunction(L"atomic_fetch_add", AtomicReturnSpec, AtomicParams);
+    _intrinsics["ATOMIC_FETCH_SUB"] = DeclareTemplateFunction(L"atomic_fetch_sub", AtomicReturnSpec, AtomicParams);
+    _intrinsics["ATOMIC_FETCH_AND"] = DeclareTemplateFunction(L"atomic_fetch_and", AtomicReturnSpec, AtomicParams);
+    _intrinsics["ATOMIC_FETCH_OR"] = DeclareTemplateFunction(L"atomic_fetch_or", AtomicReturnSpec, AtomicParams);
+    _intrinsics["ATOMIC_FETCH_XOR"] = DeclareTemplateFunction(L"atomic_fetch_xor", AtomicReturnSpec, AtomicParams);
+    _intrinsics["ATOMIC_FETCH_MIN"] = DeclareTemplateFunction(L"atomic_fetch_min", AtomicReturnSpec, AtomicParams);
+    _intrinsics["ATOMIC_FETCH_MAX"] = DeclareTemplateFunction(L"atomic_fetch_max", AtomicReturnSpec, AtomicParams);
 
     std::array<VarConceptDecl*, 2> TextureReadParams = { TextureFamily, IntVector };
-    _intrinstics["TEXTURE_READ"] = DeclareTemplateFunction(L"texture_read", 
+    _intrinsics["TEXTURE_READ"] = DeclareTemplateFunction(L"texture_read", 
         [=](auto pts) { 
             return &dynamic_cast<const TextureTypeDecl*>(pts[0])->element(); 
         }, TextureReadParams);
     
     std::array<VarConceptDecl*, 3> TextureWriteParams = { TextureFamily, IntVector, Vector4D };
-    _intrinstics["TEXTURE_WRITE"] = DeclareTemplateFunction(L"texture_write", VoidType, TextureWriteParams);
+    _intrinsics["TEXTURE_WRITE"] = DeclareTemplateFunction(L"texture_write", VoidType, TextureWriteParams);
     std::array<VarConceptDecl*, 1> TextureSizeParams = { TextureFamily };
-    _intrinstics["TEXTURE_SIZE"] = DeclareTemplateFunction(L"texture_size", UInt3Type, TextureSizeParams);
+    _intrinsics["TEXTURE_SIZE"] = DeclareTemplateFunction(L"texture_size", UInt3Type, TextureSizeParams);
 
     std::array<VarConceptDecl*, 4> Texture2DSampleParams = { FloatTexture2DFamily, FloatVector2D/*uv*/, IntScalar/*filter*/, IntScalar/*address*/ };
-    _intrinstics["TEXTURE2D_SAMPLE"] = DeclareTemplateFunction(L"texture2d_sample", Float4Type, Texture2DSampleParams);
+    _intrinsics["TEXTURE2D_SAMPLE"] = DeclareTemplateFunction(L"texture2d_sample", Float4Type, Texture2DSampleParams);
     std::array<VarConceptDecl*, 5> Texture2DSampleLevelParams = { FloatTexture2DFamily, FloatVector2D, FloatScalar, IntScalar, IntScalar };
-    _intrinstics["TEXTURE2D_SAMPLE_LEVEL"] = DeclareTemplateFunction(L"texture2d_sample_level", Float4Type, Texture2DSampleLevelParams);
+    _intrinsics["TEXTURE2D_SAMPLE_LEVEL"] = DeclareTemplateFunction(L"texture2d_sample_level", Float4Type, Texture2DSampleLevelParams);
     std::array<VarConceptDecl*, 6> Texture2DSampleGradParams = { FloatTexture2DFamily, FloatVector2D, FloatVector2D, FloatVector2D, IntScalar, IntScalar };
-    _intrinstics["TEXTURE2D_SAMPLE_GRAD"] = DeclareTemplateFunction(L"texture2d_sample_grad", Float4Type, Texture2DSampleGradParams);
+    _intrinsics["TEXTURE2D_SAMPLE_GRAD"] = DeclareTemplateFunction(L"texture2d_sample_grad", Float4Type, Texture2DSampleGradParams);
     std::array<VarConceptDecl*, 7> Texture2DSampleGradLevelParams = { FloatTexture2DFamily, FloatVector2D, FloatVector2D, FloatVector2D, FloatScalar, IntScalar, IntScalar };
-    _intrinstics["TEXTURE2D_SAMPLE_GRAD_LEVEL"] = DeclareTemplateFunction(L"texture2d_sample_grad_level", Float4Type, Texture2DSampleGradLevelParams);
+    _intrinsics["TEXTURE2D_SAMPLE_GRAD_LEVEL"] = DeclareTemplateFunction(L"texture2d_sample_grad_level", Float4Type, Texture2DSampleGradLevelParams);
 
     std::array<VarConceptDecl*, 4> Texture3DSampleParams = { FloatTexture3DFamily, FloatVector3D/*uv*/, IntScalar/*filter*/, IntScalar/*address*/ };
-    _intrinstics["TEXTURE3D_SAMPLE"] = DeclareTemplateFunction(L"texture3d_sample", Float4Type, Texture3DSampleParams);
+    _intrinsics["TEXTURE3D_SAMPLE"] = DeclareTemplateFunction(L"texture3d_sample", Float4Type, Texture3DSampleParams);
     std::array<VarConceptDecl*, 5> Texture3DSampleLevelParams = { FloatTexture3DFamily, FloatVector3D, FloatScalar, IntScalar, IntScalar };
-    _intrinstics["TEXTURE3D_SAMPLE_LEVEL"] = DeclareTemplateFunction(L"texture3d_sample_level", Float4Type, Texture3DSampleLevelParams);
+    _intrinsics["TEXTURE3D_SAMPLE_LEVEL"] = DeclareTemplateFunction(L"texture3d_sample_level", Float4Type, Texture3DSampleLevelParams);
     std::array<VarConceptDecl*, 6> Texture3DSampleGradParams = { FloatTexture3DFamily, FloatVector3D, FloatVector3D, FloatVector3D, IntScalar, IntScalar };
-    _intrinstics["TEXTURE3D_SAMPLE_GRAD"] = DeclareTemplateFunction(L"texture3d_sample_grad", Float4Type, Texture3DSampleGradParams);
+    _intrinsics["TEXTURE3D_SAMPLE_GRAD"] = DeclareTemplateFunction(L"texture3d_sample_grad", Float4Type, Texture3DSampleGradParams);
     std::array<VarConceptDecl*, 7> Texture3DSampleGradLevelParams = { FloatTexture3DFamily, FloatVector3D, FloatVector3D, FloatVector3D, FloatScalar, IntScalar, IntScalar };
-    _intrinstics["TEXTURE3D_SAMPLE_GRAD_LEVEL"] = DeclareTemplateFunction(L"texture3d_sample_grad_level", Float4Type, Texture3DSampleGradLevelParams);
+    _intrinsics["TEXTURE3D_SAMPLE_GRAD_LEVEL"] = DeclareTemplateFunction(L"texture3d_sample_grad_level", Float4Type, Texture3DSampleGradLevelParams);
 
     std::array<VarConceptDecl*, 3> Sample2DParams = { SamplerFamily, Texture2DFamily, FloatVector };
-    _intrinstics["SAMPLE2D"] = DeclareTemplateFunction(L"sample2d", [this](auto pts) {
+    _intrinsics["SAMPLE2D"] = DeclareTemplateFunction(L"sample2d", [this](auto pts) {
         auto pt = &dynamic_cast<const Texture2DTypeDecl*>(pts[1])->element();
         if (pt == FloatType) return Float4Type;
         if (pt == HalfType) return Half4Type;
@@ -1005,43 +1006,55 @@ void AST::DeclareIntrinstics()
         });
 
     std::array<VarConceptDecl*, 1> RayQueryProceedParams = { RayQueryFamily };
-    _intrinstics["RAY_QUERY_PROCEED"] = DeclareTemplateFunction(L"ray_query_proceed", BoolType, RayQueryProceedParams);
-    _intrinstics["RAY_QUERY_COMMITTED_STATUS"] = DeclareTemplateFunction(L"ray_query_committed_status", UIntType, RayQueryProceedParams);
-    _intrinstics["RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS"] = DeclareTemplateFunction(L"ray_query_committed_triangle_bary", Float2Type, RayQueryProceedParams);
-    _intrinstics["RAY_QUERY_COMMITTED_INSTANCE_ID"] = DeclareTemplateFunction(L"ray_query_committed_instance_id", UIntType, RayQueryProceedParams);
-    _intrinstics["RAY_QUERY_COMMITTED_RAY_T"] = DeclareTemplateFunction(L"ray_query_committed_ray_t", FloatType, RayQueryProceedParams);
-    _intrinstics["RAY_QUERY_WORLD_RAY_ORIGIN"] = DeclareTemplateFunction(L"ray_query_world_ray_origin", Float3Type, RayQueryProceedParams);
-    _intrinstics["RAY_QUERY_WORLD_RAY_DIRECTION"] = DeclareTemplateFunction(L"ray_query_world_ray_direction", Float3Type, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_PROCEED"] = DeclareTemplateFunction(L"ray_query_proceed", BoolType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_COMMITTED_STATUS"] = DeclareTemplateFunction(L"ray_query_committed_status", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS"] = DeclareTemplateFunction(L"ray_query_committed_triangle_bary", Float2Type, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_COMMITTED_INSTANCE_ID"] = DeclareTemplateFunction(L"ray_query_committed_instance_id", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_COMMITTED_RAY_T"] = DeclareTemplateFunction(L"ray_query_committed_ray_t", FloatType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_WORLD_RAY_ORIGIN"] = DeclareTemplateFunction(L"ray_query_world_ray_origin", Float3Type, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_WORLD_RAY_DIRECTION"] = DeclareTemplateFunction(L"ray_query_world_ray_direction", Float3Type, RayQueryProceedParams);
     
     // void trace_ray_inline(Accel& AS, uint32 mask, Trait<Ray> ray);
     std::array<VarConceptDecl*, 4> TraceRayInlineParams = { RayQueryFamily, AccelFamily, IntScalar, ValueFamily };
-    _intrinstics["RAY_QUERY_TRACE_RAY_INLINE"] = DeclareTemplateFunction(L"ray_query_trace_ray_inline", VoidType, TraceRayInlineParams);
+    _intrinsics["RAY_QUERY_TRACE_RAY_INLINE"] = DeclareTemplateFunction(L"ray_query_trace_ray_inline", VoidType, TraceRayInlineParams);
 
     // commit_procedural with float parameter
     std::array<VarConceptDecl*, 1> CommitProceduralParams = { FloatScalar };
-    _intrinstics["RAY_QUERY_COMMIT_PROCEDURAL"] = DeclareTemplateFunction(L"ray_query_commit_procedural", VoidType, CommitProceduralParams);
+    _intrinsics["RAY_QUERY_COMMIT_PROCEDURAL"] = DeclareTemplateFunction(L"ray_query_commit_procedural", VoidType, CommitProceduralParams);
 
-    _intrinstics["WAVE_IS_FIRST_ACTIVE_LANE"] = DeclareTemplateFunction(L"wave_is_first_active_lane", BoolType, {});
-    _intrinstics["WAVE_ACTIVE_ALL_EQUAL"] = DeclareTemplateFunction(L"wave_active_all_equal", ReturnBoolVecWithSameDim, OneArithmeticVec);
-    _intrinstics["WAVE_ACTIVE_BIT_AND"] = DeclareTemplateFunction(L"wave_active_bit_and", ReturnFirstArgType, OneIntFamily);
-    _intrinstics["WAVE_ACTIVE_BIT_OR"] = DeclareTemplateFunction(L"wave_active_bit_or", ReturnFirstArgType, OneIntFamily);
-    _intrinstics["WAVE_ACTIVE_BIT_XOR"] = DeclareTemplateFunction(L"wave_active_bit_xor", ReturnFirstArgType, OneIntFamily);
-    _intrinstics["WAVE_ACTIVE_COUNT_BITS"] = DeclareTemplateFunction(L"wave_active_count_bits", UIntType, OneBoolFamily);
-    _intrinstics["WAVE_ACTIVE_MAX"] = DeclareTemplateFunction(L"wave_active_max", ReturnFirstArgType, OneArithmetic);
-    _intrinstics["WAVE_ACTIVE_MIN"] = DeclareTemplateFunction(L"wave_active_min", ReturnFirstArgType, OneArithmetic);
-    _intrinstics["WAVE_ACTIVE_PRODUCT"] = DeclareTemplateFunction(L"wave_active_product", ReturnFirstArgType, OneArithmetic);
-    _intrinstics["WAVE_ACTIVE_SUM"] = DeclareTemplateFunction(L"wave_active_sum", ReturnFirstArgType, OneArithmetic);
-    _intrinstics["WAVE_ACTIVE_ALL"] = DeclareTemplateFunction(L"wave_active_all", BoolType, OneBoolFamily);
-    _intrinstics["WAVE_ACTIVE_ANY"] = DeclareTemplateFunction(L"wave_active_any", BoolType, OneBoolFamily);
-    _intrinstics["WAVE_ACTIVE_BIT_MASK"] = DeclareTemplateFunction(L"wave_active_bit_mask", UInt4Type, OneBoolFamily);
-    _intrinstics["WAVE_PREFIX_COUNT_BITS"] = DeclareTemplateFunction(L"wave_prefix_count_bits", UIntType, OneBoolFamily);
-    _intrinstics["WAVE_PREFIX_PRODUCT"] = DeclareTemplateFunction(L"wave_prefix_product", ReturnFirstArgType, OneArithmetic);
-    _intrinstics["WAVE_PREFIX_SUM"] = DeclareTemplateFunction(L"wave_prefix_sum", ReturnFirstArgType, OneArithmetic);
+    // SM 5.1
+    _intrinsics["AllMemoryBarrier"] = DeclareTemplateFunction(L"AllMemoryBarrier", VoidType, {});
+    _intrinsics["AllMemoryBarrierWithGroupSync"] = DeclareTemplateFunction(L"AllMemoryBarrierWithGroupSync", VoidType, {});
 
-    // _intrinstics["WAVE_READ_LANE"] = DeclareTemplateFunction(L"wave_read_lane", ReturnFirstArgType, WarpReadParams);
-    // _intrinstics["WAVE_READ_FIRST_ACTIVE_LANE"] = DeclareTemplateFunction(L"wave_read_first_active_lane", ReturnFirstArgType, OnePrimitiveFamily);
 
-    _intrinstics["SYNCHRONIZE_BLOCK"] = DeclareTemplateFunction(L"sync_block", VoidType, {});
+    // SM 6.1 Wave Intrinsics
+    std::array<VarConceptDecl*, 2> ReadLaneAtArgs = { ValueFamily, IntScalar };
+    _intrinsics["QuadReadAcrossDiagonal"] = DeclareTemplateFunction(L"QuadReadAcrossDiagonal", ReturnFirstArgType, OneValue);
+    _intrinsics["QuadReadLaneAt"] = DeclareTemplateFunction(L"QuadReadLaneAt", ReturnFirstArgType, ReadLaneAtArgs);
+    _intrinsics["QuadReadAcrossX"] = DeclareTemplateFunction(L"QuadReadAcrossX", ReturnFirstArgType, OneValue);
+    _intrinsics["QuadReadAcrossY"] = DeclareTemplateFunction(L"QuadReadAcrossY", ReturnFirstArgType, OneValue);
+
+    _intrinsics["WaveActiveAllEqual"] = DeclareTemplateFunction(L"WaveActiveAllEqual", ReturnBoolVecWithSameDim, OneArithmeticVec);
+    _intrinsics["WaveActiveBitAnd"] = DeclareTemplateFunction(L"WaveActiveBitAnd", ReturnFirstArgType, OneIntFamily);
+    _intrinsics["WaveActiveBitOr"] = DeclareTemplateFunction(L"WaveActiveBitOr", ReturnFirstArgType, OneIntFamily);
+    _intrinsics["WaveActiveBitXor"] = DeclareTemplateFunction(L"WaveActiveBitXor", ReturnFirstArgType, OneIntFamily);
+    _intrinsics["WaveActiveCountBits"] = DeclareTemplateFunction(L"WaveActiveCountBits", UIntType, OneBoolFamily);
+    _intrinsics["WaveActiveMax"] = DeclareTemplateFunction(L"WaveActiveMax", ReturnFirstArgType, OneArithmetic);
+    _intrinsics["WaveActiveMin"] = DeclareTemplateFunction(L"WaveActiveMin", ReturnFirstArgType, OneArithmetic);
+    _intrinsics["WaveActiveProduct"] = DeclareTemplateFunction(L"WaveActiveProduct", ReturnFirstArgType, OneArithmetic);
+    _intrinsics["WaveActiveSum"] = DeclareTemplateFunction(L"WaveActiveSum", ReturnFirstArgType, OneArithmetic);
+    _intrinsics["WaveActiveAllTrue"] = DeclareTemplateFunction(L"WaveActiveAllTrue", BoolType, OneBoolFamily);
+    _intrinsics["WaveActiveAnyTrue"] = DeclareTemplateFunction(L"WaveActiveAnyTrue", BoolType, OneBoolFamily);
+    _intrinsics["WaveActiveBallot"] = DeclareTemplateFunction(L"WaveActiveBallot", UInt4Type, OneBoolFamily);
+    _intrinsics["WaveGetLaneCount"] = DeclareTemplateFunction(L"WaveGetLaneCount", UIntType, {});
+    _intrinsics["WaveGetLaneIndex"] = DeclareTemplateFunction(L"WaveGetLaneIndex", UIntType, {});
+    _intrinsics["WaveIsFirstLane"] = DeclareTemplateFunction(L"WaveIsFirstLane", BoolType, {});
+    _intrinsics["WavePrefixCountBits"] = DeclareTemplateFunction(L"WavePrefixCountBits", UIntType, OneBoolFamily);
+    _intrinsics["WavePrefixProduct"] = DeclareTemplateFunction(L"WavePrefixProduct", ReturnFirstArgType, OneArithmetic);
+    _intrinsics["WavePrefixSum"] = DeclareTemplateFunction(L"WavePrefixSum", ReturnFirstArgType, OneArithmetic);
+    // WaveReadLaneFirst<T> will be override when is called
+    _intrinsics["WaveReadLaneFirst"] = DeclareTemplateFunction(L"WaveReadLaneFirst", VoidType, {});
+    _intrinsics["WaveReadLaneAt"] = DeclareTemplateFunction(L"WaveReadLaneAt", VoidType, OneIntFamily);
 }
 
 ASTDatabase::~ASTDatabase()

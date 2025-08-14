@@ -10,11 +10,16 @@ trait ArrayFlags
     static constexpr uint32 Shared = 1;
 };
 
-trait CacheFlags
+trait BufferFlags
 {
-    static constexpr uint32 None = 0;
-    static constexpr uint32 Coherent = 1;
-    static constexpr uint32 ReadOnly = 2;
+    static constexpr uint32 ReadOnly = 1;
+    static constexpr uint32 ReadWrite = 2;
+};
+
+trait TextureFlags
+{
+    static constexpr uint32 ReadOnly = 1;
+    static constexpr uint32 ReadWrite = 2;
 };
 
 template<typename T, uint64 N>
@@ -139,6 +144,9 @@ concept array = is_array_v<T>;
 
 template<typename T>
 concept buffer = is_buffer_v<T>;
+
+template<typename T>
+concept rw_buffer = is_buffer_v<T> && (T::flags == BufferFlags::ReadWrite);
 
 template<typename T>
 concept float_family = is_float_family_v<T>;

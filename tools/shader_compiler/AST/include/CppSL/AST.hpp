@@ -186,10 +186,10 @@ private:
     std::map<std::string, InterpolationMode> _interpolation_map;
     
     // Template and specialized declarations
-    std::map<std::string, TemplateCallableDecl*> _intrinstics;
+    std::map<std::string, TemplateCallableDecl*> _intrinsics;
 
 public:
-    void DeclareIntrinstics();
+    void DeclareIntrinsics();
 
     const TypeDecl* VoidType = nullptr;
     const TypeDecl* BoolType = nullptr;

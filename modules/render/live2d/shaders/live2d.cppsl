@@ -22,10 +22,10 @@ struct Constants
 extern ConstantBuffer<Constants>& push_constants;
 
 [[binding(0, 0)]]
-extern SampleImage& color_texture;
+Texture2D<float> color_texture;
 
 [[binding(1, 0)]]
-extern SampleImage& mask_texture;
+Texture2D<float> mask_texture;
 
 [[binding(0, 1)]]
 extern Sampler& color_sampler;

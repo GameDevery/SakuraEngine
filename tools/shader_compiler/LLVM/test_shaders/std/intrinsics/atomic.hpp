@@ -1,6 +1,6 @@
 #pragma once
 #include "./../resources/buffer.hpp"
-#include "./../functions/math.hpp"
+#include "./../intrinsics/math.hpp"
 
 namespace skr::shader {
 template<typename T>
@@ -19,14 +19,14 @@ static typename copy_dim<float, T>::type uint_unpack_to_float(T val) {
 	return bit_cast<typename copy_dim<float, T>::type>(uvalue);
 }
 
-static float float_atomic_min(Buffer<uint>& buffer, uint index, float value) {
+static float float_atomic_min(RWBuffer<uint>& buffer, uint index, float value) {
 	return uint_unpack_to_float(buffer.atomic_fetch_min(index, float_pack_to_uint(value)));
 }
-static float float_atomic_max(Buffer<uint>& buffer, uint index, float value) {
+static float float_atomic_max(RWBuffer<uint>& buffer, uint index, float value) {
 	return uint_unpack_to_float(buffer.atomic_fetch_max(index, float_pack_to_uint(value)));
 }
 static float float_atomic_add(
-	Buffer<uint>& buffer,
+	RWBuffer<uint>& buffer,
 	uint index,
 	float value) {
 	uint old = buffer.load(index);
