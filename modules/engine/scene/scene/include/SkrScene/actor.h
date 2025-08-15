@@ -151,16 +151,6 @@ public:
     void ClearAllActors();
     skr::RCWeak<Actor> GetRoot();
 
-    // accessors
-    // TODO: we need a better way to manage these accessors
-    // skr::ecs::RandomComponentReadWrite<skr::scene::ParentComponent> parent_accessor;
-    // skr::ecs::RandomComponentReadWrite<skr::scene::ChildrenComponent> children_accessor;
-    // skr::ecs::RandomComponentReadWrite<skr::scene::PositionComponent> pos_accessor;
-    // skr::ecs::RandomComponentReadWrite<skr::scene::RotationComponent> rot_accessor;
-    // skr::ecs::RandomComponentReadWrite<skr::scene::ScaleComponent> scale_accessor;
-    // skr::ecs::RandomComponentReadWrite<skr::scene::TransformComponent> trans_accessor;
-    // skr::ecs::RandomComponentReadWrite<skr::renderer::MeshComponent> mesh_accessor;
-
 protected:
     // Factory method to create specific actor types
 
@@ -195,8 +185,6 @@ public:
     SKR_RC_IMPL();
 
     ~MeshActor() SKR_NOEXCEPT;
-    skr::renderer::MeshComponent* GetMeshComponent() const;
-
     MeshActor();
 };
 

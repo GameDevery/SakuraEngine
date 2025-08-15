@@ -247,7 +247,8 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
     auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
     auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
 
-    metadata->vertexType = u8"1b357a40-83ff-471c-8903-23e99d95b273"_guid; // GLTFVertexLayoutWithoutTangentId
+    // metadata->vertexType = u8"1b357a40-83ff-471c-8903-23e99d95b273"_guid; // GLTFVertexLayoutWithoutTangentId
+    metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; // GLTFVertexLayoutWithJointId
     auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"girl.gltf.meta",
         MeshAssetID,
@@ -327,11 +328,10 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     skr_render_mesh_id render_mesh = SkrNew<skr_render_mesh_t>();
 
     utils::Grid2DMesh dummy_mesh;
-    actor1.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
-    // actor2.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
+    actor1.lock()->GetComponent<skr::renderer::MeshComponent>()->mesh_resource = MeshAssetID;
     for (auto& actor : hierarchy_actors)
     {
-        actor.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
+        actor.lock()->GetComponent<skr::renderer::MeshComponent>()->mesh_resource = MeshAssetID;
     }
 
     if (use_gltf)

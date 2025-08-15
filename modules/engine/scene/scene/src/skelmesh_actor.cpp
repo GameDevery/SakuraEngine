@@ -1,3 +1,5 @@
+#include "SkrAnim/components/skeleton_component.hpp"
+#include "SkrAnim/components/skin_component.hpp"
 #include "SkrScene/actor.h"
 
 namespace skr
@@ -28,7 +30,10 @@ SkelMeshActor::SkelMeshActor()
                 .add_component<skr::scene::RotationComponent>()
                 .add_component<skr::scene::ScaleComponent>()
                 .add_component<skr::scene::TransformComponent>()
-                .add_component<skr::renderer::MeshComponent>();
+                .add_component<skr::renderer::MeshComponent>()
+                .add_component<skr::anim::SkeletonComponent>() // runtime skeleton component
+                .add_component<skr::anim::AnimComponent>()
+                .add_component<skr::anim::SkinComponent>();
         },
         [this](skr::ecs::TaskContext& Context) {
             SkrZoneScopedN("SkelMeshActor::Spawner::run");

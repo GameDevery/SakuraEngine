@@ -14,6 +14,7 @@ sreflect_managed_component(guid = "05B43406-4BCF-4E59-B2D8-ACED7D37E776")
 SkinComponent
 {
     SKR_RESOURCE_FIELD(SkinResource, skin_resource);
+
     sattr(serde = @disable)
     skr::Vector<uint16_t>
         joint_remaps;
