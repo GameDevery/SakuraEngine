@@ -106,7 +106,10 @@ bool TypeDecl::is_matrix() const
 
 bool TypeDecl::is_resource() const
 {
-    return dynamic_cast<const ResourceTypeDecl*>(this) != nullptr;
+    if (auto as_array = dynamic_cast<const ArrayTypeDecl*>(this))
+        return as_array->element()->is_resource();
+    else
+        return dynamic_cast<const ResourceTypeDecl*>(this) != nullptr;
 }
 
 void TypeDecl::add_field(FieldDecl* field)
@@ -192,7 +195,7 @@ MatrixTypeDecl::MatrixTypeDecl(AST& ast, const TypeDecl* element, uint32_t n, ui
 
 ArrayTypeDecl::ArrayTypeDecl(AST& ast, const TypeDecl* element, uint32_t count, ArrayFlags flags)
     : ValueTypeDecl(ast, std::format(L"array<{}, {}>", element->name(), count), element->size() * count, element->alignment(), {}, true),
-    _element(element), _flags(flags)
+    _element(element), _flags(flags), _count(count)
 {
 
 }
@@ -206,7 +209,7 @@ RayQueryTypeDecl::RayQueryTypeDecl(AST& ast, RayQueryFlags flags)
 ResourceTypeDecl::ResourceTypeDecl(AST& ast, const String& name)
     : TypeDecl(ast, name, 0, 0, {}, true)
 {
-
+    _size = 8;
 }
 
 SamplerDecl::SamplerDecl(AST& ast)

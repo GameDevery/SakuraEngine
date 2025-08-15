@@ -193,12 +193,14 @@ struct ArrayTypeDecl : public ValueTypeDecl
 public:
     ArrayFlags flags() const { return _flags; }
     const TypeDecl* element() const { return _element; }
+    const auto count() const { return _count; }
 
 protected:
     friend struct AST;
     ArrayTypeDecl(AST& ast, const TypeDecl* element, uint32_t count, ArrayFlags flags);
     const TypeDecl* _element = nullptr;
     ArrayFlags _flags = ArrayFlags::None;
+    uint32_t _count = 0;
 };
 
 struct RayQueryTypeDecl : public TypeDecl

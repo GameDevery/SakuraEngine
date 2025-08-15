@@ -1653,6 +1653,15 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt* x)
     {
         return TranslateCall(cxxConstructor->getConstructor(), x);
     }
+    else if (auto ImplicitValueInit = llvm::dyn_cast<clang::ImplicitValueInitExpr>(x))
+    {
+        // ImplicitValueInitExpr represents default initialization like {} or T()
+        auto type = ImplicitValueInit->getType();
+        auto typeDecl = getType(type.getCanonicalType());
+        
+        // Generate a default construct expression
+        return AST.Construct(typeDecl, {});
+    }
     else if (auto InitList = llvm::dyn_cast<clang::InitListExpr>(x))
     {
         std::vector<CppSL::Expr*> exprs;

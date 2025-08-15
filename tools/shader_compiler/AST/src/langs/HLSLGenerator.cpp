@@ -256,19 +256,26 @@ void HLSLGenerator::VisitConstructExpr(SourceBuilderNew& sb, const ConstructExpr
     {
         std::span<Expr* const> args;
         std::vector<Expr*> modified_args;
-        int32_t fillVectorArgsWithZero = 0;
+        int32_t fillArgsWithZero = 0;
         if (auto AsVector = dynamic_cast<const VectorTypeDecl*>(ctorExpr->type());
             AsVector && ((ctorExpr->args().size() == 0) || (ctorExpr->args().size() == 1)))
         {
             if (ctorExpr->args().size() == 0)
             {
-                fillVectorArgsWithZero = AsVector->count();
+                fillArgsWithZero = AsVector->count();
             }
             else if (dynamic_cast<const ScalarTypeDecl*>(ctorExpr->args()[0]->type()))
             {
                 for (uint32_t i = 0; i < AsVector->count(); i++)
                     modified_args.emplace_back(ctorExpr->args()[0]);
                 args = modified_args;
+            }
+        }
+        else if (ctorExpr->type()->is_builtin())
+        {
+            if (ctorExpr->args().size() == 0)
+            {
+                fillArgsWithZero = 1;
             }
         }
 
@@ -280,9 +287,9 @@ void HLSLGenerator::VisitConstructExpr(SourceBuilderNew& sb, const ConstructExpr
         else
             sb.append(GetQualifiedTypeName(ctorExpr->type()) + L"::New(");
 
-        if (fillVectorArgsWithZero > 0)
+        if (fillArgsWithZero > 0)
         {
-            for (int32_t j = 0; j < fillVectorArgsWithZero; j++)
+            for (int32_t j = 0; j < fillArgsWithZero; j++)
             {
                 if (j > 0)
                     sb.append(L", ");
