@@ -145,7 +145,7 @@ void MSLGenerator::VisitVariable(SourceBuilderNew& sb, const skr::CppSL::VarDecl
         else
         {
             sb.append(L" = ");
-            visitExpr(sb, init);
+            visitStmt(sb, init);
         }
     }
 }
@@ -235,7 +235,7 @@ void MSLGenerator::VisitConstructExpr(SourceBuilderNew& sb, const ConstructExpr*
             {
                 sb.append(L", ");
             }
-            visitExpr(sb, arg);
+            visitStmt(sb, arg);
         }
         sb.append(L"}");
     }
@@ -249,7 +249,7 @@ void MSLGenerator::VisitConstructExpr(SourceBuilderNew& sb, const ConstructExpr*
             {
                 sb.append(L", ");
             }
-            visitExpr(sb, arg);
+            visitStmt(sb, arg);
         }
         sb.append(L")");
     }

@@ -29,7 +29,7 @@ String CppLikeShaderGenerator::GetQualifiedFunctionName(const FunctionDecl* func
     return NonQualified;
 }
 
-void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt)
+void CppLikeShaderGenerator::visitStmt(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt)
 {
     using namespace skr::CppSL;
 
@@ -42,6 +42,8 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
     isStatement &= !dynamic_cast<const ForStmt*>(stmt);
     isStatement &= !dynamic_cast<const CompoundStmt*>(stmt);
 
+    GenerateStmtAttributes(sb, stmt);
+
     if (auto binary = dynamic_cast<const BinaryExpr*>(stmt))
     {
         sb.append(L"(");
@@ -53,7 +55,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
         auto _type = bitwiseCast->type();
         sb.append(L"bit_cast<" + GetQualifiedTypeName(_type) + L">(");
         ;
-        visitExpr(sb, bitwiseCast->expr());
+        visitStmt(sb, bitwiseCast->expr());
         sb.append(L")");
     }
     else if (auto breakStmt = dynamic_cast<const BreakStmt*>(stmt))
@@ -66,18 +68,18 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
         sb.indent([&]() {
             for (auto expr : block->children())
             {
-                visitExpr(sb, expr);
+                visitStmt(sb, expr);
             }
         });
         sb.append(L"}");
     }
     else if (auto condExpr = dynamic_cast<const ConditionalExpr*>(stmt))
     {
-        visitExpr(sb, condExpr->cond());
+        visitStmt(sb, condExpr->cond());
         sb.append(L" ? ");
-        visitExpr(sb, condExpr->then_expr());
+        visitStmt(sb, condExpr->then_expr());
         sb.append(L" : ");
-        visitExpr(sb, condExpr->else_expr());
+        visitStmt(sb, condExpr->else_expr());
     }
     else if (auto callExpr = dynamic_cast<const CallExpr*>(stmt))
     {
@@ -99,7 +101,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
                 auto arg = callExpr->args()[i];
                 if (i > 0)
                     sb.append(L", ");
-                visitExpr(sb, arg);
+                visitStmt(sb, arg);
             }
             sb.append(L")");
         }
@@ -113,14 +115,14 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
         if (caseStmt->cond())
         {
             sb.append(L"case ");
-            visitExpr(sb, caseStmt->cond());
+            visitStmt(sb, caseStmt->cond());
             sb.append(L":");
         }
         else
         {
             sb.append(L"default:");
         }
-        visitExpr(sb, caseStmt->body());
+        visitStmt(sb, caseStmt->body());
         sb.append(L";");
     }
     else if (auto methodCall = dynamic_cast<const MethodCallExpr*>(stmt))
@@ -130,15 +132,15 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
         auto type = method->owner_type();
         if (auto as_buffer = dynamic_cast<const BufferTypeDecl*>(type) && method->name() == L"Store")
         {
-            visitExpr(sb, callee->owner());
+            visitStmt(sb, callee->owner());
             sb.append(L"[");
-            visitExpr(sb, methodCall->args()[0]);
+            visitStmt(sb, methodCall->args()[0]);
             sb.append(L"] = ");
-            visitExpr(sb, methodCall->args()[1]);
+            visitStmt(sb, methodCall->args()[1]);
         }
         else
         {
-            visitExpr(sb, callee);
+            visitStmt(sb, callee);
 
             sb.append(L"(");
             for (size_t i = 0; i < methodCall->args().size(); i++)
@@ -146,7 +148,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
                 auto arg = methodCall->args()[i];
                 if (i > 0)
                     sb.append(L", ");
-                visitExpr(sb, arg);
+                visitStmt(sb, arg);
             }
             sb.append(L")");
         }
@@ -180,7 +182,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
     else if (auto defaultStmt = dynamic_cast<const DefaultStmt*>(stmt))
     {
         sb.append(L"default:");
-        visitExpr(sb, defaultStmt->children()[0]);
+        visitStmt(sb, defaultStmt->children()[0]);
         sb.append(L";");
     }
     else if (auto member = dynamic_cast<const MemberExpr*>(stmt))
@@ -192,7 +194,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
                 sb.append(L"/*this.*/" + _member->name());
             else
             {
-                visitExpr(sb, owner);
+                visitStmt(sb, owner);
                 sb.append(L"." + _member->name());
             }
         }
@@ -205,34 +207,34 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
     {
         sb.append(L"for (");
         if (forStmt->init())
-            visitExpr(sb, forStmt->init());
+            visitStmt(sb, forStmt->init());
         sb.append(L"; ");
 
         if (forStmt->cond())
-            visitExpr(sb, forStmt->cond());
+            visitStmt(sb, forStmt->cond());
         sb.append(L"; ");
 
         if (forStmt->inc())
-            visitExpr(sb, forStmt->inc());
+            visitStmt(sb, forStmt->inc());
         sb.append(L") ");
 
-        visitExpr(sb, forStmt->body());
+        visitStmt(sb, forStmt->body());
         sb.endline();
     }
     else if (auto ifStmt = dynamic_cast<const IfStmt*>(stmt))
     {
         sb.append(L"if (");
-        visitExpr(sb, ifStmt->cond());
+        visitStmt(sb, ifStmt->cond());
         sb.append(L")");
         sb.endline();
-        visitExpr(sb, ifStmt->then_body());
+        visitStmt(sb, ifStmt->then_body());
 
         if (ifStmt->else_body())
         {
             sb.endline();
             sb.append(L"else");
             sb.endline();
-            visitExpr(sb, ifStmt->else_body());
+            visitStmt(sb, ifStmt->else_body());
         }
         sb.endline();
     }
@@ -244,13 +246,13 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
             auto expr = initList->children()[i];
             if (i > 0)
                 sb.append(L", ");
-            visitExpr(sb, expr);
+            visitStmt(sb, expr);
         }
         sb.append(L" }");
     }
     else if (auto implicitCast = dynamic_cast<const ImplicitCastExpr*>(stmt))
     {
-        visitExpr(sb, implicitCast->expr());
+        visitStmt(sb, implicitCast->expr());
     }
     else if (auto declRef = dynamic_cast<const DeclRefExpr*>(stmt))
     {
@@ -262,26 +264,26 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
         if (returnStmt->value())
         {
             sb.append(L" ");
-            visitExpr(sb, returnStmt->value());
+            visitStmt(sb, returnStmt->value());
         }
     }
     else if (auto staticCast = dynamic_cast<const StaticCastExpr*>(stmt))
     {
         sb.append(L"((" + GetQualifiedTypeName(staticCast->type()) + L")");
         ;
-        visitExpr(sb, staticCast->expr());
+        visitStmt(sb, staticCast->expr());
         sb.append(L")");
     }
     else if (auto switchStmt = dynamic_cast<const SwitchStmt*>(stmt))
     {
         sb.append(L"switch (");
-        visitExpr(sb, switchStmt->cond());
+        visitStmt(sb, switchStmt->cond());
         sb.append(L") {");
         sb.endline();
         sb.indent([&]() {
             for (auto case_stmt : switchStmt->cases())
             {
-                visitExpr(sb, case_stmt);
+                visitStmt(sb, case_stmt);
                 sb.endline();
             }
         });
@@ -328,7 +330,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
             if (!post)
                 sb.append(op_name);
 
-            visitExpr(sb, unary->expr());
+            visitStmt(sb, unary->expr());
 
             if (post)
                 sb.append(op_name);
@@ -347,16 +349,16 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
     {
         for (auto decl : declGroupStmt->children())
         {
-            visitExpr(sb, dynamic_cast<const DeclStmt*>(decl));
+            visitStmt(sb, dynamic_cast<const DeclStmt*>(decl));
             sb.append(L";");
         }
     }
     else if (auto whileStmt = dynamic_cast<const WhileStmt*>(stmt))
     {
         sb.append(L"while (");
-        visitExpr(sb, whileStmt->cond());
+        visitStmt(sb, whileStmt->cond());
         sb.append(L") ");
-        visitExpr(sb, whileStmt->body());
+        visitStmt(sb, whileStmt->body());
     }
     else if (auto access = dynamic_cast<const AccessExpr*>(stmt))
     {
@@ -364,7 +366,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
     }
     else if (auto swizzle = dynamic_cast<const SwizzleExpr*>(stmt))
     {
-        visitExpr(sb, swizzle->expr());
+        visitStmt(sb, swizzle->expr());
         sb.append(L".");
         for (auto comp : swizzle->seq())
         {
@@ -436,9 +438,9 @@ void CppLikeShaderGenerator::VisitAccessExpr(SourceBuilderNew& sb, const AccessE
 {
     auto to_access = dynamic_cast<const Expr*>(expr->children()[0]);
     auto index = dynamic_cast<const Expr*>(expr->children()[1]);
-    visitExpr(sb, to_access);
+    visitStmt(sb, to_access);
     sb.append(L"[");
-    visitExpr(sb, index);
+    visitStmt(sb, index);
     sb.append(L"]");
 }
 
@@ -447,7 +449,7 @@ void CppLikeShaderGenerator::VisitBinaryExpr(SourceBuilderNew& sb, const BinaryE
     auto ltype = binary->left()->type();
     auto rtype = binary->right()->type();
     {
-        visitExpr(sb, binary->left());
+        visitStmt(sb, binary->left());
         auto op = binary->op();
         String op_name = L"";
         switch (op)
@@ -540,7 +542,7 @@ void CppLikeShaderGenerator::VisitBinaryExpr(SourceBuilderNew& sb, const BinaryE
             assert(false && "Unsupported binary operation");
         }
         sb.append(op_name);
-        visitExpr(sb, binary->right());
+        visitStmt(sb, binary->right());
     }
 }
 
@@ -626,7 +628,7 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
                     first = false;
                     sb.append(init.field->name());
                     sb.append(L"(");
-                    visitExpr(sb, init.init_expr);
+                    visitStmt(sb, init.init_expr);
                     sb.append(L")");
                 }
             }
@@ -645,7 +647,7 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
                         sb.append(L"(/*this.*/");
                         sb.append(init.field->name());
                         sb.append(L" = ");
-                        visitExpr(sb, init.init_expr);
+                        visitStmt(sb, init.init_expr);
                         sb.append(L");");
                         sb.endline();
                     }
@@ -655,7 +657,7 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
                     {
                         for (auto stmt : compound->children())
                         {
-                            visitExpr(sb, stmt);
+                            visitStmt(sb, stmt);
                             sb.endline();
                         }
                     }
@@ -664,7 +666,7 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
             }
             else
             {
-                visitExpr(sb, funcDecl->body());
+                visitStmt(sb, funcDecl->body());
             }
             sb.endline();
 
@@ -677,6 +679,11 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
 String CppLikeShaderGenerator::GetFunctionName(const FunctionDecl* func)
 {
     return func->name();
+}
+
+void CppLikeShaderGenerator::GenerateStmtAttributes(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt)
+{
+
 }
 
 void CppLikeShaderGenerator::GenerateFunctionAttributes(SourceBuilderNew& sb, const FunctionDecl* funcDecl)

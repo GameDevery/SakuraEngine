@@ -14,7 +14,7 @@ namespace skr::CppSL
 inline std::string GetVarName(const clang::VarDecl* var)
 {
     std::string name = var->getNameAsString();
-    
+
     // Check if this is a variable template specialization
     if (auto VTS = llvm::dyn_cast<clang::VarTemplateSpecializationDecl>(var))
     {
@@ -44,7 +44,7 @@ inline std::string GetVarName(const clang::VarDecl* var)
                 name += "_";
         }
     }
-    
+
     return name;
 }
 
@@ -52,7 +52,7 @@ inline std::string GetVarName(const clang::VarDecl* var)
 inline std::string GetFunctionName(const clang::FunctionDecl* func)
 {
     std::string name = func->getNameAsString();
-    
+
     // Check if this is a function template specialization
     if (auto FTS = func->getTemplateSpecializationInfo())
     {
@@ -116,7 +116,7 @@ inline std::string GetFunctionName(const clang::FunctionDecl* func)
             }
         }
     }
-    
+
     return name;
 }
 class DeferGuard
@@ -194,6 +194,22 @@ inline static clang::AnnotateAttr* ExistShaderAttrWithName(const clang::Decl* de
             continue;
         if (GetArgumentAt<clang::StringRef>(attr, 0) == name)
             return attr;
+    }
+    return nullptr;
+}
+
+inline static const clang::AnnotateAttr* ExistShaderAttrWithName(const clang::AttributedStmt* stmt, const char* name)
+{
+    auto attrs = stmt->getAttrs();
+    for (auto _attr : attrs)
+    {
+        if (auto attr = clang::dyn_cast<clang::AnnotateAttr>(_attr))
+        {
+            if (attr->getAnnotation() != "skr-shader" && attr->getAnnotation() != "luisa-shader")
+                continue;
+            if (GetArgumentAt<clang::StringRef>(attr, 0) == name)
+                return attr;
+        }
     }
     return nullptr;
 }
@@ -913,15 +929,14 @@ CppSL::GlobalVarDecl* ASTConsumer::TranslateGlobalVariable(const clang::VarDecl*
         auto _init = TranslateStmt<CppSL::Expr>(Var->getInit());
         if (!getType(Var->getType()))
             TranslateType(Var->getType());
-        
+
         // groupshared!
         if (Var->getType().getAddressSpace() == clang::LangAS::opencl_local)
         {
             auto _groupshared = AST.DeclareGroupShared(
                 getType(Var->getType()),
                 ToText(GetVarName(Var)),
-                _init
-            );
+                _init);
             addVar(Var, _groupshared);
             return _groupshared;
         }
@@ -930,8 +945,7 @@ CppSL::GlobalVarDecl* ASTConsumer::TranslateGlobalVariable(const clang::VarDecl*
             auto _const = AST.DeclareGlobalConstant(
                 getType(Var->getType()),
                 ToText(GetVarName(Var)),
-                _init
-            );
+                _init);
             addVar(Var, _const);
             return _const;
         }
@@ -1324,7 +1338,36 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt* x)
     if (x == nullptr)
         return nullptr;
 
-    if (auto cxxBranch = llvm::dyn_cast<clang::IfStmt>(x))
+    if (auto stmtWithAttr = llvm::dyn_cast<clang::AttributedStmt>(x))
+    {
+        auto stmt = TranslateStmt(stmtWithAttr->getSubStmt());
+        for (const auto* attr : stmtWithAttr->getAttrs())
+        {
+            if (auto* loopHint = llvm::dyn_cast<clang::LoopHintAttr>(attr))
+            {
+                auto option = loopHint->getOption();
+                if (option == clang::LoopHintAttr::Unroll || option == clang::LoopHintAttr::UnrollCount)
+                {
+                    auto state = loopHint->getState();
+                    if (state == clang::LoopHintAttr::Disable)
+                    {
+                        stmt->add_attr(AST.DeclareAttr<LoopAttr>());
+                    }
+                    else if (state == clang::LoopHintAttr::Enable)
+                    {
+                        stmt->add_attr(AST.DeclareAttr<UnrollAttr>(UINT32_MAX));
+                    }
+                    else if (state == clang::LoopHintAttr::Numeric)
+                    {
+                        auto count = loopHint->getValue()->EvaluateKnownConstInt(*pASTContext);
+                        stmt->add_attr(AST.DeclareAttr<UnrollAttr>(count.getLimitedValue()));
+                    }
+                }
+            }
+        }
+        return stmt;
+    }
+    else if (auto cxxBranch = llvm::dyn_cast<clang::IfStmt>(x))
     {
         auto cxxCond = cxxBranch->getCond();
         auto ifConstVar = cxxCond->getIntegerConstantExpr(*pASTContext);

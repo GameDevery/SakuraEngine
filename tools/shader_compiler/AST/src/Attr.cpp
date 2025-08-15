@@ -166,4 +166,25 @@ StageAttr::StageAttr(ShaderStage stage)
 
 }
 
+BranchAttr::BranchAttr()
+{
+    
+}
+
+FlattenAttr::FlattenAttr()
+{
+
+}
+
+LoopAttr::LoopAttr()
+{
+
+}
+
+UnrollAttr::UnrollAttr(uint32_t N)
+    : _N(N)
+{
+
+}
+
 } // namespace skr::CppSL

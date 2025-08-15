@@ -5,6 +5,11 @@ namespace skr::CppSL {
 
 Stmt::Stmt(AST& ast) : _ast(&ast) {}
 
+void Stmt::add_attr(Attr* attr)
+{
+    _attrs.emplace_back(attr);
+}
+
 void Stmt::add_child(const Stmt* child) 
 {
     const_cast<Stmt*&>(child->_parent) = this;

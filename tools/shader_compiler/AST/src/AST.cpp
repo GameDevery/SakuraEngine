@@ -980,24 +980,6 @@ void AST::DeclareIntrinsics()
     std::array<VarConceptDecl*, 1> TextureSizeParams = { TextureFamily };
     _intrinsics["TEXTURE_SIZE"] = DeclareTemplateFunction(L"texture_size", UInt3Type, TextureSizeParams);
 
-    std::array<VarConceptDecl*, 4> Texture2DSampleParams = { FloatTexture2DFamily, FloatVector2D/*uv*/, IntScalar/*filter*/, IntScalar/*address*/ };
-    _intrinsics["TEXTURE2D_SAMPLE"] = DeclareTemplateFunction(L"texture2d_sample", Float4Type, Texture2DSampleParams);
-    std::array<VarConceptDecl*, 5> Texture2DSampleLevelParams = { FloatTexture2DFamily, FloatVector2D, FloatScalar, IntScalar, IntScalar };
-    _intrinsics["TEXTURE2D_SAMPLE_LEVEL"] = DeclareTemplateFunction(L"texture2d_sample_level", Float4Type, Texture2DSampleLevelParams);
-    std::array<VarConceptDecl*, 6> Texture2DSampleGradParams = { FloatTexture2DFamily, FloatVector2D, FloatVector2D, FloatVector2D, IntScalar, IntScalar };
-    _intrinsics["TEXTURE2D_SAMPLE_GRAD"] = DeclareTemplateFunction(L"texture2d_sample_grad", Float4Type, Texture2DSampleGradParams);
-    std::array<VarConceptDecl*, 7> Texture2DSampleGradLevelParams = { FloatTexture2DFamily, FloatVector2D, FloatVector2D, FloatVector2D, FloatScalar, IntScalar, IntScalar };
-    _intrinsics["TEXTURE2D_SAMPLE_GRAD_LEVEL"] = DeclareTemplateFunction(L"texture2d_sample_grad_level", Float4Type, Texture2DSampleGradLevelParams);
-
-    std::array<VarConceptDecl*, 4> Texture3DSampleParams = { FloatTexture3DFamily, FloatVector3D/*uv*/, IntScalar/*filter*/, IntScalar/*address*/ };
-    _intrinsics["TEXTURE3D_SAMPLE"] = DeclareTemplateFunction(L"texture3d_sample", Float4Type, Texture3DSampleParams);
-    std::array<VarConceptDecl*, 5> Texture3DSampleLevelParams = { FloatTexture3DFamily, FloatVector3D, FloatScalar, IntScalar, IntScalar };
-    _intrinsics["TEXTURE3D_SAMPLE_LEVEL"] = DeclareTemplateFunction(L"texture3d_sample_level", Float4Type, Texture3DSampleLevelParams);
-    std::array<VarConceptDecl*, 6> Texture3DSampleGradParams = { FloatTexture3DFamily, FloatVector3D, FloatVector3D, FloatVector3D, IntScalar, IntScalar };
-    _intrinsics["TEXTURE3D_SAMPLE_GRAD"] = DeclareTemplateFunction(L"texture3d_sample_grad", Float4Type, Texture3DSampleGradParams);
-    std::array<VarConceptDecl*, 7> Texture3DSampleGradLevelParams = { FloatTexture3DFamily, FloatVector3D, FloatVector3D, FloatVector3D, FloatScalar, IntScalar, IntScalar };
-    _intrinsics["TEXTURE3D_SAMPLE_GRAD_LEVEL"] = DeclareTemplateFunction(L"texture3d_sample_grad_level", Float4Type, Texture3DSampleGradLevelParams);
-
     std::array<VarConceptDecl*, 3> Sample2DParams = { SamplerFamily, Texture2DFamily, FloatVector };
     _intrinsics["SAMPLE2D"] = DeclareTemplateFunction(L"sample2d", [this](auto pts) {
         auto pt = &dynamic_cast<const Texture2DTypeDecl*>(pts[1])->element();

@@ -11,6 +11,7 @@ using String = std::wstring;
 using Name = String;
 
 struct AST;
+struct Attr;
 struct ASTDatabase;
 struct Decl;
 struct DeclRefExpr;
@@ -21,6 +22,9 @@ struct Stmt
 public:
     inline std::span<const Stmt* const> children() const { return _children; }
     inline const Stmt* parent() const { return _parent; }
+
+    std::span<Attr* const> attrs() const { return _attrs; }
+    void add_attr(Attr* attr);
 
     String dump() const;
 
@@ -34,6 +38,7 @@ protected:
     const AST* _ast = nullptr;
     const Stmt* _parent = nullptr;
     std::vector<const Stmt*> _children;
+    std::vector<Attr*> _attrs;
 };
 
 struct DeclStmt : Stmt

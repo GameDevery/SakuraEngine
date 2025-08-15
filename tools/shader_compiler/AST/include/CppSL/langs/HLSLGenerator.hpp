@@ -16,6 +16,7 @@ public:
     void VisitParameter(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl, const skr::CppSL::ParamVarDecl* param) override;
     void VisitField(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* type, const skr::CppSL::FieldDecl* field) override;
     void VisitConstructor(SourceBuilderNew& sb, const ConstructorDecl* ctor, FunctionStyle style) override;
+    void GenerateStmtAttributes(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt) override;
     void GenerateFunctionAttributes(SourceBuilderNew& sb, const FunctionDecl* func) override;
     void GenerateFunctionSignaturePostfix(SourceBuilderNew& sb, const FunctionDecl* func) override;
     bool SupportConstructor() const override;

@@ -147,11 +147,11 @@ void HLSLGenerator::VisitAccessExpr(SourceBuilderNew& sb, const AccessExpr* expr
 {
     auto to_access = dynamic_cast<const Expr*>(expr->children()[0]);
     auto index = dynamic_cast<const Expr*>(expr->children()[1]);
-    visitExpr(sb, to_access);
+    visitStmt(sb, to_access);
     if (to_access->type()->is_array())
         sb.append(L".data");
     sb.append(L"[");
-    visitExpr(sb, index);
+    visitStmt(sb, index);
     sb.append(L"]");
 }
 
@@ -210,18 +210,18 @@ void HLSLGenerator::VisitBinaryExpr(SourceBuilderNew& sb, const BinaryExpr* bina
     if (is_vec_mat_op && (binary->op() == BinaryOp::MUL))
     {
         sb.append(L"mul(");
-        visitExpr(sb, binary->left());
+        visitStmt(sb, binary->left());
         sb.append(L", ");
-        visitExpr(sb, binary->right());
+        visitStmt(sb, binary->right());
         sb.append(L")");
     }
     else if (is_vec_mat_op && (binary->op() == BinaryOp::MUL_ASSIGN))
     {
-        visitExpr(sb, binary->left());
+        visitStmt(sb, binary->left());
         sb.append(L" = mul(");
-        visitExpr(sb, binary->left());
+        visitStmt(sb, binary->left());
         sb.append(L", ");
-        visitExpr(sb, binary->right());
+        visitStmt(sb, binary->right());
         sb.append(L")");
     }
     else
@@ -248,7 +248,7 @@ void HLSLGenerator::VisitConstructExpr(SourceBuilderNew& sb, const ConstructExpr
             {
                 sb.append(L", ");
             }
-            visitExpr(sb, arg);
+            visitStmt(sb, arg);
         }
         sb.append(L")");
     }
@@ -298,7 +298,7 @@ void HLSLGenerator::VisitConstructExpr(SourceBuilderNew& sb, const ConstructExpr
                 {
                     sb.append(L", ");
                 }
-                visitExpr(sb, arg);
+                visitStmt(sb, arg);
             }
         }
         sb.append(L")");
@@ -325,7 +325,7 @@ void HLSLGenerator::VisitVariable(SourceBuilderNew& sb, const skr::CppSL::VarDec
         else
         {
             sb.append(L" = ");
-            visitExpr(sb, init);
+            visitStmt(sb, init);
         }
     }
 }
@@ -418,6 +418,29 @@ void HLSLGenerator::VisitConstructor(SourceBuilderNew& sb, const ConstructorDecl
     sb.append(L"static ");
     // 只 declare 这些 method，但是不把他们加到类型里面，不然会被生成 method 的逻辑重复生成
     visit(sb, pAST->DeclareMethod(const_cast<skr::CppSL::TypeDecl*>(typeDecl), L"New", typeDecl, ctor->parameters(), WrapperBody), FunctionStyle::Normal);
+}
+
+void HLSLGenerator::GenerateStmtAttributes(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt)
+{
+    if (const auto Loop = FindAttr<LoopAttr>(stmt->attrs()))
+    {
+        sb.append(L"[loop]");
+    }
+    if (const auto Unroll = FindAttr<UnrollAttr>(stmt->attrs()))
+    {
+        if (Unroll->count() != UINT32_MAX)
+            sb.append(std::format(L"[unroll({})]", Unroll->count()));
+        else
+            sb.append(L"[unroll]");
+    }
+    if (const auto Branch = FindAttr<BranchAttr>(stmt->attrs()))
+    {
+        sb.append(L"[branch]");
+    }
+    if (const auto Flatten = FindAttr<FlattenAttr>(stmt->attrs()))
+    {
+        sb.append(L"[flatten]");
+    }
 }
 
 void HLSLGenerator::GenerateFunctionAttributes(SourceBuilderNew& sb, const FunctionDecl* funcDecl)

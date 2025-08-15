@@ -30,6 +30,7 @@ public:
     virtual void VisitParameter(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl, const skr::CppSL::ParamVarDecl* param) = 0;
     virtual void VisitField(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* type, const skr::CppSL::FieldDecl* field) = 0;
     virtual void VisitConstructor(SourceBuilderNew& sb, const ConstructorDecl* ctor, FunctionStyle style);
+    virtual void GenerateStmtAttributes(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt);
     virtual void GenerateFunctionAttributes(SourceBuilderNew& sb, const FunctionDecl* func);
     virtual void GenerateFunctionSignaturePostfix(SourceBuilderNew& sb, const FunctionDecl* func);
     virtual void GenerateKernelWrapper(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl);
@@ -53,7 +54,7 @@ protected:
 protected:
     String GetQualifiedTypeName(const TypeDecl* type);
     String GetQualifiedFunctionName(const FunctionDecl* func);
-    void visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt);
+    void visitStmt(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt);
     void visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* typeDecl);
     void visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl, FunctionStyle style);
     void visit(SourceBuilderNew& sb, const skr::CppSL::VarDecl* varDecl);

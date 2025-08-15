@@ -107,4 +107,37 @@ private:
     ShaderStage _stage;
 };
 
+struct BranchAttr : public Attr
+{
+private:
+    friend struct AST;
+    BranchAttr();
+};
+
+struct FlattenAttr : public Attr
+{
+private:
+    friend struct AST;
+    FlattenAttr();
+};
+
+struct LoopAttr : public Attr
+{
+private:
+    friend struct AST;
+    LoopAttr();
+};
+
+struct UnrollAttr : public Attr
+{
+public:
+    uint32_t count() const { return _N; }
+    
+private:
+    friend struct AST;
+    UnrollAttr(uint32_t N = UINT32_MAX);
+    uint32_t _N = UINT32_MAX;
+};
+
+
 } // namespace skr::CppSL
