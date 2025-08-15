@@ -5,7 +5,7 @@
 #include "SkrCore/log.h"
 #include "SkrCore/async/thread_job.hpp"
 #include "SkrCore/memory/rc.hpp"
-
+#include "SkrSerde/json_serde.hpp"
 #include <SkrOS/filesystem.hpp>
 
 #include "SkrRT/io/ram_io.hpp"
@@ -18,6 +18,7 @@
 #include "SkrAnim/resources/skeleton_resource.hpp"
 
 #include "SkrToolCore/project/project.hpp"
+
 #include "SkrToolCore/cook_system/cook_system.hpp"
 
 #include "SkrAnimTool/skeleton_asset.h"
@@ -163,7 +164,7 @@ int AnimSampleCookModule::main_module_exec(int argc, char8_t** argv)
 
     auto& system = *skd::asset::GetCookSystem();
     // import skeleton
-    auto source_gltf = u8"D:/ws/repos/SakuraEngine/samples/application/game/assets/sketchfab/loli/scene.gltf";
+    auto source_gltf = u8"D:/ws/repos/SakuraEngine/samples/application/game/assets/sketchfab/ruby/scene.gltf";
     auto skelImporter = skd::asset::GltfSkelImporter::Create<skd::asset::GltfSkelImporter>();
     auto meshdata = skd::asset::SkeletonAsset::Create<skd::asset::SkeletonAsset>();
     auto skel_asset = skr::RC<skd::asset::AssetMetaFile>::New(
@@ -173,8 +174,6 @@ int AnimSampleCookModule::main_module_exec(int argc, char8_t** argv)
         skr::type_id_of<skd::asset::SkelCooker>());
     skelImporter->assetPath = source_gltf;
     system.ImportAssetMeta(&project, skel_asset, skelImporter, meshdata);
-
-    auto resource_system = skr::resource::GetResourceSystem();
 
     auto animImporter = skd::asset::GltfAnimImporter::Create<skd::asset::GltfAnimImporter>();
     auto animdata = skd::asset::AnimAsset::Create<skd::asset::AnimAsset>();
@@ -201,17 +200,21 @@ int AnimSampleCookModule::main_module_exec(int argc, char8_t** argv)
             });
     }
 
+    auto resource_system = skr::resource::GetResourceSystem();
     skr::task::schedule([&] {
         system.WaitForAll();
-        resource_system->Quit();
+        // resource_system->Quit();
     },
         nullptr);
     resource_system->Update();
     //----- wait
-    while (!system.AllCompleted() && resource_system->WaitRequest())
-    {
-        resource_system->Update();
-    }
+    skr::resource::AsyncResource<skr::anim::SkeletonResource> skel_resource = SkelAssetID;
+    skr::resource::AsyncResource<skr::anim::AnimResource> anim_resource = AnimAssetID;
+
+    // while (!system.AllCompleted() && resource_system->WaitRequest())
+    // {
+    //     resource_system->Update();
+    // }
 
     return 0;
 }

@@ -38,6 +38,7 @@ public static class SceneSamples
         Engine.Program("SceneSample_SkelMesh")
             .AddCppFiles("skelmesh/*.cpp")
             .Depend(Visibility.Private, "SceneRenderer")
+            .Depend(Visibility.Private, "SkrAnimTool")
             .Depend(Visibility.Private, "SkrGLTFTool");
 
         Engine.Program("SceneSample_Project")
