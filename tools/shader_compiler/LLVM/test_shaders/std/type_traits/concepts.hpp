@@ -140,15 +140,6 @@ template<typename T>
 concept rw_buffer = is_buffer_v<T> && (T::flags == BufferFlags::ReadWrite);
 
 template<typename T>
-concept group_shared = is_groupshared_v<T>;
-
-template<typename T>
-concept device_space = is_devicespace_v<T>;
-
-template<typename T>
-concept atomic_operandable = is_groupshared_v<T> || is_devicespace_v<T>;
-
-template<typename T>
 concept float_family = is_float_family_v<T>;
 
 template<typename T>

@@ -31,5 +31,4 @@
 
 #define trait struct [[ignore]]
 
-#define groupshared __attribute__((opencl_local))
-#define devicespace __attribute__((opencl_global))
+#define groupshared [[clang::annotate("skr-shader", "groupshared")]]

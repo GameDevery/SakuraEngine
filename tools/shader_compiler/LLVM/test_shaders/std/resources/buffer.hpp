@@ -11,8 +11,8 @@ struct [[builtin("buffer")]] Buffer {
 
 	[[callop("BUFFER_READ")]] const Type& Load(uint32 loc);
 	[[callop("BUFFER_WRITE")]] void Store(uint32 loc, const Type& value) requires((cache_flags & BufferFlags::ReadWrite) != 0);
-	[[access]] devicespace const Type& operator[](uint32 loc) const;
-	[[access]] devicespace Type& operator[](uint32 loc) requires((cache_flags & BufferFlags::ReadWrite) != 0);
+	[[access]] const Type& operator[](uint32 loc) const;
+	[[access]] Type& operator[](uint32 loc) requires((cache_flags & BufferFlags::ReadWrite) != 0);
 };
 template<>
 struct [[builtin("buffer")]] Buffer<int32, BufferFlags::ReadWrite> {
@@ -20,8 +20,8 @@ struct [[builtin("buffer")]] Buffer<int32, BufferFlags::ReadWrite> {
 
 	[[callop("BUFFER_READ")]] int32 Load(uint32 loc);
 	[[callop("BUFFER_WRITE")]] void Store(uint32 loc, int32 value);
-	[[access]] devicespace const int32& operator[](uint32 loc) const;
-	[[access]] devicespace int32& operator[](uint32 loc);
+	[[access]] const int32& operator[](uint32 loc) const;
+	[[access]] int32& operator[](uint32 loc);
 };
 template<>
 struct [[builtin("buffer")]] Buffer<uint32, BufferFlags::ReadWrite> {
@@ -29,8 +29,8 @@ struct [[builtin("buffer")]] Buffer<uint32, BufferFlags::ReadWrite> {
 
 	[[callop("BUFFER_READ")]] uint32 Load(uint32 loc);
 	[[callop("BUFFER_WRITE")]] void Store(uint32 loc, uint32 value);
-	[[access]] devicespace const uint32& operator[](uint32 loc) const;
-	[[access]] devicespace uint32& operator[](uint32 loc);
+	[[access]] const uint32& operator[](uint32 loc) const;
+	[[access]] uint32& operator[](uint32 loc);
 };
 template<>
 struct [[builtin("buffer")]] Buffer<float, BufferFlags::ReadWrite> {
@@ -38,8 +38,8 @@ struct [[builtin("buffer")]] Buffer<float, BufferFlags::ReadWrite> {
 
 	[[callop("BUFFER_READ")]] float Load(uint32 loc);
 	[[callop("BUFFER_WRITE")]] void Store(uint32 loc, float value);
-	[[access]] devicespace const float& operator[](uint32 loc) const;
-	[[access]] devicespace float& operator[](uint32 loc);
+	[[access]] const float& operator[](uint32 loc) const;
+	[[access]] float& operator[](uint32 loc);
 };
 template<uint32 cache_flags>
 struct [[builtin("buffer")]] Buffer<void, cache_flags> {

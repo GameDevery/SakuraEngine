@@ -225,6 +225,7 @@ inline static clang::AnnotateAttr* IsBinOp(const clang::Decl* decl) { return Exi
 inline static clang::AnnotateAttr* IsCallOp(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "callop"); }
 inline static clang::AnnotateAttr* IsAccess(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "access"); }
 inline static clang::AnnotateAttr* IsInterpolation(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "interpolation"); }
+inline static clang::AnnotateAttr* IsGroupShared(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "groupshared"); }
 inline static clang::AnnotateAttr* IsStage(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "stage"); }
 inline static clang::AnnotateAttr* IsStageInout(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "stage_inout"); }
 inline static clang::AnnotateAttr* IsResourceBind(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "binding"); }
@@ -931,7 +932,7 @@ CppSL::GlobalVarDecl* ASTConsumer::TranslateGlobalVariable(const clang::VarDecl*
             TranslateType(Var->getType());
 
         // groupshared!
-        if (Var->getType().getAddressSpace() == clang::LangAS::opencl_local)
+        if (IsGroupShared(Var))
         {
             auto _groupshared = AST.DeclareGroupShared(
                 getType(Var->getType()),

@@ -22,39 +22,39 @@ extern void GroupMemoryBarrier();
 [[callop("GroupMemoryBarrierWithGroupSync")]] 
 extern void GroupMemoryBarrierWithGroupSync();
 
-template <concepts::atomic_operandable V, concepts::int_family T>
+template <concepts::int_family V, concepts::int_family T>
 [[callop("InterlockedAdd")]]
 extern void InterlockedAdd(V& v, T value, T& prev);
 
-template <concepts::atomic_operandable V, concepts::int_family T>
+template <concepts::int_family V, concepts::int_family T>
 [[callop("InterlockedAnd")]]
 extern void InterlockedAnd(V& v, T value, T& prev);
 
-template <concepts::atomic_operandable V, concepts::int_family T>
+template <concepts::arithmetic_scalar V, concepts::arithmetic_scalar T>
 [[callop("InterlockedCompareExchange")]]
 extern void InterlockedCompareExchange(V& v, T compare, T value, T& prev);
 
-template <concepts::atomic_operandable V, concepts::int_family T>
+template <concepts::arithmetic_scalar V, concepts::arithmetic_scalar T>
 [[callop("InterlockedCompareStore")]]
 extern void InterlockedCompareStore(V& v, T compare, T value);
 
-template <concepts::atomic_operandable V, concepts::int_family T>
+template <concepts::arithmetic_scalar V, concepts::arithmetic_scalar T>
 [[callop("InterlockedExchange")]]
 extern void InterlockedExchange(V& v, T value, T& prev);
 
-template <concepts::atomic_operandable V, concepts::int_family T>
+template <concepts::int_family V, concepts::int_family T>
 [[callop("InterlockedMax")]]
 extern void InterlockedMax(V& v, T value, T& prev);
 
-template <concepts::atomic_operandable V, concepts::int_family T>
+template <concepts::int_family V, concepts::int_family T>
 [[callop("InterlockedMin")]]
 extern void InterlockedMin(V& v, T value, T& prev);
 
-template <concepts::atomic_operandable V, concepts::int_family T>
+template <concepts::int_family V, concepts::int_family T>
 [[callop("InterlockedOr")]]
 extern void InterlockedOr(V& v, T value, T& prev);
 
-template <concepts::atomic_operandable V, concepts::int_family T>
+template <concepts::int_family V, concepts::int_family T>
 [[callop("InterlockedXor")]]
 extern void InterlockedXor(V& v, T value, T& prev);
 

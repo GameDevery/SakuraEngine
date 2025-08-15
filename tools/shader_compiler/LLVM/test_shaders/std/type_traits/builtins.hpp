@@ -137,32 +137,6 @@ trait conditional<false, T, F> {
 template<bool B, class T, class F>
 using conditional_t = typename conditional<B, T, F>::type;
 
-template<typename T>
-struct is_groupshared {
-    static constexpr bool value = false;
-};
-
-template<typename T>
-struct is_groupshared<__attribute__((opencl_local)) T> {
-    static constexpr bool value = true;
-};
-
-template<typename T>
-inline static constexpr bool is_groupshared_v = is_groupshared<T>::value;
-
-template<typename T>
-struct is_devicespace {
-    static constexpr bool value = false;
-};
-
-template<typename T>
-struct is_devicespace<__attribute__((opencl_global)) T> {
-    static constexpr bool value = true;
-};
-
-template<typename T>
-inline static constexpr bool is_devicespace_v = is_devicespace<T>::value;
-
 } // namespace std
 using namespace std;
 
