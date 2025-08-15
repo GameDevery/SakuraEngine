@@ -1,4 +1,4 @@
-#include "scene_render_system.h"
+#include "anim_render_system.h"
 #include "SkrAnim/components/skin_component.hpp"
 #include "SkrBase/math.h"
 #include "SkrRenderer/primitive_draw.h"
@@ -17,10 +17,10 @@ class RenderGraph;
 
 namespace skr::scene
 {
-struct SceneRenderJob
+struct AnimRenderJob
 {
-    using RenderF = std::function<void(const skr::span<skr::renderer::PrimitiveCommand>, skr_float4x4_t)>;
-    SceneRenderJob(RenderF render_callback = nullptr)
+    using RenderF = std::function<void(const skr::span<skr::renderer::PrimitiveCommand>, skr_float4x4_t, skr::Vector<skr::anim::SkinPrimitive>)>;
+    AnimRenderJob(RenderF render_callback = nullptr)
         : render_callback(render_callback)
     {
     }
@@ -28,37 +28,43 @@ struct SceneRenderJob
     void build(skr::ecs::AccessBuilder& builder)
     {
         builder.has<renderer::MeshComponent>()
-            .has<scene::TransformComponent>();
+            .has<scene::TransformComponent>()
+            .has<anim::AnimComponent>();
 
-        builder.access(&SceneRenderJob::mesh_accessor)
-            .access(&SceneRenderJob::transform_accessor);
+        builder.access(&AnimRenderJob::mesh_accessor)
+            .access(&AnimRenderJob::transform_accessor)
+            .access(&AnimRenderJob::anim_accessor);
     }
     void run(skr::ecs::TaskContext& context)
     {
-        SkrZoneScopedN("SceneRenderJob::run");
+        SkrZoneScopedN("AnimRenderJob::run");
         for (auto i = 0; i < context.size(); i++)
         {
             const auto entity = context.entities()[i];
             // SKR_LOG_INFO(u8"Rendering entity: {%u}", entity);
             auto* mesh_component = mesh_accessor.get(entity);
             auto* transform_component = transform_accessor.get(entity);
-            // auto transform = transform_component->get();
-            // SKR_LOG_INFO(u8"Transform Position: ({%f}, {%f}, {%f})", transform.position.x, transform.position.y, transform.position.z);
-            // SKR_LOG_INFO(u8"Transform Rotation: ({%f}, {%f}, {%f}, {%f})", transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w);
-            // SKR_LOG_INFO(u8"Transform Scale: ({%f}, {%f}, {%f})", transform.scale.x, transform.scale.y, transform.scale.z);
+            auto* anim_component = anim_accessor.get(entity);
+
             if (!mesh_component || !transform_component)
             {
                 continue;
             }
 
+            if (!anim_component)
+            {
+                continue; // skip if no anim component
+            }
+
             mesh_component->mesh_resource.resolve(true, 0);
+
             if (mesh_component->mesh_resource.is_resolved())
             {
                 auto* mesh_resource = mesh_component->mesh_resource.get_resolved(true);
 
-                if (mesh_resource && mesh_resource->render_mesh)
+                if (mesh_resource && mesh_resource->render_mesh && !anim_component->vbs.is_empty())
                 {
-                    render_callback(mesh_resource->render_mesh->primitive_commands, transform_component->get().to_matrix());
+                    render_callback(mesh_resource->render_mesh->primitive_commands, transform_component->get().to_matrix(), anim_component->primitives);
                 }
                 else
                 {
@@ -70,10 +76,11 @@ struct SceneRenderJob
 
     skr::ecs::RandomComponentReadWrite<skr::renderer::MeshComponent> mesh_accessor;
     skr::ecs::RandomComponentReader<const skr::scene::TransformComponent> transform_accessor;
+    skr::ecs::RandomComponentReader<const skr::anim::AnimComponent> anim_accessor;
     RenderF render_callback = nullptr;
 };
 
-struct SceneRenderSystem::Impl
+struct AnimRenderSystem::Impl
 {
     skr::ecs::World* mp_world = nullptr;
     sugoi_query_t* m_render_job_query = nullptr;
@@ -87,43 +94,43 @@ struct SceneRenderSystem::Impl
     skr::Vector<PushConstants> push_constants_list;
 };
 
-SceneRenderSystem* SceneRenderSystem::Create(skr::ecs::World* world) SKR_NOEXCEPT
+AnimRenderSystem* AnimRenderSystem::Create(skr::ecs::World* world) SKR_NOEXCEPT
 {
-    SkrZoneScopedN("CreateSceneRenderSystem");
-    auto memory = (uint8_t*)sakura_calloc(1, sizeof(SceneRenderSystem) + sizeof(SceneRenderSystem::Impl));
-    // placement new for constructing the SceneRenderSystem and its Impl compactly
-    auto system = new (memory) SceneRenderSystem();
-    system->impl = new (memory + sizeof(SceneRenderSystem)) SceneRenderSystem::Impl();
+    SkrZoneScopedN("CreateAnimRenderSystem");
+    auto memory = (uint8_t*)sakura_calloc(1, sizeof(AnimRenderSystem) + sizeof(AnimRenderSystem::Impl));
+    // placement new for constructing the AnimRenderSystem and its Impl compactly
+    auto system = new (memory) AnimRenderSystem();
+    system->impl = new (memory + sizeof(AnimRenderSystem)) AnimRenderSystem::Impl();
     system->impl->mp_world = world;
     return system;
 };
 
-void SceneRenderSystem::Destroy(SceneRenderSystem* system) SKR_NOEXCEPT
+void AnimRenderSystem::Destroy(AnimRenderSystem* system) SKR_NOEXCEPT
 {
-    SkrZoneScopedN("DestroySceneRenderSystem");
+    SkrZoneScopedN("DestroyAnimRenderSystem");
     system->impl->~Impl();
-    system->~SceneRenderSystem();
+    system->~AnimRenderSystem();
     sakura_free(system);
 }
 
-void SceneRenderSystem::bind_renderer(skr::SceneRenderer* renderer) SKR_NOEXCEPT
+void AnimRenderSystem::bind_renderer(skr::SceneRenderer* renderer) SKR_NOEXCEPT
 {
     impl->mp_renderer = renderer;
 }
 
-skr::span<skr_primitive_draw_t> SceneRenderSystem::get_drawcalls() const SKR_NOEXCEPT
+skr::span<skr_primitive_draw_t> AnimRenderSystem::get_drawcalls() const SKR_NOEXCEPT
 {
     return impl->drawcalls;
 }
 
-void SceneRenderSystem::update() SKR_NOEXCEPT
+void AnimRenderSystem::update() SKR_NOEXCEPT
 {
-    SkrZoneScopedN("SceneRenderSystem::update");
+    SkrZoneScopedN("AnimRenderSystem::update");
     impl->drawcalls.clear();
     impl->push_constants_list.clear();
 
     auto render_func = impl->mp_renderer != nullptr ?
-        scene::SceneRenderJob::RenderF([this](const skr::span<skr::renderer::PrimitiveCommand> cmds, skr_float4x4_t model) {
+        scene::AnimRenderJob::RenderF([this](const skr::span<skr::renderer::PrimitiveCommand> cmds, skr_float4x4_t model, skr::Vector<skr::anim::SkinPrimitive> skin_primitives) {
             // impl->mp_renderer->draw_primitives(render_graph, cmds, model);
             auto& push_constants_data = impl->push_constants_list.emplace().ref();
             push_constants_data.model = skr::transpose(model);
@@ -142,38 +149,29 @@ void SceneRenderSystem::update() SKR_NOEXCEPT
             auto _view_proj = skr::mul(view, proj);
             push_constants_data.view_proj = skr::transpose(_view_proj);
 
-            for (const auto& cmd : cmds)
+            for (auto i = 0; i < cmds.size(); i++)
             {
                 skr_primitive_draw_t& drawcall = impl->drawcalls.emplace().ref();
-                // fill the drawcall with data
-                // wait for the render effect to fill the pipeline data
+                auto& cmd = cmds[i];
+                auto& skin_prim = skin_primitives[i];
+
                 drawcall.push_const = (const uint8_t*)(&push_constants_data);
-                drawcall.vertex_buffer_count = (uint32_t)cmd.vbvs.size();
-                drawcall.vertex_buffers = cmd.vbvs.data();
                 drawcall.index_buffer = *cmd.ibv;
+                drawcall.vertex_buffer_count = (uint32_t)skin_prim.views.size();
+                drawcall.vertex_buffers = skin_prim.views.data();
+                // drawcall.vertex_buffer_count = (uint32_t)cmd.vbvs.size();
+                if (i <= 1) // TODO: 如果vertex_count过大，可能无法同步显示
+                {
+                    drawcall.vertex_buffers = cmd.vbvs.data();
+                }
+                //  drawcall.vertex_buffers = cmd.vbvs.data();
             }
         }) :
-        scene::SceneRenderJob::RenderF([](const skr::span<skr::renderer::PrimitiveCommand> cmds, skr_float4x4_t model) {
+        scene::AnimRenderJob::RenderF([](const skr::span<skr::renderer::PrimitiveCommand> cmds, skr_float4x4_t model, skr::Vector<skr::anim::SkinPrimitive> skin_primitives) {
             // do nothing
         });
-    scene::SceneRenderJob job{ render_func };
+    scene::AnimRenderJob job{ render_func };
     impl->m_render_job_query = impl->mp_world->dispatch_task(job, UINT32_MAX, impl->m_render_job_query);
 }
 
 } // namespace skr::scene
-
-// C interface
-skr::scene::SceneRenderSystem* skr_scene_render_system_create(skr::ecs::World* world)
-{
-    return skr::scene::SceneRenderSystem::Create(world);
-}
-
-void skr_scene_render_system_destroy(skr::scene::SceneRenderSystem* system)
-{
-    skr::scene::SceneRenderSystem::Destroy(system);
-}
-
-// void skr_scene_render_system_update(skr::scene::SceneRenderSystem* system, skr::render_graph::RenderGraph* render_graph)
-// {
-//     system->update(render_graph);
-// }

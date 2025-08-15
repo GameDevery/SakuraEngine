@@ -36,7 +36,8 @@
 #include "SkrSceneCore/transform_system.h"
 
 #include "scene_renderer.hpp"
-#include "scene_render_system.h"
+// #include "scene_render_system.h"
+#include "anim_render_system.h"
 
 #include "helper.hpp"
 
@@ -90,7 +91,8 @@ struct SceneSampleSkelMeshModule : public skr::IDynamicModule
     skd::SProject project;
     skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
     skr::TransformSystem* transform_system = nullptr;
-    skr::scene::SceneRenderSystem* scene_render_system = nullptr;
+    // skr::scene::SceneRenderSystem* scene_render_system = nullptr;
+    skr::scene::AnimRenderSystem* anim_render_system = nullptr;
 };
 
 IMPLEMENT_DYNAMIC_MODULE(SceneSampleSkelMeshModule, SceneSample_SkelMesh);
@@ -212,7 +214,8 @@ void SceneSampleSkelMeshModule::on_load(int argc, char8_t** argv)
     world.initialize();
     actor_manager.initialize(&world);
     transform_system = skr_transform_system_create(&world);
-    scene_render_system = skr_scene_render_system_create(&world);
+    // scene_render_system = skr_scene_render_system_create(&world);
+    anim_render_system = skr::scene::AnimRenderSystem::Create(&world);
     render_device = SkrRendererModule::Get()->get_render_device();
 
     auto resourceRoot = (skr::fs::current_directory() / u8"../resources");
@@ -243,7 +246,8 @@ void SceneSampleSkelMeshModule::on_load(int argc, char8_t** argv)
     }
     scene_renderer = skr::SceneRenderer::Create();
     scene_renderer->initialize(render_device, &world, resource_vfs);
-    scene_render_system->bind_renderer(scene_renderer);
+    // scene_render_system->bind_renderer(scene_renderer);
+    anim_render_system->bind_renderer(scene_renderer);
 }
 
 void SceneSampleSkelMeshModule::on_unload()
@@ -257,7 +261,7 @@ void SceneSampleSkelMeshModule::on_unload()
         DestroyResourceSystem();
     }
     skr_transform_system_destroy(transform_system);
-    skr_scene_render_system_destroy(scene_render_system);
+    skr::scene::AnimRenderSystem::Destroy(anim_render_system);
 
     actor_manager.finalize();
     world.finalize();
@@ -357,7 +361,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
     auto cgpu_device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
 
-    skr::Vector<skr::RCWeak<skr::MeshActor>> hierarchy_actors;
+    skr::Vector<skr::RCWeak<skr::SkelMeshActor>> hierarchy_actors;
     constexpr int hierarchy_count = 3; // Number of actors in the hierarchy
 
     auto root = skr::Actor::GetRoot();
@@ -437,9 +441,9 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
 
     actor1.lock()->GetComponent<skr::anim::SkeletonComponent>()->skeleton_resource = SkelAssetID;
     actor1.lock()->GetComponent<skr::anim::SkinComponent>()->skin_resource = SkinAssetID;
-    skr::resource::AsyncResource<skr::anim::AnimResource> anim_resource_handle = AnimAssetID;
 
-    // skr::resource::AsyncResource<skr::anim::SkinResource> skin_resource = SkinAssetID;
+    skr::resource::AsyncResource<skr::anim::AnimResource> anim_resource_handle = AnimAssetID;
+    actor1.lock()->GetComponent<skr::anim::AnimComponent>()->use_dynamic_buffer = true; // use CPU/GPU dynamic buffer for simplicity
 
     while (!imgui_app->want_exit().comsume())
     {
@@ -478,15 +482,17 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
                 // SKR_LOG_INFO(u8"Skin has %d poses", skin_resource->inverse_bind_poses.size());
                 auto* runtime_anim_component = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
 
-                if (skeleton_resource && skin_resource && anim && runtime_anim_component && mesh_resource)
+                if (skeleton_resource && skin_resource && anim && runtime_anim_component && mesh_resource && mesh_resource->render_mesh)
                 {
-                    // TODO: 当前好像是复制到自己的vector里面，不能直接用resource内的，这样感觉不太好
                     skr_init_skin_component(skin_comp, skeleton_resource);
                     skr_init_anim_component(runtime_anim_component, mesh_resource, skeleton_resource);
                     skr_init_anim_buffers(cgpu_device, runtime_anim_component, mesh_resource);
                 }
                 {
-                    skr_cpu_skin(skin_comp, runtime_anim_component, mesh_resource);
+                    if (!(skin_comp->joint_remaps.is_empty() || runtime_anim_component->buffers.is_empty()))
+                    {
+                        skr_cpu_skin(skin_comp, runtime_anim_component, mesh_resource);
+                    }
                 }
             }
         }
@@ -510,11 +516,14 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
             camera.aspect = (float)size.x / (float)size.y;
         };
         {
-            scene_render_system->update();
+            // scene_render_system->update();
+            SkrZoneScopedN("AnimRenderJob");
+            anim_render_system->update();
             skr::ecs::TaskScheduler::Get()->sync_all();
+
             scene_renderer->draw_primitives(
                 render_graph,
-                scene_render_system->get_drawcalls());
+                anim_render_system->get_drawcalls());
         }
 
         {

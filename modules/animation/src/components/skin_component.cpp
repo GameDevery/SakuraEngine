@@ -39,15 +39,18 @@ void skr_init_skin_component(skr::anim::SkinComponent* component, const skr::ani
     }
 }
 
-void skr_init_anim_component(skr::anim::AnimComponent* component, const skr_mesh_resource_t* mesh, skr::anim::SkeletonResource* skeleton)
+void skr_init_anim_component(skr::anim::AnimComponent* anim, const skr_mesh_resource_t* mesh, skr::anim::SkeletonResource* skeleton)
 {
-    component->buffers.resize_zeroed(1);
-    component->vbs.resize_zeroed(1);
-    component->primitives.resize_default(mesh->primitives.size());
-    component->joint_matrices.resize_zeroed(skeleton->skeleton.num_joints());
+    anim->buffers.resize_zeroed(1); // CPU buffer
+    anim->vbs.resize_zeroed(1);     // GPU buffer
+    anim->primitives.resize_default(mesh->primitives.size());
+    anim->joint_matrices.resize_zeroed(skeleton->skeleton.num_joints());
+
     for (size_t i = 0; i < skeleton->skeleton.num_joints(); ++i)
-        component->joint_matrices[i] = ozz::math::Float4x4::identity();
+        anim->joint_matrices[i] = ozz::math::Float4x4::identity();
     size_t buffer_size = 0, position_offset = 0, normal_offset = 0, tangent_offset = 0;
+
+    // sync view info
     for (size_t i = 0; i < mesh->primitives.size(); ++i)
     {
         const auto& prim = mesh->primitives[i];
@@ -67,15 +70,20 @@ void skr_init_anim_component(skr::anim::AnimComponent* component, const skr_mesh
                 tangents_buffer = &view;
         }
         SKR_ASSERT(joints_buffer && weights_buffer);
+
         position_offset = buffer_size;
+
         buffer_size += vertex_count * positions_buffer->stride;
+
         normal_offset = buffer_size;
         if (normals_buffer)
             buffer_size += vertex_count * normals_buffer->stride;
+
         tangent_offset = buffer_size;
         if (tangents_buffer)
             buffer_size += vertex_count * tangents_buffer->stride;
-        auto& primitive = component->primitives[i];
+
+        auto& primitive = anim->primitives[i];
         {
             primitive.position.buffer_index = 0;
             primitive.position.attribute = positions_buffer->attribute;
@@ -100,8 +108,9 @@ void skr_init_anim_component(skr::anim::AnimComponent* component, const skr_mesh
             primitive.tangent.stride = tangents_buffer->stride;
         }
     }
-    auto blob = skr::IBlob::CreateAligned(nullptr, buffer_size, 16, false);
-    component->buffers[0] = blob.get();
+
+    auto blob = skr::IBlob::CreateAligned(nullptr, buffer_size, 16, false); // the cpu swap buffer for skinning
+    anim->buffers[0] = blob.get();
 }
 
 void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, const skr_mesh_resource_t* mesh)
@@ -110,6 +119,7 @@ void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, 
     for (size_t j = 0u; j < anim->buffers.size(); j++)
     {
         const bool use_dynamic_buffer = anim->use_dynamic_buffer;
+
         if (!anim->vbs[j])
         {
             SkrZoneScopedN("CreateVB");
@@ -123,16 +133,22 @@ void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, 
             vb_desc.size = anim->buffers[j]->get_size();
             SKR_ASSERT(vb_desc.size > 0);
             anim->vbs[j] = cgpu_create_buffer(device, &vb_desc);
+
             auto renderMesh = mesh_resource->render_mesh;
+
             anim->views.reserve(renderMesh->vertex_buffer_views.size());
+
             for (size_t k = 0; k < anim->primitives.size(); ++k)
             {
                 auto& prim = anim->primitives[k];
                 auto vbv_start = anim->views.size();
+
                 for (size_t z = 0; z < renderMesh->primitive_commands[k].vbvs.size(); ++z)
                 {
                     auto& vbv = renderMesh->primitive_commands[k].vbvs[z];
                     auto attr = mesh_resource->primitives[k].vertex_buffers[z].attribute;
+                    // anim->views.add(vbv);
+
                     if (attr == SKR_VERT_ATTRIB_POSITION)
                     {
                         auto& view = anim->views.add_default().ref();
@@ -158,9 +174,11 @@ void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, 
                         anim->views.add(vbv);
                 }
                 prim.views = skr::span<skr_vertex_buffer_view_t>(anim->views.data() + vbv_start, renderMesh->primitive_commands[k].vbvs.size());
+                // SKR_LOG_INFO(u8"Anim Primitive %d has %d vertex buffers", k, prim.views.size());
             }
         }
         const auto vertex_size = anim->buffers[j]->get_size();
+
         if (use_dynamic_buffer)
         {
             SkrZoneScopedN("CVVUpdateVB");
@@ -174,7 +192,7 @@ void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, 
 void skr_cpu_skin(skr::anim::SkinComponent* skin, const skr::anim::AnimComponent* anim, const skr_mesh_resource_t* mesh)
 {
     auto skin_resource = skin->skin_resource.get_resolved();
-
+    // SKR_LOG_INFO(u8"Skin %d mesh primitive(s)", mesh->primitives.size());
     for (size_t i = 0; i < mesh->primitives.size(); ++i)
     {
         ozz::geometry::SkinningJob job;
@@ -205,36 +223,48 @@ void skr_cpu_skin(skr::anim::SkinComponent* skin, const skr::anim::AnimComponent
         };
 
         skin->skin_matrices.resize_zeroed(anim->joint_matrices.size());
+
         for (size_t i = 0; i < skin->joint_remaps.size(); ++i)
         {
             auto inverse = skin_resource->inverse_bind_poses[i];
-            skin->skin_matrices[i] = anim->joint_matrices[skin->joint_remaps[i]] * (ozz::math::Float4x4&)inverse;
+            // skin->skin_matrices[i] = anim->joint_matrices[skin->joint_remaps[i]] * (ozz::math::Float4x4&)inverse;
+            skin->skin_matrices[i] = anim->joint_matrices[skin->joint_remaps[i]];
         }
-        job.joint_matrices = { skin->skin_matrices.data(), skin->skin_matrices.size() };
-        job.influences_count = 4;
-        job.vertex_count = vertex_count;
-        job.joint_weights = buffer_span(weights_buffer, skr::type_t<float>(), 4);
-        job.joint_weights_stride = weights_buffer->stride;
-        job.joint_indices = buffer_span(joints_buffer, skr::type_t<uint16_t>(), 4);
-        job.joint_indices_stride = joints_buffer->stride;
-        if (normals_buffer)
-            job.in_normals = buffer_span(normals_buffer, skr::type_t<float>(), 3);
-        job.in_normals_stride = normals_buffer->stride;
-        if (tangents_buffer && tangents_buffer->stride)
-            job.in_tangents = buffer_span(tangents_buffer, skr::type_t<float>(), 4);
-        job.in_tangents_stride = tangents_buffer->stride;
-        job.in_positions = buffer_span(positions_buffer, skr::type_t<float>(), 3);
-        job.in_positions_stride = positions_buffer->stride;
+
         auto& skprim = anim->primitives[i];
-        job.out_positions = { (float*)(anim->buffers[skprim.position.buffer_index]->get_data() + skprim.position.offset), vertex_count * 3 };
-        job.out_positions_stride = skprim.position.stride;
-        if (normals_buffer)
-            job.out_normals = { (float*)(anim->buffers[skprim.normal.buffer_index]->get_data() + skprim.normal.offset), vertex_count * 3 };
-        job.out_normals_stride = skprim.normal.stride;
-        if (tangents_buffer)
-            job.out_tangents = { (float*)(anim->buffers[skprim.tangent.buffer_index]->get_data() + skprim.tangent.offset), vertex_count * 4 };
-        job.out_tangents_stride = skprim.tangent.stride;
-        auto result = job.Run();
-        SKR_ASSERT(result);
+        // {
+        //     job.joint_matrices = { skin->skin_matrices.data(), skin->skin_matrices.size() };
+        //     job.influences_count = 4;
+        //     job.vertex_count = vertex_count;
+        //     job.joint_weights = buffer_span(weights_buffer, skr::type_t<float>(), 4);
+        //     job.joint_weights_stride = weights_buffer->stride;
+        //     job.joint_indices = buffer_span(joints_buffer, skr::type_t<uint16_t>(), 4);
+        //     job.joint_indices_stride = joints_buffer->stride;
+        //     if (normals_buffer)
+        //         job.in_normals = buffer_span(normals_buffer, skr::type_t<float>(), 3);
+        //     job.in_normals_stride = normals_buffer->stride;
+        //     if (tangents_buffer && tangents_buffer->stride)
+        //         job.in_tangents = buffer_span(tangents_buffer, skr::type_t<float>(), 4);
+        //     job.in_tangents_stride = tangents_buffer->stride;
+        //     job.in_positions = buffer_span(positions_buffer, skr::type_t<float>(), 3);
+        //     job.in_positions_stride = positions_buffer->stride;
+
+        //     job.out_positions = { (float*)(anim->buffers[skprim.position.buffer_index]->get_data() + skprim.position.offset), vertex_count * 3 };
+        //     job.out_positions_stride = skprim.position.stride;
+
+        //     if (normals_buffer)
+        //         job.out_normals = { (float*)(anim->buffers[skprim.normal.buffer_index]->get_data() + skprim.normal.offset), vertex_count * 3 };
+        //     job.out_normals_stride = skprim.normal.stride;
+        //     if (tangents_buffer)
+        //         job.out_tangents = { (float*)(anim->buffers[skprim.tangent.buffer_index]->get_data() + skprim.tangent.offset), vertex_count * 4 };
+
+        //     job.out_tangents_stride = skprim.tangent.stride;
+        //     auto result = job.Run();
+        //     SKR_ASSERT(result);
+        // }
+
+        auto* skin_buf = (float*)(anim->buffers[0]->get_data() + skprim.position.offset);
+        auto* mesh_buf = buffer_span(positions_buffer, skr::type_t<float>(), 3).data();
+        memcpy(skin_buf, mesh_buf, 3 * vertex_count * sizeof(float));
     }
 }

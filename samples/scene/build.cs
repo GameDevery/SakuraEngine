@@ -8,7 +8,7 @@ public static class SceneSamples
     {
         Engine.Module("SceneRenderer", "SCENE_RENDERER")
             .Depend(Visibility.Public, "SkrScene", "SkrGraphics"
-                , "SkrImGui", "SkrCore", "SkrSystem")
+                , "SkrImGui", "SkrCore", "SkrSystem", "SkrAnim")
             .IncludeDirs(Visibility.Public, "renderer")
             .AddCppFiles("renderer/*.cpp")
             .AddCppSLFiles("renderer/shaders/*.cppsl")

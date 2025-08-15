@@ -54,11 +54,14 @@ struct SceneRendererImpl : public skr::SceneRenderer
 
     void draw_primitives(skr::render_graph::RenderGraph* render_graph, skr::span<skr_primitive_draw_t> drawcalls) override
     {
+        // SKR_LOG_INFO(u8"Render Mesh has %d drawcalls", drawcalls.size());
+
         for (auto& drawcall : drawcalls)
         {
             drawcall.pipeline = pipeline;
             drawcall.push_const_name = push_constants_name;
         }
+
         auto backbuffer = render_graph->get_texture(u8"backbuffer");
         const auto back_desc = render_graph->resolve_descriptor(backbuffer);
         render_graph->add_render_pass(
@@ -80,7 +83,6 @@ struct SceneRendererImpl : public skr::SceneRenderer
                         uint32_t offsets[16] = { 0 };
                         for (uint32_t i = 0; i < drawcall.vertex_buffer_count; i++)
                         {
-
                             vertex_buffers[i] = drawcall.vertex_buffers[i].buffer;
                             strides[i] = drawcall.vertex_buffers[i].stride;
                             offsets[i] = drawcall.vertex_buffers[i].offset;
@@ -157,6 +159,7 @@ struct SceneRendererImpl : public skr::SceneRenderer
                         CGPUBufferId vertex_buffers[16] = { 0 };
                         uint32_t strides[16] = { 0 };
                         uint32_t offsets[16] = { 0 };
+
                         for (uint32_t i = 0; i < drawcall.vertex_buffer_count; i++)
                         {
 
