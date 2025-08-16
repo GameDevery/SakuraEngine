@@ -7,6 +7,7 @@
 #include <SkrCore/time.h>
 #include <SkrCore/async/thread_job.hpp>
 #include <SkrRT/io/vram_io.hpp>
+#include "SkrAnim/ozz/local_to_model_job.h"
 #include "SkrAnim/resources/skin_resource.hpp"
 #include "SkrOS/thread.h"
 #include "SkrProfile/profile.h"
@@ -49,6 +50,8 @@
 #include "SkrAnim/resources/skin_resource.hpp"
 #include "SkrAnim/components/skin_component.hpp"
 #include "SkrAnim/components/skeleton_component.hpp"
+
+#include "SkrAnim/ozz/base/containers/vector.h"
 
 using namespace skr::literals;
 const auto MeshAssetID = u8"01988203-c467-72ef-916b-c8a5db2ec18d"_guid;
@@ -458,6 +461,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
         }
 
         {
+
             auto* mesh_comp = actor1.lock()->GetComponent<skr::renderer::MeshComponent>();
             auto* skel_comp = actor1.lock()->GetComponent<skr::anim::SkeletonComponent>();
             auto* skin_comp = actor1.lock()->GetComponent<skr::anim::SkinComponent>();
@@ -473,112 +477,129 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
                 anim_resource_handle.is_resolved())
 
             {
-                // CPU Skinning
-                auto* skeleton_resource = skel_comp->skeleton_resource.get_resolved(true);
-                auto* skin_resource = skin_comp->skin_resource.get_resolved(true);
-                auto* anim = anim_resource_handle.get_resolved(true);
-                auto* mesh_resource = mesh_comp->mesh_resource.get_resolved(true);
-                // SKR_LOG_INFO(u8"Skeleton has %d joints", skeleton_resource->skeleton.num_joints());
-                // SKR_LOG_INFO(u8"Animation has %d tracks", anim->animation.num_tracks());
-                // SKR_LOG_INFO(u8"Skin has %d poses", skin_resource->inverse_bind_poses.size());
-                auto* runtime_anim_component = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
 
-                if (skeleton_resource && skin_resource && anim && runtime_anim_component && mesh_resource && mesh_resource->render_mesh)
                 {
-                    skr_init_skin_component(skin_comp, skeleton_resource);
-                    skr_init_anim_component(runtime_anim_component, mesh_resource, skeleton_resource);
-                    skr_init_anim_buffers(cgpu_device, runtime_anim_component, mesh_resource);
-                }
-                {
-                    if (!(skin_comp->joint_remaps.is_empty() || runtime_anim_component->buffers.is_empty()))
+                    auto* skeleton_resource = skel_comp->skeleton_resource.get_resolved(true);
+                    auto* skin_resource = skin_comp->skin_resource.get_resolved(true);
+                    auto* anim = anim_resource_handle.get_resolved(true);
+                    auto* mesh_resource = mesh_comp->mesh_resource.get_resolved(true);
+                    // SKR_LOG_INFO(u8"Skeleton has %d joints", skeleton_resource->skeleton.num_joints());
+                    // SKR_LOG_INFO(u8"Animation has %d tracks", anim->animation.num_tracks());
+                    // SKR_LOG_INFO(u8"Skin has %d poses", skin_resource->inverse_bind_poses.size());
+                    auto* runtime_anim_component = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+
+                    if (skeleton_resource && skin_resource && anim && runtime_anim_component && mesh_resource && mesh_resource->render_mesh)
                     {
-                        skr_cpu_skin(skin_comp, runtime_anim_component, mesh_resource);
+                        skr_init_skin_component(skin_comp, skeleton_resource);
+                        skr_init_anim_component(runtime_anim_component, mesh_resource, skeleton_resource);
+                        skr_init_anim_buffers(cgpu_device, runtime_anim_component, mesh_resource);
                     }
-                }
-                {
-                    // upload skin mesh data
-                    uint64_t skinVerticesSize = 0;
                     {
-                        SkrZoneScopedN("CalculateSkinMeshSize");
-                        auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
-                        for (size_t j = 0u; j < anim->buffers.size(); j++)
+                        ozz::animation::LocalToModelJob ltm_job;
+                        ltm_job.skeleton = &skeleton_resource->skeleton;
+                        ltm_job.input = skeleton_resource->skeleton.joint_rest_poses();
+                        ltm_job.output = ozz::span{ runtime_anim_component->joint_matrices.data(), runtime_anim_component->joint_matrices.size() };
+                        if (!ltm_job.Run())
                         {
-                            skinVerticesSize += anim->buffers[j]->get_size();
+                            SKR_LOG_ERROR(u8"Failed to run LocalToModelJob");
                         }
-                        // SKR_LOG_INFO(u8"Skin mesh size: %llu bytes", skinVerticesSize);
                     }
-                    auto upload_buffer_handle = render_graph->create_buffer(
-                        [=](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
-                            builder.set_name(SKR_UTF8("SkinMeshUploadBuffer"))
-                                .size(skinVerticesSize)
-                                .with_tags(kRenderGraphDefaultResourceTag)
-                                .as_upload_buffer();
-                        });
-
-                    render_graph->add_copy_pass(
-                        [=](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassBuilder& builder) {
-                            builder.set_name(SKR_UTF8("CopySkinMesh"))
-                                .from_buffer(upload_buffer_handle.range(0, skinVerticesSize))
-                                .can_be_lone();
-                        },
-                        [=](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassContext& context) {
-                            SkrZoneScopedN("CopySkinMesh");
-
-                            auto upload_buffer = context.resolve(upload_buffer_handle);
-                            auto mapped = (uint8_t*)upload_buffer->info->cpu_mapped_address;
-
-                            // barrier from vb to copy dest
+                    {
+                        // update joint matrices
+                        SkrZoneScopedN("UpdateJointMatrices");
+                        auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+                    }
+                    {
+                        if (!(skin_comp->joint_remaps.is_empty() || runtime_anim_component->buffers.is_empty()))
+                        {
+                            skr_cpu_skin(skin_comp, runtime_anim_component, mesh_resource);
+                        }
+                    }
+                    {
+                        // upload skin mesh data
+                        uint64_t skinVerticesSize = 0;
+                        {
+                            SkrZoneScopedN("CalculateSkinMeshSize");
+                            auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+                            for (size_t j = 0u; j < anim->buffers.size(); j++)
                             {
-                                SkrZoneScopedN("Barriers");
-                                CGPUResourceBarrierDescriptor barrier_desc = {};
-                                skr::Vector<CGPUBufferBarrier> barriers;
-
-                                auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
-                                for (size_t j = 0u; j < anim->buffers.size(); j++)
-                                {
-                                    const bool use_dynamic_buffer = anim->use_dynamic_buffer;
-                                    if (anim->vbs[j] && !use_dynamic_buffer)
-                                    {
-                                        CGPUBufferBarrier& barrier = barriers.emplace().ref();
-                                        barrier.buffer = anim->vbs[j];
-                                        barrier.src_state = CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-                                        barrier.dst_state = CGPU_RESOURCE_STATE_COPY_DEST;
-                                    }
-                                }
-
-                                barrier_desc.buffer_barriers = barriers.data();
-                                barrier_desc.buffer_barriers_count = (uint32_t)barriers.size();
-                                cgpu_cmd_resource_barrier(context.cmd, &barrier_desc);
+                                skinVerticesSize += anim->buffers[j]->get_size();
                             }
+                            // SKR_LOG_INFO(u8"Skin mesh size: %llu bytes", skinVerticesSize);
+                        }
+                        auto upload_buffer_handle = render_graph->create_buffer(
+                            [=](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
+                                builder.set_name(SKR_UTF8("SkinMeshUploadBuffer"))
+                                    .size(skinVerticesSize)
+                                    .with_tags(kRenderGraphDefaultResourceTag)
+                                    .as_upload_buffer();
+                            });
 
-                            // upload
-                            {
-                                SkrZoneScopedN("MemCopies");
-                                uint64_t cursor = 0;
+                        render_graph->add_copy_pass(
+                            [=](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassBuilder& builder) {
+                                builder.set_name(SKR_UTF8("CopySkinMesh"))
+                                    .from_buffer(upload_buffer_handle.range(0, skinVerticesSize))
+                                    .can_be_lone();
+                            },
+                            [=](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassContext& context) {
+                                SkrZoneScopedN("CopySkinMesh");
 
-                                auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
-                                const bool use_dynamic_buffer = anim->use_dynamic_buffer;
-                                if (!use_dynamic_buffer)
+                                auto upload_buffer = context.resolve(upload_buffer_handle);
+                                auto mapped = (uint8_t*)upload_buffer->info->cpu_mapped_address;
+
+                                // barrier from vb to copy dest
                                 {
+                                    SkrZoneScopedN("Barriers");
+                                    CGPUResourceBarrierDescriptor barrier_desc = {};
+                                    skr::Vector<CGPUBufferBarrier> barriers;
+
+                                    auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
                                     for (size_t j = 0u; j < anim->buffers.size(); j++)
                                     {
-                                        // memcpy
-                                        memcpy(mapped + cursor, anim->buffers[j]->get_data(), anim->buffers[j]->get_size());
+                                        const bool use_dynamic_buffer = anim->use_dynamic_buffer;
+                                        if (anim->vbs[j] && !use_dynamic_buffer)
+                                        {
+                                            CGPUBufferBarrier& barrier = barriers.emplace().ref();
+                                            barrier.buffer = anim->vbs[j];
+                                            barrier.src_state = CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+                                            barrier.dst_state = CGPU_RESOURCE_STATE_COPY_DEST;
+                                        }
+                                    }
 
-                                        // queue cpy
-                                        CGPUBufferToBufferTransfer b2b = {};
-                                        b2b.src = upload_buffer;
-                                        b2b.src_offset = cursor;
-                                        b2b.dst = anim->vbs[j];
-                                        b2b.dst_offset = 0;
-                                        b2b.size = anim->buffers[j]->get_size();
-                                        cgpu_cmd_transfer_buffer_to_buffer(context.cmd, &b2b);
+                                    barrier_desc.buffer_barriers = barriers.data();
+                                    barrier_desc.buffer_barriers_count = (uint32_t)barriers.size();
+                                    cgpu_cmd_resource_barrier(context.cmd, &barrier_desc);
+                                }
 
-                                        cursor += anim->buffers[j]->get_size();
+                                // upload
+                                {
+                                    SkrZoneScopedN("MemCopies");
+                                    uint64_t cursor = 0;
+
+                                    auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+                                    const bool use_dynamic_buffer = anim->use_dynamic_buffer;
+                                    if (!use_dynamic_buffer)
+                                    {
+                                        for (size_t j = 0u; j < anim->buffers.size(); j++)
+                                        {
+                                            // memcpy
+                                            memcpy(mapped + cursor, anim->buffers[j]->get_data(), anim->buffers[j]->get_size());
+
+                                            // queue cpy
+                                            CGPUBufferToBufferTransfer b2b = {};
+                                            b2b.src = upload_buffer;
+                                            b2b.src_offset = cursor;
+                                            b2b.dst = anim->vbs[j];
+                                            b2b.dst_offset = 0;
+                                            b2b.size = anim->buffers[j]->get_size();
+                                            cgpu_cmd_transfer_buffer_to_buffer(context.cmd, &b2b);
+
+                                            cursor += anim->buffers[j]->get_size();
+                                        }
                                     }
                                 }
-                            }
-                        });
+                            });
+                    }
                 }
             }
         }

@@ -227,44 +227,43 @@ void skr_cpu_skin(skr::anim::SkinComponent* skin, const skr::anim::AnimComponent
         for (size_t i = 0; i < skin->joint_remaps.size(); ++i)
         {
             auto inverse = skin_resource->inverse_bind_poses[i];
-            // skin->skin_matrices[i] = anim->joint_matrices[skin->joint_remaps[i]] * (ozz::math::Float4x4&)inverse;
-            skin->skin_matrices[i] = anim->joint_matrices[skin->joint_remaps[i]];
+            skin->skin_matrices[i] = anim->joint_matrices[skin->joint_remaps[i]] * (ozz::math::Float4x4&)inverse;
         }
 
         auto& skprim = anim->primitives[i];
-        // {
-        //     job.joint_matrices = { skin->skin_matrices.data(), skin->skin_matrices.size() };
-        //     job.influences_count = 4;
-        //     job.vertex_count = vertex_count;
-        //     job.joint_weights = buffer_span(weights_buffer, skr::type_t<float>(), 4);
-        //     job.joint_weights_stride = weights_buffer->stride;
-        //     job.joint_indices = buffer_span(joints_buffer, skr::type_t<uint16_t>(), 4);
-        //     job.joint_indices_stride = joints_buffer->stride;
-        //     if (normals_buffer)
-        //         job.in_normals = buffer_span(normals_buffer, skr::type_t<float>(), 3);
-        //     job.in_normals_stride = normals_buffer->stride;
-        //     if (tangents_buffer && tangents_buffer->stride)
-        //         job.in_tangents = buffer_span(tangents_buffer, skr::type_t<float>(), 4);
-        //     job.in_tangents_stride = tangents_buffer->stride;
-        //     job.in_positions = buffer_span(positions_buffer, skr::type_t<float>(), 3);
-        //     job.in_positions_stride = positions_buffer->stride;
+        {
+            job.joint_matrices = { skin->skin_matrices.data(), skin->skin_matrices.size() };
+            job.influences_count = 4;
+            job.vertex_count = vertex_count;
+            job.joint_weights = buffer_span(weights_buffer, skr::type_t<float>(), 4);
+            job.joint_weights_stride = weights_buffer->stride;
+            job.joint_indices = buffer_span(joints_buffer, skr::type_t<uint16_t>(), 4);
+            job.joint_indices_stride = joints_buffer->stride;
+            if (normals_buffer)
+                job.in_normals = buffer_span(normals_buffer, skr::type_t<float>(), 3);
+            job.in_normals_stride = normals_buffer->stride;
+            if (tangents_buffer && tangents_buffer->stride)
+                job.in_tangents = buffer_span(tangents_buffer, skr::type_t<float>(), 4);
+            job.in_tangents_stride = tangents_buffer->stride;
+            job.in_positions = buffer_span(positions_buffer, skr::type_t<float>(), 3);
+            job.in_positions_stride = positions_buffer->stride;
 
-        //     job.out_positions = { (float*)(anim->buffers[skprim.position.buffer_index]->get_data() + skprim.position.offset), vertex_count * 3 };
-        //     job.out_positions_stride = skprim.position.stride;
+            job.out_positions = { (float*)(anim->buffers[skprim.position.buffer_index]->get_data() + skprim.position.offset), vertex_count * 3 };
+            job.out_positions_stride = skprim.position.stride;
 
-        //     if (normals_buffer)
-        //         job.out_normals = { (float*)(anim->buffers[skprim.normal.buffer_index]->get_data() + skprim.normal.offset), vertex_count * 3 };
-        //     job.out_normals_stride = skprim.normal.stride;
-        //     if (tangents_buffer)
-        //         job.out_tangents = { (float*)(anim->buffers[skprim.tangent.buffer_index]->get_data() + skprim.tangent.offset), vertex_count * 4 };
+            if (normals_buffer)
+                job.out_normals = { (float*)(anim->buffers[skprim.normal.buffer_index]->get_data() + skprim.normal.offset), vertex_count * 3 };
+            job.out_normals_stride = skprim.normal.stride;
+            if (tangents_buffer)
+                job.out_tangents = { (float*)(anim->buffers[skprim.tangent.buffer_index]->get_data() + skprim.tangent.offset), vertex_count * 4 };
 
-        //     job.out_tangents_stride = skprim.tangent.stride;
-        //     auto result = job.Run();
-        //     SKR_ASSERT(result);
-        // }
+            job.out_tangents_stride = skprim.tangent.stride;
+            auto result = job.Run();
+            SKR_ASSERT(result);
+        }
 
-        auto* skin_buf = (float*)(anim->buffers[0]->get_data() + skprim.position.offset);
-        auto* mesh_buf = buffer_span(positions_buffer, skr::type_t<float>(), 3).data();
-        memcpy(skin_buf, mesh_buf, 3 * vertex_count * sizeof(float));
+        // auto* skin_buf = (float*)(anim->buffers[0]->get_data() + skprim.position.offset);
+        // auto* mesh_buf = buffer_span(positions_buffer, skr::type_t<float>(), 3).data();
+        // memcpy(skin_buf, mesh_buf, 3 * vertex_count * sizeof(float));
     }
 }

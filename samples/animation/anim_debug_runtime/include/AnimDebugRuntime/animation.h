@@ -28,6 +28,6 @@ anim_state_t
 };
 
 ANIM_DEBUG_RUNTIME_API void
-InitializeANimState(anim_state_t* state, skr::anim::SkeletonResource* skeleton);
+InitializeAnimState(anim_state_t* state, skr::anim::SkeletonResource* skeleton);
 
 } // namespace animdbg
