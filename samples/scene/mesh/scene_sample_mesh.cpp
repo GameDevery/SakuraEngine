@@ -401,20 +401,6 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             auto main_window = imgui_app->main_window();
             const auto size = main_window->get_physical_size();
             camera.aspect = (float)size.x / (float)size.y;
-
-            // if (use_gltf)
-            // {
-            //     actor1.lock()->GetMeshComponent()->mesh_resource.resolve(true, 0, ESkrRequesterType::SKR_REQUESTER_SYSTEM);
-            //     if (actor1.lock()->GetMeshComponent()->mesh_resource.is_resolved())
-            //     {
-            //         mesh_resource = actor1.lock()->GetMeshComponent()->mesh_resource.get_resolved(true);
-            //     }
-            // }
-
-            // if (mesh_resource && mesh_resource->render_mesh)
-            // {
-            //     scene_renderer->draw_primitives(render_graph, mesh_resource->render_mesh->primitive_commands);
-            // }
         };
         {
             scene_render_system->update();

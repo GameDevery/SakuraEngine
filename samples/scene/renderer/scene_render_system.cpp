@@ -124,7 +124,6 @@ void SceneRenderSystem::update() SKR_NOEXCEPT
 
     auto render_func = impl->mp_renderer != nullptr ?
         scene::SceneRenderJob::RenderF([this](const skr::span<skr::renderer::PrimitiveCommand> cmds, skr_float4x4_t model) {
-            // impl->mp_renderer->draw_primitives(render_graph, cmds, model);
             auto& push_constants_data = impl->push_constants_list.emplace().ref();
             push_constants_data.model = skr::transpose(model);
             utils::Camera* camera = impl->mp_renderer->get_camera();

@@ -443,7 +443,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
     actor1.lock()->GetComponent<skr::anim::SkinComponent>()->skin_resource = SkinAssetID;
 
     skr::resource::AsyncResource<skr::anim::AnimResource> anim_resource_handle = AnimAssetID;
-    actor1.lock()->GetComponent<skr::anim::AnimComponent>()->use_dynamic_buffer = true; // use CPU/GPU dynamic buffer for simplicity
+    // actor1.lock()->GetComponent<skr::anim::AnimComponent>()->use_dynamic_buffer = true; // use CPU/GPU dynamic buffer for simplicity
 
     while (!imgui_app->want_exit().comsume())
     {
@@ -473,6 +473,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
                 anim_resource_handle.is_resolved())
 
             {
+                // CPU Skinning
                 auto* skeleton_resource = skel_comp->skeleton_resource.get_resolved(true);
                 auto* skin_resource = skin_comp->skin_resource.get_resolved(true);
                 auto* anim = anim_resource_handle.get_resolved(true);
@@ -493,6 +494,91 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
                     {
                         skr_cpu_skin(skin_comp, runtime_anim_component, mesh_resource);
                     }
+                }
+                {
+                    // upload skin mesh data
+                    uint64_t skinVerticesSize = 0;
+                    {
+                        SkrZoneScopedN("CalculateSkinMeshSize");
+                        auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+                        for (size_t j = 0u; j < anim->buffers.size(); j++)
+                        {
+                            skinVerticesSize += anim->buffers[j]->get_size();
+                        }
+                        // SKR_LOG_INFO(u8"Skin mesh size: %llu bytes", skinVerticesSize);
+                    }
+                    auto upload_buffer_handle = render_graph->create_buffer(
+                        [=](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
+                            builder.set_name(SKR_UTF8("SkinMeshUploadBuffer"))
+                                .size(skinVerticesSize)
+                                .with_tags(kRenderGraphDefaultResourceTag)
+                                .as_upload_buffer();
+                        });
+
+                    render_graph->add_copy_pass(
+                        [=](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassBuilder& builder) {
+                            builder.set_name(SKR_UTF8("CopySkinMesh"))
+                                .from_buffer(upload_buffer_handle.range(0, skinVerticesSize))
+                                .can_be_lone();
+                        },
+                        [=](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassContext& context) {
+                            SkrZoneScopedN("CopySkinMesh");
+
+                            auto upload_buffer = context.resolve(upload_buffer_handle);
+                            auto mapped = (uint8_t*)upload_buffer->info->cpu_mapped_address;
+
+                            // barrier from vb to copy dest
+                            {
+                                SkrZoneScopedN("Barriers");
+                                CGPUResourceBarrierDescriptor barrier_desc = {};
+                                skr::Vector<CGPUBufferBarrier> barriers;
+
+                                auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+                                for (size_t j = 0u; j < anim->buffers.size(); j++)
+                                {
+                                    const bool use_dynamic_buffer = anim->use_dynamic_buffer;
+                                    if (anim->vbs[j] && !use_dynamic_buffer)
+                                    {
+                                        CGPUBufferBarrier& barrier = barriers.emplace().ref();
+                                        barrier.buffer = anim->vbs[j];
+                                        barrier.src_state = CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+                                        barrier.dst_state = CGPU_RESOURCE_STATE_COPY_DEST;
+                                    }
+                                }
+
+                                barrier_desc.buffer_barriers = barriers.data();
+                                barrier_desc.buffer_barriers_count = (uint32_t)barriers.size();
+                                cgpu_cmd_resource_barrier(context.cmd, &barrier_desc);
+                            }
+
+                            // upload
+                            {
+                                SkrZoneScopedN("MemCopies");
+                                uint64_t cursor = 0;
+
+                                auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+                                const bool use_dynamic_buffer = anim->use_dynamic_buffer;
+                                if (!use_dynamic_buffer)
+                                {
+                                    for (size_t j = 0u; j < anim->buffers.size(); j++)
+                                    {
+                                        // memcpy
+                                        memcpy(mapped + cursor, anim->buffers[j]->get_data(), anim->buffers[j]->get_size());
+
+                                        // queue cpy
+                                        CGPUBufferToBufferTransfer b2b = {};
+                                        b2b.src = upload_buffer;
+                                        b2b.src_offset = cursor;
+                                        b2b.dst = anim->vbs[j];
+                                        b2b.dst_offset = 0;
+                                        b2b.size = anim->buffers[j]->get_size();
+                                        cgpu_cmd_transfer_buffer_to_buffer(context.cmd, &b2b);
+
+                                        cursor += anim->buffers[j]->get_size();
+                                    }
+                                }
+                            }
+                        });
                 }
             }
         }
@@ -516,13 +602,10 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
             camera.aspect = (float)size.x / (float)size.y;
         };
         {
-            // scene_render_system->update();
             SkrZoneScopedN("AnimRenderJob");
             anim_render_system->update();
             skr::ecs::TaskScheduler::Get()->sync_all();
-
-            scene_renderer->draw_primitives(
-                render_graph,
+            scene_renderer->draw_primitives(render_graph,
                 anim_render_system->get_drawcalls());
         }
 

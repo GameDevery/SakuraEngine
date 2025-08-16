@@ -131,7 +131,6 @@ void AnimRenderSystem::update() SKR_NOEXCEPT
 
     auto render_func = impl->mp_renderer != nullptr ?
         scene::AnimRenderJob::RenderF([this](const skr::span<skr::renderer::PrimitiveCommand> cmds, skr_float4x4_t model, skr::Vector<skr::anim::SkinPrimitive> skin_primitives) {
-            // impl->mp_renderer->draw_primitives(render_graph, cmds, model);
             auto& push_constants_data = impl->push_constants_list.emplace().ref();
             push_constants_data.model = skr::transpose(model);
             utils::Camera* camera = impl->mp_renderer->get_camera();
@@ -159,12 +158,6 @@ void AnimRenderSystem::update() SKR_NOEXCEPT
                 drawcall.index_buffer = *cmd.ibv;
                 drawcall.vertex_buffer_count = (uint32_t)skin_prim.views.size();
                 drawcall.vertex_buffers = skin_prim.views.data();
-                // drawcall.vertex_buffer_count = (uint32_t)cmd.vbvs.size();
-                if (i <= 1) // TODO: 如果vertex_count过大，可能无法同步显示
-                {
-                    drawcall.vertex_buffers = cmd.vbvs.data();
-                }
-                //  drawcall.vertex_buffers = cmd.vbvs.data();
             }
         }) :
         scene::AnimRenderJob::RenderF([](const skr::span<skr::renderer::PrimitiveCommand> cmds, skr_float4x4_t model, skr::Vector<skr::anim::SkinPrimitive> skin_primitives) {
