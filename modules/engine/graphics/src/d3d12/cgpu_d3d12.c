@@ -923,7 +923,7 @@ void cgpu_update_descriptor_set_d3d12(CGPUDescriptorSetId set, const struct CGPU
             case CGPU_RESOURCE_TYPE2_ACCELERATION_STRUCTURE: {
                 cgpu_assert(pParam->acceleration_structures && "NULL Acceleration Structure(s)");
                 CGPUAccelerationStructure_D3D12* pAccel = (CGPUAccelerationStructure_D3D12*)pParam->acceleration_structures[0];
-                const CGPUBufferView_D3D12* pASBufferView = (const CGPUBufferView_D3D12*)pAccel->pASBuffer;
+                const CGPUBufferView_D3D12* pASBufferView = (const CGPUBufferView_D3D12*)pAccel->pASBufferView;
                 const D3D12_CPU_DESCRIPTOR_HANDLE ToCopy = { pASBufferView->mDxDescriptorHandles.ptr + pASBufferView->mDxRawSrvOffset };
                 D3D12Util_CopyDescriptorHandle(pCbvSrvUavHeap, ToCopy, Set->mCbvSrvUavHandle, HeapOffset);
                 Set->pBoundAccel = pAccel;

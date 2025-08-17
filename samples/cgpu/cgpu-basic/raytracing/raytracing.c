@@ -140,11 +140,16 @@ void ComputeFunc(void* usrdata)
         .usages = CGPU_BUFFER_USAGE_SHADER_READWRITE,
         .start_state = CGPU_RESOURCE_STATE_UNORDERED_ACCESS,
         .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
-        // .element_stride = sizeof(Pixel),
-        // .element_count = RAYTRACING_WIDTH * RAYTRACING_HEIGHT,
         .size = sizeof(Pixel) * RAYTRACING_WIDTH * RAYTRACING_HEIGHT
     };
     CGPUBufferId data_buffer = cgpu_create_buffer(device, &buffer_desc);
+
+    CGPUBufferViewDescriptor view_desc = {
+        .buffer = data_buffer,
+        .view_usages = CGPU_BUFFER_VIEW_USAGE_UAV_STRUCTURED,
+        .structure.element_stride = sizeof(Pixel)
+    };
+    CGPUBufferViewId data_buffer_view = cgpu_create_buffer_view(device, &view_desc);
 
     // Create readback buffer
     CGPUBufferDescriptor rb_desc = {
@@ -231,7 +236,7 @@ void ComputeFunc(void* usrdata)
     CGPUDescriptorData descriptor_data[2] = {
         {
             .name = "buf",
-            .buffers = &data_buffer,
+            .buffers = &data_buffer_view,
             .count = 1
         },
         {
@@ -329,6 +334,7 @@ void ComputeFunc(void* usrdata)
     cgpu_free_buffer(vertex_buffer);
     cgpu_free_buffer(index_buffer);
     cgpu_free_buffer(data_buffer);
+    cgpu_free_buffer_view(data_buffer_view);
     cgpu_free_buffer(readback_buffer);
     cgpu_free_queue(gfx_queue);
     cgpu_free_descriptor_set(set);
