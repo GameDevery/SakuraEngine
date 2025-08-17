@@ -733,7 +733,7 @@ typedef struct D3D12Util_DescriptorHeap
     /// DescriptorInfo Increment Size
     uint32_t mDescriptorSize;
     // Allocation zones
-    D3D12Util_AllocZone mZones[2];
+    D3D12Util_AllocZone mZones[1];
 } D3D12Util_DescriptorHeap;
 
 void D3D12Util_CreateDescriptorHeap(ID3D12Device* pDevice, const D3D12_DESCRIPTOR_HEAP_DESC* pDesc, struct D3D12Util_DescriptorHeap** ppDescHeap)
@@ -771,32 +771,13 @@ void D3D12Util_CreateDescriptorHeap(ID3D12Device* pDevice, const D3D12_DESCRIPTO
     skr_init_mutex(pHeap->mZones[0].pMutex);
 #endif
 
-    // Zone 1: back zone (initially empty)
-    pHeap->mZones[1].mOffset = numDescriptors;
-    pHeap->mZones[1].mSize = 0;
-    pHeap->mZones[1].mUsedDescriptors = 0;
-#ifdef CGPU_THREAD_SAFETY
-    pHeap->mZones[1].pMutex = (SMutex*)cgpu_calloc(1, sizeof(SMutex));
-    skr_init_mutex(pHeap->mZones[1].pMutex);
-#endif
-
     *ppDescHeap = pHeap;
-}
-
-void D3D12Util_ReserveArgumentBufferZone(D3D12Util_DescriptorHeap* pHeap, uint32_t Offset)
-{
-    // Split heap into two zones
-    pHeap->mZones[0].mSize = Offset;
-    pHeap->mZones[1].mOffset = Offset;
-    pHeap->mZones[1].mSize = pHeap->mDesc.NumDescriptors - Offset;
 }
 
 void D3D12Util_ResetDescriptorHeap(struct D3D12Util_DescriptorHeap* pHeap)
 {
     pHeap->mZones[0].mUsedDescriptors = 0;
     pHeap->mZones[0].mFreeList.clear();
-    pHeap->mZones[1].mUsedDescriptors = 0;
-    pHeap->mZones[1].mFreeList.clear();
 }
 
 void D3D12Util_FreeDescriptorHeap(D3D12Util_DescriptorHeap* pHeap)
@@ -805,18 +786,12 @@ void D3D12Util_FreeDescriptorHeap(D3D12Util_DescriptorHeap* pHeap)
     SAFE_RELEASE(pHeap->pCurrentHeap);
 
     std::destroy_at(&pHeap->mZones[0].mFreeList);
-    std::destroy_at(&pHeap->mZones[1].mFreeList);
 
 #ifdef CGPU_THREAD_SAFETY
     if (pHeap->mZones[0].pMutex)
     {
         skr_destroy_mutex(pHeap->mZones[0].pMutex);
         cgpu_free(pHeap->mZones[0].pMutex);
-    }
-    if (pHeap->mZones[1].pMutex)
-    {
-        skr_destroy_mutex(pHeap->mZones[1].pMutex);
-        cgpu_free(pHeap->mZones[1].pMutex);
     }
 #endif
 
@@ -839,11 +814,10 @@ static void D3D12Util_ResizeHeap(D3D12Util_DescriptorHeap* pHeap)
     D3D12_GPU_DESCRIPTOR_HANDLE mNewStartGpu = pNewHeap->GetGPUDescriptorHandleForHeapStart();
 
     // Calculate max needed for allocation
-    uint32_t maxAlloc = cgpu_max(pHeap->mZones[0].mUsedDescriptors, pHeap->mZones[1].mUsedDescriptors);
-    uint32_t* rangeSizes = (uint32_t*)alloca(maxAlloc * sizeof(uint32_t));
+    uint32_t* rangeSizes = (uint32_t*)alloca(pHeap->mZones[0].mUsedDescriptors * sizeof(uint32_t));
 
     // Copy zones
-    for (int zoneIdx = 0; zoneIdx < 2; zoneIdx++)
+    for (int zoneIdx = 0; zoneIdx < 1; zoneIdx++)
     {
         D3D12Util_AllocZone* pZone = &pHeap->mZones[zoneIdx];
 #ifdef CGPU_THREAD_SAFETY
@@ -857,15 +831,14 @@ static void D3D12Util_ResizeHeap(D3D12Util_DescriptorHeap* pHeap)
             D3D12_CPU_DESCRIPTOR_HANDLE* pZoneHandles = pHeap->pHandles + pZone->mOffset;
             for (uint32_t i = 0; i < used; ++i)
                 rangeSizes[i] = 1;
-            pDevice->CopyDescriptors(
-                1, &zoneStart, &used, used, pZoneHandles, rangeSizes, pHeap->mDesc.Type);
+            pDevice->CopyDescriptors(1, &zoneStart, &used, used, pZoneHandles, rangeSizes, pHeap->mDesc.Type);
         }
     }
 
     // Update handles array
     D3D12_CPU_DESCRIPTOR_HANDLE* pNewHandles =
         (D3D12_CPU_DESCRIPTOR_HANDLE*)cgpu_calloc(desc.NumDescriptors, sizeof(D3D12_CPU_DESCRIPTOR_HANDLE));
-    for (int zoneIdx = 0; zoneIdx < 2; zoneIdx++)
+    for (int zoneIdx = 0; zoneIdx < 1; zoneIdx++)
     {
         D3D12Util_AllocZone* pZone = &pHeap->mZones[zoneIdx];
 #ifdef CGPU_THREAD_SAFETY
@@ -887,18 +860,7 @@ static void D3D12Util_ResizeHeap(D3D12Util_DescriptorHeap* pHeap)
     pHeap->mDesc = desc;
     pHeap->mStartHandle.mCpu = mNewStartCpu;
     pHeap->mStartHandle.mGpu = mNewStartGpu;
-
-    // Update zone sizes after resize
-    if (pHeap->mZones[1].mSize > 0)
-    {
-        // Keep the same split ratio
-        pHeap->mZones[0].mSize = pHeap->mZones[1].mOffset;
-        pHeap->mZones[1].mSize = desc.NumDescriptors - pHeap->mZones[1].mOffset;
-    }
-    else
-    {
-        pHeap->mZones[0].mSize = desc.NumDescriptors;
-    }
+    pHeap->mZones[0].mSize = desc.NumDescriptors;
 }
 
 // Internal allocation function for zones
@@ -966,12 +928,6 @@ D3D12Util_DescriptorHandle D3D12Util_ConsumeDescriptorHandles(D3D12Util_Descript
     return D3D12Util_AllocateFromZone(pHeap, &pHeap->mZones[0], descriptorCount);
 }
 
-D3D12Util_DescriptorHandle D3D12Util_ConsumeArgumentBuffer(D3D12Util_DescriptorHeap* pHeap, uint32_t descriptorCount)
-{
-    // Use zone 1 (back zone) for argument buffers
-    return D3D12Util_AllocateFromZone(pHeap, &pHeap->mZones[1], descriptorCount);
-}
-
 void D3D12Util_ReturnDescriptorHandles(struct D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE handle, uint32_t count)
 {
     cgpu_assert((pHeap->mDesc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) == 0);
@@ -987,40 +943,11 @@ void D3D12Util_ReturnDescriptorHandles(struct D3D12Util_DescriptorHeap* pHeap, D
     }
 }
 
-void D3D12Util_ReturnArgumentBuffer(D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE handle, uint32_t count)
-{
-    cgpu_assert((pHeap->mDesc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) == 0);
-#ifdef CGPU_THREAD_SAFETY
-    SMutexLock lock(*pHeap->mZones[1].pMutex);
-#endif
-    for (uint32_t i = 0; i < count; ++i)
-    {
-        SKR_DECLARE_ZERO(D3D12Util_DescriptorHandle, Free)
-        Free.mCpu = { handle.ptr + pHeap->mDescriptorSize * i };
-        Free.mGpu = { D3D12_GPU_VIRTUAL_ADDRESS_NULL };
-        pHeap->mZones[1].mFreeList.add(Free);
-    }
-}
-
 void D3D12Util_CopyDescriptorHandle(D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE srcHandle, uint64_t dstHandle, uint32_t index)
 {
     pHeap->pHandles[(dstHandle / pHeap->mDescriptorSize) + index] = srcHandle;
     pHeap->pDevice->CopyDescriptorsSimple(1,
         { pHeap->mStartHandle.mCpu.ptr +
-            dstHandle +
-            (index * pHeap->mDescriptorSize) },
-        srcHandle,
-        pHeap->mDesc.Type);
-}
-
-void D3D12Util_FillArgumentBuffer(D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE srcHandle, uint64_t dstHandle, uint32_t index)
-{
-    // dstHandle is relative to the back zone (zone 1), need to add zone offset
-    uint32_t absoluteIndex = pHeap->mZones[1].mOffset + (dstHandle / pHeap->mDescriptorSize) + index;
-    pHeap->pHandles[absoluteIndex] = srcHandle;
-    pHeap->pDevice->CopyDescriptorsSimple(1,
-        { pHeap->mStartHandle.mCpu.ptr +
-            (pHeap->mZones[1].mOffset * pHeap->mDescriptorSize) +
             dstHandle +
             (index * pHeap->mDescriptorSize) },
         srcHandle,
@@ -1083,4 +1010,233 @@ void D3D12Util_CreateDSV(CGPUDevice_D3D12* D,
     if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
         *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV], 1).mCpu;
     D->pDxDevice->CreateDepthStencilView(pResource, pDsvDesc, *pHandle);
+}
+
+void D3D12Util_CreateSRVForBufferView(D3D12_CPU_DESCRIPTOR_HANDLE srv, ECGPUViewUsage view_usage, const CGPUBufferViewDescriptor* desc)
+{
+    const CGPUBuffer_D3D12* B = (const CGPUBuffer_D3D12*)desc->buffer;
+    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)B->super.device;
+    const auto BufferViewSize = desc->size ? desc->size : (B->super.info->size - desc->offset);
+    const auto BufferOffset = desc->offset;
+
+    UINT ElementStride;
+    D3D12_BUFFER_SRV_FLAGS Flags;
+    DXGI_FORMAT Format;
+    if (view_usage == CGPU_BUFFER_VIEW_USAGE_SRV_RAW)
+    {
+        ElementStride = sizeof(uint32_t);
+        Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+        Format = DXGI_FORMAT_R32_TYPELESS;
+    }
+    else if (view_usage == CGPU_BUFFER_VIEW_USAGE_SRV_STRUCTURED)
+    {
+        ElementStride = desc->structure.element_stride;
+        Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+        Format = DXGI_FORMAT_UNKNOWN;
+    }
+    else if (view_usage == CGPU_BUFFER_VIEW_USAGE_SRV_TEXEL)
+    {
+        ElementStride = FormatUtil_BitSizeOfBlock(desc->texel.format) / 8u;
+        Format = DXGIUtil_TranslatePixelFormat(desc->texel.format, false);
+        Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+    }
+
+    const auto FirstElement = BufferOffset / ElementStride;
+    const auto ElementCount = BufferViewSize / ElementStride;
+    const auto Mod = BufferOffset % ElementStride;
+
+    cgpu_assert((Mod == 0) && "Offset for structured view must aligns element_stride!");
+    SKR_DECLARE_ZERO(D3D12_SHADER_RESOURCE_VIEW_DESC, srvDesc);
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Format = Format;
+
+    srvDesc.Buffer.Flags = Flags;
+    srvDesc.Buffer.FirstElement = FirstElement;
+    srvDesc.Buffer.NumElements = (UINT)ElementCount;
+
+    if (Format == DXGI_FORMAT_UNKNOWN)
+        srvDesc.Buffer.StructureByteStride = ElementStride;
+    else
+        srvDesc.Buffer.StructureByteStride = 0;
+
+    D3D12Util_CreateSRV(D, B->pDxResource, &srvDesc, &srv);
+}
+
+void D3D12Util_CreateUAVForBufferView(D3D12_CPU_DESCRIPTOR_HANDLE uav, ECGPUViewUsage view_usage, const CGPUBufferViewDescriptor* desc)
+{
+    const CGPUBuffer_D3D12* B = (const CGPUBuffer_D3D12*)desc->buffer;
+    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)B->super.device;
+    const auto BufferViewSize = desc->size ? desc->size : (B->super.info->size - desc->offset);
+    const auto BufferOffset = desc->offset;
+
+    UINT ElementStride;
+    D3D12_BUFFER_UAV_FLAGS Flags;
+    DXGI_FORMAT Format;
+    if (view_usage == CGPU_BUFFER_VIEW_USAGE_UAV_RAW)
+    {
+        ElementStride = sizeof(uint32_t);
+        Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+        Format = DXGI_FORMAT_R32_TYPELESS;
+    }
+    else if (view_usage == CGPU_BUFFER_VIEW_USAGE_UAV_STRUCTURED)
+    {
+        ElementStride = desc->structure.element_stride;
+        Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+        Format = DXGI_FORMAT_UNKNOWN;
+    }
+    else if (view_usage == CGPU_BUFFER_VIEW_USAGE_UAV_TEXEL)
+    {
+        ElementStride = FormatUtil_BitSizeOfBlock(desc->texel.format) / 8u;
+        Format = DXGIUtil_TranslatePixelFormat(desc->texel.format, false);
+        Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+    }
+
+    const auto FirstElement = BufferOffset / ElementStride;
+    const auto ElementCount = BufferViewSize / ElementStride;
+    const auto Mod = BufferOffset % ElementStride;
+
+    cgpu_assert((Mod == 0) && "Offset for structured view must aligns element_stride!");
+    SKR_DECLARE_ZERO(D3D12_UNORDERED_ACCESS_VIEW_DESC, uavDesc);
+    uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+    uavDesc.Format = Format;
+
+    uavDesc.Buffer.Flags = Flags;
+    uavDesc.Buffer.FirstElement = FirstElement;
+    uavDesc.Buffer.NumElements = (UINT)ElementCount;
+
+    if (Format == DXGI_FORMAT_UNKNOWN)
+        uavDesc.Buffer.StructureByteStride = ElementStride;
+    else
+        uavDesc.Buffer.StructureByteStride = 0;
+
+    D3D12Util_CreateUAV(D, B->pDxResource, CGPU_NULLPTR, &uavDesc, &uav);
+}
+
+void D3D12Util_CreateSRVForTextureView(D3D12_CPU_DESCRIPTOR_HANDLE srv, const CGPUTextureViewDescriptor* desc)
+{
+    CGPUTexture_D3D12* T = (CGPUTexture_D3D12*)desc->texture;
+    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)T->super.device;
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    srvDesc.Format = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, true);
+    // TODO: SUPPORT RGBA COMPONENT VIEW MAPPING SWIZZLE
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    switch (desc->dims)
+    {
+    case CGPU_TEXTURE_DIMENSION_1D: {
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
+        srvDesc.Texture1D.MipLevels = desc->mip_level_count;
+        srvDesc.Texture1D.MostDetailedMip = desc->base_mip_level;
+    }
+    break;
+    case CGPU_TEXTURE_DIMENSION_1D_ARRAY: {
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
+        srvDesc.Texture1DArray.MipLevels = desc->mip_level_count;
+        srvDesc.Texture1DArray.MostDetailedMip = desc->base_mip_level;
+        srvDesc.Texture1DArray.FirstArraySlice = desc->base_array_layer;
+        srvDesc.Texture1DArray.ArraySize = desc->array_layer_count;
+    }
+    break;
+    case CGPU_TEXTURE_DIMENSION_2DMS: {
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+    }
+    break;
+    case CGPU_TEXTURE_DIMENSION_2D: {
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = desc->mip_level_count;
+        srvDesc.Texture2D.MostDetailedMip = desc->base_mip_level;
+        srvDesc.Texture2D.PlaneSlice = 0;
+    }
+    break;
+    case CGPU_TEXTURE_DIMENSION_2DMS_ARRAY: {
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
+        srvDesc.Texture2DMSArray.ArraySize = desc->array_layer_count;
+        srvDesc.Texture2DMSArray.FirstArraySlice = desc->base_array_layer;
+    }
+    break;
+    case CGPU_TEXTURE_DIMENSION_2D_ARRAY: {
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+        srvDesc.Texture2DArray.MipLevels = desc->mip_level_count;
+        srvDesc.Texture2DArray.MostDetailedMip = desc->base_mip_level;
+        srvDesc.Texture2DArray.PlaneSlice = 0;
+        srvDesc.Texture2DArray.FirstArraySlice = desc->base_array_layer;
+        srvDesc.Texture2DArray.ArraySize = desc->array_layer_count;
+    }
+    break;
+    case CGPU_TEXTURE_DIMENSION_3D: {
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+        srvDesc.Texture3D.MipLevels = desc->mip_level_count;
+        srvDesc.Texture3D.MostDetailedMip = desc->base_mip_level;
+    }
+    break;
+    case CGPU_TEXTURE_DIMENSION_CUBE: {
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+        srvDesc.TextureCube.MipLevels = desc->mip_level_count;
+        srvDesc.TextureCube.MostDetailedMip = desc->base_mip_level;
+    }
+    break;
+    case CGPU_TEXTURE_DIMENSION_CUBE_ARRAY: {
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
+        srvDesc.TextureCubeArray.MipLevels = desc->mip_level_count;
+        srvDesc.TextureCubeArray.MostDetailedMip = desc->base_mip_level;
+        srvDesc.TextureCubeArray.NumCubes = desc->array_layer_count;
+        srvDesc.TextureCubeArray.First2DArrayFace = desc->base_array_layer;
+    }
+    break;
+    default:
+        cgpu_assert(0 && "Unsupported texture dimension!");
+        break;
+    }
+    D3D12Util_CreateSRV(D, T->pDxResource, &srvDesc, &srv);
+}
+
+void D3D12Util_CreateUAVForTextureView(D3D12_CPU_DESCRIPTOR_HANDLE uav, const CGPUTextureViewDescriptor* desc)
+{
+    CGPUTexture_D3D12* T = (CGPUTexture_D3D12*)desc->texture;
+    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)T->super.device;
+
+    D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+    uavDesc.Format = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, true);
+    cgpu_assert(desc->mip_level_count <= 1 && "UAV must be created with non-multi mip slices!");
+    switch (desc->dims)
+    {
+    case CGPU_TEXTURE_DIMENSION_1D: {
+        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1D;
+        uavDesc.Texture1D.MipSlice = desc->base_mip_level;
+    }
+    break;
+    case CGPU_TEXTURE_DIMENSION_1D_ARRAY: {
+        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
+        uavDesc.Texture1DArray.MipSlice = desc->base_mip_level;
+        uavDesc.Texture1DArray.FirstArraySlice = desc->base_array_layer;
+        uavDesc.Texture1DArray.ArraySize = desc->array_layer_count;
+    }
+    break;
+    case CGPU_TEXTURE_DIMENSION_2D: {
+        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+        uavDesc.Texture2D.MipSlice = desc->base_mip_level;
+        uavDesc.Texture2D.PlaneSlice = 0;
+    }
+    break;
+    case CGPU_TEXTURE_DIMENSION_2D_ARRAY: {
+        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+        uavDesc.Texture2DArray.MipSlice = desc->base_mip_level;
+        uavDesc.Texture2DArray.PlaneSlice = 0;
+        uavDesc.Texture2DArray.FirstArraySlice = desc->base_array_layer;
+        uavDesc.Texture2DArray.ArraySize = desc->array_layer_count;
+    }
+    break;
+    case CGPU_TEXTURE_DIMENSION_3D: {
+        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
+        uavDesc.Texture3D.MipSlice = desc->base_mip_level;
+        uavDesc.Texture3D.FirstWSlice = desc->base_array_layer;
+        uavDesc.Texture3D.WSize = desc->array_layer_count;
+    }
+    break;
+    default:
+        cgpu_assert(0 && "Unsupported texture dimension!");
+        break;
+    }
+    D3D12Util_CreateUAV(D, T->pDxResource, CGPU_NULLPTR, &uavDesc, &uav);
 }

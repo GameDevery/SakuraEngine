@@ -669,13 +669,13 @@ void cgpu_update_descriptor_set_vulkan(CGPUDescriptorSetId set, const struct CGP
         // Descriptor Info
         const CGPUDescriptorData* pParam = datas + i;
         const CGPUShaderResource* ResData = CGPU_NULLPTR;
-        if (pParam->name != CGPU_NULLPTR)
+        if (pParam->by_name.name != CGPU_NULLPTR)
         {
-            skr_hash argNameHash = skr_hash_of(pParam->name, strlen(pParam->name), SKR_DEFAULT_HASH_SEED);
+            skr_hash argNameHash = skr_hash_of(pParam->by_name.name, strlen(pParam->by_name.name), SKR_DEFAULT_HASH_SEED);
             for (uint32_t p = 0; p < ParamTable->resources_count; p++)
             {
                 if (ParamTable->resources[p].name_hash == argNameHash &&
-                    (strcmp(pParam->name, ParamTable->resources[p].name) == 0))
+                    (strcmp(pParam->by_name.name, ParamTable->resources[p].name) == 0))
                 {
                     ResData = ParamTable->resources + p;
                 }
@@ -685,7 +685,7 @@ void cgpu_update_descriptor_set_vulkan(CGPUDescriptorSetId set, const struct CGP
         {
             for (uint32_t p = 0; p < ParamTable->resources_count; p++)
             {
-                if (ParamTable->resources[p].binding == pParam->binding)
+                if (ParamTable->resources[p].binding == pParam->by_index.binding)
                 {
                     ResData = ParamTable->resources + p;
                 }

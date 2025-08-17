@@ -1,18 +1,20 @@
 #include "SkrGraphics/api.h"
 #include "SkrGraphics/drivers/cgpu_ags.h"
 #include "common_utils.h"
+#include "SkrBase/atomic/atomic.h"
 
 // AGS
 #if defined(AMDAGS)
-#define CGPU_AMD_AGS_SINGLETON_NAME u8"CGPUAMDAGSSingleton"
+
 struct CGPUAMDAGSSingleton
 {
     static CGPUAMDAGSSingleton* Get(CGPUInstanceId instance)
     {
-        auto _this = (CGPUAMDAGSSingleton*)cgpu_runtime_table_try_get_custom_data(instance->runtime_table, CGPU_AMD_AGS_SINGLETON_NAME);
-        if (!_this)
+        static CGPUAMDAGSSingleton* _this = nullptr;
+        if (_this == nullptr)
         {
             _this = SkrNew<CGPUAMDAGSSingleton>();
+            _this->ref_count = 0;  // Initialize ref count
             {
                 #if defined(_WIN64)
                     auto  dllname = u8"amd_ags_x64.dll";
@@ -34,15 +36,30 @@ struct CGPUAMDAGSSingleton
                     // End load PFNs
                 }
             }
-            cgpu_runtime_table_add_custom_data(instance->runtime_table, CGPU_AMD_AGS_SINGLETON_NAME, _this);
         }
         return _this->dll_dont_exist ? nullptr : _this;
+    }
+    
+    void AddRef()
+    {
+        skr_atomic_fetch_add_relaxed(&ref_count, 1);
+    }
+    
+    void Release(CGPUInstanceId instance)
+    {
+        if (skr_atomic_fetch_add_relaxed(&ref_count, -1) == 1)
+        {
+            // Last reference, remove from runtime table and delete
+            SkrDelete(this);
+        }
     }
 
     ~CGPUAMDAGSSingleton()
     {
-        if (_agsDeInitialize && (agsStatus == AGS_SUCCESS)) _agsDeInitialize(pAgsContext);
-        if (ags_library.isLoaded()) ags_library.unload();
+        if (_agsDeInitialize && (agsStatus == AGS_SUCCESS)) 
+            _agsDeInitialize(pAgsContext);
+        if (ags_library.isLoaded()) 
+            ags_library.unload();
 
         cgpu_trace(u8"AMD AGS unloaded");
     }
@@ -56,6 +73,7 @@ struct CGPUAMDAGSSingleton
     uint32_t driverVersion = 0;
     skr::SharedLibrary ags_library;
     bool dll_dont_exist = false;
+    SAtomicU32 ref_count = 0;
 };
 #endif
 
@@ -65,14 +83,26 @@ ECGPUAGSReturnCode cgpu_ags_init(struct CGPUInstance* Inst)
     auto _this = CGPUAMDAGSSingleton::Get(Inst);
     if (!_this) return CGPU_AGS_FAILURE;
     
-    AGSConfiguration config = {};
-    int apiVersion = AGS_MAKE_VERSION(6, 0, 1);
-    auto Status = _this->agsStatus = _this->_agsInitialize(apiVersion, &config, &_this->pAgsContext, &_this->gAgsGpuInfo);
-    Inst->ags_status = (ECGPUAGSReturnCode)Status;
-    if (Status == AGS_SUCCESS)
+    // Increment reference count
+    _this->AddRef();
+    
+    // Only initialize AGS once (when first instance is created)
+    if (_this->pAgsContext == NULL)
     {
-        char* stopstring;
-        _this->driverVersion = strtoul(_this->gAgsGpuInfo.driverVersion, &stopstring, 10);
+        AGSConfiguration config = {};
+        int apiVersion = AGS_MAKE_VERSION(6, 0, 1);
+        auto Status = _this->agsStatus = _this->_agsInitialize(apiVersion, &config, &_this->pAgsContext, &_this->gAgsGpuInfo);
+        Inst->ags_status = (ECGPUAGSReturnCode)Status;
+        if (Status == AGS_SUCCESS)
+        {
+            char* stopstring;
+            _this->driverVersion = strtoul(_this->gAgsGpuInfo.driverVersion, &stopstring, 10);
+        }
+    }
+    else
+    {
+        // Already initialized, just set the status
+        Inst->ags_status = (ECGPUAGSReturnCode)_this->agsStatus;
     }
     return Inst->ags_status;
 #else
@@ -97,6 +127,7 @@ void cgpu_ags_exit(CGPUInstanceId instance)
     auto _this = CGPUAMDAGSSingleton::Get(instance);
     if (!_this) return;
 
-    SkrDelete(_this);
+    // Decrement reference count and delete if last reference
+    _this->Release(instance);
 #endif
 }

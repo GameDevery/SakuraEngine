@@ -206,7 +206,7 @@ struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::Texture> {
         uint32_t mip_level = 0;
         uint32_t array_base = 0;
         uint32_t array_count = 1;
-        CGPUTextureViewAspects aspects = CGPU_TVA_COLOR;
+        CGPUTextureViewAspects aspects = CGPU_TEXTURE_VIEW_ASPECTS_COLOR;
     };
 
     struct SKR_RENDER_GRAPH_API ShaderReadHandle {

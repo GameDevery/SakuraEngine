@@ -226,7 +226,7 @@ ESkrInstallStatus TextureFactoryImpl::UpdateInstall(SResourceRecord* record)
             view_desc.base_array_layer = 0;
             view_desc.mip_level_count = 1;
             view_desc.base_mip_level = 0;
-            view_desc.aspects = CGPU_TVA_COLOR;
+            view_desc.aspects = CGPU_TEXTURE_VIEW_ASPECTS_COLOR;
             view_desc.dims = CGPU_TEXTURE_DIMENSION_2D;
             view_desc.format = (ECGPUFormat)texture_resource->format;
             view_desc.view_usages = CGPU_TEXTURE_VIEW_USAGE_SRV;

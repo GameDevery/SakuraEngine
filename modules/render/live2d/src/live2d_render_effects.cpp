@@ -389,10 +389,9 @@ protected:
 
                     CGPUDescriptorData datas[1] = {};
                     datas[0] = make_zeroed<CGPUDescriptorData>();
-                    datas[0].name = color_texture_name;
+                    datas[0].by_name.name = color_texture_name;
                     datas[0].count = 1;
                     datas[0].textures = &texture_view;
-                    datas[0].view_usage = CGPU_TEXTURE_VIEW_USAGE_SRV;
                     cgpux_bind_table_update(bind_table, datas, 1);
                 }
             }
@@ -410,10 +409,9 @@ protected:
 
                     CGPUDescriptorData datas[1] = {};
                     datas[0] = make_zeroed<CGPUDescriptorData>();
-                    datas[0].name = color_texture_name;
+                    datas[0].by_name.name = color_texture_name;
                     datas[0].count = 1;
                     datas[0].textures = &texture_view;
-                    datas[0].view_usage = CGPU_TEXTURE_VIEW_USAGE_SRV;
                     cgpux_bind_table_update(bind_table, datas, 1);
                 }
             }

@@ -145,7 +145,8 @@ void CGPUUtil_InitRSParamTables(CGPURootSignature* RS, const struct CGPURootSign
         {
             if (RST_resource.set == shader_resource.set &&
                 RST_resource.binding == shader_resource.binding &&
-                RST_resource.type == shader_resource.type)
+                RST_resource.type == shader_resource.type &&
+                RST_resource.view_usages == shader_resource.view_usages)
             {
                 RST_resource.stages |= shader_resource.stages;
                 coincided = true;

@@ -8,9 +8,10 @@
 void CGPUXBindTableValue::Initialize(const CGPUXBindTableLocation& loc, const CGPUDescriptorData& rhs)
 {
     data = rhs;
-    data.name = nullptr;
-    data.binding = loc.binding;
-    data.view_usage = rhs.view_usage;
+    data.by_name.name = nullptr;
+    data.by_index.binding = loc.binding;
+    data.by_index.view_usage = loc.view_usage;
+    data.by_index.type = loc.type;
     binded = false;
     resources.resize_default(data.count);
     for (uint32_t i = 0; i < data.count; i++)
@@ -58,6 +59,8 @@ CGPUXBindTableId CGPUXBindTable::Create(CGPUDeviceId device, const struct CGPUXB
                     new (pLocations + k) CGPUXBindTableLocation();
                     const_cast<uint32_t&>(pLocations[k].tbl_idx) = setIdx;
                     const_cast<uint32_t&>(pLocations[k].binding) = res.binding;
+                    const_cast<CGPUViewUsages&>(pLocations[k].view_usage) = res.view_usages;
+                    const_cast<ECGPUResourceType&>(pLocations[k].type) = res.type;
 
                     CGPUDescriptorSetDescriptor setDesc = {};
                     setDesc.root_signature = desc->root_signature;
@@ -79,9 +82,9 @@ void CGPUXBindTable::Update(const struct CGPUDescriptorData* datas, uint32_t cou
     for (uint32_t i = 0; i < count; i++)
     {
         const auto& data = datas[i];
-        if (data.name)
+        if (data.by_name.name)
         {
-            const auto name_hash = skr_hash_of(data.name, strlen((const char*)data.name));
+            const auto name_hash = skr_hash_of(data.by_name.name, strlen((const char*)data.by_name.name));
             for (uint32_t j = 0; j < names_count; j++)
             {
                 if (name_hash == name_hashes[j])

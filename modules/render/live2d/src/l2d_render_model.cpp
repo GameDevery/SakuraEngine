@@ -91,7 +91,7 @@ struct skr_live2d_render_model_async_t : public skr_live2d_render_model_impl_t {
             view_desc.base_array_layer = 0;
             view_desc.mip_level_count = 1;
             view_desc.base_mip_level = 0;
-            view_desc.aspects = CGPU_TVA_COLOR;
+            view_desc.aspects = CGPU_TEXTURE_VIEW_ASPECTS_COLOR;
             view_desc.dims = CGPU_TEXTURE_DIMENSION_2D;
             view_desc.format = CGPU_FORMAT_R8G8B8A8_UNORM;
             view_desc.view_usages = CGPU_TEXTURE_VIEW_USAGE_SRV;

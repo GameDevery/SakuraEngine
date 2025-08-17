@@ -602,7 +602,7 @@ RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::set_name(const char8_t
     return *this;
 }
 
-RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::with_flags(CGPUTextureCreationFlags flags) SKR_NOEXCEPT
+RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::with_flags(CGPUTextureFlags flags) SKR_NOEXCEPT
 {
     node.descriptor.flags |= flags;
     return *this;
@@ -682,7 +682,7 @@ RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::allow_depth_stencil() 
 
 RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::allocate_dedicated() SKR_NOEXCEPT
 {
-    node.descriptor.flags |= CGPU_TCF_DEDICATED_BIT;
+    node.descriptor.flags |= CGPU_TEXTURE_FLAG_DEDICATED_BIT;
     return *this;
 }
 

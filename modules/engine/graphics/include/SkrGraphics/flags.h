@@ -626,43 +626,43 @@ typedef enum ECGPUBufferFlag
 } ECGPUBufferFlag;
 typedef uint32_t CGPUBufferFlags;
 
-typedef enum ECGPUTextureCreationFlag
+typedef enum ECGPUTextureFlag
 {
     /// Default flag (Texture will use default allocation strategy decided by the api specific allocator)
-    CGPU_TCF_NONE = 0,
+    CGPU_TEXTURE_FLAG_NONE = 0,
     /// Texture will allocate its own memory (COMMITTED resource)
     /// Note that this flag is not restricted Commited/Dedicated Allocation
     /// Actually VMA/D3D12MA allocate dedicated memories with ALLOW_ALIAS flag with specific loacl heaps
     /// If the texture needs to be restricted Committed/Dedicated(thus you want to keep its priority high)
     /// Toggle is_restrict_dedicated flag in CGPUTextureDescriptor
-    CGPU_TCF_DEDICATED_BIT = 0x01,
+    CGPU_TEXTURE_FLAG_DEDICATED_BIT = 0x01,
     /// Texture will be allocated in memory which can be shared among multiple processes
-    CGPU_TCF_EXPORT_BIT = 0x02,
+    CGPU_TEXTURE_FLAG_EXPORT_BIT = 0x02,
     /// Texture will be allocated in memory which can be shared among multiple gpus
-    CGPU_TCF_EXPORT_ADAPTER_BIT = 0x04,
+    CGPU_TEXTURE_FLAG_EXPORT_ADAPTER_BIT = 0x04,
     /// Use on-tile memory to store this texture
-    CGPU_TCF_ON_TILE = 0x08,
+    CGPU_TEXTURE_FLAG_ON_TILE = 0x08,
     /// Prevent compression meta data from generating (XBox)
-    CGPU_TCF_NO_COMPRESSION = 0x10,
+    CGPU_TEXTURE_FLAG_NO_COMPRESSION = 0x10,
     /// Force 2D instead of automatically determining dimension based on width, height, depth
-    CGPU_TCF_FORCE_2D = 0x20,
+    CGPU_TEXTURE_FLAG_FORCE_2D = 0x20,
     /// Force 3D instead of automatically determining dimension based on width, height, depth
-    CGPU_TCF_FORCE_3D = 0x40,
+    CGPU_TEXTURE_FLAG_FORCE_3D = 0x40,
     /// Display target
-    CGPU_TCF_ALLOW_DISPLAY_TARGET = 0x80,
+    CGPU_TEXTURE_FLAG_ALLOW_DISPLAY_TARGET = 0x80,
     /// Create a normal map texture
-    CGPU_TCF_NORMAL_MAP = 0x100,
+    CGPU_TEXTURE_FLAG_NORMAL_MAP = 0x100,
     /// Fragment mask
-    CGPU_TCF_FRAG_MASK = 0x200,
+    CGPU_TEXTURE_FLAG_FRAG_MASK = 0x200,
     /// Create as AliasingResource
-    CGPU_TCF_ALIASING_RESOURCE = 0x400,
+    CGPU_TEXTURE_FLAG_ALIASING_RESOURCE = 0x400,
     /// Create as TiledResource
-    CGPU_TCF_TILED_RESOURCE = 0x800,
+    CGPU_TEXTURE_FLAG_TILED_RESOURCE = 0x800,
     /// 
-    CGPU_TCF_USABLE_MAX = 0x40000,
-    CGPU_TCF_MAX_ENUM_BIT = 0x7FFFFFFF
-} ECGPUTextureCreationFlag;
-typedef uint32_t CGPUTextureCreationFlags;
+    CGPU_TEXTURE_FLAG_USABLE_MAX = 0x40000,
+    CGPU_TEXTURE_FLAG_MAX_ENUM_BIT = 0x7FFFFFFF
+} ECGPUTextureFlag;
+typedef uint32_t CGPUTextureFlags;
 
 typedef enum ECGPUSampleCount
 {
@@ -748,10 +748,10 @@ typedef uint32_t CGPUTextureViewUsages;
 
 typedef enum ECGPUTextureViewAspect
 {
-    CGPU_TVA_COLOR = 0x01,
-    CGPU_TVA_DEPTH = 0x02,
-    CGPU_TVA_STENCIL = 0x04,
-    CGPU_TVA_MAX_ENUM_BIT = 0x7FFFFFFF
+    CGPU_TEXTURE_VIEW_ASPECTS_COLOR = 0x01,
+    CGPU_TEXTURE_VIEW_ASPECTS_DEPTH = 0x02,
+    CGPU_TEXTURE_VIEW_ASPECTS_STENCIL = 0x04,
+    CGPU_TEXTURE_VIEW_ASPECTS_MAX_ENUM_BIT = 0x7FFFFFFF
 } ECGPUTextureViewAspect;
 typedef uint32_t CGPUTextureViewAspects;
 

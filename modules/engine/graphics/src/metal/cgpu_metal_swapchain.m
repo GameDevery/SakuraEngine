@@ -137,7 +137,7 @@ CGPUSwapChainId cgpu_create_swapchain_metal(CGPUDeviceId device, const CGPUSwapC
         info->mip_levels = 1;
         info->sample_count = CGPU_SAMPLE_COUNT_1;
         info->format = desc->format;
-        info->aspect_mask = CGPU_TVA_COLOR;
+        info->aspect_mask = CGPU_TEXTURE_VIEW_ASPECTS_COLOR;
         info->node_index = CGPU_SINGLE_GPU_NODE_INDEX;
         info->owns_image = true;
         info->is_cube = false;

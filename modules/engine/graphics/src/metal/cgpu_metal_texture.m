@@ -56,11 +56,11 @@ static ECGPUTextureDimension MetalUtil_CalculateTextureDimension(const CGPUTextu
 {
     ECGPUTextureDimension dim = CGPU_TEXTURE_DIMENSION_2D;
     
-    if (desc->flags & CGPU_TCF_FORCE_2D)
+    if (desc->flags & CGPU_TEXTURE_FLAG_FORCE_2D)
     {
         dim = CGPU_TEXTURE_DIMENSION_2D;
     }
-    else if (desc->flags & CGPU_TCF_FORCE_3D)
+    else if (desc->flags & CGPU_TEXTURE_FLAG_FORCE_3D)
     {
         dim = CGPU_TEXTURE_DIMENSION_3D;
     }
@@ -113,25 +113,25 @@ CGPUTextureId cgpu_create_texture_metal(CGPUDeviceId device, const struct CGPUTe
     info->mip_levels = desc->mip_levels;
     info->sample_count = desc->sample_count;
     info->format = desc->format;
-    info->aspect_mask = CGPU_TVA_COLOR;
+    info->aspect_mask = CGPU_TEXTURE_VIEW_ASPECTS_COLOR;
     info->node_index = CGPU_SINGLE_GPU_NODE_INDEX;
     info->owns_image = true;
     info->is_cube = (desc->descriptors & CGPU_RESOURCE_TYPE_TEXTURE_CUBE) == CGPU_RESOURCE_TYPE_TEXTURE_CUBE;
-    info->is_allocation_dedicated = (desc->flags & CGPU_TCF_DEDICATED_BIT) != 0;
+    info->is_allocation_dedicated = (desc->flags & CGPU_TEXTURE_FLAG_DEDICATED_BIT) != 0;
     info->is_restrict_dedicated = desc->is_restrict_dedicated;
-    info->is_aliasing = (desc->flags & CGPU_TCF_ALIASING_RESOURCE) != 0;
-    info->is_tiled = (desc->flags & CGPU_TCF_TILED_RESOURCE) != 0;
+    info->is_aliasing = (desc->flags & CGPU_TEXTURE_FLAG_ALIASING_RESOURCE) != 0;
+    info->is_tiled = (desc->flags & CGPU_TEXTURE_FLAG_TILED_RESOURCE) != 0;
     info->is_imported = desc->native_handle != NULL;
     info->can_alias = !desc->is_restrict_dedicated && !info->is_imported;
-    info->can_export = (desc->flags & CGPU_TCF_EXPORT_BIT) != 0;
+    info->can_export = (desc->flags & CGPU_TEXTURE_FLAG_EXPORT_BIT) != 0;
     
     // Set aspect mask based on format
     if (FormatUtil_IsDepthStencilFormat(desc->format))
     {
         if (FormatUtil_IsDepthOnlyFormat(desc->format))
-            info->aspect_mask = CGPU_TVA_DEPTH;
+            info->aspect_mask = CGPU_TEXTURE_VIEW_ASPECTS_DEPTH;
         else
-            info->aspect_mask = CGPU_TVA_DEPTH | CGPU_TVA_STENCIL;
+            info->aspect_mask = CGPU_TEXTURE_VIEW_ASPECTS_DEPTH | CGPU_TEXTURE_VIEW_ASPECTS_STENCIL;
     }
     
     @autoreleasepool {
@@ -184,7 +184,7 @@ CGPUTextureId cgpu_create_texture_metal(CGPUDeviceId device, const struct CGPUTe
             }
             
             // Create texture
-            if (desc->flags & CGPU_TCF_TILED_RESOURCE)
+            if (desc->flags & CGPU_TEXTURE_FLAG_TILED_RESOURCE)
             {
                 // Sparse textures are not yet supported
                 cgpu_assert(false && "Tiled/sparse textures not yet implemented");

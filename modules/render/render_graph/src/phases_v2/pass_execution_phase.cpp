@@ -244,7 +244,7 @@ void PassExecutionPhase::execute_render_pass(RenderGraph* graph_, RenderGraphFra
             view_desc.base_mip_level = write_edge->get_mip_level();
             view_desc.mip_level_count = 1;
             view_desc.aspects =
-                is_depth_only ? CGPU_TVA_DEPTH : CGPU_TVA_DEPTH | CGPU_TVA_STENCIL;
+                is_depth_only ? CGPU_TEXTURE_VIEW_ASPECTS_DEPTH : CGPU_TEXTURE_VIEW_ASPECTS_DEPTH | CGPU_TEXTURE_VIEW_ASPECTS_STENCIL;
             view_desc.format = view_desc.texture->info->format;
             view_desc.view_usages = CGPU_TEXTURE_VIEW_USAGE_RTV_DSV;
             if (sample_count == CGPU_SAMPLE_COUNT_1)
@@ -276,7 +276,7 @@ void PassExecutionPhase::execute_render_pass(RenderGraph* graph_, RenderGraphFra
                 view_desc.base_mip_level = 0;
                 view_desc.mip_level_count = 1; // TODO: resolve MSAA to specific mip slice?
                 view_desc.format = view_desc.texture->info->format;
-                view_desc.aspects = CGPU_TVA_COLOR;
+                view_desc.aspects = CGPU_TEXTURE_VIEW_ASPECTS_COLOR;
                 view_desc.view_usages = CGPU_TEXTURE_VIEW_USAGE_RTV_DSV;
                 view_desc.dims = CGPU_TEXTURE_DIMENSION_2D;
                 attachment.resolve_view = graph->texture_view_pool.allocate(view_desc, frame_index);
@@ -290,7 +290,7 @@ void PassExecutionPhase::execute_render_pass(RenderGraph* graph_, RenderGraphFra
                 view_desc.base_mip_level = write_edge->get_mip_level();
                 view_desc.mip_level_count = 1; // TODO: mip
                 view_desc.format = view_desc.texture->info->format;
-                view_desc.aspects = CGPU_TVA_COLOR;
+                view_desc.aspects = CGPU_TEXTURE_VIEW_ASPECTS_COLOR;
                 view_desc.view_usages = CGPU_TEXTURE_VIEW_USAGE_RTV_DSV;
                 if (sample_count == CGPU_SAMPLE_COUNT_1)
                 {

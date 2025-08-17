@@ -86,6 +86,7 @@ struct CGPUTextureToTextureTransfer;
 struct CGPUFillBufferDescriptor;
 struct CGPUQueryDescriptor;
 struct CGPUDescriptorData;
+struct CGPUDescriptorBufferElement;
 struct CGPUResourceBarrierDescriptor;
 struct CGPUTextureAliasingBindDescriptor;
 struct CGPURenderPassDescriptor;
@@ -212,12 +213,6 @@ CGPU_API CGPURootSignatureId cgpu_create_root_signature(CGPUDeviceId device, con
 typedef CGPURootSignatureId (*CGPUProcCreateRootSignature)(CGPUDeviceId device, const struct CGPURootSignatureDescriptor* desc);
 CGPU_API void cgpu_free_root_signature(CGPURootSignatureId signature);
 typedef void (*CGPUProcFreeRootSignature)(CGPURootSignatureId signature);
-CGPU_API CGPUDescriptorSetId cgpu_create_descriptor_set(CGPUDeviceId device, const struct CGPUDescriptorSetDescriptor* desc);
-typedef CGPUDescriptorSetId (*CGPUProcCreateDescriptorSet)(CGPUDeviceId device, const struct CGPUDescriptorSetDescriptor* desc);
-CGPU_API void cgpu_update_descriptor_set(CGPUDescriptorSetId set, const struct CGPUDescriptorData* datas, uint32_t count);
-typedef void (*CGPUProcUpdateDescriptorSet)(CGPUDescriptorSetId set, const struct CGPUDescriptorData* datas, uint32_t count);
-CGPU_API void cgpu_free_descriptor_set(CGPUDescriptorSetId set);
-typedef void (*CGPUProcFreeDescriptorSet)(CGPUDescriptorSetId set);
 CGPU_API CGPUComputePipelineId cgpu_create_compute_pipeline(CGPUDeviceId device, const struct CGPUComputePipelineDescriptor* desc);
 typedef CGPUComputePipelineId (*CGPUProcCreateComputePipeline)(CGPUDeviceId device, const struct CGPUComputePipelineDescriptor* desc);
 CGPU_API void cgpu_free_compute_pipeline(CGPUComputePipelineId pipeline);
@@ -234,6 +229,22 @@ CGPU_API CGPUMemoryPoolId cgpu_create_memory_pool(CGPUDeviceId, const struct CGP
 typedef CGPUMemoryPoolId (*CGPUProcCreateMemoryPool)(CGPUDeviceId, const struct CGPUMemoryPoolDescriptor* desc);
 CGPU_API void cgpu_free_memory_pool(CGPUMemoryPoolId pool);
 typedef void (*CGPUProcFreeMemoryPool)(CGPUMemoryPoolId pool);
+
+// Descriptor Set/Buffer
+CGPU_API CGPUDescriptorSetId cgpu_create_descriptor_set(CGPUDeviceId device, const struct CGPUDescriptorSetDescriptor* desc);
+typedef CGPUDescriptorSetId (*CGPUProcCreateDescriptorSet)(CGPUDeviceId device, const struct CGPUDescriptorSetDescriptor* desc);
+CGPU_API void cgpu_update_descriptor_set(CGPUDescriptorSetId set, const struct CGPUDescriptorData* datas, uint32_t count);
+typedef void (*CGPUProcUpdateDescriptorSet)(CGPUDescriptorSetId set, const struct CGPUDescriptorData* datas, uint32_t count);
+CGPU_API void cgpu_free_descriptor_set(CGPUDescriptorSetId set);
+typedef void (*CGPUProcFreeDescriptorSet)(CGPUDescriptorSetId set);
+CGPU_API CGPUDescriptorBufferId cgpu_create_descriptor_buffer(CGPUDeviceId device, const struct CGPUDescriptorBufferDescriptor* desc);
+typedef CGPUDescriptorBufferId (*CGPUProcCreateDescriptorBuffer)(CGPUDeviceId device, const struct CGPUDescriptorBufferDescriptor* desc);
+CGPU_API void cgpu_update_descriptor_buffer(CGPUDescriptorBufferId buffer, const struct CGPUDescriptorBufferElement* elements, uint32_t count);
+typedef void (*CGPUProcUpdateDescriptorBuffer)(CGPUDescriptorBufferId buffer, const struct CGPUDescriptorBufferElement* elements, uint32_t count);
+CGPU_API void cgpu_copy_descriptor_buffer(CGPUDescriptorBufferId src, CGPUDescriptorBufferId dest, CGPUBufferRange src_range, CGPUBufferRange dst_range);
+typedef void (*CGPUProcCopyDescriptorBuffer)(CGPUDescriptorBufferId src, CGPUDescriptorBufferId dest, CGPUBufferRange src_range, CGPUBufferRange dst_range);
+CGPU_API void cgpu_free_descriptor_buffer(CGPUDescriptorBufferId buffer);
+typedef void (*CGPUProcFreeDescriptorBuffer)(CGPUDescriptorBufferId buffer);
 
 // Queue APIs
 // Warn: If you get a queue at an index with a specific type, you must hold the handle and reuses it.
@@ -576,9 +587,6 @@ typedef struct CGPUProcTable {
     const CGPUProcFreeRootSignaturePool free_root_signature_pool;
     const CGPUProcCreateRootSignature create_root_signature;
     const CGPUProcFreeRootSignature free_root_signature;
-    const CGPUProcCreateDescriptorSet create_descriptor_set;
-    const CGPUProcFreeDescriptorSet free_descriptor_set;
-    const CGPUProcUpdateDescriptorSet update_descriptor_set;
     const CGPUProcCreateComputePipeline create_compute_pipeline;
     const CGPUProcFreeComputePipeline free_compute_pipeline;
     const CGPUProcCreateRenderPipeline create_render_pipeline;
@@ -587,6 +595,14 @@ typedef struct CGPUProcTable {
     const CGPUProcFreeMemoryPool free_memory_pool;
     const CGPUProcCreateQueryPool create_query_pool;
     const CGPUProcFreeQueryPool free_query_pool;
+
+    const CGPUProcCreateDescriptorSet create_descriptor_set;
+    const CGPUProcUpdateDescriptorSet update_descriptor_set;
+    const CGPUProcFreeDescriptorSet free_descriptor_set;
+    const CGPUProcCreateDescriptorBuffer create_descriptor_buffer;
+    const CGPUProcUpdateDescriptorBuffer update_descriptor_buffer;
+    const CGPUProcCopyDescriptorBuffer copy_descriptor_buffer;
+    const CGPUProcFreeDescriptorBuffer free_descriptor_buffer;
 
     // Queue APIs
     const CGPUProcGetQueue get_queue;
@@ -975,9 +991,16 @@ typedef struct CGPUPipelineReflection {
 } CGPUPipelineReflection;
 
 typedef struct CGPUDescriptorData {
-    const char8_t* name;
-    uint32_t binding;
-    CGPUViewUsages view_usage;
+    struct {
+        const char8_t* name;
+    } by_name;
+    
+    struct {
+        ECGPUResourceType type;
+        CGPUViewUsages view_usage;
+        uint32_t binding;
+    } by_index;
+
     union
     {
         const void** ptrs;
@@ -1294,6 +1317,10 @@ typedef struct CGPUCompiledShaderDescriptor {
     uint64_t code_size;
 } CGPUCompiledShaderDescriptor;
 
+typedef struct CGPUDescriptorBufferDescriptor {
+    uint32_t count;
+} CGPUDescriptorBufferDescriptor;
+
 typedef struct CGPUDescriptorSetDescriptor {
     CGPURootSignatureId root_signature;
     uint32_t set_index;
@@ -1445,6 +1472,11 @@ typedef struct CGPURootSignature {
     CGPURootSignatureId pool_sig;
 } CGPURootSignature;
 
+typedef struct CGPUDescriptorBuffer {
+    CGPUDeviceId device;
+    const uint32_t size;
+} CGPUDescriptorBuffer;
+
 typedef struct CGPUDescriptorSet {
     CGPURootSignatureId root_signature;
     uint32_t index;
@@ -1550,7 +1582,7 @@ typedef struct CGPUTextureDescriptor {
     const char8_t* name;
     const void* native_handle;
     /// Texture creation flags (decides memory allocation strategy, sharing access,...)
-    CGPUTextureCreationFlags flags;
+    CGPUTextureFlags flags;
     /// Optimized clear value (recommended to use this same value when clearing the rendertarget)
     CGPUClearValue clear_value;
     /// Width
@@ -1705,6 +1737,15 @@ typedef struct CGPUSamplerDescriptor {
 typedef struct CGPUSampler {
     CGPUDeviceId device;
 } CGPUSampler;
+
+typedef struct CGPUDescriptorBufferElement {
+    ECGPUResourceType resource_type;
+    union
+    {
+        CGPUBufferViewDescriptor buffer;
+        CGPUTextureViewDescriptor texture;
+    };
+} CGPUDescriptorBufferElement;
 
 #pragma endregion DESCRIPTORS
 

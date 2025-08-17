@@ -202,7 +202,7 @@ void SkrImageUploadTask::from_image(const SkrImageData& image)
         view_desc.base_array_layer          = 0;
         view_desc.mip_level_count           = 1;
         view_desc.base_mip_level            = 0;
-        view_desc.aspects                   = CGPU_TVA_COLOR;
+        view_desc.aspects                   = CGPU_TEXTURE_VIEW_ASPECTS_COLOR;
         view_desc.dims                      = CGPU_TEXTURE_DIMENSION_2D;
         view_desc.view_usages               = CGPU_TEXTURE_VIEW_USAGE_SRV;
         task->_texture_view                 = cgpu_create_texture_view(device, &view_desc);
@@ -214,9 +214,8 @@ void SkrImageUploadTask::from_image(const SkrImageData& image)
         bind_table_desc.names_count                 = 1;
         task->_bind_table                           = cgpux_create_bind_table(device, &bind_table_desc);
         auto data               = make_zeroed<CGPUDescriptorData>();
-        data.name                                   = color_texture_name;
+        data.by_name.name                                   = color_texture_name;
         data.count                                  = 1;
-        data.view_usage                             = CGPU_TEXTURE_VIEW_USAGE_SRV;
         data.textures                               = &task->_texture_view;
         cgpux_bind_table_update(task->_bind_table, &data, 1);
 

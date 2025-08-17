@@ -132,7 +132,7 @@ void initialize(void* usrdata)
     {
         CGPUTextureViewDescriptor view_desc = {
             .texture = swapchain->back_buffers[i],
-            .aspects = CGPU_TVA_COLOR,
+            .aspects = CGPU_TEXTURE_VIEW_ASPECTS_COLOR,
             .array_layer_count = 1,
             .dims = CGPU_TEXTURE_DIMENSION_2D,
             .format = swapchain->back_buffers[i]->info->format,

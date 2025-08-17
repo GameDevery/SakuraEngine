@@ -989,7 +989,7 @@ void ImGuiApp::create_texture(ImTextureData* tex_data)
     tex_desc.depth = 1;
     tex_desc.usages = CGPU_TEXTURE_USAGE_SHADER_READ;
     tex_desc.array_size = 1;
-    tex_desc.flags = CGPU_TCF_NONE;
+    tex_desc.flags = CGPU_TEXTURE_FLAG_NONE;
     tex_desc.mip_levels = 1;
     tex_desc.format = CGPU_FORMAT_R8G8B8A8_UNORM;
     tex_desc.start_state = CGPU_RESOURCE_STATE_COPY_DEST;
@@ -1004,7 +1004,7 @@ void ImGuiApp::create_texture(ImTextureData* tex_data)
     view_desc.base_mip_level = 0;
     view_desc.mip_level_count = 1;
     view_desc.format = user_data->texture->info->format;
-    view_desc.aspects = CGPU_TVA_COLOR;
+    view_desc.aspects = CGPU_TEXTURE_VIEW_ASPECTS_COLOR;
     view_desc.view_usages = CGPU_TEXTURE_VIEW_USAGE_SRV;
     view_desc.dims = CGPU_TEXTURE_DIMENSION_2D;
     user_data->srv = cgpu_create_texture_view(_gfx_queue->device, &view_desc);

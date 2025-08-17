@@ -28,7 +28,7 @@ public:
     };
     struct Key {
         const CGPUDeviceId device;
-        const CGPUTextureCreationFlags flags;
+        const CGPUTextureFlags flags;
         uint64_t width;
         uint64_t height;
         uint32_t depth;

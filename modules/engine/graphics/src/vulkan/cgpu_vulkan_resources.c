@@ -508,12 +508,12 @@ cgpu_static_assert(sizeof(CGPUTexture_Vulkan) <= 8 * sizeof(uint64_t), "Acquire 
 VkImageType VkUtil_TranslateImageType(const struct CGPUTextureDescriptor* desc)
 {
     VkImageType mImageType = VK_IMAGE_TYPE_MAX_ENUM;
-    if (desc->flags & CGPU_TCF_FORCE_2D)
+    if (desc->flags & CGPU_TEXTURE_FLAG_FORCE_2D)
     {
         cgpu_assert(desc->depth == 1);
         mImageType = VK_IMAGE_TYPE_2D;
     }
-    else if (desc->flags & CGPU_TCF_FORCE_3D)
+    else if (desc->flags & CGPU_TEXTURE_FLAG_FORCE_3D)
         mImageType = VK_IMAGE_TYPE_3D;
     else
     {
@@ -779,7 +779,7 @@ CGPUTextureId cgpu_create_texture_vulkan(CGPUDeviceId device, const struct CGPUT
         owns_image = false;
         pVkImage = (VkImage)desc->native_handle;
     }
-    else if (!(desc->flags & CGPU_TCF_ALIASING_RESOURCE))
+    else if (!(desc->flags & CGPU_TEXTURE_FLAG_ALIASING_RESOURCE))
     {
         owns_image = true;
     }
@@ -847,7 +847,7 @@ CGPUTextureId cgpu_create_texture_vulkan(CGPUDeviceId device, const struct CGPUT
             imageCreateInfo.usage |= (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
         }
         cgpu_assert(format_support->shader_read && "GPU shader can't' read from this format");
-        if (desc->flags & CGPU_TCF_TILED_RESOURCE)
+        if (desc->flags & CGPU_TEXTURE_FLAG_TILED_RESOURCE)
         {
             imageCreateInfo.flags |= VK_IMAGE_CREATE_SPARSE_BINDING_BIT;
             imageCreateInfo.flags |= VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT;
@@ -858,7 +858,7 @@ CGPUTextureId cgpu_create_texture_vulkan(CGPUDeviceId device, const struct CGPUT
         VkFormatFeatureFlags flags = format_props.optimalTilingFeatures & format_features;
         cgpu_assert((flags != 0) && "Format is not supported for GPU local images (i.e. not host visible images)");
         SKR_DECLARE_ZERO(VmaAllocationCreateInfo, mem_reqs)
-        if ((desc->flags & CGPU_TCF_ALIASING_RESOURCE) || (desc->flags & CGPU_TCF_TILED_RESOURCE))
+        if ((desc->flags & CGPU_TEXTURE_FLAG_ALIASING_RESOURCE) || (desc->flags & CGPU_TEXTURE_FLAG_TILED_RESOURCE))
         {
             VkResult res = D->mVkDeviceTable.vkCreateImage(D->pVkDevice, &imageCreateInfo, GLOBAL_VkAllocationCallbacks, &pVkImage);
             CHECK_VKRESULT(res);
@@ -866,7 +866,7 @@ CGPUTextureId cgpu_create_texture_vulkan(CGPUDeviceId device, const struct CGPUT
         else
         {
             // Allocate texture memory
-            if (desc->flags & CGPU_TCF_DEDICATED_BIT)
+            if (desc->flags & CGPU_TEXTURE_FLAG_DEDICATED_BIT)
                 mem_reqs.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
             mem_reqs.usage = (VmaMemoryUsage)VMA_MEMORY_USAGE_GPU_ONLY;
             
@@ -898,7 +898,7 @@ CGPUTextureId cgpu_create_texture_vulkan(CGPUDeviceId device, const struct CGPUT
                 VkUtil_ImportSharedTexture(Q, &mem_reqs, &imageCreateInfo, desc, win32Name, 
                     &externalInfo, &win32ImportInfo, &pVkImage, &pVkDeviceMemory);
             }
-            else if (A->external_memory && desc->flags & CGPU_TCF_EXPORT_BIT)
+            else if (A->external_memory && desc->flags & CGPU_TEXTURE_FLAG_EXPORT_BIT)
             {
                 // format name wstring
                 uint64_t pid = (uint64_t)GetCurrentProcessId();
@@ -911,7 +911,7 @@ CGPUTextureId cgpu_create_texture_vulkan(CGPUDeviceId device, const struct CGPUT
                     &externalInfo, &exportMemoryInfo, &win32ExportMemoryInfo);
             }
 #else
-            if ((desc->flags & CGPU_TCF_EXPORT_BIT) || (desc->flags & CGPU_INNER_TCF_IMPORT_SHARED_HANDLE))
+            if ((desc->flags & CGPU_TEXTURE_FLAG_EXPORT_BIT) || (desc->flags & CGPU_INNER_TCF_IMPORT_SHARED_HANDLE))
             {
                 cgpu_error("Unsupportted platform detected!");
                 return CGPU_NULLPTR;
@@ -920,7 +920,7 @@ CGPUTextureId cgpu_create_texture_vulkan(CGPUDeviceId device, const struct CGPUT
             VmaAllocationInfo alloc_info = { 0 };
             if (!is_imported && isSinglePlane)
             {
-                if (!desc->is_restrict_dedicated && !is_imported && !(desc->flags & CGPU_TCF_EXPORT_BIT))
+                if (!desc->is_restrict_dedicated && !is_imported && !(desc->flags & CGPU_TEXTURE_FLAG_EXPORT_BIT))
                 {
                     mem_reqs.flags |= VMA_ALLOCATION_CREATE_CAN_ALIAS_BIT;
                 }
@@ -951,7 +951,7 @@ CGPUTextureId cgpu_create_texture_vulkan(CGPUDeviceId device, const struct CGPUT
     CGPUTileTextureSubresourceMapping_Vulkan* pVkTileMappings = CGPU_NULLPTR;
     CGPUTileTexturePackedMipMapping_Vulkan* pVkPackedMappings = CGPU_NULLPTR;
     uint32_t memTypBits = 0;
-    if (desc->flags & CGPU_TCF_TILED_RESOURCE)
+    if (desc->flags & CGPU_TEXTURE_FLAG_TILED_RESOURCE)
     {
         VkSparseImageMemoryRequirements sparseReq = VkUtil_FillTiledTextureInfo(D, T, desc, &memTypBits);
         const CGPUTiledTextureInfo* pTiledInfo = T->super.tiled_resource;
@@ -990,7 +990,7 @@ CGPUTextureId cgpu_create_texture_vulkan(CGPUDeviceId device, const struct CGPUT
     info->aspect_mask = aspect_mask;
     info->is_allocation_dedicated = is_allocation_dedicated;
     info->is_restrict_dedicated = desc->is_restrict_dedicated;
-    info->is_aliasing = (desc->flags & CGPU_TCF_ALIASING_RESOURCE);
+    info->is_aliasing = (desc->flags & CGPU_TEXTURE_FLAG_ALIASING_RESOURCE);
     info->can_alias = can_alias_alloc || info->is_aliasing;
     if (pVkDeviceMemory) T->pVkDeviceMemory = pVkDeviceMemory;
     if (vmaAllocation) T->pVkAllocation = vmaAllocation;
@@ -1003,7 +1003,7 @@ CGPUTextureId cgpu_create_texture_vulkan(CGPUDeviceId device, const struct CGPUT
     info->array_size_minus_one = arraySize - 1;
     info->format = desc->format;
     info->is_imported = is_imported;
-    info->is_tiled = (desc->flags & CGPU_TCF_TILED_RESOURCE) ? 1 : 0;
+    info->is_tiled = (desc->flags & CGPU_TEXTURE_FLAG_TILED_RESOURCE) ? 1 : 0;
     info->unique_id = (unique_id == UINT64_MAX) ? D->super.next_texture_id++ : unique_id;
     // Set Texture Name
     VkUtil_OptionalSetObjectName(D, (uint64_t)T->pVkImage, VK_OBJECT_TYPE_IMAGE, desc->name);
@@ -1467,11 +1467,11 @@ CGPUTextureViewId cgpu_create_texture_view_vulkan(CGPUDeviceId device, const str
 
     // Determin aspect mask
     VkImageAspectFlags aspectMask = 0;
-    if (desc->aspects & CGPU_TVA_STENCIL)
+    if (desc->aspects & CGPU_TEXTURE_VIEW_ASPECTS_STENCIL)
         aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-    if (desc->aspects & CGPU_TVA_COLOR)
+    if (desc->aspects & CGPU_TEXTURE_VIEW_ASPECTS_COLOR)
         aspectMask |= VK_IMAGE_ASPECT_COLOR_BIT;
-    if (desc->aspects & CGPU_TVA_DEPTH)
+    if (desc->aspects & CGPU_TEXTURE_VIEW_ASPECTS_DEPTH)
         aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
 
     // SRV

@@ -123,7 +123,7 @@ void ResourceCreation<backend>::test_all()
     {
         SKR_DECLARE_ZERO(CGPUTextureDescriptor, desc)
         desc.name = u8"Texture";
-        desc.flags = CGPU_TCF_DEDICATED_BIT;
+        desc.flags = CGPU_TEXTURE_FLAG_DEDICATED_BIT;
         desc.format = CGPU_FORMAT_R8G8B8A8_UNORM;
         desc.start_state = CGPU_RESOURCE_STATE_COMMON;
         desc.descriptors = CGPU_RESOURCE_TYPE_TEXTURE;
@@ -141,7 +141,7 @@ void ResourceCreation<backend>::test_all()
         {
             SKR_DECLARE_ZERO(CGPUTextureDescriptor, desc)
             desc.name = u8"Texture";
-            desc.flags = CGPU_TCF_DEDICATED_BIT | CGPU_TCF_TILED_RESOURCE;
+            desc.flags = CGPU_TEXTURE_FLAG_DEDICATED_BIT | CGPU_TEXTURE_FLAG_TILED_RESOURCE;
             desc.format = CGPU_FORMAT_R8G8B8A8_UNORM;
             desc.start_state = CGPU_RESOURCE_STATE_COMMON;
             desc.descriptors = CGPU_RESOURCE_TYPE_TEXTURE;

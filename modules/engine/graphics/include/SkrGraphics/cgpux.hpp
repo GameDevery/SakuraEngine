@@ -31,6 +31,8 @@ struct CGPUXBindTableLocation
 {
     const uint32_t tbl_idx = 0;
     const uint32_t binding = 0;
+    const CGPUViewUsages view_usage = 0;
+    const ECGPUResourceType type = CGPU_RESOURCE_TYPE2_NONE;
     CGPUXBindTableValue value;
 };
 

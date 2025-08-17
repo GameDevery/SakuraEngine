@@ -343,7 +343,7 @@ int provider_main(int argc, char* argv[])
                 builder.set_name(u8"target_buffer")
                     .extent(to_import->info->width, to_import->info->height)
                     .format((ECGPUFormat)to_import->info->format)
-                    .with_flags(CGPU_TCF_EXPORT_BIT)
+                    .with_flags(CGPU_TEXTURE_FLAG_EXPORT_BIT)
                     .allocate_dedicated()
                     .allow_render_target();
             });

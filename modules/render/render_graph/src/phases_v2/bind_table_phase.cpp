@@ -135,15 +135,13 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         auto buffer_readed = read_edge->get_buffer_node();
         CGPUDescriptorData update = {};
         update.count = 1;
-        update.name = resource.name;
-        update.view_usage = resource.view_usages;
-        update.binding = resource.binding;
+        update.by_name.name = resource.name;
 
         CGPUBufferViewDescriptor view_desc = {};
         view_desc.buffer = resource_allocation_phase_.get_resource(buffer_readed);
         view_desc.view_usages = resource.view_usages;
         view_desc.offset = read_edge->get_handle().from;
-        view_desc.size = read_edge->get_handle().to - read_edge->get_handle().from;
+        view_desc.size = std::min(buffer_readed->get_desc().size, read_edge->get_handle().to) - read_edge->get_handle().from;
         view_desc.structure.element_stride = buffer_readed->get_view_desc().structure.element_stride;
         buf_reads[e_idx] = graph->get_buffer_view_pool().allocate(view_desc, graph->get_frame_index());
         update.buffers = &buf_reads[e_idx];
@@ -166,15 +164,13 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         auto buffer_writed = rw_edge->get_buffer_node();
         CGPUDescriptorData update = {};
         update.count = 1;
-        update.name = resource.name;
-        update.view_usage = resource.view_usages;
-        update.binding = resource.binding;
+        update.by_name.name = resource.name;
 
         CGPUBufferViewDescriptor view_desc = {};
         view_desc.buffer = resource_allocation_phase_.get_resource(buffer_writed);
         view_desc.view_usages = resource.view_usages;
         view_desc.offset = rw_edge->get_handle().from;
-        view_desc.size = rw_edge->get_handle().to - rw_edge->get_handle().from;
+        view_desc.size = std::min(buffer_writed->get_desc().size, rw_edge->get_handle().to) - rw_edge->get_handle().from;
         view_desc.structure.element_stride = buffer_writed->get_view_desc().structure.element_stride;
         buf_uavs[e_idx] = graph->get_buffer_view_pool().allocate(view_desc, graph->get_frame_index());
         update.buffers = &buf_uavs[e_idx];
@@ -198,9 +194,7 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         auto texture_readed = read_edge->get_texture_node();
         CGPUDescriptorData update = {};
         update.count = 1;
-        update.name = resource.name;
-        update.view_usage = CGPU_TEXTURE_VIEW_USAGE_SRV;
-        update.binding = resource.binding;
+        update.by_name.name = resource.name;
         
         // Create texture view
         CGPUTextureViewDescriptor view_desc = {};
@@ -216,8 +210,8 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         const bool is_depth_stencil = FormatUtil_IsDepthStencilFormat(view_desc.format);
         const bool is_depth_only = FormatUtil_IsDepthOnlyFormat(view_desc.format);
         view_desc.aspects = is_depth_stencil ?
-            (is_depth_only ? CGPU_TVA_DEPTH : CGPU_TVA_DEPTH | CGPU_TVA_STENCIL) :
-            CGPU_TVA_COLOR;
+            (is_depth_only ? CGPU_TEXTURE_VIEW_ASPECTS_DEPTH : CGPU_TEXTURE_VIEW_ASPECTS_DEPTH | CGPU_TEXTURE_VIEW_ASPECTS_STENCIL) :
+            CGPU_TEXTURE_VIEW_ASPECTS_COLOR;
         
         tex_reads[e_idx] = graph->get_texture_view_pool().allocate(view_desc, graph->get_frame_index());
         update.textures = &tex_reads[e_idx];
@@ -242,9 +236,7 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         auto texture_readwrite = rw_edge->get_texture_node();
         CGPUDescriptorData update = {};
         update.count = 1;
-        update.name = resource.name;
-        update.view_usage = CGPU_TEXTURE_VIEW_USAGE_UAV;
-        update.binding = resource.binding;
+        update.by_name.name = resource.name;
         
         // Create UAV texture view
         CGPUTextureViewDescriptor view_desc = {};
@@ -253,7 +245,7 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         view_desc.array_layer_count = 1;
         view_desc.base_mip_level = 0;
         view_desc.mip_level_count = 1;
-        view_desc.aspects = CGPU_TVA_COLOR;
+        view_desc.aspects = CGPU_TEXTURE_VIEW_ASPECTS_COLOR;
         view_desc.format = view_desc.texture->info->format;
         view_desc.view_usages = CGPU_TEXTURE_VIEW_USAGE_UAV;
         view_desc.dims = CGPU_TEXTURE_DIMENSION_2D;
@@ -281,8 +273,7 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         auto acceleration_structure_readed = read_edge->get_acceleration_structure_node();
         CGPUDescriptorData update = {};
         update.count = 1;
-        update.name = resource.name;
-        update.binding = resource.binding;
+        update.by_name.name = resource.name;
         acceleration_structures[e_idx] = acceleration_structure_readed->get_imported();
         update.acceleration_structures = &acceleration_structures[e_idx];
         desc_set_updates.emplace(update);

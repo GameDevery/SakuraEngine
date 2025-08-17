@@ -235,12 +235,12 @@ void ComputeFunc(void* usrdata)
     // Update descriptor set
     CGPUDescriptorData descriptor_data[2] = {
         {
-            .name = "buf",
+            .by_name.name = "buf",
             .buffers = &data_buffer_view,
             .count = 1
         },
         {
-            .name = "AS",
+            .by_name.name = "AS",
             .acceleration_structures = &tlas,
             .count = 1
         }

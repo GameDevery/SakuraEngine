@@ -233,10 +233,9 @@ struct MaterialFactoryImpl : public MaterialFactory
             hdl.resolve(true, nullptr);
 
             auto& update = updates.emplace().ref();
-            update.name = override.slot_name.data();
+            update.by_name.name = override.slot_name.data();
             update.count = 1;
             update.samplers = &hdl.get_resolved()->sampler;
-            update.view_usage = 0;
         }
         for (const auto& override : material->overrides.textures)
         {
@@ -244,10 +243,9 @@ struct MaterialFactoryImpl : public MaterialFactory
             hdl.resolve(true, nullptr);
 
             auto& update = updates.emplace().ref();
-            update.name = override.slot_name.data();
+            update.by_name.name = override.slot_name.data();
             update.count = 1; // TODO: Tex array parameter
             update.textures = &hdl.get_resolved()->texture_view;
-            update.view_usage = CGPU_TEXTURE_VIEW_USAGE_SRV;
         }
         cgpux_bind_table_update(bind_table, updates.data(), (uint32_t)updates.size());
         return bind_table;

@@ -54,6 +54,10 @@ CGPU_API void cgpu_free_root_signature_d3d12(CGPURootSignatureId signature);
 CGPU_API CGPUDescriptorSetId cgpu_create_descriptor_set_d3d12(CGPUDeviceId device, const struct CGPUDescriptorSetDescriptor* desc);
 CGPU_API void cgpu_update_descriptor_set_d3d12(CGPUDescriptorSetId set, const struct CGPUDescriptorData* datas, uint32_t count);
 CGPU_API void cgpu_free_descriptor_set_d3d12(CGPUDescriptorSetId set);
+CGPU_API CGPUDescriptorBufferId cgpu_create_descriptor_buffer_d3d12(CGPUDeviceId device, const struct CGPUDescriptorBufferDescriptor* desc);
+CGPU_API void cgpu_update_descriptor_buffer_d3d12(CGPUDescriptorBufferId buffer, const struct CGPUDescriptorBufferElement* elements, uint32_t count);
+CGPU_API void cgpu_copy_descriptor_buffer_d3d12(CGPUDescriptorBufferId src, CGPUDescriptorBufferId dest, CGPUBufferRange src_range, CGPUBufferRange dst_range);
+CGPU_API void cgpu_free_descriptor_buffer_d3d12(CGPUDescriptorBufferId buffer);
 CGPU_API CGPUComputePipelineId cgpu_create_compute_pipeline_d3d12(CGPUDeviceId device, const struct CGPUComputePipelineDescriptor* desc);
 CGPU_API void cgpu_free_compute_pipeline_d3d12(CGPUComputePipelineId pipeline);
 CGPU_API CGPURenderPipelineId cgpu_create_render_pipeline_d3d12(CGPUDeviceId device, const struct CGPURenderPipelineDescriptor* desc);
@@ -193,8 +197,6 @@ typedef struct CGPUInstance_D3D12 {
     uint32_t mAdaptersCount;
     struct CGPUAGSExtensionPFNTable_D3D12* pAGSExtensionPFNTable;
     struct CGPUNVAPIExtensionPFNTable_D3D12* pNVAPIExtensionPFNTable;
-#if defined(__cplusplus)
-#endif
 } CGPUInstance_D3D12;
 
 typedef struct CGPUAdapter_D3D12 {
@@ -317,6 +319,18 @@ typedef struct CGPUDescriptorSet_D3D12 {
     // Raytracing
     CGPUAccelerationStructure_D3D12* pBoundAccel;
 } CGPUDescriptorSet_D3D12;
+
+// Forward declaration - actual implementation in cgpu_d3d12.cpp
+typedef struct CGPUDescriptorBufferBase_D3D12 {
+    CGPUDescriptorBuffer super;
+    // CPU side descriptor storage (continuous block)
+    D3D12_CPU_DESCRIPTOR_HANDLE mCpuStartHandle; // CPU heap start handle
+    // GPU side descriptor storage (continuous block)
+    D3D12_GPU_DESCRIPTOR_HANDLE mGpuStartHandle; // GPU heap start handle
+    // Descriptor info
+    uint32_t mDescriptorCount; // Total descriptor count
+    uint32_t mDescriptorSize;  // Size of single descriptor
+} CGPUDescriptorBufferBase_D3D12;
 
 typedef struct CGPUComputePipeline_D3D12 {
     CGPUComputePipeline super;

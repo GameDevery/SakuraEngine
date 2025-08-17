@@ -49,7 +49,7 @@ void create_sampled_texture()
     // Texture
     CGPUTextureDescriptor tex_desc = {
         .usages = CGPU_TEXTURE_USAGE_SHADER_READ,
-        .flags = CGPU_TCF_TILED_RESOURCE,
+        .flags = CGPU_TEXTURE_FLAG_TILED_RESOURCE,
         .width = TEXTURE_WIDTH,
         .height = TEXTURE_HEIGHT,
         .depth = 1,
@@ -69,7 +69,7 @@ void create_sampled_texture()
             .base_array_layer = 0,
             .mip_level_count = 1,
             .base_mip_level = i,
-            .aspects = CGPU_TVA_COLOR,
+            .aspects = CGPU_TEXTURE_VIEW_ASPECTS_COLOR,
             .dims = CGPU_TEXTURE_DIMENSION_2D,
             .view_usages = CGPU_TEXTURE_VIEW_USAGE_SRV
         };
@@ -315,11 +315,11 @@ void create_render_pipeline()
     cgpu_free_shader_library(fragment_shader);
     // Update descriptor set for once
     CGPUDescriptorData arguments[2];
-    arguments[0].name = "sampled_texture";
+    arguments[0].by_name.name = "sampled_texture";
     // via binding: arguments[0].binding = 0;
     arguments[0].count = 1;
     arguments[0].textures = &sampled_views[resident_mip];
-    arguments[1].name = sampler_name;
+    arguments[1].by_name.name = sampler_name;
     // via binding: arguments[1].binding = 1;
     arguments[1].count = 1;
     arguments[1].samplers = &sampler_state;
@@ -349,7 +349,7 @@ void initialize(void* usrdata)
     {
         CGPUTextureViewDescriptor view_desc = {
             .texture = App.swapchain->back_buffers[i],
-            .aspects = CGPU_TVA_COLOR,
+            .aspects = CGPU_TEXTURE_VIEW_ASPECTS_COLOR,
             .dims = CGPU_TEXTURE_DIMENSION_2D,
             .format = App.swapchain->back_buffers[i]->info->format,
             .view_usages = CGPU_TEXTURE_VIEW_USAGE_RTV_DSV,
@@ -483,7 +483,7 @@ void raster_program()
                         cgpu_free_texture_view(views[i]);
                         CGPUTextureViewDescriptor view_desc = {
                             .texture = App.swapchain->back_buffers[i],
-                            .aspects = CGPU_TVA_COLOR,
+                            .aspects = CGPU_TEXTURE_VIEW_ASPECTS_COLOR,
                             .dims = CGPU_TEXTURE_DIMENSION_2D,
                             .format = App.swapchain->back_buffers[i]->info->format,
                             .view_usages = CGPU_TEXTURE_VIEW_USAGE_RTV_DSV,

@@ -169,7 +169,7 @@ void ComputeFunc(void* usrdata)
 
     // Update descriptor set
     CGPUDescriptorData descriptor_data = {
-        .name = "buf",
+        .by_name.name = "buf",
         .buffers = &data_buffer_view,
         .count = 1
     };

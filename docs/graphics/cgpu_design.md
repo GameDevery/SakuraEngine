@@ -157,7 +157,7 @@ CGPUTextureDescriptor tex_desc = {
     .format = CGPU_FORMAT_R8G8B8A8_UNORM,
     .sample_count = CGPU_SAMPLE_COUNT_1,
     .usages = CGPU_TEXTURE_USAGE_SHADER_READ,
-    .flags = CGPU_TCF_USAGE_SAMPLED_IMAGE | CGPU_TCF_USAGE_UNORDERED_ACCESS,
+    .flags = CGPU_TEXTURE_FLAG_USAGE_SAMPLED_IMAGE | CGPU_TEXTURE_FLAG_USAGE_UNORDERED_ACCESS,
     .native_handle = nullptr  // 可以导入外部纹理
 };
 CGPUTextureId texture = cgpu_create_texture(device, &tex_desc);
@@ -170,7 +170,7 @@ CGPUTextureViewDescriptor view_desc = {
     .base_array_layer = 0,
     .mip_level_count = 1,
     .base_mip_level = 0,
-    .aspects = CGPU_TVA_COLOR
+    .aspects = CGPU_TEXTURE_VIEW_ASPECTS_COLOR
 };
 CGPUTextureViewId texture_view = cgpu_create_texture_view(device, &view_desc);
 ```
