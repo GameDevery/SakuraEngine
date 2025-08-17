@@ -56,8 +56,6 @@ public:
     }
 
 protected:
-    void updateDescSetsIfDirty() const SKR_NOEXCEPT;
-
     CGPURootSignatureId root_signature = nullptr;
     // flatten name hashes 
     uint64_t* name_hashes = nullptr;
@@ -123,11 +121,6 @@ static const CGPUVertexLayout kZeroCGPUVertexLayout = make_zeroed<CGPUVertexLayo
 template <>
 struct equal_to<CGPUVertexLayout> {
     CGPU_API skr_hash operator()(const CGPUVertexLayout& a, const CGPUVertexLayout& b) const;
-};
-
-template <>
-struct equal_to<CGPUDescriptorData> {
-    CGPU_API skr_hash operator()(const CGPUDescriptorData& a, const CGPUDescriptorData& b) const;
 };
 
 template <>

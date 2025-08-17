@@ -78,7 +78,6 @@ void CGPUXBindTable::Update(const struct CGPUDescriptorData* datas, uint32_t cou
 {
     for (uint32_t i = 0; i < count; i++)
     {
-        bool updated = false;
         const auto& data = datas[i];
         if (data.name)
         {
@@ -87,13 +86,8 @@ void CGPUXBindTable::Update(const struct CGPUDescriptorData* datas, uint32_t cou
             {
                 if (name_hash == name_hashes[j])
                 {
-                    const auto& location = name_locations[j];
-                    if (!cgpux::equal_to<CGPUDescriptorData>()(data, location.value.data))
-                    {
-                        auto& loc = name_locations[j];
-                        loc.value.Initialize(loc, data);
-                    }
-                    updated = true;
+                    auto& loc = name_locations[j];
+                    loc.value.Initialize(loc, data);
                     break;
                 }
             }
@@ -102,13 +96,8 @@ void CGPUXBindTable::Update(const struct CGPUDescriptorData* datas, uint32_t cou
         {
             SKR_UNREACHABLE_CODE();
         }
-        (void)updated;
     }
-    updateDescSetsIfDirty();
-}
 
-void CGPUXBindTable::updateDescSetsIfDirty() const SKR_NOEXCEPT
-{
     skr::FixedSet<uint32_t, 4> needsUpdateIndices;
     for (uint32_t i = 0; i < names_count; i++)
     {
@@ -134,9 +123,10 @@ void CGPUXBindTable::updateDescSetsIfDirty() const SKR_NOEXCEPT
                 const_cast<bool&>(location.value.binded) = true;
             }
         }
-        const auto updateDataCount = static_cast<uint32_t>(datas.size());
-        if (updateDataCount)
+        if (const auto updateDataCount = static_cast<uint32_t>(datas.size()))
+        {
             cgpu_update_descriptor_set(sets[setIdx], datas.data(), updateDataCount);
+        }
     }
 }
 
@@ -385,24 +375,6 @@ skr_hash equal_to<CGPUVertexLayout>::operator()(const CGPUVertexLayout& a, const
                             (a.attributes[i].rate == b.attributes[i].rate) &&
                             (0 == strcmp((const char*)a.attributes[i].semantic_name, (const char*)b.attributes[i].semantic_name));
         if (!vequal) return false;
-    }
-    return true;
-}
-
-skr_hash equal_to<CGPUDescriptorData>::operator()(const CGPUDescriptorData& a, const CGPUDescriptorData& b) const
-{
-    SkrZoneScopedN("equal_to<CGPUDescriptorData>");
-
-    if (a.binding != b.binding) 
-        return false;
-    if (a.view_usage != b.view_usage) 
-        return false;
-    if (a.count != b.count) 
-        return false;
-    for (uint32_t i = 0; i < a.count; i++)
-    {
-        if (a.ptrs[i] != b.ptrs[i]) 
-            return false;
     }
     return true;
 }
