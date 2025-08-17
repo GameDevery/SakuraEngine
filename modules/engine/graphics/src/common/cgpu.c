@@ -1131,6 +1131,42 @@ void cgpu_free_buffer(CGPUBufferId buffer)
     SkrCZoneEnd(zz);
 }
 
+CGPUBufferViewId cgpu_create_buffer_view(CGPUDeviceId device, const struct CGPUBufferViewDescriptor* desc)
+{
+    SkrCZoneN(zz, "CGPUCreateBufferView", 1);
+
+    cgpu_assert(device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    cgpu_assert(desc != CGPU_NULLPTR && "fatal: call with NULL descriptor!");
+    cgpu_assert(desc->buffer != CGPU_NULLPTR && "fatal: call with NULL buffer!");
+
+    CGPUProcCreateBufferView fn_create_buffer_view = device->proc_table_cache->create_buffer_view;
+    cgpu_assert(fn_create_buffer_view && "create_buffer_view Proc Missing!");
+    
+    CGPUBufferView* view = (CGPUBufferView*)fn_create_buffer_view(device, desc);
+    view->device = device;
+
+    SkrCZoneEnd(zz);
+
+    return view;
+}
+
+void cgpu_free_buffer_view(CGPUBufferViewId view)
+{
+    SkrCZoneN(zz, "CGPUFreeBufferView", 1);
+
+    cgpu_assert(view != CGPU_NULLPTR && "fatal: call on NULL buffer view!");
+    
+    CGPUDeviceId device = view->device;
+    cgpu_assert(device != CGPU_NULLPTR && "fatal: NULL device!");
+    
+    CGPUProcFreeBufferView fn_free_buffer_view = device->proc_table_cache->free_buffer_view;
+    cgpu_assert(fn_free_buffer_view && "free_buffer_view Proc Missing!");
+    
+    fn_free_buffer_view(view);
+
+    SkrCZoneEnd(zz);
+}
+
 // Texture/TextureView APIs
 CGPUTextureId cgpu_create_texture(CGPUDeviceId device, const struct CGPUTextureDescriptor* desc)
 {
@@ -1213,7 +1249,6 @@ CGPUTextureViewId cgpu_create_texture_view(CGPUDeviceId device, const struct CGP
     CGPUProcCreateTextureView fn_create_texture_view = device->proc_table_cache->create_texture_view;
     CGPUTextureView* texture_view = (CGPUTextureView*)fn_create_texture_view(device, &new_desc);
     texture_view->device = device;
-    texture_view->info = *desc;
 
     SkrCZoneEnd(zz);
 
@@ -1340,7 +1375,7 @@ CGPUBufferId cgpux_create_mapped_constant_buffer(CGPUDeviceId device,
 uint64_t size, const char8_t* name, bool device_local_preferred)
 {
     SKR_DECLARE_ZERO(CGPUBufferDescriptor, buf_desc)
-    buf_desc.descriptors = CGPU_RESOURCE_TYPE_BUFFER;
+    buf_desc.usages = CGPU_BUFFER_USAGE_SHADER_READ;
     buf_desc.size = size;
     buf_desc.name = name;
     const CGPUAdapterDetail* detail = cgpu_query_adapter_detail(device->adapter);
@@ -1358,7 +1393,7 @@ CGPU_API CGPUBufferId cgpux_create_mapped_upload_buffer(CGPUDeviceId device,
 uint64_t size, const char8_t* name)
 {
     SKR_DECLARE_ZERO(CGPUBufferDescriptor, buf_desc)
-    buf_desc.descriptors = CGPU_RESOURCE_TYPE_NONE;
+    buf_desc.usages = CGPU_BUFFER_USAGE_NONE;
     buf_desc.size = size;
     buf_desc.name = name;
     buf_desc.memory_usage = CGPU_MEM_USAGE_CPU_ONLY;

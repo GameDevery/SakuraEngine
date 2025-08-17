@@ -337,17 +337,25 @@ SKR_FORCEINLINE static VkFragmentShadingRateCombinerOpKHR VkUtil_TranslateShadin
 }
 
 /* clang-format off */
-SKR_FORCEINLINE static VkDescriptorType VkUtil_TranslateResourceType(ECGPUResourceType type, CGPUFlags usages)
+SKR_FORCEINLINE static VkDescriptorType VkUtil_TranslateResourceType(ECGPUResourceType type, CGPUViewUsages usages)
 {
 	switch (type) 
 	{
 		case CGPU_RESOURCE_TYPE2_BUFFER:
 		{
-			if (usages & CGPU_BUFFER_USAGE_CONSTANT_BUFFER)
+			if (usages & CGPU_BUFFER_VIEW_USAGE_CBV)
 				return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			else if (usages & CGPU_BUFFER_USAGE_SHADER_READ)
+			else if (usages & CGPU_BUFFER_VIEW_USAGE_UAV_STRUCTURED)
 				return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			else if (usages & CGPU_BUFFER_USAGE_SHADER_READWRITE)
+			else if (usages & CGPU_BUFFER_VIEW_USAGE_UAV_RAW)
+				return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			else if (usages & CGPU_BUFFER_VIEW_USAGE_UAV_TEXEL)
+				return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			else if (usages & CGPU_BUFFER_VIEW_USAGE_SRV_STRUCTURED)
+				return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			else if (usages & CGPU_BUFFER_VIEW_USAGE_SRV_RAW)
+				return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			else if (usages & CGPU_BUFFER_VIEW_USAGE_SRV_TEXEL)
 				return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 			else
 				cgpu_assert(0 && "CGPU ASSERT: UNEXPECTED RESOURCE SLOT!");
@@ -355,9 +363,9 @@ SKR_FORCEINLINE static VkDescriptorType VkUtil_TranslateResourceType(ECGPUResour
 		break;
 		case CGPU_RESOURCE_TYPE2_TEXTURE:
 		{
-			if (usages & CGPU_TEXTURE_USAGE_SHADER_READ)
+			if (usages & CGPU_TEXTURE_VIEW_USAGE_SRV)
 				return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			else if (usages & CGPU_TEXTURE_USAGE_SHADER_READWRITE)
+			else if (usages & CGPU_TEXTURE_VIEW_USAGE_UAV)
 				return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 			else
 				cgpu_assert(0 && "CGPU ASSERT: UNEXPECTED RESOURCE SLOT!");

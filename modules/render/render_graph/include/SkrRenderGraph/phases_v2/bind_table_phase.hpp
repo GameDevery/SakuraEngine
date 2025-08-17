@@ -22,6 +22,7 @@ struct BindTableResult {
     StackMap<PassNode*, PassBindTableInfo> pass_bind_tables;
     uint32_t total_bind_tables_created = 0;
     uint32_t total_texture_views_created = 0;
+    uint32_t total_buffer_views_created = 0;
 };
 
 // Bind table phase for managing bind tables for each Pass

@@ -661,6 +661,7 @@ void Live2DRendererImpl::prepare_pipeline(skr::RendererDevice* render_device)
     rs_desc.static_sampler_count = 1;
     rs_desc.static_sampler_names = &static_sampler_name;
     rs_desc.static_samplers = &static_sampler;
+    rs_desc.name = u8"Live2DDraw-RootSignature";
     auto root_sig = cgpu_create_root_signature(cgpu_device, &rs_desc);
 
     CGPURenderPipelineDescriptor rp_desc = {};
@@ -744,6 +745,7 @@ void Live2DRendererImpl::prepare_mask_pipeline(skr::RendererDevice* render_devic
     rs_desc.static_sampler_count = 1;
     rs_desc.static_sampler_names = &static_sampler_name;
     rs_desc.static_samplers = &static_sampler;
+    rs_desc.name = u8"Live2DMask-RootSignature";
     auto root_sig = cgpu_create_root_signature(cgpu_device, &rs_desc);
 
     CGPURenderPipelineDescriptor rp_desc = {};

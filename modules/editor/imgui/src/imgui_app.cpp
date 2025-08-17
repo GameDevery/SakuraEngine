@@ -637,6 +637,7 @@ void ImGuiApp::create_pipeline()
         rs_desc.static_sampler_names = &sampler_name;
         rs_desc.static_sampler_count = 1;
         rs_desc.static_samplers = &_static_sampler;
+        rs_desc.name = u8"ImGuiDraw-RootSignature";
         _root_signature = cgpu_create_root_signature(
             _gfx_queue->device,
             &rs_desc);

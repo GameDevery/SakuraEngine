@@ -31,7 +31,7 @@ public:
         const CGPUTextureCreationFlags flags;
         uint64_t width;
         uint64_t height;
-        uint64_t depth;
+        uint32_t depth;
         uint32_t array_size;
         ECGPUFormat format;
         uint32_t mip_levels;
@@ -46,6 +46,7 @@ public:
 
         Key(CGPUDeviceId device, const CGPUTextureDescriptor& desc);
     };
+    static_assert(sizeof(Key) == 64);
     friend class RenderGraphBackend;
     void initialize(CGPUDeviceId device);
     void finalize();

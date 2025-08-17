@@ -92,7 +92,7 @@ auto storage_buffer = graph.create_buffer(
         builder.set_name(u8"storage_buffer")
                .size(sizeof(ParticleData) * max_particles)
                .with_flags(CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT)
-               .allow_structured_readwrite();
+               .allow_shader_readwrite();
     }
 );
 ```

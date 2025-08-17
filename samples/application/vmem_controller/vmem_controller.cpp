@@ -90,7 +90,7 @@ void SVMemCCModule::imgui_ui()
     {
         auto buf_desc = make_zeroed<CGPUBufferDescriptor>();
         buf_desc.flags = CGPU_BUFFER_FLAG_NONE;
-        buf_desc.descriptors = CGPU_BUFFER_USAGE_VERTEX_BUFFER;
+        buf_desc.usages = CGPU_BUFFER_USAGE_VERTEX_BUFFER;
         buf_desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
         buf_desc.size = (uint64_t)(vbuffer_size * 1024 * 1024);
         buf_desc.name = SKR_UTF8("VideoMemory");
@@ -104,7 +104,7 @@ void SVMemCCModule::imgui_ui()
     {
         auto buf_desc = make_zeroed<CGPUBufferDescriptor>();
         buf_desc.flags = CGPU_BUFFER_FLAG_NONE;
-        buf_desc.descriptors = CGPU_RESOURCE_TYPE_NONE;
+        buf_desc.usages = CGPU_BUFFER_USAGE_NONE;
         buf_desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
         buf_desc.size = (uint64_t)(sbuffer_size * 1024 * 1024);
         buf_desc.name = SKR_UTF8("SharedMemory");

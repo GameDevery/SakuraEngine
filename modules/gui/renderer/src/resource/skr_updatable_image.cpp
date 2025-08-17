@@ -78,7 +78,7 @@ void SkrUpdatableImage::update(const UpdatableImageDesc& desc)
     tex_desc.width                 = static_cast<uint32_t>(desc.size.width);
     tex_desc.height                = static_cast<uint32_t>(desc.size.height);
     tex_desc.depth                 = 1;
-    tex_desc.descriptors           = CGPU_RESOURCE_TYPE_TEXTURE;
+    tex_desc.usages                = CGPU_TEXTURE_USAGE_SHADER_READ;
     tex_desc.array_size            = 1;
     tex_desc.flags                 = CGPU_TCF_NONE;
     tex_desc.mip_levels            = 1;
@@ -94,7 +94,7 @@ void SkrUpdatableImage::update(const UpdatableImageDesc& desc)
     CGPUBufferDescriptor        upload_buffer_desc = {};
     upload_buffer_desc.name                        = u8"updatable_image_upload_buffer";
     upload_buffer_desc.flags                       = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
-    upload_buffer_desc.descriptors                 = CGPU_RESOURCE_TYPE_NONE;
+    upload_buffer_desc.usages                      = CGPU_BUFFER_USAGE_NONE;
     upload_buffer_desc.memory_usage                = CGPU_MEM_USAGE_CPU_ONLY;
     upload_buffer_desc.size                        = upload_size;
     CGPUBufferId tex_upload_buffer                 = cgpu_create_buffer(queue->device, &upload_buffer_desc);
@@ -154,7 +154,7 @@ void SkrUpdatableImage::update(const UpdatableImageDesc& desc)
     auto data         = make_zeroed<CGPUDescriptorData>();
     data.name         = color_texture_name;
     data.count        = 1;
-    data.binding_type = CGPU_RESOURCE_TYPE_TEXTURE;
+    data.view_usage   = CGPU_TEXTURE_VIEW_USAGE_SRV;
     data.textures     = &_texture_view;
     cgpux_bind_table_update(_bind_table, &data, 1);
 

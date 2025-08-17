@@ -403,20 +403,35 @@ enum DxilFourCC
 #undef DXIL_FOURCC
 
 const char8_t* D3DShaderEntryName = CGPU_NULLPTR;
-static ECGPUResourceType gD3D12_TO_DESCRIPTOR[] = {
-    CGPU_RESOURCE_TYPE_UNIFORM_BUFFER,         // D3D_SIT_CBUFFER
-    CGPU_RESOURCE_TYPE_BUFFER,                 // D3D_SIT_TBUFFER
-    CGPU_RESOURCE_TYPE_TEXTURE,                // D3D_SIT_TEXTURE
-    CGPU_RESOURCE_TYPE_SAMPLER,                // D3D_SIT_SAMPLER
-    CGPU_RESOURCE_TYPE_RW_TEXTURE,             // D3D_SIT_UAV_RWTYPED
-    CGPU_RESOURCE_TYPE_BUFFER,                 // D3D_SIT_STRUCTURED
-    CGPU_RESOURCE_TYPE_RW_BUFFER,              // D3D_SIT_RWSTRUCTURED
-    CGPU_RESOURCE_TYPE_BUFFER,                 // D3D_SIT_BYTEADDRESS
-    CGPU_RESOURCE_TYPE_RW_BUFFER,              // D3D_SIT_UAV_RWBYTEADDRESS
-    CGPU_RESOURCE_TYPE_RW_BUFFER,              // D3D_SIT_UAV_APPEND_STRUCTURED
-    CGPU_RESOURCE_TYPE_RW_BUFFER,              // D3D_SIT_UAV_CONSUME_STRUCTURED
-    CGPU_RESOURCE_TYPE_RW_BUFFER,              // D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER
-    CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE, // D3D_SIT_RTACCELERATIONSTRUCTURE
+static ECGPUResourceType gResourceTypeLUT[] = {
+    CGPU_RESOURCE_TYPE2_BUFFER,                 // D3D_SIT_CBUFFER
+    CGPU_RESOURCE_TYPE2_BUFFER,                 // D3D_SIT_TBUFFER
+    CGPU_RESOURCE_TYPE2_TEXTURE,                // D3D_SIT_TEXTURE
+    CGPU_RESOURCE_TYPE2_SAMPLER,                // D3D_SIT_SAMPLER
+    CGPU_RESOURCE_TYPE2_TEXTURE,                // D3D_SIT_UAV_RWTYPED
+    CGPU_RESOURCE_TYPE2_BUFFER,                 // D3D_SIT_STRUCTURED
+    CGPU_RESOURCE_TYPE2_BUFFER,                 // D3D_SIT_RWSTRUCTURED
+    CGPU_RESOURCE_TYPE2_BUFFER,                 // D3D_SIT_BYTEADDRESS
+    CGPU_RESOURCE_TYPE2_BUFFER,                 // D3D_SIT_UAV_RWBYTEADDRESS
+    CGPU_RESOURCE_TYPE2_BUFFER,                 // D3D_SIT_UAV_APPEND_STRUCTURED
+    CGPU_RESOURCE_TYPE2_BUFFER,                 // D3D_SIT_UAV_CONSUME_STRUCTURED
+    CGPU_RESOURCE_TYPE2_BUFFER,                 // D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER
+    CGPU_RESOURCE_TYPE2_ACCELERATION_STRUCTURE, // D3D_SIT_RTACCELERATIONSTRUCTURE
+};
+static CGPUViewUsages gViewUsageLUT[] = {
+    CGPU_BUFFER_VIEW_USAGE_CBV,            // D3D_SIT_CBUFFER
+    CGPU_BUFFER_VIEW_USAGE_SRV_TEXEL,      // D3D_SIT_TBUFFER
+    CGPU_TEXTURE_VIEW_USAGE_SRV,           // D3D_SIT_TEXTURE
+    0,                                     // D3D_SIT_SAMPLER
+    CGPU_TEXTURE_VIEW_USAGE_UAV,           // D3D_SIT_UAV_RWTYPED
+    CGPU_BUFFER_VIEW_USAGE_SRV_STRUCTURED, // D3D_SIT_STRUCTURED
+    CGPU_BUFFER_VIEW_USAGE_UAV_STRUCTURED, // D3D_SIT_RWSTRUCTURED
+    CGPU_BUFFER_VIEW_USAGE_SRV_RAW,        // D3D_SIT_BYTEADDRESS
+    CGPU_BUFFER_VIEW_USAGE_UAV_RAW,        // D3D_SIT_UAV_RWBYTEADDRESS
+    CGPU_BUFFER_VIEW_USAGE_UAV_STRUCTURED, // D3D_SIT_UAV_APPEND_STRUCTURED
+    CGPU_BUFFER_VIEW_USAGE_UAV_STRUCTURED, // D3D_SIT_UAV_CONSUME_STRUCTURED
+    CGPU_BUFFER_VIEW_USAGE_UAV_STRUCTURED, // D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER
+    0,                                     // D3D_SIT_RTACCELERATIONSTRUCTURE
 };
 
 static ECGPUTextureDimension gD3D12_TO_RESOURCE_DIM[D3D_SRV_DIMENSION_BUFFEREX + 1] = {
@@ -515,7 +530,8 @@ void reflectionRecordShaderResources(ID3D12ReflectionT* d3d12reflection, ECGPUSh
         Reflection->shader_resources[i].name_hash = skr_hash_of(bindDesc.Name, strlen(bindDesc.Name));
         // We are very sure it's windows platform
         strcpy_s((char*)Reflection->shader_resources[i].name, source_len + 1, bindDesc.Name);
-        Reflection->shader_resources[i].type = gD3D12_TO_DESCRIPTOR[bindDesc.Type];
+        Reflection->shader_resources[i].type = gResourceTypeLUT[bindDesc.Type];
+        Reflection->shader_resources[i].view_usages = gViewUsageLUT[bindDesc.Type];
         Reflection->shader_resources[i].set = bindDesc.Space;
         Reflection->shader_resources[i].binding = bindDesc.BindPoint;
         Reflection->shader_resources[i].size = bindDesc.BindCount;
@@ -532,12 +548,14 @@ void reflectionRecordShaderResources(ID3D12ReflectionT* d3d12reflection, ECGPUSh
         // RWTyped is considered as DESCRIPTOR_TYPE_TEXTURE by default so we handle the case for RWBuffer here
         if (bindDesc.Type == D3D_SHADER_INPUT_TYPE::D3D_SIT_UAV_RWTYPED && bindDesc.Dimension == D3D_SRV_DIMENSION_BUFFER)
         {
-            Reflection->shader_resources[i].type = CGPU_RESOURCE_TYPE_RW_BUFFER;
+            Reflection->shader_resources[i].type = CGPU_RESOURCE_TYPE2_BUFFER;
+            Reflection->shader_resources[i].view_usages = CGPU_BUFFER_VIEW_USAGE_UAV_TEXEL;
         }
         // Buffer<> is considered as DESCRIPTOR_TYPE_TEXTURE by default so we handle the case for Buffer<> here
         if (bindDesc.Type == D3D_SHADER_INPUT_TYPE::D3D_SIT_TEXTURE && bindDesc.Dimension == D3D_SRV_DIMENSION_BUFFER)
         {
-            Reflection->shader_resources[i].type = CGPU_RESOURCE_TYPE_BUFFER;
+            Reflection->shader_resources[i].type = CGPU_RESOURCE_TYPE2_BUFFER;
+            Reflection->shader_resources[i].view_usages = CGPU_BUFFER_VIEW_USAGE_SRV_TEXEL;
         }
     }
 }
@@ -691,8 +709,8 @@ void D3D12Util_FreeShaderReflection(CGPUShaderLibrary_D3D12* S)
 // Descriptor Heap
 typedef struct D3D12Util_AllocZone
 {
-    uint32_t mOffset;  // Start offset in heap
-    uint32_t mSize;    // Zone size
+    uint32_t mOffset; // Start offset in heap
+    uint32_t mSize;   // Zone size
 #ifdef CGPU_THREAD_SAFETY
     struct SMutex* pMutex;
     SAtomicU32 mUsedDescriptors;
@@ -742,7 +760,7 @@ void D3D12Util_CreateDescriptorHeap(ID3D12Device* pDevice, const D3D12_DESCRIPTO
     pHeap->mDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(pHeap->mDesc.Type);
     if (Desc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
         pHeap->pHandles = (D3D12_CPU_DESCRIPTOR_HANDLE*)cgpu_calloc(Desc.NumDescriptors, sizeof(D3D12_CPU_DESCRIPTOR_HANDLE));
-    
+
     // Initialize zones
     // Zone 0: front zone (default whole heap)
     pHeap->mZones[0].mOffset = 0;
@@ -752,7 +770,7 @@ void D3D12Util_CreateDescriptorHeap(ID3D12Device* pDevice, const D3D12_DESCRIPTO
     pHeap->mZones[0].pMutex = (SMutex*)cgpu_calloc(1, sizeof(SMutex));
     skr_init_mutex(pHeap->mZones[0].pMutex);
 #endif
-    
+
     // Zone 1: back zone (initially empty)
     pHeap->mZones[1].mOffset = numDescriptors;
     pHeap->mZones[1].mSize = 0;
@@ -761,7 +779,7 @@ void D3D12Util_CreateDescriptorHeap(ID3D12Device* pDevice, const D3D12_DESCRIPTO
     pHeap->mZones[1].pMutex = (SMutex*)cgpu_calloc(1, sizeof(SMutex));
     skr_init_mutex(pHeap->mZones[1].pMutex);
 #endif
-    
+
     *ppDescHeap = pHeap;
 }
 
@@ -788,13 +806,15 @@ void D3D12Util_FreeDescriptorHeap(D3D12Util_DescriptorHeap* pHeap)
 
     std::destroy_at(&pHeap->mZones[0].mFreeList);
     std::destroy_at(&pHeap->mZones[1].mFreeList);
-    
+
 #ifdef CGPU_THREAD_SAFETY
-    if (pHeap->mZones[0].pMutex) {
+    if (pHeap->mZones[0].pMutex)
+    {
         skr_destroy_mutex(pHeap->mZones[0].pMutex);
         cgpu_free(pHeap->mZones[0].pMutex);
     }
-    if (pHeap->mZones[1].pMutex) {
+    if (pHeap->mZones[1].pMutex)
+    {
         skr_destroy_mutex(pHeap->mZones[1].pMutex);
         cgpu_free(pHeap->mZones[1].pMutex);
     }
@@ -810,18 +830,18 @@ static void D3D12Util_ResizeHeap(D3D12Util_DescriptorHeap* pHeap)
     D3D12_DESCRIPTOR_HEAP_DESC desc = pHeap->mDesc;
     desc.NumDescriptors <<= 1;
     desc.NumDescriptors = cgpu_round_up(desc.NumDescriptors, 32);
-    
+
     ID3D12Device* pDevice = pHeap->pDevice;
     ID3D12DescriptorHeap* pNewHeap = NULL;
     pDevice->CreateDescriptorHeap(&desc, IID_ARGS(&pNewHeap));
-    
+
     D3D12_CPU_DESCRIPTOR_HANDLE mNewStartCpu = pNewHeap->GetCPUDescriptorHandleForHeapStart();
     D3D12_GPU_DESCRIPTOR_HANDLE mNewStartGpu = pNewHeap->GetGPUDescriptorHandleForHeapStart();
-    
+
     // Calculate max needed for allocation
     uint32_t maxAlloc = cgpu_max(pHeap->mZones[0].mUsedDescriptors, pHeap->mZones[1].mUsedDescriptors);
     uint32_t* rangeSizes = (uint32_t*)alloca(maxAlloc * sizeof(uint32_t));
-    
+
     // Copy zones
     for (int zoneIdx = 0; zoneIdx < 2; zoneIdx++)
     {
@@ -841,7 +861,7 @@ static void D3D12Util_ResizeHeap(D3D12Util_DescriptorHeap* pHeap)
                 1, &zoneStart, &used, used, pZoneHandles, rangeSizes, pHeap->mDesc.Type);
         }
     }
-    
+
     // Update handles array
     D3D12_CPU_DESCRIPTOR_HANDLE* pNewHandles =
         (D3D12_CPU_DESCRIPTOR_HANDLE*)cgpu_calloc(desc.NumDescriptors, sizeof(D3D12_CPU_DESCRIPTOR_HANDLE));
@@ -855,20 +875,19 @@ static void D3D12Util_ResizeHeap(D3D12Util_DescriptorHeap* pHeap)
 #endif
         if (used > 0 && pZone->mSize > 0)
         {
-            memcpy(pNewHandles + pZone->mOffset, pHeap->pHandles + pZone->mOffset, 
-                used * sizeof(D3D12_CPU_DESCRIPTOR_HANDLE));
+            memcpy(pNewHandles + pZone->mOffset, pHeap->pHandles + pZone->mOffset, used * sizeof(D3D12_CPU_DESCRIPTOR_HANDLE));
         }
     }
-    
+
     cgpu_free(pHeap->pHandles);
     pHeap->pHandles = pNewHandles;
-    
+
     SAFE_RELEASE(pHeap->pCurrentHeap);
     pHeap->pCurrentHeap = pNewHeap;
     pHeap->mDesc = desc;
     pHeap->mStartHandle.mCpu = mNewStartCpu;
     pHeap->mStartHandle.mGpu = mNewStartGpu;
-    
+
     // Update zone sizes after resize
     if (pHeap->mZones[1].mSize > 0)
     {
@@ -924,7 +943,7 @@ static D3D12Util_DescriptorHandle D3D12Util_AllocateFromZone(D3D12Util_Descripto
             }
         }
     }
-    
+
 #ifdef CGPU_THREAD_SAFETY
     uint32_t usedDescriptors = skr_atomic_fetch_add_relaxed(&pZone->mUsedDescriptors, descriptorCount);
 #else
@@ -932,7 +951,7 @@ static D3D12Util_DescriptorHandle D3D12Util_AllocateFromZone(D3D12Util_Descripto
     pZone->mUsedDescriptors = pZone->mUsedDescriptors + descriptorCount;
 #endif
     cgpu_assert(usedDescriptors + descriptorCount <= pZone->mSize);
-    
+
     uint32_t absoluteOffset = pZone->mOffset + usedDescriptors;
     D3D12Util_DescriptorHandle ret = {
         { pHeap->mStartHandle.mCpu.ptr + absoluteOffset * pHeap->mDescriptorSize },

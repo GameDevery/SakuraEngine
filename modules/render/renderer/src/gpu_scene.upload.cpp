@@ -445,7 +445,7 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph, skr::
         [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
             builder.set_name(u8"upload_buffer")
                 .import(upload_ctx.get(&g).upload_buffer, CGPU_RESOURCE_STATE_GENERIC_READ)
-                .allow_structured_read();
+                .allow_shader_read();
         });
 
     // Pass 1: Core Data Upload
@@ -461,7 +461,7 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph, skr::
                     .size(core_ops_size)
                     .memory_usage(CGPU_MEM_USAGE_CPU_TO_GPU)
                     .as_upload_buffer()
-                    .allow_raw_read()
+                    .allow_shader_read()
                     .prefer_on_device();
             });
 

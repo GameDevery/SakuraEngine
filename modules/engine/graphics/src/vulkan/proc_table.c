@@ -70,6 +70,8 @@ const CGPUProcTable tbl_vk = {
     .map_buffer = &cgpu_map_buffer_vulkan,
     .unmap_buffer = &cgpu_unmap_buffer_vulkan,
     .free_buffer = &cgpu_free_buffer_vulkan,
+    .create_buffer_view = &cgpu_create_buffer_view_vulkan,
+    .free_buffer_view = &cgpu_free_buffer_view_vulkan,
 
     // Texture/TextureView APIs
     .create_texture = &cgpu_create_texture_vulkan,

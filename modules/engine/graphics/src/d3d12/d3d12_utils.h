@@ -192,7 +192,7 @@ inline static D3D12_SHADING_RATE D3D12Util_TranslateShadingRate(ECGPUShadingRate
 }
 #endif
 
-SKR_FORCEINLINE static D3D12_DESCRIPTOR_RANGE_TYPE D3D12Util_ResourceTypeToDescriptorRangeType(ECGPUResourceType type, CGPUFlags view_usages) 
+SKR_FORCEINLINE static D3D12_DESCRIPTOR_RANGE_TYPE D3D12Util_ResourceTypeToDescriptorRangeType(ECGPUResourceType type, CGPUViewUsages view_usages) 
 {
 	switch (type) 
 	{

@@ -85,6 +85,8 @@ const CGPUProcTable tbl_d3d12 = {
     .map_buffer = &cgpu_map_buffer_d3d12,
     .unmap_buffer = &cgpu_unmap_buffer_d3d12,
     .free_buffer = &cgpu_free_buffer_d3d12,
+    .create_buffer_view = &cgpu_create_buffer_view_d3d12,
+    .free_buffer_view = &cgpu_free_buffer_view_d3d12,
 
     // Sampler APIs
     .create_sampler = &cgpu_create_sampler_d3d12,

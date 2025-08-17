@@ -26,7 +26,7 @@ void test_linear_memory_pool(CGPUDeviceId device)
     // 创建一个使用内存池的缓冲区
     CGPUBufferDescriptor bufferDesc = {};
     bufferDesc.size = 1024 * 1024; // 1MB
-    bufferDesc.descriptors = CGPU_BUFFER_USAGE_VERTEX_BUFFER;
+    bufferDesc.usages = CGPU_BUFFER_USAGE_VERTEX_BUFFER;
     bufferDesc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
     bufferDesc.memory_pool = gpuPool; // 使用内存池
     bufferDesc.name = u8"Vertex Buffer from Pool";
@@ -48,7 +48,7 @@ void test_linear_memory_pool(CGPUDeviceId device)
     texDesc.format = CGPU_FORMAT_R8G8B8A8_UNORM;
     texDesc.mip_levels = 1;
     texDesc.sample_count = CGPU_SAMPLE_COUNT_1;
-    texDesc.descriptors = CGPU_RESOURCE_TYPE_TEXTURE;
+    texDesc.usages = CGPU_TEXTURE_USAGE_SHADER_READ;
     texDesc.memory_pool = gpuPool; // 使用内存池
     texDesc.name = u8"Texture from Pool";
     
@@ -93,7 +93,7 @@ void test_upload_memory_pool(CGPUDeviceId device)
     {
         CGPUBufferDescriptor bufferDesc = {};
         bufferDesc.size = 256 * 1024; // 256KB each
-        bufferDesc.descriptors = CGPU_RESOURCE_TYPE_NONE;
+        bufferDesc.usages = CGPU_BUFFER_USAGE_NONE;
         bufferDesc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
         bufferDesc.memory_pool = uploadPool; // 使用内存池
         bufferDesc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT; // 持久映射

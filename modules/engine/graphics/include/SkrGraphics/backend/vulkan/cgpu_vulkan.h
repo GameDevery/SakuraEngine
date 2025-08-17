@@ -97,6 +97,8 @@ CGPU_API CGPUBufferId cgpu_create_buffer_vulkan(CGPUDeviceId device, const struc
 CGPU_API void cgpu_map_buffer_vulkan(CGPUBufferId buffer, const struct CGPUBufferRange* range);
 CGPU_API void cgpu_unmap_buffer_vulkan(CGPUBufferId buffer);
 CGPU_API void cgpu_free_buffer_vulkan(CGPUBufferId buffer);
+CGPU_API CGPUBufferViewId cgpu_create_buffer_view_vulkan(CGPUDeviceId device, const struct CGPUBufferViewDescriptor* desc);
+CGPU_API void cgpu_free_buffer_view_vulkan(CGPUBufferViewId view);
 
 // Sampler APIs
 CGPU_API CGPUSamplerId cgpu_create_sampler_vulkan(CGPUDeviceId device, const struct CGPUSamplerDescriptor* desc);

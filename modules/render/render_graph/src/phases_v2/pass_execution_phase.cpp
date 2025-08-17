@@ -53,7 +53,7 @@ void PassExecutionPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor
         SkrZoneScopedN("GraphExecutePasses");
         {
             SkrZoneScopedN("ResetCommandBuffer");
-            executor->reset_begin(backend->texture_view_pool);
+            executor->reset_begin();
             if (profiler) profiler->on_cmd_begin(*backend, *executor);
         }
 

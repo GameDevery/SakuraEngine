@@ -195,7 +195,7 @@ struct MaterialFactoryImpl : public MaterialFactory
             for (uint32_t j = 0; j < table.resources_count; j++)
             {
                 const auto& resource = table.resources[j];
-                if (resource.type == CGPU_RESOURCE_TYPE_SAMPLER)
+                if (resource.type == CGPU_RESOURCE_TYPE2_SAMPLER)
                 {
                     for (const auto& override : material->overrides.samplers)
                     {
@@ -205,7 +205,7 @@ struct MaterialFactoryImpl : public MaterialFactory
                         }
                     }
                 }
-                else if (resource.type == CGPU_RESOURCE_TYPE_TEXTURE)
+                else if (resource.type == CGPU_RESOURCE_TYPE2_TEXTURE)
                 {
                     for (const auto& override : material->overrides.textures)
                     {
@@ -215,7 +215,7 @@ struct MaterialFactoryImpl : public MaterialFactory
                         }
                     }
                 }
-                else if (resource.type == CGPU_RESOURCE_TYPE_BUFFER)
+                else if (resource.type == CGPU_RESOURCE_TYPE2_BUFFER)
                 {
                     // SKR_UNIMPLEMENTED_FUNCTION();
                 }
@@ -236,7 +236,7 @@ struct MaterialFactoryImpl : public MaterialFactory
             update.name = override.slot_name.data();
             update.count = 1;
             update.samplers = &hdl.get_resolved()->sampler;
-            update.binding_type = CGPU_RESOURCE_TYPE_SAMPLER;
+            update.view_usage = 0;
         }
         for (const auto& override : material->overrides.textures)
         {
@@ -247,7 +247,7 @@ struct MaterialFactoryImpl : public MaterialFactory
             update.name = override.slot_name.data();
             update.count = 1; // TODO: Tex array parameter
             update.textures = &hdl.get_resolved()->texture_view;
-            update.binding_type = CGPU_RESOURCE_TYPE_TEXTURE;
+            update.view_usage = CGPU_TEXTURE_VIEW_USAGE_SRV;
         }
         cgpux_bind_table_update(bind_table, updates.data(), (uint32_t)updates.size());
         return bind_table;

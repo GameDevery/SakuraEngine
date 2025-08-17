@@ -13,7 +13,7 @@ SKR_FORCEINLINE static VkBufferCreateInfo VkUtil_CreateBufferCreateInfo(CGPUAdap
 {
     uint64_t allocationSize = desc->size;
     // Align the buffer size to multiples of the dynamic uniform buffer minimum size
-    if (desc->descriptors & CGPU_RESOURCE_TYPE_UNIFORM_BUFFER)
+    if (desc->usages & CGPU_BUFFER_USAGE_CONSTANT_BUFFER)
     {
         uint64_t minAlignment = A->adapter_detail.uniform_buffer_alignment;
         allocationSize = cgpu_round_up(allocationSize, minAlignment);
@@ -28,7 +28,7 @@ SKR_FORCEINLINE static VkBufferCreateInfo VkUtil_CreateBufferCreateInfo(CGPUAdap
         .queueFamilyIndexCount = 0,
         .pQueueFamilyIndices = NULL
     };
-    add_info.usage = VkUtil_DescriptorTypesToBufferUsage(desc->descriptors, desc->format != CGPU_FORMAT_UNDEFINED);
+    add_info.usage = VkUtil_DescriptorTypesToBufferUsage(desc->usages, false);
     // Buffer can be used as dest in a transfer command (Uploading data to a storage buffer, Readback query data)
     if (desc->memory_usage == CGPU_MEM_USAGE_GPU_ONLY || desc->memory_usage == CGPU_MEM_USAGE_GPU_TO_CPU)
         add_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
@@ -37,10 +37,10 @@ SKR_FORCEINLINE static VkBufferCreateInfo VkUtil_CreateBufferCreateInfo(CGPUAdap
     // This includes vertex buffers, index buffers, and storage buffers when raytracing is supported
     if (A->adapter_detail.support_ray_tracing)
     {
-        if ((desc->descriptors & CGPU_BUFFER_USAGE_VERTEX_BUFFER) ||
-            (desc->descriptors & CGPU_BUFFER_USAGE_INDEX_BUFFER) ||
-            (desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER) ||
-            (desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER))
+        if ((desc->usages & CGPU_BUFFER_USAGE_VERTEX_BUFFER) ||
+            (desc->usages & CGPU_BUFFER_USAGE_INDEX_BUFFER) ||
+            (desc->usages & CGPU_BUFFER_USAGE_SHADER_READ) ||
+            (desc->usages & CGPU_BUFFER_USAGE_SHADER_READWRITE))
         {
             add_info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
             add_info.usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
@@ -191,46 +191,6 @@ CGPUBufferId cgpu_create_buffer_vulkan(CGPUDeviceId device, const struct CGPUBuf
     info->memory_usage = desc->memory_usage;
     info->usages = desc->usages;
 
-    // Setup Uniform Texel View
-    if ((add_info.usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT) || (add_info.usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT))
-    {
-        const VkFormat texel_format = VkUtil_FormatTranslateToVk(desc->format);
-        SKR_DECLARE_ZERO(VkFormatProperties, formatProps)
-        vkGetPhysicalDeviceFormatProperties(A->pPhysicalDevice, texel_format, &formatProps);
-        // Now We Use The Same View Info for Uniform & Storage BufferView on Vulkan Backend.
-        VkBufferViewCreateInfo viewInfo = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
-            .pNext = NULL,
-            .buffer = B->pVkBuffer,
-            .flags = 0,
-            .format = texel_format,
-            .offset = desc->first_element * desc->element_stride,
-            .range = desc->element_count * desc->element_stride
-        };
-        if (add_info.usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)
-        {
-            if (!(formatProps.bufferFeatures & VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT))
-            {
-                cgpu_warn("Failed to create uniform texel buffer view for format %u", (uint32_t)desc->format);
-            }
-            else
-            {
-                CHECK_VKRESULT(vkCreateBufferView(D->pVkDevice, &viewInfo, GLOBAL_VkAllocationCallbacks, &B->pVkUniformTexelView));
-            }
-        }
-        // Setup Storage Texel View
-        if (add_info.usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)
-        {
-            if (!(formatProps.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT))
-            {
-                cgpu_warn("Failed to create storage texel buffer view for format %u", (uint32_t)desc->format);
-            }
-            else
-            {
-                CHECK_VKRESULT(vkCreateBufferView(D->pVkDevice, &viewInfo, GLOBAL_VkAllocationCallbacks, &B->pVkStorageTexelView));
-            }
-        }
-    }
     // Set Buffer Name
     VkUtil_OptionalSetObjectName(D, (uint64_t)B->pVkBuffer, VK_OBJECT_TYPE_BUFFER, desc->name);
 
@@ -459,18 +419,87 @@ void cgpu_free_buffer_vulkan(CGPUBufferId buffer)
     CGPUBuffer_Vulkan* B = (CGPUBuffer_Vulkan*)buffer;
     CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)B->super.device;
     cgpu_assert(B->pVkAllocation && "pVkAllocation must not be null!");
-    if (B->pVkUniformTexelView)
-    {
-        vkDestroyBufferView(D->pVkDevice, B->pVkUniformTexelView, GLOBAL_VkAllocationCallbacks);
-        B->pVkUniformTexelView = VK_NULL_HANDLE;
-    }
-    if (B->pVkStorageTexelView)
-    {
-        vkDestroyBufferView(D->pVkDevice, B->pVkUniformTexelView, GLOBAL_VkAllocationCallbacks);
-        B->pVkStorageTexelView = VK_NULL_HANDLE;
-    }
     vmaDestroyBuffer(D->pVmaAllocator, B->pVkBuffer, B->pVkAllocation);
     cgpu_free_aligned(B, _Alignof(CGPUBuffer_Vulkan));
+}
+
+CGPUBufferViewId cgpu_create_buffer_view_vulkan(CGPUDeviceId device, const struct CGPUBufferViewDescriptor* desc)
+{
+    CGPUBufferView_Vulkan* BV = (CGPUBufferView_Vulkan*)cgpu_calloc(1, sizeof(CGPUBufferView_Vulkan) + sizeof(CGPUBufferViewDescriptor));
+    CGPUBuffer_Vulkan* B = (CGPUBuffer_Vulkan*)desc->buffer;
+    CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)B->super.device;
+    CGPUAdapter_Vulkan* A = (CGPUAdapter_Vulkan*)D->super.adapter;
+    CGPUBufferViewDescriptor* Info = (CGPUBufferViewDescriptor*)(BV + 1);
+    BV->super.info = Info;
+    *Info = *desc;
+
+    BV->pVkBuffer = B->pVkBuffer;
+
+    const uint64_t BufferViewSize = desc->size ? desc->size : (B->super.info->size - desc->offset);
+    const uint64_t BufferOffset = desc->offset;
+    Info->offset = BufferOffset;
+    Info->size = BufferViewSize;
+
+    // Setup Uniform Texel View
+    if ((desc->view_usages & CGPU_BUFFER_VIEW_USAGE_SRV_TEXEL) || 
+        (desc->view_usages & CGPU_BUFFER_VIEW_USAGE_UAV_TEXEL))
+    {
+        const VkFormat texel_format = VkUtil_FormatTranslateToVk(desc->texel.format);
+        SKR_DECLARE_ZERO(VkFormatProperties, formatProps)
+        vkGetPhysicalDeviceFormatProperties(A->pPhysicalDevice, texel_format, &formatProps);
+        // Now We Use The Same View Info for Uniform & Storage BufferView on Vulkan Backend.
+        VkBufferViewCreateInfo viewInfo = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
+            .pNext = NULL,
+            .buffer = B->pVkBuffer,
+            .flags = 0,
+            .format = texel_format,
+            .offset = desc->offset,
+            .range = desc->size ? desc->size : (B->super.info->size - desc->offset)
+        };
+        if (desc->view_usages & CGPU_BUFFER_VIEW_USAGE_SRV_TEXEL)
+        {
+            if (!(formatProps.bufferFeatures & VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT))
+            {
+                cgpu_warn("Failed to create uniform texel buffer view for format %u", (uint32_t)desc->texel.format);
+            }
+            else
+            {
+                CHECK_VKRESULT(vkCreateBufferView(D->pVkDevice, &viewInfo, GLOBAL_VkAllocationCallbacks, &BV->pVkUniformTexelView));
+            }
+        }
+        // Setup Storage Texel View
+        if (desc->view_usages & CGPU_BUFFER_VIEW_USAGE_UAV_TEXEL)
+        {
+            if (!(formatProps.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT))
+            {
+                cgpu_warn("Failed to create storage texel buffer view for format %u", (uint32_t)desc->texel.format);
+            }
+            else
+            {
+                CHECK_VKRESULT(vkCreateBufferView(D->pVkDevice, &viewInfo, GLOBAL_VkAllocationCallbacks, &BV->pVkStorageTexelView));
+            }
+        }
+    }
+    
+    return &BV->super;
+}
+
+void cgpu_free_buffer_view_vulkan(CGPUBufferViewId view)
+{
+    CGPUBufferView_Vulkan* BV = (CGPUBufferView_Vulkan*)view;
+    CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)BV->super.device;
+    if (BV->pVkUniformTexelView)
+    {
+        vkDestroyBufferView(D->pVkDevice, BV->pVkUniformTexelView, GLOBAL_VkAllocationCallbacks);
+        BV->pVkUniformTexelView = VK_NULL_HANDLE;
+    }
+    if (BV->pVkStorageTexelView)
+    {
+        vkDestroyBufferView(D->pVkDevice, BV->pVkUniformTexelView, GLOBAL_VkAllocationCallbacks);
+        BV->pVkStorageTexelView = VK_NULL_HANDLE;
+    }
+    cgpu_free(BV);
 }
 
 // Texture/TextureView APIs
@@ -758,8 +787,8 @@ CGPUTextureId cgpu_create_texture_vulkan(CGPUDeviceId device, const struct CGPUT
     uint32_t arraySize = desc->array_size;
     // Image type
     VkImageType mImageType = VkUtil_TranslateImageType(desc);
-    CGPUResourceTypes descriptors = desc->descriptors;
-    bool cubemapRequired = (CGPU_RESOURCE_TYPE_TEXTURE_CUBE == (descriptors & CGPU_RESOURCE_TYPE_TEXTURE_CUBE));
+    CGPUTextureUsages descriptors = desc->usages;
+    bool cubemapRequired = (CGPU_TEXTURE_USAGE_CUBEMAP == (descriptors & CGPU_TEXTURE_USAGE_CUBEMAP));
     bool arrayRequired = mImageType == VK_IMAGE_TYPE_3D;
     // TODO: Support stencil format
     const bool isStencilFormat = false;
@@ -795,7 +824,7 @@ CGPUTextureId cgpu_create_texture_vulkan(CGPUDeviceId device, const struct CGPUT
         aspect_mask = VkUtil_DeterminAspectMask(imageCreateInfo.format, true);
         
         // Usage flags
-        if (desc->descriptors & CGPU_RESOURCE_TYPE_RENDER_TARGET)
+        if (desc->usages & CGPU_TEXTURE_USAGE_RENDER_TARGET)
             imageCreateInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         else if (is_depth_stencil)
             imageCreateInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
@@ -1403,17 +1432,21 @@ CGPUTextureViewId cgpu_create_texture_view_vulkan(CGPUDeviceId device, const str
 {
     CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)desc->texture->device;
     CGPUTexture_Vulkan* T = (CGPUTexture_Vulkan*)desc->texture;
-    const CGPUTextureInfo* pInfo = T->super.info;
-    CGPUTextureView_Vulkan* TV = (CGPUTextureView_Vulkan*)cgpu_calloc_aligned(1, sizeof(CGPUTextureView_Vulkan), _Alignof(CGPUTextureView_Vulkan));
+    const CGPUTextureInfo* pTexInfo = T->super.info;
+    CGPUTextureView_Vulkan* TV = (CGPUTextureView_Vulkan*)cgpu_calloc(1, sizeof(CGPUTextureView_Vulkan) + sizeof(CGPUTextureViewDescriptor));
+    CGPUTextureViewDescriptor* Info = (CGPUTextureViewDescriptor*)(TV + 1);
+    *Info = *desc;
+    TV->super.info = Info;
+
     VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-    VkImageType mImageType = pInfo->is_cube ? VK_IMAGE_TYPE_3D : VK_IMAGE_TYPE_2D;
+    VkImageType mImageType = pTexInfo->is_cube ? VK_IMAGE_TYPE_3D : VK_IMAGE_TYPE_2D;
     switch (mImageType)
     {
         case VK_IMAGE_TYPE_1D:
             view_type = desc->array_layer_count > 1 ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_1D;
             break;
         case VK_IMAGE_TYPE_2D:
-            if (pInfo->is_cube)
+            if (pTexInfo->is_cube)
                 view_type = (desc->dims == CGPU_TEXTURE_DIMENSION_CUBE_ARRAY) ? VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
             else
                 view_type = ((desc->dims == CGPU_TEXTURE_DIMENSION_2D_ARRAY) || (desc->dims == CGPU_TEXTURE_DIMENSION_2DMS_ARRAY)) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
@@ -1459,12 +1492,12 @@ CGPUTextureViewId cgpu_create_texture_view_vulkan(CGPUDeviceId device, const str
         .subresourceRange.baseArrayLayer = desc->base_array_layer,
         .subresourceRange.layerCount = desc->array_layer_count
     };
-    if (desc->usages & CGPU_TEXTURE_VIEW_USAGE_SRV)
+    if (desc->view_usages & CGPU_TEXTURE_VIEW_USAGE_SRV)
     {
         CHECK_VKRESULT(D->mVkDeviceTable.vkCreateImageView(D->pVkDevice, &srvDesc, GLOBAL_VkAllocationCallbacks, &TV->pVkSRVDescriptor));
     }
     // UAV
-    if (desc->usages & CGPU_TEXTURE_VIEW_USAGE_UAV)
+    if (desc->view_usages & CGPU_TEXTURE_VIEW_USAGE_UAV)
     {
         VkImageViewCreateInfo uavDesc = srvDesc;
         // #NOTE : We dont support imageCube, imageCubeArray for consistency with other APIs
@@ -1475,7 +1508,7 @@ CGPUTextureViewId cgpu_create_texture_view_vulkan(CGPUDeviceId device, const str
         CHECK_VKRESULT(D->mVkDeviceTable.vkCreateImageView(D->pVkDevice, &uavDesc, GLOBAL_VkAllocationCallbacks, &TV->pVkUAVDescriptor));
     }
     // RTV & DSV
-    if (desc->usages & CGPU_TEXTURE_VIEW_USAGE_RTV_DSV)
+    if (desc->view_usages & CGPU_TEXTURE_VIEW_USAGE_RTV_DSV)
     {
         CHECK_VKRESULT(D->mVkDeviceTable.vkCreateImageView(D->pVkDevice, &srvDesc, GLOBAL_VkAllocationCallbacks, &TV->pVkRTVDSVDescriptor));
     }
@@ -1493,7 +1526,7 @@ void cgpu_free_texture_view_vulkan(CGPUTextureViewId render_target)
         D->mVkDeviceTable.vkDestroyImageView(D->pVkDevice, TV->pVkRTVDSVDescriptor, GLOBAL_VkAllocationCallbacks);
     if (VK_NULL_HANDLE != TV->pVkUAVDescriptor)
         D->mVkDeviceTable.vkDestroyImageView(D->pVkDevice, TV->pVkUAVDescriptor, GLOBAL_VkAllocationCallbacks);
-    cgpu_free_aligned(TV, _Alignof(CGPUTextureView_Vulkan));
+    cgpu_free(TV);
 }
 
 bool cgpu_try_bind_aliasing_texture_vulkan(CGPUDeviceId device, const struct CGPUTextureAliasingBindDescriptor* desc)

@@ -632,13 +632,20 @@ CGPURootSignatureId cgpu_create_root_signature_d3d12(CGPUDeviceId device, const 
     if (!SUCCEEDED(hres))
         cgpu_error(u8"Failed to serialize root signature with error (%s)", (char*)COM_CALL(GetBufferPointer, error));
 
-        // If running Linked Mode (SLI) create root signature for all nodes
+    // If running Linked Mode (SLI) create root signature for all nodes
     // #NOTE : In non SLI mode, mNodeCount will be 0 which sets nodeMask to
     // default value
     LPVOID BufferPointer = COM_CALL(GetBufferPointer, rootSignatureString);
     SIZE_T BufferSize = COM_CALL(GetBufferSize, rootSignatureString);
     CHECK_HRESULT(COM_CALL(CreateRootSignature, D->pDxDevice, CGPU_SINGLE_GPU_NODE_MASK, BufferPointer, BufferSize, IID_ARGS(ID3D12RootSignature, &RS->pDxRootSignature)));
     
+    if (desc->name && D->super.adapter->instance->enable_set_name)
+    {
+        wchar_t debugName[MAX_GPU_DEBUG_NAME_LENGTH] = {};
+        mbstowcs(debugName, (const char*)desc->name, MAX_GPU_DEBUG_NAME_LENGTH);
+        COM_CALL(SetName, RS->pDxRootSignature, debugName);
+    }
+
     cgpu_free(rootParams);
     cgpu_free(cbvSrvUavRanges);
     // [RS POOL] INSERTION
@@ -733,7 +740,7 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_d3d12(CGPUDeviceId device, const 
             const ECGPUTextureDimension dimension = param_table->resources[i].dim;
             D3D12_CPU_DESCRIPTOR_HANDLE srcHandle = kInvalidCPUHandle;
             D3D12_CPU_DESCRIPTOR_HANDLE srcSamplerHandle = kInvalidCPUHandle;
-            const CGPUFlags view_usages = param_table->resources[i].view_usages;
+            const CGPUViewUsages view_usages = param_table->resources[i].view_usages;
             switch (param_table->resources[i].type)
             {
                 case CGPU_RESOURCE_TYPE2_TEXTURE:
@@ -1443,6 +1450,11 @@ CGPUTextureViewId cgpu_create_texture_view_d3d12(CGPUDeviceId device, const stru
     CGPUTextureView_D3D12* TV = cgpu_calloc(1, sizeof(CGPUTextureView_D3D12) + sizeof(CGPUTextureViewDescriptor));
     CGPUTexture_D3D12* T = (CGPUTexture_D3D12*)desc->texture;
     CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)device;
+
+    CGPUTextureViewDescriptor* Info = (CGPUTextureViewDescriptor*)(TV + 1);
+    *Info = *desc;
+    TV->super.info = Info;
+
     // Consume handles
     const CGPUTextureViewUsages usages = desc->view_usages;
     uint32_t handleCount = ((usages & CGPU_TEXTURE_VIEW_USAGE_SRV) ? 1 : 0) +

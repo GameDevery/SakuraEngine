@@ -616,6 +616,8 @@ typedef struct CGPUProcTable {
     const CGPUProcMapBuffer map_buffer;
     const CGPUProcUnmapBuffer unmap_buffer;
     const CGPUProcFreeBuffer free_buffer;
+    const CGPUProcCreateBufferView create_buffer_view;
+    const CGPUProcFreeBufferView free_buffer_view;
 
     // Sampler APIs
     const CGPUProcCreateSampler create_sampler;
@@ -932,7 +934,7 @@ typedef struct CGPUShaderResource {
     const char8_t* name;
     uint64_t name_hash;
     ECGPUResourceType type;
-    CGPUFlags view_usages;
+    CGPUViewUsages view_usages;
     ECGPUTextureDimension dim;
     uint32_t set;
     uint32_t binding;
@@ -975,7 +977,7 @@ typedef struct CGPUPipelineReflection {
 typedef struct CGPUDescriptorData {
     const char8_t* name;
     uint32_t binding;
-    CGPUFlags view_usage;
+    CGPUViewUsages view_usage;
     union
     {
         const void** ptrs;
@@ -1283,6 +1285,7 @@ typedef struct CGPURootSignatureDescriptor {
     const char8_t* const* push_constant_names;
     uint32_t push_constant_count;
     CGPURootSignaturePoolId pool;
+    const char8_t* name;
 } CGPURootSignatureDescriptor;
 
 typedef struct CGPUCompiledShaderDescriptor {
@@ -1614,7 +1617,7 @@ typedef struct CGPUTextureViewDescriptor {
     const char8_t* name;
     CGPUTextureId texture;
     ECGPUFormat format;
-    CGPUTextureViewUsages view_usages : 8;
+    CGPUTextureViewUsages view_usages;
     CGPUTextureViewAspects aspects : 8;
     ECGPUTextureDimension dims : 8;
     uint32_t base_array_layer : 8;

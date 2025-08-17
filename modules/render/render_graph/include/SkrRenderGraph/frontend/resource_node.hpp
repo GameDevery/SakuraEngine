@@ -84,6 +84,7 @@ public:
     }
     inline const BufferHandle get_handle() const SKR_NOEXCEPT { return BufferHandle(get_id()); }
     inline const CGPUBufferDescriptor& get_desc() const SKR_NOEXCEPT { return descriptor; }
+    inline const CGPUBufferViewDescriptor& get_view_desc() const SKR_NOEXCEPT { return view_desc; }
     EObjectType get_type() const SKR_NOEXCEPT override;
     CGPUBufferId get_imported() const SKR_NOEXCEPT
     {
@@ -96,6 +97,7 @@ public:
 
 protected:
     CGPUBufferDescriptor descriptor = {};
+    CGPUBufferViewDescriptor view_desc = {};
     // temporal handle with a lifespan of only one frame
     mutable CGPUBufferId imported_buffer = nullptr;
 };

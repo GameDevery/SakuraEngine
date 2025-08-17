@@ -111,8 +111,8 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
     skr::InlineVector<const char8_t*, 8> bindTableValueNames;
     
     // Temporary storage for resources (released after binding)
-    skr::InlineVector<CGPUBufferId, 8> buf_reads;
-    skr::InlineVector<CGPUBufferId, 8> buf_uavs;
+    skr::InlineVector<CGPUBufferViewId, 8> buf_reads;
+    skr::InlineVector<CGPUBufferViewId, 8> buf_uavs;
     skr::InlineVector<CGPUTextureViewId, 8> tex_reads;
     skr::InlineVector<CGPUTextureViewId, 8> tex_uavs;
     skr::InlineVector<CGPUAccelerationStructureId, 8> acceleration_structures;
@@ -128,7 +128,6 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         auto& read_edge = buf_read_edges[e_idx];
         
         const auto& resource = *find_shader_resource(read_edge->get_name(), read_edge->name_hash, root_sig);
-        ECGPUResourceType resource_type = resource.type;
         bind_table_keys.append(read_edge->get_name() ? read_edge->get_name() : resource.name);
         bind_table_keys.append(u8";");
         bindTableValueNames.emplace(resource.name);
@@ -137,9 +136,16 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         CGPUDescriptorData update = {};
         update.count = 1;
         update.name = resource.name;
-        update.binding_type = resource_type;
+        update.view_usage = resource.view_usages;
         update.binding = resource.binding;
-        buf_reads[e_idx] = resource_allocation_phase_.get_resource(buffer_readed);
+
+        CGPUBufferViewDescriptor view_desc = {};
+        view_desc.buffer = resource_allocation_phase_.get_resource(buffer_readed);
+        view_desc.view_usages = resource.view_usages;
+        view_desc.offset = read_edge->get_handle().from;
+        view_desc.size = read_edge->get_handle().to - read_edge->get_handle().from;
+        view_desc.structure.element_stride = buffer_readed->get_view_desc().structure.element_stride;
+        buf_reads[e_idx] = graph->get_buffer_view_pool().allocate(view_desc, graph->get_frame_index());
         update.buffers = &buf_reads[e_idx];
         desc_set_updates.emplace(update);
         
@@ -153,7 +159,6 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         auto& rw_edge = buf_write_edges[e_idx];
         
         const auto& resource = *find_shader_resource(rw_edge->get_name(), rw_edge->name_hash, root_sig);
-        ECGPUResourceType resource_type = resource.type;
         bind_table_keys.append(rw_edge->get_name() ? rw_edge->get_name() : resource.name);
         bind_table_keys.append(u8";");
         bindTableValueNames.emplace(resource.name);
@@ -162,9 +167,16 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         CGPUDescriptorData update = {};
         update.count = 1;
         update.name = resource.name;
-        update.binding_type = resource_type;
+        update.view_usage = resource.view_usages;
         update.binding = resource.binding;
-        buf_uavs[e_idx] = resource_allocation_phase_.get_resource(buffer_writed);
+
+        CGPUBufferViewDescriptor view_desc = {};
+        view_desc.buffer = resource_allocation_phase_.get_resource(buffer_writed);
+        view_desc.view_usages = resource.view_usages;
+        view_desc.offset = rw_edge->get_handle().from;
+        view_desc.size = rw_edge->get_handle().to - rw_edge->get_handle().from;
+        view_desc.structure.element_stride = buffer_writed->get_view_desc().structure.element_stride;
+        buf_uavs[e_idx] = graph->get_buffer_view_pool().allocate(view_desc, graph->get_frame_index());
         update.buffers = &buf_uavs[e_idx];
         desc_set_updates.emplace(update);
         
@@ -270,7 +282,6 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         CGPUDescriptorData update = {};
         update.count = 1;
         update.name = resource.name;
-        update.binding_type = CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE;
         update.binding = resource.binding;
         acceleration_structures[e_idx] = acceleration_structure_readed->get_imported();
         update.acceleration_structures = &acceleration_structures[e_idx];

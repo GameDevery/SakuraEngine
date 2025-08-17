@@ -474,9 +474,9 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allocate_dedicated() SKR
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::structured(uint64_t first_element, uint64_t element_count, uint64_t element_stride) SKR_NOEXCEPT
 {
-    node.descriptor.first_element = first_element;
-    node.descriptor.element_count = element_count;
-    node.descriptor.element_stride = element_stride;
+    node.view_desc.offset = first_element * element_stride;
+    node.view_desc.size = element_count * element_stride;
+    node.view_desc.structure.element_stride = element_stride;
     return *this;
 }
 
@@ -498,13 +498,13 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::memory_usage(ECGPUMemory
     return *this;
 }
 
-RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_structured_readwrite() SKR_NOEXCEPT
+RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_shader_readwrite() SKR_NOEXCEPT
 {
     node.descriptor.usages |= CGPU_BUFFER_USAGE_SHADER_READWRITE;
     return *this;
 }
 
-RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_structured_read() SKR_NOEXCEPT
+RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_shader_read() SKR_NOEXCEPT
 {
     node.descriptor.usages |= CGPU_BUFFER_USAGE_SHADER_READ;
     return *this;

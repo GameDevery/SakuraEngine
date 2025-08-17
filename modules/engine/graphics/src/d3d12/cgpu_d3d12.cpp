@@ -370,10 +370,9 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
             B->pDxResource = nullptr;
         else if (log_allocation)
         {
-            cgpu_trace(u8"[D3D12] Create CVV Buffer Resource Succeed! \n\t With Name: %s\n\t Size: %lld \n\t Format: %d",
+            cgpu_trace(u8"[D3D12] Create CVV Buffer Resource Succeed! \n\t With Name: %s\n\t Size: %lld",
                 desc->name ? desc->name : u8"",
-                allocationSize,
-                desc->format);
+                allocationSize);
         }
     }
 #endif
@@ -392,10 +391,9 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
             CHECK_HRESULT(D->pDxDevice->CreateCommittedResource(&heapProps, alloc_desc.ExtraHeapFlags, &bufDesc, InitialState, NULL, IID_ARGS(&B->pDxResource)));
             if (log_allocation)
             {
-                cgpu_trace(u8"[D3D12] Create Committed Buffer Resource Succeed! \n\t With Name: %s\n\t Size: %lld \n\t Format: %d",
+                cgpu_trace(u8"[D3D12] Create Committed Buffer Resource Succeed! \n\t With Name: %s\n\t Size: %lld",
                     desc->name ? desc->name : u8"",
-                    allocationSize,
-                    desc->format);
+                    allocationSize);
             }
         }
         else
@@ -408,10 +406,9 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
             if (log_allocation)
             {
                 SkrZoneScopedN("Log(Allocation)");
-                cgpu_trace(u8"[D3D12] Create Buffer Resource Succeed! \n\t With Name: %s\n\t Size: %lld \n\t Format: %d",
+                cgpu_trace(u8"[D3D12] Create Buffer Resource Succeed! \n\t With Name: %s\n\t Size: %lld",
                     desc->name ? desc->name : u8"",
-                    allocationSize,
-                    desc->format);
+                    allocationSize);
             }
         }
     }
@@ -424,11 +421,10 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
         auto mapResult = B->pDxResource->Map(0, NULL, &pInfo->cpu_mapped_address);
         if (!SUCCEEDED(mapResult))
         {
-            cgpu_warn(u8"[D3D12] Map Buffer Resource Failed %d! \n\t With Name: %s\n\t Size: %lld \n\t Format: %d",
+            cgpu_warn(u8"[D3D12] Map Buffer Resource Failed %d! \n\t With Name: %s\n\t Size: %lld",
                 mapResult,
                 desc->name ? desc->name : u8"",
-                allocationSize,
-                desc->format);
+                allocationSize);
         }
     }
     B->mDxGpuAddress = B->pDxResource->GetGPUVirtualAddress();
@@ -514,8 +510,10 @@ CGPUBufferViewId cgpu_create_buffer_view_d3d12(CGPUDeviceId device, const struct
     BV->mDxDescriptorHandles = D3D12Util_ConsumeDescriptorHandles(pHeap, handleCount).mCpu;
 
     uint32_t currentOffset = 0;
-    const auto BufferSize = desc->size ? desc->size : B->super.info->size;
+    const auto BufferViewSize = desc->size ? desc->size : (B->super.info->size - desc->offset);
     const auto BufferOffset = desc->offset;
+    Info->offset = BufferOffset;
+    Info->size = BufferViewSize;
 
     // Create CBV
     if (desc->view_usages & CGPU_BUFFER_VIEW_USAGE_CBV)
@@ -524,7 +522,8 @@ CGPUBufferViewId cgpu_create_buffer_view_d3d12(CGPUDeviceId device, const struct
 
         D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
         cbvDesc.BufferLocation = B->mDxGpuAddress + desc->offset;
-        cbvDesc.SizeInBytes = (UINT)BufferSize;
+        cbvDesc.SizeInBytes = (UINT)BufferViewSize;
+        cbvDesc.SizeInBytes = CGPU_ALIGN(cbvDesc.SizeInBytes, 256);
         D3D12Util_CreateCBV(D, &cbvDesc, &cbv);
 
         currentOffset += kDescriptorSize;
@@ -533,7 +532,7 @@ CGPUBufferViewId cgpu_create_buffer_view_d3d12(CGPUDeviceId device, const struct
     // Create SRV
     auto CreateSRV = [&](D3D12_CPU_DESCRIPTOR_HANDLE srv, UINT ElementStride, D3D12_BUFFER_SRV_FLAGS Flags, DXGI_FORMAT Format){
         const auto FirstElement = BufferOffset / ElementStride;
-        const auto ElementCount = BufferSize / ElementStride;
+        const auto ElementCount = BufferViewSize / ElementStride;
         const auto Mod = BufferOffset % ElementStride;
 
         cgpu_assert((Mod == 0) && "Offset for structured view must aligns element_stride!");
@@ -584,7 +583,7 @@ CGPUBufferViewId cgpu_create_buffer_view_d3d12(CGPUDeviceId device, const struct
     // Create UAV
     auto CreateUAV = [&](D3D12_CPU_DESCRIPTOR_HANDLE uav, UINT ElementStride, D3D12_BUFFER_UAV_FLAGS Flags, DXGI_FORMAT Format){
         const auto FirstElement = BufferOffset / ElementStride;
-        const auto ElementCount = BufferSize / ElementStride;
+        const auto ElementCount = BufferViewSize / ElementStride;
         const auto Mod = BufferOffset % ElementStride;
 
         cgpu_assert((Mod == 0) && "Offset for structured view must aligns element_stride!");
@@ -1183,16 +1182,16 @@ inline D3D12_RESOURCE_FLAGS D3D12Util_CalculateTextureFlags(const struct CGPUTex
 {
     D3D12_RESOURCE_FLAGS Flags = D3D12_RESOURCE_FLAG_NONE;
     // Decide UAV flags
-    if (desc->descriptors & CGPU_RESOURCE_TYPE_RW_TEXTURE)
+    if (desc->usages & CGPU_TEXTURE_USAGE_SHADER_READWRITE)
     {
         Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }
     // Decide render target flags
-    if (desc->descriptors & CGPU_RESOURCE_TYPE_RENDER_TARGET)
+    if (desc->usages & CGPU_TEXTURE_USAGE_RENDER_TARGET)
     {
         Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
     }
-    else if (desc->descriptors & CGPU_RESOURCE_TYPE_DEPTH_STENCIL)
+    else if (desc->usages & CGPU_TEXTURE_USAGE_DEPTH_STENCIL)
     {
         Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
     }
@@ -1218,7 +1217,7 @@ inline D3D12_CLEAR_VALUE D3D12Util_CalculateClearValue(DXGI_FORMAT dxFormat, con
 {
     SKR_DECLARE_ZERO(D3D12_CLEAR_VALUE, clearValue);
     clearValue.Format = dxFormat;
-    if (desc->descriptors & CGPU_RESOURCE_TYPE_DEPTH_STENCIL)
+    if (desc->usages & CGPU_TEXTURE_USAGE_DEPTH_STENCIL)
     {
         clearValue.DepthStencil.Depth = desc->clear_value.depth;
         clearValue.DepthStencil.Stencil = (UINT8)desc->clear_value.stencil;
@@ -1307,7 +1306,7 @@ CGPUTextureId cgpu_create_texture_d3d12(CGPUDeviceId device, const struct CGPUTe
     pInfo->is_imported = desc->native_handle ? 1 : 0;
     pInfo->is_aliasing = (desc->flags & CGPU_TCF_ALIASING_RESOURCE) ? 1 : 0;
     pInfo->is_tiled = (desc->flags & CGPU_TCF_TILED_RESOURCE) ? 1 : 0;
-    pInfo->is_cube = (CGPU_RESOURCE_TYPE_TEXTURE_CUBE == (desc->descriptors & CGPU_RESOURCE_TYPE_TEXTURE_CUBE)) ? 1 : 0;
+    pInfo->is_cube = (CGPU_TEXTURE_USAGE_CUBEMAP == (desc->usages & CGPU_TEXTURE_USAGE_CUBEMAP)) ? 1 : 0;
     pInfo->owns_image = !pInfo->is_aliasing && !pInfo->is_imported;
     pInfo->sample_count = desc->sample_count;
     pInfo->width = desc->width;
@@ -1617,7 +1616,7 @@ inline static D3D12_RESOURCE_DESC D3D12Util_CreateBufferDesc(CGPUAdapter_D3D12* 
     SKR_DECLARE_ZERO(D3D12_RESOURCE_DESC, bufDesc);
     uint64_t allocationSize = desc->size;
     // Align the buffer size to multiples of the dynamic uniform buffer minimum size
-    if (desc->descriptors & CGPU_RESOURCE_TYPE_UNIFORM_BUFFER)
+    if (desc->usages & CGPU_BUFFER_USAGE_CONSTANT_BUFFER)
     {
         uint64_t minAlignment = A->adapter_detail.uniform_buffer_alignment;
         allocationSize = cgpu_round_up(allocationSize, minAlignment);
@@ -1635,7 +1634,7 @@ inline static D3D12_RESOURCE_DESC D3D12Util_CreateBufferDesc(CGPUAdapter_D3D12* 
     bufDesc.SampleDesc.Quality = 0;
     bufDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
     bufDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-    if (desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER)
+    if (desc->usages & CGPU_BUFFER_USAGE_SHADER_READWRITE)
     {
         bufDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }

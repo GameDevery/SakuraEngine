@@ -426,7 +426,7 @@ CGPURootSignatureId cgpu_create_root_signature_vulkan(CGPUDeviceId device, const
                     CGPUShaderResource* pResource = &param_table->resources[i_binding];
                     vkbindings[i_binding].binding = pResource->binding;
                     vkbindings[i_binding].stageFlags = VkUtil_TranslateShaderUsages(pResource->stages);
-                    vkbindings[i_binding].descriptorType = VkUtil_TranslateResourceType(pResource->type);
+                    vkbindings[i_binding].descriptorType = VkUtil_TranslateResourceType(pResource->type, pResource->view_usages);
                     if (pResource->size == 0)
                     {
                         vkbindings[i_binding].descriptorCount = 4096;
@@ -448,7 +448,7 @@ CGPURootSignatureId cgpu_create_root_signature_vulkan(CGPUDeviceId device, const
                     vkbindings[i_binding].pImmutableSamplers = &immutableSampler->pVkSampler;
                     vkbindings[i_binding].binding = RS->super.static_samplers[i_ss].binding;
                     vkbindings[i_binding].stageFlags = VkUtil_TranslateShaderUsages(RS->super.static_samplers[i_ss].stages);
-                    vkbindings[i_binding].descriptorType = VkUtil_TranslateResourceType(RS->super.static_samplers[i_ss].type);
+                    vkbindings[i_binding].descriptorType = VkUtil_TranslateResourceType(RS->super.static_samplers[i_ss].type, 0);
                     vkbindings[i_binding].descriptorCount = RS->super.static_samplers[i_ss].size;
                     i_binding++;
                 }
@@ -521,10 +521,11 @@ CGPURootSignatureId cgpu_create_root_signature_vulkan(CGPUDeviceId device, const
             param_table->resources_count, sizeof(VkDescriptorUpdateTemplateEntry));
         for (uint32_t i_iter = 0; i_iter < param_table->resources_count; i_iter++)
         {
-            uint32_t i_binding = param_table->resources[i_iter].binding;
+            CGPUShaderResource* pResource = &param_table->resources[i_iter];
+            uint32_t i_binding = pResource->binding;
             VkDescriptorUpdateTemplateEntry* this_entry = template_entries + i_iter;
-            this_entry->descriptorCount = param_table->resources[i_iter].size;
-            this_entry->descriptorType = VkUtil_TranslateResourceType(param_table->resources[i_iter].type);
+            this_entry->descriptorCount = pResource->size;
+            this_entry->descriptorType = VkUtil_TranslateResourceType(pResource->type, pResource->view_usages);
             this_entry->dstBinding = i_binding;
             this_entry->dstArrayElement = 0;
             this_entry->stride = sizeof(VkDescriptorUpdateData);
@@ -2026,7 +2027,7 @@ CGPURenderPassEncoderId cgpu_cmd_begin_render_pass_vulkan(CGPUCommandBufferId cm
             .mColorAttachmentCount = desc->render_target_count,
             .mDepthStencilFormat =
                 desc->depth_stencil ?
-                (desc->depth_stencil->view ? desc->depth_stencil->view->info.format : CGPU_FORMAT_UNDEFINED) :
+                (desc->depth_stencil->view ? desc->depth_stencil->view->info->format : CGPU_FORMAT_UNDEFINED) :
                 CGPU_FORMAT_UNDEFINED,
             .mSampleCount = desc->sample_count,
             .mLoadActionDepth =
@@ -2040,12 +2041,12 @@ CGPURenderPassEncoderId cgpu_cmd_begin_render_pass_vulkan(CGPUCommandBufferId cm
         };
         for (uint32_t i = 0; i < desc->render_target_count; i++)
         {
-            CGPUTextureId tex = desc->color_attachments[i].view->info.texture;
+            CGPUTextureId tex = desc->color_attachments[i].view->info->texture;
             const CGPUTextureInfo* info = tex->info;
 
             rpdesc.pResolveMasks[i] = (desc->sample_count != CGPU_SAMPLE_COUNT_1) &&
                 (desc->color_attachments[i].resolve_view != NULL);
-            rpdesc.pColorFormats[i] = desc->color_attachments[i].view->info.format;
+            rpdesc.pColorFormats[i] = desc->color_attachments[i].view->info->format;
             rpdesc.pLoadActionsColor[i] = desc->color_attachments[i].load_action;
             rpdesc.pStoreActionsColor[i] = desc->color_attachments[i].store_action;
             Width = (uint32_t)info->width;
@@ -2068,7 +2069,7 @@ CGPURenderPassEncoderId cgpu_cmd_begin_render_pass_vulkan(CGPUCommandBufferId cm
         {
             CGPUTextureView_Vulkan* TVV = (CGPUTextureView_Vulkan*)desc->color_attachments[i].view;
             fbDesc.pImageViews[idx] = TVV->pVkRTVDSVDescriptor;
-            fbDesc.mLayers = TVV->super.info.array_layer_count;
+            fbDesc.mLayers = TVV->super.info->array_layer_count;
             fbDesc.mAttachmentCount += 1;
             idx++;
         }
@@ -2086,7 +2087,7 @@ CGPURenderPassEncoderId cgpu_cmd_begin_render_pass_vulkan(CGPUCommandBufferId cm
         {
             CGPUTextureView_Vulkan* TVV = (CGPUTextureView_Vulkan*)desc->depth_stencil->view;
             fbDesc.pImageViews[idx] = TVV->pVkRTVDSVDescriptor;
-            fbDesc.mLayers = TVV->super.info.array_layer_count;
+            fbDesc.mLayers = TVV->super.info->array_layer_count;
             fbDesc.mAttachmentCount += 1;
             idx++;
         }

@@ -106,6 +106,7 @@ public:
     inline const char8_t* get_name() const { return name.c_str(); }
     const uint64_t name_hash = 0;
 
+    inline BufferRangeHandle get_handle() const { return handle; }
     BufferNode* get_buffer_node() final;
     PassNode* get_pass_node() final;
 
@@ -125,6 +126,7 @@ public:
     inline const char8_t* get_name() const { return name.c_str(); }
     const uint64_t name_hash = 0;
 
+    inline BufferRangeHandle get_handle() const { return handle; }
     BufferNode* get_buffer_node() final;
     PassNode* get_pass_node() final;
 

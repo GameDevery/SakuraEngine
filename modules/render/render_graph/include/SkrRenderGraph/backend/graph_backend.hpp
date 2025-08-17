@@ -2,8 +2,9 @@
 #include "SkrContainers/set.hpp"
 #include "SkrCore/memory/sp.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
-#include "SkrRenderGraph/backend/texture_pool.hpp"
 #include "SkrRenderGraph/backend/buffer_pool.hpp"
+#include "SkrRenderGraph/backend/buffer_view_pool.hpp"
+#include "SkrRenderGraph/backend/texture_pool.hpp"
 #include "SkrRenderGraph/backend/texture_view_pool.hpp"
 #include "SkrRenderGraph/backend/bind_table_pool.hpp"
 
@@ -28,7 +29,7 @@ public:
     const struct CGPUXMergedBindTable* merge_tables(const struct CGPUXBindTable** tables, uint32_t count);
 
     void commit(CGPUQueueId gfx_queue, uint64_t frame_index);
-    void reset_begin(TextureViewPool& texture_view_pool);
+    void reset_begin();
 
     void write_marker(const char8_t* message);
     void print_error_trace(uint64_t frame_index);
@@ -37,7 +38,6 @@ public:
     CGPUCommandBufferId gfx_cmd_buf = nullptr;
     CGPUFenceId exec_fence = nullptr;
     uint64_t exec_frame = 0;
-    skr::Vector<CGPUTextureId> aliasing_textures;
     skr::FlatHashMap<CGPURootSignatureId, BindTablePool*> bind_table_pools;
 
     CGPUBufferId marker_buffer = nullptr;
@@ -90,6 +90,7 @@ public:
     BufferPool& get_buffer_pool() SKR_NOEXCEPT { return buffer_pool; }
     TexturePool& get_texture_pool() SKR_NOEXCEPT { return texture_pool; }
     TextureViewPool& get_texture_view_pool() SKR_NOEXCEPT { return texture_view_pool; }
+    BufferViewPool& get_buffer_view_pool() SKR_NOEXCEPT { return buffer_view_pool; }
 
 protected:
     virtual void initialize() SKR_NOEXCEPT final;
@@ -101,8 +102,9 @@ protected:
     skr::Vector<CGPUQueueId> cmpt_queues;
     skr::Vector<CGPUQueueId> cpy_queues;
     RenderGraphFrameExecutor executors[RG_MAX_FRAME_IN_FLIGHT];
-    TexturePool texture_pool;
     BufferPool buffer_pool;
+    BufferViewPool buffer_view_pool;
+    TexturePool texture_pool;
     TextureViewPool texture_view_pool;
 };
 } // namespace skr::render_graph

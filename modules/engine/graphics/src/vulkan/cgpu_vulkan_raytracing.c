@@ -143,12 +143,9 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
         {
             SkrCZoneN(zzz, "CreateASBuffer", 1);
             CGPUBufferDescriptor bufferDesc = {
-                .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER | CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE,
+                .usages = CGPU_BUFFER_USAGE_SHADER_READ | CGPU_BUFFER_USAGE_SHADER_READWRITE,
                 .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
-                .flags = CGPU_BUFFER_FLAG_NO_DESCRIPTOR_VIEW_CREATION | CGPU_BUFFER_FLAG_DEDICATED_BIT,
-                .element_stride = sizeof(uint32_t),
-                .first_element = 0,
-                .element_count = (uint32_t)(sizeInfo.accelerationStructureSize / sizeof(uint32_t)),
+                .flags = CGPU_BUFFER_FLAG_DEDICATED_BIT,
                 .size = sizeInfo.accelerationStructureSize,
                 .start_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE
             };
@@ -165,7 +162,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
 
         // Create instance buffer
         CGPUBufferDescriptor instanceDesc = {
-            .descriptors = CGPU_RESOURCE_TYPE_BUFFER,
+            .usages = CGPU_BUFFER_USAGE_SHADER_READ | CGPU_BUFFER_USAGE_SHADER_READWRITE,
             .memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU,
             .flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT,
             .size = desc->top.count * sizeof(VkAccelerationStructureInstanceKHR),
@@ -247,12 +244,9 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
 
         // Allocate Acceleration Structure Buffer
         CGPUBufferDescriptor bufferDesc = {
-            .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER | CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE,
+            .usages = CGPU_BUFFER_USAGE_SHADER_READ | CGPU_BUFFER_USAGE_SHADER_READWRITE,
             .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
             .flags = CGPU_BUFFER_FLAG_DEDICATED_BIT,
-            .element_stride = sizeof(uint32_t),
-            .first_element = 0,
-            .element_count = (uint32_t)(sizeInfo.accelerationStructureSize / sizeof(uint32_t)),
             .size = sizeInfo.accelerationStructureSize,
             .start_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE
         };
@@ -288,10 +282,9 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
 
     // Create scratch buffer
     CGPUBufferDescriptor scratchBufferDesc = {
-        .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER,
+        .usages = CGPU_BUFFER_USAGE_SHADER_READWRITE,
         .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
         .start_state = CGPU_RESOURCE_STATE_COMMON,
-        .flags = CGPU_BUFFER_FLAG_NO_DESCRIPTOR_VIEW_CREATION,
         .size = AS->super.scratch_buffer_size,
     };
     AS->pScratchBuffer = cgpu_create_buffer(device, &scratchBufferDesc);

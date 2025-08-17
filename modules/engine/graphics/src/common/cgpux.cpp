@@ -10,7 +10,7 @@ void CGPUXBindTableValue::Initialize(const CGPUXBindTableLocation& loc, const CG
     data = rhs;
     data.name = nullptr;
     data.binding = loc.binding;
-    data.binding_type = rhs.binding_type;
+    data.view_usage = rhs.view_usage;
     binded = false;
     resources.resize_default(data.count);
     for (uint32_t i = 0; i < data.count; i++)
@@ -395,7 +395,7 @@ skr_hash equal_to<CGPUDescriptorData>::operator()(const CGPUDescriptorData& a, c
 
     if (a.binding != b.binding) 
         return false;
-    if (a.binding_type != b.binding_type) 
+    if (a.view_usage != b.view_usage) 
         return false;
     if (a.count != b.count) 
         return false;

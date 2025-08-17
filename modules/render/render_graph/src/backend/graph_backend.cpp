@@ -55,7 +55,7 @@ void RenderGraphFrameExecutor::commit(CGPUQueueId gfx_queue, uint64_t frame_inde
     exec_frame = frame_index;
 }
 
-void RenderGraphFrameExecutor::reset_begin(TextureViewPool& texture_view_pool)
+void RenderGraphFrameExecutor::reset_begin()
 {
     {
         SkrZoneScopedN("ResetBindTables");
@@ -71,16 +71,6 @@ void RenderGraphFrameExecutor::reset_begin(TextureViewPool& texture_view_pool)
         {
             merged_table_pool.second->reset();
         }
-    }
-
-    {
-        SkrZoneScopedN("ResetAliasingBinds");
-        for (auto aliasing_texture : aliasing_textures)
-        {
-            texture_view_pool.erase(aliasing_texture);
-            cgpu_free_texture(aliasing_texture);
-        }
-        aliasing_textures.clear();
     }
 
     {
@@ -162,10 +152,6 @@ void RenderGraphFrameExecutor::finalize()
         pool->destroy();
         SkrDelete(pool);
     }
-    for (auto aliasing_tex : aliasing_textures)
-    {
-        cgpu_free_texture(aliasing_tex);
-    }
     if (marker_buffer)
         cgpu_free_buffer(marker_buffer);
 }
@@ -229,6 +215,7 @@ void RenderGraphBackend::initialize() SKR_NOEXCEPT
     buffer_pool.initialize(device);
     texture_pool.initialize(device);
     texture_view_pool.initialize(device);
+    buffer_view_pool.initialize(device);
 }
 
 void RenderGraphBackend::finalize() SKR_NOEXCEPT
@@ -239,6 +226,7 @@ void RenderGraphBackend::finalize() SKR_NOEXCEPT
         executors[i].finalize();
     }
     buffer_pool.finalize();
+    buffer_view_pool.finalize();
     texture_pool.finalize();
     texture_view_pool.finalize();
 }

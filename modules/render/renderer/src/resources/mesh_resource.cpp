@@ -284,14 +284,13 @@ ESkrInstallStatus MeshFactoryImpl::InstallImpl(SResourceRecord* record)
                 auto&& thisFuture = dRequest->dFutures[i];
                 auto&& thisDestination = dRequest->dBuffers[i];
 
-                CGPUResourceTypes flags = CGPU_RESOURCE_TYPE_NONE;
-                flags |= thisBin.used_with_index ? CGPU_BUFFER_USAGE_INDEX_BUFFER : 0;
-                flags |= thisBin.used_with_vertex ? CGPU_BUFFER_USAGE_VERTEX_BUFFER : 0;
+                CGPUBufferUsages usages = CGPU_BUFFER_USAGE_NONE;
+                usages |= thisBin.used_with_index ? CGPU_BUFFER_USAGE_INDEX_BUFFER : 0;
+                usages |= thisBin.used_with_vertex ? CGPU_BUFFER_USAGE_VERTEX_BUFFER : 0;
 
                 CGPUBufferDescriptor bdesc = {};
-                bdesc.descriptors = flags;
+                bdesc.usages = usages;
                 bdesc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
-                bdesc.flags = CGPU_BUFFER_FLAG_NO_DESCRIPTOR_VIEW_CREATION;
                 bdesc.size = thisBin.byte_length;
                 bdesc.name = nullptr; // TODO: set name
 
