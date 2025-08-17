@@ -45,5 +45,11 @@ public static class CGPUSamples
             .Depend(Visibility.Private, "AppSampleCommon")
             .IncludeDirs(Visibility.Private, "./../../common")
             .AddCFiles("texture/tiled_texture.c");
+
+        Engine.Program("CGPUBindlessTexture")
+            .Depend(Visibility.Public, "SkrRT")
+            .Depend(Visibility.Private, "AppSampleCommon")
+            .IncludeDirs(Visibility.Private, "./../../common")
+            .AddCFiles("texture/bindless_texture.c");
     }
 }

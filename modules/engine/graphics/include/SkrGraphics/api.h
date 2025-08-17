@@ -1739,6 +1739,7 @@ typedef struct CGPUSampler {
 } CGPUSampler;
 
 typedef struct CGPUDescriptorBufferElement {
+    uint32_t index;
     ECGPUResourceType resource_type;
     union
     {

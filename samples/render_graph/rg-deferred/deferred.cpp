@@ -186,7 +186,7 @@ struct RenderGraphDeferredModule : public skr::IDynamicModule {
     virtual int main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
 };
-IMPLEMENT_DYNAMIC_MODULE(RenderGraphDeferredModule, RenderGraphDeferred);
+IMPLEMENT_DYNAMIC_MODULE(RenderGraphDeferredModule, RenderGraphDeferredSample);
 
 void RenderGraphDeferredModule::on_load(int argc, char8_t** argv)
 {
@@ -486,7 +486,7 @@ int main(int argc, char* argv[])
         FrameMark;
         SkrZoneScopedN("Initialize");
         moduleManager->mount(root.string().c_str());
-        moduleManager->make_module_graph(u8"RenderGraphDeferred", true);
+        moduleManager->make_module_graph(u8"RenderGraphDeferredSample", true);
         moduleManager->init_module_graph(argc, argv);
         moduleManager->destroy_module_graph();
     }

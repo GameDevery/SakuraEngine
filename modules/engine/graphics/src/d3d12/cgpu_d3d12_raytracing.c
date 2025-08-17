@@ -206,8 +206,10 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
             .Format = DXGI_FORMAT_UNKNOWN,
             .RaytracingAccelerationStructure.Location = pASBuffer->mDxGpuAddress
         };
-        D3D12_CPU_DESCRIPTOR_HANDLE SRV = { pASBufferView->mDxDescriptorHandles.ptr + pASBufferView->mDxRawSrvOffset };
-        D3D12Util_CreateSRV(D, CGPU_NULLPTR, &srvDesc, &SRV);
+        DxDescriptorId srvId = pASBufferView->mDescriptorStartInCpuHeap + pASBufferView->mDxRawSrvOffset;
+        D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = D3D12Util_DescriptorIdToCpuHandle(
+            D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], srvId);
+        COM_CALL(CreateShaderResourceView, D->pDxDevice, CGPU_NULLPTR, &srvDesc, srvHandle);
 
         AS->super.scratch_buffer_size = (UINT)info.ScratchDataSizeInBytes;
         SkrCZoneEnd(zz);

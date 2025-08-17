@@ -49,34 +49,31 @@ void D3D12Util_RecordAdapterDetail(struct CGPUAdapter_D3D12* D3D12Adapter);
 // Descriptor Heap Helpers
 
 /// CPU Visible Heap to store all the resources needing CPU read / write operations - Textures/Buffers/RTV
-typedef struct D3D12Util_DescriptorHandle
-{
-    D3D12_CPU_DESCRIPTOR_HANDLE mCpu;
-    D3D12_GPU_DESCRIPTOR_HANDLE mGpu;
-} D3D12Util_DescriptorHandle;
 
 typedef struct D3D12Util_DescriptorHeap D3D12Util_DescriptorHeap;
 CGPU_EXTERN_C void D3D12Util_CreateDescriptorHeap(ID3D12Device* pDevice, const D3D12_DESCRIPTOR_HEAP_DESC* pDesc, D3D12Util_DescriptorHeap** ppDescHeap);
 CGPU_EXTERN_C void D3D12Util_ResetDescriptorHeap(D3D12Util_DescriptorHeap* pHeap);
 CGPU_EXTERN_C void D3D12Util_FreeDescriptorHeap(D3D12Util_DescriptorHeap* pHeap);
 
-CGPU_EXTERN_C D3D12Util_DescriptorHandle D3D12Util_ConsumeDescriptorHandles(D3D12Util_DescriptorHeap* pHeap, uint32_t count);
-CGPU_EXTERN_C void D3D12Util_ReturnDescriptorHandles(D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE handle, uint32_t count);
-CGPU_EXTERN_C void D3D12Util_CopyDescriptorHandle(D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE srcHandle, uint64_t dstHandle, uint32_t index);
+CGPU_EXTERN_C DxDescriptorId D3D12Util_ConsumeDescriptorHandles(D3D12Util_DescriptorHeap* pHeap, uint32_t count);
+CGPU_EXTERN_C void D3D12Util_ReturnDescriptorHandles(D3D12Util_DescriptorHeap* pHeap, DxDescriptorId handle, uint32_t count);
+CGPU_EXTERN_C void D3D12Util_CopyDescriptorHandle(D3D12Util_DescriptorHeap* pSrcHeap, DxDescriptorId srcId, D3D12Util_DescriptorHeap* pDstHeap, uint32_t dstId);
+CGPU_EXTERN_C D3D12_CPU_DESCRIPTOR_HANDLE D3D12Util_DescriptorIdToCpuHandle(D3D12Util_DescriptorHeap* pHeap, DxDescriptorId index);
+CGPU_EXTERN_C D3D12_GPU_DESCRIPTOR_HANDLE D3D12Util_DescriptorIdToGpuHandle(D3D12Util_DescriptorHeap* pHeap, DxDescriptorId index);
 
-CGPU_EXTERN_C D3D12Util_DescriptorHandle D3D12Util_GetStartHandle(const D3D12Util_DescriptorHeap* pHeap);
 CGPU_EXTERN_C ID3D12DescriptorHeap* D3D12Util_GetUnderlyingHeap(const D3D12Util_DescriptorHeap* pHeap);
 CGPU_EXTERN_C size_t D3D12Util_GetDescriptorSize(const D3D12Util_DescriptorHeap* pHeap);
 
-CGPU_EXTERN_C void D3D12Util_CreateSRV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
-CGPU_EXTERN_C void D3D12Util_CreateUAV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, ID3D12Resource* pCounterResource, const D3D12_UNORDERED_ACCESS_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
-CGPU_EXTERN_C void D3D12Util_CreateCBV(CGPUDevice_D3D12* D, const D3D12_CONSTANT_BUFFER_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
-CGPU_EXTERN_C void D3D12Util_CreateRTV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, const D3D12_RENDER_TARGET_VIEW_DESC* pRtvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
-CGPU_EXTERN_C void D3D12Util_CreateDSV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, const D3D12_DEPTH_STENCIL_VIEW_DESC* pDsvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
-CGPU_EXTERN_C void D3D12Util_CreateSRVForBufferView(D3D12_CPU_DESCRIPTOR_HANDLE srv, ECGPUViewUsage view_usage, const CGPUBufferViewDescriptor* desc);
-CGPU_EXTERN_C void D3D12Util_CreateUAVForBufferView(D3D12_CPU_DESCRIPTOR_HANDLE uav, ECGPUViewUsage view_usage, const CGPUBufferViewDescriptor* desc);
-CGPU_EXTERN_C void D3D12Util_CreateSRVForTextureView(D3D12_CPU_DESCRIPTOR_HANDLE srv, const CGPUTextureViewDescriptor* desc);
-CGPU_EXTERN_C void D3D12Util_CreateUAVForTextureView(D3D12_CPU_DESCRIPTOR_HANDLE uav, const CGPUTextureViewDescriptor* desc);
+CGPU_EXTERN_C void D3D12Util_ConsumeSRV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC* pSrvDesc, DxDescriptorId* pId);
+CGPU_EXTERN_C void D3D12Util_ConsumeUAV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, ID3D12Resource* pCounterResource, const D3D12_UNORDERED_ACCESS_VIEW_DESC* pSrvDesc, DxDescriptorId* pId);
+CGPU_EXTERN_C void D3D12Util_ConsumeCBV(CGPUDevice_D3D12* D, const D3D12_CONSTANT_BUFFER_VIEW_DESC* pSrvDesc, DxDescriptorId* pId);
+CGPU_EXTERN_C void D3D12Util_ConsumeRTV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, const D3D12_RENDER_TARGET_VIEW_DESC* pRtvDesc, DxDescriptorId* pId);
+CGPU_EXTERN_C void D3D12Util_ConsumeDSV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, const D3D12_DEPTH_STENCIL_VIEW_DESC* pDsvDesc, DxDescriptorId* pId);
+CGPU_EXTERN_C void D3D12Util_CreateCBVForBufferView(DxDescriptorId cbv, const CGPUBufferViewDescriptor* desc);
+CGPU_EXTERN_C void D3D12Util_CreateSRVForBufferView(DxDescriptorId srv, ECGPUViewUsage view_usage, const CGPUBufferViewDescriptor* desc);
+CGPU_EXTERN_C void D3D12Util_CreateUAVForBufferView(DxDescriptorId uav, ECGPUViewUsage view_usage, const CGPUBufferViewDescriptor* desc);
+CGPU_EXTERN_C void D3D12Util_CreateSRVForTextureView(DxDescriptorId srv, const CGPUTextureViewDescriptor* desc);
+CGPU_EXTERN_C void D3D12Util_CreateUAVForTextureView(DxDescriptorId uav, const CGPUTextureViewDescriptor* desc);
 
 CGPU_EXTERN_C void D3D12Util_SyncDescriptorBuffer(CGPUDescriptorBufferId buffer);
 

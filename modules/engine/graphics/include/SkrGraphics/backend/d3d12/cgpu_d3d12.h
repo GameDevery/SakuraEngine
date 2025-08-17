@@ -10,14 +10,13 @@
 
 #define D3D12_GPU_VIRTUAL_ADDRESS_NULL ((D3D12_GPU_VIRTUAL_ADDRESS)0)
 #define D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN ((D3D12_GPU_VIRTUAL_ADDRESS)-1)
-#define D3D12_DESCRIPTOR_ID_NONE (D3D12_CPU_DESCRIPTOR_HANDLE{(size_t)~0})
+#define D3D12_DESCRIPTOR_ID_NONE ((int32_t)~0)
 
 CGPU_EXTERN_C_BEGIN
 
 struct DMA_Allocator;
 struct DMA_Pool;
 struct DMA_Allocation;
-struct D3D12Util_DescriptorHandle;
 struct D3D12Util_DescriptorHeap;
 typedef struct CGPUAccelerationStructure_D3D12 CGPUAccelerationStructure_D3D12;
 
@@ -216,13 +215,15 @@ typedef struct CGPUAdapter_D3D12 {
     uint8_t mRayTracingTier;
 } CGPUAdapter_D3D12;
 
+typedef int32_t DxDescriptorId; 
+
 typedef struct CGPUEmptyDescriptors_D3D12 {
-    D3D12_CPU_DESCRIPTOR_HANDLE Sampler;
-    D3D12_CPU_DESCRIPTOR_HANDLE TextureSRV[CGPU_TEXTURE_DIMENSION_COUNT];
-    D3D12_CPU_DESCRIPTOR_HANDLE TextureUAV[CGPU_TEXTURE_DIMENSION_COUNT];
-    D3D12_CPU_DESCRIPTOR_HANDLE BufferSRV;
-    D3D12_CPU_DESCRIPTOR_HANDLE BufferUAV;
-    D3D12_CPU_DESCRIPTOR_HANDLE BufferCBV;
+    DxDescriptorId Sampler;
+    DxDescriptorId TextureSRV[CGPU_TEXTURE_DIMENSION_COUNT];
+    DxDescriptorId TextureUAV[CGPU_TEXTURE_DIMENSION_COUNT];
+    DxDescriptorId BufferSRV;
+    DxDescriptorId BufferUAV;
+    DxDescriptorId BufferCBV;
 } CGPUEmptyDescriptors_D3D12;
 
 typedef struct CGPUDevice_D3D12 {
@@ -306,14 +307,15 @@ typedef struct CGPURootSignature_D3D12 {
 
 typedef struct CGPUDescriptorSet_D3D12 {
     CGPUDescriptorSet super;
+
     /// Start handle to cbv srv uav descriptor table
     uint64_t mCbvSrvUavHandle;
-    /// Stride of the cbv srv uav descriptor table (number of descriptors * descriptor size)
-    uint32_t mCbvSrvUavStride;
+    uint32_t mCbvSrvUavHandleCount;
+
     /// Start handle to sampler descriptor table
     uint64_t mSamplerHandle;
-    /// Stride of the sampler descriptor table (number of descriptors * descriptor size)
-    uint32_t mSamplerStride;
+    uint32_t mSamplerHandleCount;
+
     // TODO: Support root descriptors
     // D3D12_GPU_VIRTUAL_ADDRESS* pRootAddresses;
     // Raytracing
@@ -324,9 +326,9 @@ typedef struct CGPUDescriptorSet_D3D12 {
 typedef struct CGPUDescriptorBufferBase_D3D12 {
     CGPUDescriptorBuffer super;
     // CPU side descriptor storage (continuous block)
-    D3D12_CPU_DESCRIPTOR_HANDLE mCpuStartHandle; // CPU heap start handle
+    DxDescriptorId mCpuStartId; // CPU heap start handle
     // GPU side descriptor storage (continuous block)
-    D3D12_GPU_DESCRIPTOR_HANDLE mGpuStartHandle; // GPU heap start handle
+    DxDescriptorId mGpuStartId;
     // Descriptor info
     uint32_t mDescriptorCount; // Total descriptor count
     uint32_t mDescriptorSize;  // Size of single descriptor
@@ -363,7 +365,7 @@ typedef struct CGPUBuffer_D3D12 {
 typedef struct CGPUBufferView_D3D12 {
     CGPUBufferView super;
     /// Descriptor handle of the CBV in a CPU visible descriptor heap (applicable to BUFFER_USAGE_UNIFORM)
-    D3D12_CPU_DESCRIPTOR_HANDLE mDxDescriptorHandles;
+    DxDescriptorId mDescriptorStartInCpuHeap;
     /// Offset from mDxDescriptors for srv descriptor handle
     uint8_t mDxRawSrvOffset;
     uint8_t mDxStructuredSrvOffset;
@@ -387,13 +389,13 @@ typedef struct CGPUTexture_D3D12 {
 
 typedef struct CGPUTextureView_D3D12 {
     CGPUTextureView super;
-    D3D12_CPU_DESCRIPTOR_HANDLE mDxDescriptorHandles;
+    DxDescriptorId mDescriptorStartInCpuHeap;
     /// Offset from mDxDescriptors for srv descriptor handle
     uint64_t mDxSrvOffset : 8;
     /// Offset from mDxDescriptors for uav descriptor handle
     uint64_t mDxUavOffset : 8;
     /// Offset from mDxDescriptors for rtv descriptor handle
-    D3D12_CPU_DESCRIPTOR_HANDLE mDxRtvDsvDescriptorHandle;
+    DxDescriptorId mDxRtvDsvDescriptorHandle;
 } CGPUTextureView_D3D12;
 
 typedef struct CGPUSampler_D3D12 {
@@ -401,7 +403,7 @@ typedef struct CGPUSampler_D3D12 {
     /// Description for creating the Sampler descriptor for this sampler
     D3D12_SAMPLER_DESC mDxDesc;
     /// Descriptor handle of the Sampler in a CPU visible descriptor heap
-    D3D12_CPU_DESCRIPTOR_HANDLE mDxHandle;
+    DxDescriptorId mDxHandle;
 } CGPUSampler_D3D12;
 
 typedef struct CGPUSwapChain_D3D12 {

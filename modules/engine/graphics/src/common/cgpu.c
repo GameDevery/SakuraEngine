@@ -347,6 +347,63 @@ void cgpu_free_descriptor_set(CGPUDescriptorSetId set)
     SkrCZoneEnd(zz);
 }
 
+// Descriptor Buffer APIs
+CGPUDescriptorBufferId cgpu_create_descriptor_buffer(CGPUDeviceId device, const struct CGPUDescriptorBufferDescriptor* desc)
+{
+    SkrCZoneN(zz, "CGPUCreateDescriptorBuffer", 1);
+    
+    cgpu_assert(device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    cgpu_assert(device->proc_table_cache->create_descriptor_buffer && "create_descriptor_buffer Proc Missing!");
+    CGPUDescriptorBuffer* buffer = (CGPUDescriptorBuffer*)device->proc_table_cache->create_descriptor_buffer(device, desc);
+    buffer->device = device;
+    
+    SkrCZoneEnd(zz);
+    
+    return buffer;
+}
+
+void cgpu_update_descriptor_buffer(CGPUDescriptorBufferId buffer, const struct CGPUDescriptorBufferElement* elements, uint32_t count)
+{
+    SkrCZoneN(zz, "CGPUUpdateDescriptorBuffer", 1);
+    
+    cgpu_assert(buffer != CGPU_NULLPTR && "fatal: call on NULL descriptor buffer!");
+    const CGPUDeviceId device = buffer->device;
+    cgpu_assert(device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    cgpu_assert(device->proc_table_cache->update_descriptor_buffer && "update_descriptor_buffer Proc Missing!");
+    
+    device->proc_table_cache->update_descriptor_buffer(buffer, elements, count);
+    
+    SkrCZoneEnd(zz);
+}
+
+void cgpu_copy_descriptor_buffer(CGPUDescriptorBufferId src, CGPUDescriptorBufferId dest, CGPUBufferRange src_range, CGPUBufferRange dst_range)
+{
+    SkrCZoneN(zz, "CGPUCopyDescriptorBuffer", 1);
+    
+    cgpu_assert(src != CGPU_NULLPTR && "fatal: call on NULL src descriptor buffer!");
+    cgpu_assert(dest != CGPU_NULLPTR && "fatal: call on NULL dest descriptor buffer!");
+    const CGPUDeviceId device = src->device;
+    cgpu_assert(device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    cgpu_assert(device->proc_table_cache->copy_descriptor_buffer && "copy_descriptor_buffer Proc Missing!");
+    
+    device->proc_table_cache->copy_descriptor_buffer(src, dest, src_range, dst_range);
+    
+    SkrCZoneEnd(zz);
+}
+
+void cgpu_free_descriptor_buffer(CGPUDescriptorBufferId buffer)
+{
+    SkrCZoneN(zz, "CGPUFreeDescriptorBuffer", 1);
+    
+    cgpu_assert(buffer != CGPU_NULLPTR && "fatal: call on NULL descriptor buffer!");
+    const CGPUDeviceId device = buffer->device;
+    cgpu_assert(device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    cgpu_assert(device->proc_table_cache->free_descriptor_buffer && "free_descriptor_buffer Proc Missing!");
+    device->proc_table_cache->free_descriptor_buffer(buffer);
+    
+    SkrCZoneEnd(zz);
+}
+
 CGPUComputePipelineId cgpu_create_compute_pipeline(CGPUDeviceId device, const struct CGPUComputePipelineDescriptor* desc)
 {
     SkrCZoneN(zz, "CGPUCreatePSO(C)", 1);
