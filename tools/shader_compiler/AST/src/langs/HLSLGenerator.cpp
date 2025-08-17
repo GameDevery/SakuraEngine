@@ -23,7 +23,7 @@ static const std::unordered_map<SemanticType, String> SystemValueMap = {
     { SemanticType::Position, L"SV_Position" },
     { SemanticType::ClipDistance, L"SV_ClipDistance" },
     { SemanticType::CullDistance, L"SV_CullDistance" },
-    
+
     { SemanticType::RenderTarget0, L"SV_Target0" },
     { SemanticType::RenderTarget1, L"SV_Target1" },
     { SemanticType::RenderTarget2, L"SV_Target2" },
@@ -32,32 +32,32 @@ static const std::unordered_map<SemanticType, String> SystemValueMap = {
     { SemanticType::RenderTarget5, L"SV_Target5" },
     { SemanticType::RenderTarget6, L"SV_Target6" },
     { SemanticType::RenderTarget7, L"SV_Target7" },
-    
+
     { SemanticType::Depth, L"SV_Depth" },
     { SemanticType::DepthGreaterEqual, L"SV_DepthGreaterEqual" },
     { SemanticType::DepthLessEqual, L"SV_DepthLessEqual" },
     { SemanticType::StencilRef, L"SV_StencilRef" },
-    
+
     { SemanticType::VertexID, L"SV_VertexID" },
     { SemanticType::InstanceID, L"SV_InstanceID" },
-    
+
     { SemanticType::GSInstanceID, L"SV_GSInstanceID" },
     { SemanticType::TessFactor, L"SV_TessFactor" },
     { SemanticType::InsideTessFactor, L"SV_InsideTessFactor" },
     { SemanticType::DomainLocation, L"SV_DomainLocation" },
     { SemanticType::ControlPointID, L"SV_ControlPointID" },
-    
+
     { SemanticType::PrimitiveID, L"SV_PrimitiveID" },
     { SemanticType::IsFrontFace, L"SV_IsFrontFace" },
     { SemanticType::SampleIndex, L"SV_SampleIndex" },
     { SemanticType::SampleMask, L"SV_Coverage" },
     { SemanticType::Barycentrics, L"SV_Barycentrics" },
-    
+
     { SemanticType::ThreadID, L"SV_DispatchThreadID" },
     { SemanticType::GroupID, L"SV_GroupID" },
     { SemanticType::ThreadPositionInGroup, L"SV_GroupThreadID" },
     { SemanticType::ThreadIndexInGroup, L"SV_GroupIndex" },
-    
+
     { SemanticType::ViewID, L"SV_ViewID" }
 };
 static const String UnknownSystemValue = L"UnknownSystemValue";
@@ -148,8 +148,12 @@ void HLSLGenerator::VisitAccessExpr(SourceBuilderNew& sb, const AccessExpr* expr
     auto to_access = dynamic_cast<const Expr*>(expr->children()[0]);
     auto index = dynamic_cast<const Expr*>(expr->children()[1]);
     visitStmt(sb, to_access);
-    if (to_access->type()->is_array())
+
+    auto asRef = dynamic_cast<const DeclRefExpr*>(to_access);
+    const bool isGlobalResourceBind = asRef && FindAttr<ResourceBindAttr>(asRef->decl()->attrs());
+    if (!isGlobalResourceBind && to_access->type()->is_array())
         sb.append(L".data");
+
     sb.append(L"[");
     visitStmt(sb, index);
     sb.append(L"]");
@@ -157,49 +161,70 @@ void HLSLGenerator::VisitAccessExpr(SourceBuilderNew& sb, const AccessExpr* expr
 
 void HLSLGenerator::VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var)
 {
-    if (auto asResource = dynamic_cast<const ResourceTypeDecl*>(&var->type()))
+    // Handle array of resources - need C-style array syntax
+    String typeName = GetTypeName(&var->type());
+    String varName = var->name();
+    String arrayDimensions = L"";
+    // Check if this is an array type
+    const TypeDecl* asResource = &var->type();
+    while (auto asArray = dynamic_cast<const ArrayTypeDecl*>(asResource))
     {
-        String content = GetTypeName(&var->type()) + L" " + var->name();
-        if (const auto pushConstant = FindAttr<PushConstantAttr>(var->attrs()))
-        {
-            sb.append(L"[[vk::push_constant]]");
-            sb.endline();
-        }
+        // Get the element type
+        asResource = asArray->element();
 
-        String vk_binding = L"";
-        String reg_info = L"";
-        if (const auto resourceBind = FindAttr<ResourceBindAttr>(var->attrs()))
+        // Collect array dimensions for C-style syntax
+        if (asArray->count() > 0)
+            arrayDimensions += L"[" + std::to_wstring(asArray->count()) + L"]";
+        else
+            arrayDimensions += L"[]"; // Unbounded array
+
+        // Update typeName to be the base element type
+        if (auto elementResource = dynamic_cast<const ResourceTypeDecl*>(asResource))
         {
-            const auto R = GetResourceRegisterCharacter(asResource);
-            const auto binding = resourceBind->binding();
-            const auto group = resourceBind->group();
-            if (binding != ~0)
+            typeName = GetTypeName(asResource);
+        }
+    }
+    String content = typeName + L" " + varName + arrayDimensions;
+
+    if (const auto pushConstant = FindAttr<PushConstantAttr>(var->attrs()))
+    {
+        sb.append(L"[[vk::push_constant]]");
+        sb.endline();
+    }
+
+    String vk_binding = L"";
+    String reg_info = L"";
+    if (const auto resourceBind = FindAttr<ResourceBindAttr>(var->attrs()))
+    {
+        const auto R = GetResourceRegisterCharacter(dynamic_cast<const ResourceTypeDecl*>(asResource));
+        const uint32_t binding = resourceBind->binding();
+        const uint32_t group = resourceBind->group();
+        if (binding != ~0)
+        {
+            if (group != ~0)
             {
-                if (group != ~0)
-                {
-                    vk_binding = std::format(L"[[vk::binding({}, {})]]", binding, group);
-                    reg_info = std::format(L"register({}{}, space{})", R, binding, group);
-                }
-                else
-                {
-                    vk_binding = std::format(L"[[vk::binding({}, {})]]", binding, 0);
-                    reg_info = std::format(L"register({}{})", R, binding);
-                }
+                vk_binding = std::format(L"[[vk::binding({}, {})]]", binding, group);
+                reg_info = std::format(L"register({}{}, space{})", R, binding, group);
+            }
+            else
+            {
+                vk_binding = std::format(L"[[vk::binding({}, {})]]", binding, 0);
+                reg_info = std::format(L"register({}{})", R, binding);
             }
         }
-
-        if (!vk_binding.empty())
-        {
-            sb.append(vk_binding);
-            sb.endline();
-        }
-        sb.append(content);
-        if (!reg_info.empty())
-        {
-            sb.append(L": " + reg_info);
-        }
-        sb.endline(L';');
     }
+
+    if (!vk_binding.empty())
+    {
+        sb.append(vk_binding);
+        sb.endline();
+    }
+    sb.append(content);
+    if (!reg_info.empty())
+    {
+        sb.append(L": " + reg_info);
+    }
+    sb.endline(L';');
 }
 
 void HLSLGenerator::VisitBinaryExpr(SourceBuilderNew& sb, const BinaryExpr* binary)
@@ -550,7 +575,7 @@ void HLSLGenerator::GenerateArrayHelpers(SourceBuilderNew& sb, const AST& ast)
     for (auto&& [element, array] : ast.array_types())
     {
         const auto N = array->size() / element.first->size();
-        if (!array_dims.contains(N))
+        if (N != 0 && !array_dims.contains(N))
         {
             String args = L"";
             String exprs = L"";
@@ -558,14 +583,23 @@ void HLSLGenerator::GenerateArrayHelpers(SourceBuilderNew& sb, const AST& ast)
             {
                 if (i > 0)
                     args += L", ";
-                args += L"T a" + std::to_wstring(i) + L" = (T)0";
+                args += L"T a" + std::to_wstring(i);
                 exprs += L"a.data[" + std::to_wstring(i) + L"] = a" + std::to_wstring(i) + L";";
             }
-            String _template = L"template <typename T, uint64_t N> array<T, N>";
-            auto _signature = L"make_array" + std::to_wstring(N) + L"(" + args + L")";
-            auto impl = L"{ array<T, N> a; " + exprs + L"; return a; }";
-            sb.append(_template + L" " + _signature + L" " + impl);
-            sb.endline();
+            {
+                String _template = L"template <typename T, uint64_t N> array<T, N>";
+                auto _signature = L"make_array" + std::to_wstring(N) + L"(" + args + L")";
+                auto impl = L"{ array<T, N> a; " + exprs + L"; return a; }";
+                sb.append(_template + L" " + _signature + L" " + impl);
+                sb.endline();
+            }
+            {
+                String _template = L"template <typename T, uint64_t N> array<T, N>";
+                auto _signature = L"make_array" + std::to_wstring(N) + L"()";
+                auto impl = L"{ array<T, N> a; return a; }";
+                sb.append(_template + L" " + _signature + L" " + impl);
+                sb.endline();
+            }
 
             array_dims.insert(N);
         }

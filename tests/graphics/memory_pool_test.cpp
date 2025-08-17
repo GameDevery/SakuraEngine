@@ -26,7 +26,7 @@ void test_linear_memory_pool(CGPUDeviceId device)
     // 创建一个使用内存池的缓冲区
     CGPUBufferDescriptor bufferDesc = {};
     bufferDesc.size = 1024 * 1024; // 1MB
-    bufferDesc.descriptors = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
+    bufferDesc.descriptors = CGPU_BUFFER_USAGE_VERTEX_BUFFER;
     bufferDesc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
     bufferDesc.memory_pool = gpuPool; // 使用内存池
     bufferDesc.name = u8"Vertex Buffer from Pool";
@@ -96,7 +96,7 @@ void test_upload_memory_pool(CGPUDeviceId device)
         bufferDesc.descriptors = CGPU_RESOURCE_TYPE_NONE;
         bufferDesc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
         bufferDesc.memory_pool = uploadPool; // 使用内存池
-        bufferDesc.flags = CGPU_BCF_PERSISTENT_MAP_BIT; // 持久映射
+        bufferDesc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT; // 持久映射
         
         char name[64];
         sprintf(name, "Upload Buffer %d", i);

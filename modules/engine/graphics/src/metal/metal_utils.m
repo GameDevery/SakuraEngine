@@ -72,15 +72,15 @@ NSArray<id<MTLDevice>>* MetalUtil_GetAvailableMTLDeviceArray()
 }
 
 static const ECGPUTextureDimension gTexDimLUT[] = {
-    CGPU_TEX_DIMENSION_1D,        // MTLTextureType1D
-    CGPU_TEX_DIMENSION_UNDEFINED, // MTLTextureType1DArray
-    CGPU_TEX_DIMENSION_2D,        // MTLTextureType2D
-    CGPU_TEX_DIMENSION_UNDEFINED, // MTLTextureType2DArray
-    CGPU_TEX_DIMENSION_2DMS,      // MTLTextureType2DMultisample
-    CGPU_TEX_DIMENSION_CUBE,      // MTLTextureTypeCube
-    CGPU_TEX_DIMENSION_UNDEFINED, // MTLTextureTypeCubeArray
-    CGPU_TEX_DIMENSION_3D,        // MTLTextureType3D
-    CGPU_TEX_DIMENSION_UNDEFINED, // MTLTextureType2DMultisampleArray
+    CGPU_TEXTURE_DIMENSION_1D,        // MTLTextureType1D
+    CGPU_TEXTURE_DIMENSION_UNDEFINED, // MTLTextureType1DArray
+    CGPU_TEXTURE_DIMENSION_2D,        // MTLTextureType2D
+    CGPU_TEXTURE_DIMENSION_UNDEFINED, // MTLTextureType2DArray
+    CGPU_TEXTURE_DIMENSION_2DMS,      // MTLTextureType2DMultisample
+    CGPU_TEXTURE_DIMENSION_CUBE,      // MTLTextureTypeCube
+    CGPU_TEXTURE_DIMENSION_UNDEFINED, // MTLTextureTypeCubeArray
+    CGPU_TEXTURE_DIMENSION_3D,        // MTLTextureType3D
+    CGPU_TEXTURE_DIMENSION_UNDEFINED, // MTLTextureType2DMultisampleArray
 };
 
 static const MTLResourceOptions gResourceOptionsLUT[VK_MAX_MEMORY_TYPES] = {
@@ -99,15 +99,15 @@ MTLTextureType MetalUtil_TextureDimensionToType(ECGPUTextureDimension dim)
 {
     switch (dim)
     {
-    case CGPU_TEX_DIMENSION_1D:
+    case CGPU_TEXTURE_DIMENSION_1D:
         return MTLTextureType1D;
-    case CGPU_TEX_DIMENSION_2D:
+    case CGPU_TEXTURE_DIMENSION_2D:
         return MTLTextureType2D;
-    case CGPU_TEX_DIMENSION_3D:
+    case CGPU_TEXTURE_DIMENSION_3D:
         return MTLTextureType3D;
-    case CGPU_TEX_DIMENSION_CUBE:
+    case CGPU_TEXTURE_DIMENSION_CUBE:
         return MTLTextureTypeCube;
-    case CGPU_TEX_DIMENSION_2DMS:
+    case CGPU_TEXTURE_DIMENSION_2DMS:
         return MTLTextureType2DMultisample;
     default:
         SKR_ASSERT(false && "Unsupported texture dimension");
@@ -147,7 +147,7 @@ ECGPUResourceType MetalUtil_GetResourceType(MTLStructType* structure, ECGPUTextu
             MTLTextureReferenceType* TexType = structure.members[0].textureReferenceType;
             r = (TexType.access == MTLBindingAccessReadOnly) ? CGPU_RESOURCE_TYPE_TEXTURE : CGPU_RESOURCE_TYPE_RW_TEXTURE;
             *dim = gTexDimLUT[TexType.textureType];
-            SKR_ASSERT(*dim != CGPU_TEX_DIMENSION_UNDEFINED);
+            SKR_ASSERT(*dim != CGPU_TEXTURE_DIMENSION_UNDEFINED);
         }
         else if (T == MTLDataTypeSampler)
             r = CGPU_RESOURCE_TYPE_SAMPLER;
@@ -177,7 +177,7 @@ ECGPUResourceType MetalUtil_GetShaderResourceType(id<MTLBufferBinding> SRT, uint
     MTLPointerType* pointerType = member.pointerType;
     const bool is_array = (arrayType != nil) || (pointerType != nil);
     ECGPUResourceType resource_type = CGPU_RESOURCE_TYPE_NONE;
-    resource->dim = CGPU_TEX_DIMENSION_UNDEFINED;
+    resource->dim = CGPU_TEXTURE_DIMENSION_UNDEFINED;
     resource->set = set;
     resource->binding = member.argumentIndex;
     resource->name = MetalUtil_DuplicateString(member.name.UTF8String);

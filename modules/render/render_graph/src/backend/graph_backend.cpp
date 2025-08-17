@@ -39,7 +39,7 @@ void RenderGraphFrameExecutor::initialize(CGPUQueueId gfx_queue, CGPUDeviceId de
 
     CGPUBufferDescriptor marker_buffer_desc = {};
     marker_buffer_desc.name = u8"MarkerBuffer";
-    marker_buffer_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
+    marker_buffer_desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
     marker_buffer_desc.memory_usage = CGPU_MEM_USAGE_GPU_TO_CPU;
     marker_buffer_desc.size = 1024 * sizeof(uint32_t);
     marker_buffer = cgpu_create_buffer(device, &marker_buffer_desc);

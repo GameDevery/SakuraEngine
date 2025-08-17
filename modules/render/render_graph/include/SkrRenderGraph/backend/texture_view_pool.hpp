@@ -27,9 +27,9 @@ public:
         CGPUDeviceId           device            = nullptr;
         CGPUTextureId          texture           = nullptr;
         ECGPUFormat            format            = CGPU_FORMAT_UNDEFINED;
-        CGPUTexutreViewUsages  usages            = 0;
+        CGPUTextureViewUsages  usages            = 0;
         CGPUTextureViewAspects aspects           = 0;
-        ECGPUTextureDimension  dims              = CGPU_TEX_DIMENSION_2D;
+        ECGPUTextureDimension  dims              = CGPU_TEXTURE_DIMENSION_2D;
         uint32_t               base_array_layer  = 0;
         uint32_t               array_layer_count = 0;
         uint32_t               base_mip_level    = 0;

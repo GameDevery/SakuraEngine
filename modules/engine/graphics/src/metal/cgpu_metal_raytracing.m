@@ -97,7 +97,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_metal(CGPUDeviceI
         MTLInstanceAccelerationStructureDescriptor* asDesc = [MTLInstanceAccelerationStructureDescriptor descriptor];
         CGPUBufferDescriptor instanceDesc = {};
         instanceDesc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
-        instanceDesc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
+        instanceDesc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
         instanceDesc.size = sizeof(MTLAccelerationStructureInstanceDescriptor) * AS->descriptor_count;
         AS->instance_desc_buffer = cgpu_create_buffer(device, &instanceDesc);
 
@@ -141,7 +141,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_metal(CGPUDeviceI
     CGPUBufferDescriptor scratchBufferDesc = {};
     scratchBufferDesc.descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER;
     scratchBufferDesc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
-    scratchBufferDesc.flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION;
+    scratchBufferDesc.flags = CGPU_BUFFER_FLAG_NO_DESCRIPTOR_VIEW_CREATION;
     scratchBufferDesc.size = accelSizes.buildScratchBufferSize;
     AS->scratch_buffer = cgpu_create_buffer(device, &scratchBufferDesc);
     return &AS->super;

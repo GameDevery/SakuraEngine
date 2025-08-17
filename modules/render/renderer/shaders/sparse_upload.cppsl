@@ -1,5 +1,6 @@
 #include <std/std.hpp>
 #include <std2/constant_buffer.hpp>
+#include <std2/attributes.hpp>
 
 using namespace skr::shader;
 
@@ -12,9 +13,9 @@ struct Upload
 };
 
 // External resource bindings
-ByteAddressBuffer upload_buffer;     // Source data buffer
+ByteAddressBuffer upload_buffers[0];   // Source data buffer
 ByteAddressBuffer upload_operations; // Copy operations list
-RWByteAddressBuffer target_buffer;                         // Target buffer (Core Data)
+RWByteAddressBuffer target_buffer;   // Target buffer (Core Data)
 
 // Push constants
 struct SparseUploadConstants
@@ -26,10 +27,10 @@ struct SparseUploadConstants
 };
 
 [[push_constant]]
-extern ConstantBuffer<SparseUploadConstants>& constants;
+ConstantBuffer<SparseUploadConstants> constants;
 
 // Multi-threaded sparse upload - simplified but maintains parallelism
-[[compute_shader("sparse_upload"), kernel_1d(256)]]
+[[compute_shader("sparse_upload"), kernel_1d(256), dump]]
 void sparse_upload_main([[sv_thread_id]] uint3 thread_id)
 {
     uint global_thread_id = thread_id.x;
@@ -66,28 +67,28 @@ void sparse_upload_main([[sv_thread_id]] uint3 thread_id)
     if (remaining_bytes >= 16)
     {
         // Full 16-byte chunk
-        uint4 data = upload_buffer.Load4(src_offset);
+        uint4 data = upload_buffers[0].Load4(src_offset);
         target_buffer.Store4(dst_offset, data);
     }
     else if (remaining_bytes >= 8)
     {
         // 8-12 byte chunk
-        uint2 data = upload_buffer.Load2(src_offset);
+        uint2 data = upload_buffers[0].Load2(src_offset);
         target_buffer.Store2(dst_offset, data);
         if (remaining_bytes >= 12)
         {
-            uint extra = upload_buffer.Load(src_offset + 8);
+            uint extra = upload_buffers[0].Load(src_offset + 8);
             target_buffer.Store(dst_offset + 8, extra);
         }
     }
     else if (remaining_bytes >= 4)
     {
         // 4-7 byte chunk
-        uint data = upload_buffer.Load(src_offset);
+        uint data = upload_buffers[0].Load(src_offset);
         target_buffer.Store(dst_offset, data);
         if (remaining_bytes >= 8)
         {
-            uint extra = upload_buffer.Load(src_offset + 4);
+            uint extra = upload_buffers[0].Load(src_offset + 4);
             target_buffer.Store(dst_offset + 4, extra);
         }
     }

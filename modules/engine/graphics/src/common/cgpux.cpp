@@ -18,25 +18,6 @@ void CGPUXBindTableValue::Initialize(const CGPUXBindTableLocation& loc, const CG
         resources[i] = data.ptrs[i];
     }
     data.ptrs = resources.data();
-
-    if (data.buffers_params.offsets)
-    {
-        offsets.resize_default(data.count);
-        for (uint32_t i = 0; i < data.count; i++)
-        {
-            offsets[i] = data.buffers_params.offsets[i];
-        }
-        data.buffers_params.offsets = offsets.data();
-    }
-    if (data.buffers_params.sizes)
-    {
-        sizes.resize_default(data.count);
-        for (uint32_t i = 0; i < data.count; i++)
-        {
-            sizes[i] = data.buffers_params.sizes[i];
-        }
-        data.buffers_params.sizes = sizes.data();
-    }
 }
 
 CGPUXBindTableId CGPUXBindTable::Create(CGPUDeviceId device, const struct CGPUXBindTableDescriptor* desc) SKR_NOEXCEPT
@@ -422,27 +403,6 @@ skr_hash equal_to<CGPUDescriptorData>::operator()(const CGPUDescriptorData& a, c
     {
         if (a.ptrs[i] != b.ptrs[i]) 
             return false;
-    }
-    // extra parameters
-    if (a.buffers_params.offsets)
-    {
-        if (!b.buffers_params.offsets) 
-            return false;
-        for (uint32_t i = 0; i < a.count; i++)
-        {
-            if (a.buffers_params.offsets[i] != b.buffers_params.offsets[i]) 
-                return false;
-        }
-    }
-    if (a.buffers_params.sizes)
-    {
-        if (a.buffers_params.sizes) 
-            return false;
-        for (uint32_t i = 0; i < a.count; i++)
-        {
-            if (a.buffers_params.sizes[i] != b.buffers_params.sizes[i]) 
-                return false;
-        }
     }
     return true;
 }

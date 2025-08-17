@@ -116,8 +116,8 @@ void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, 
 
             auto vb_desc = make_zeroed<CGPUBufferDescriptor>();
             vb_desc.name = (const char8_t*)mesh_resource->name.c_str(); // TODO: buffer name
-            vb_desc.descriptors = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
-            vb_desc.flags = anim->use_dynamic_buffer ? CGPU_BCF_PERSISTENT_MAP_BIT : CGPU_BCF_NONE;
+            vb_desc.usages = CGPU_BUFFER_USAGE_VERTEX_BUFFER;
+            vb_desc.flags = anim->use_dynamic_buffer ? CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT : CGPU_BUFFER_FLAG_NONE;
             vb_desc.memory_usage = anim->use_dynamic_buffer ? CGPU_MEM_USAGE_CPU_TO_GPU : CGPU_MEM_USAGE_GPU_ONLY;
             vb_desc.prefer_on_device = true;
             vb_desc.size = anim->buffers[j]->get_size();

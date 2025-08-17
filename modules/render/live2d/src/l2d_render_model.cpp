@@ -92,9 +92,9 @@ struct skr_live2d_render_model_async_t : public skr_live2d_render_model_impl_t {
             view_desc.mip_level_count = 1;
             view_desc.base_mip_level = 0;
             view_desc.aspects = CGPU_TVA_COLOR;
-            view_desc.dims = CGPU_TEX_DIMENSION_2D;
+            view_desc.dims = CGPU_TEXTURE_DIMENSION_2D;
             view_desc.format = CGPU_FORMAT_R8G8B8A8_UNORM;
-            view_desc.usages = CGPU_TVU_SRV;
+            view_desc.view_usages = CGPU_TEXTURE_VIEW_USAGE_SRV;
             texture_views[i] = cgpu_create_texture_view(textures[i]->device, &view_desc);
         }
         for (auto&& png_blob : png_blobs)
@@ -181,8 +181,8 @@ void skr_live2d_render_model_create_from_raw(skr_io_ram_service_t* ram_service, 
         auto ind_name = name;
         ind_name.append(u8"-i");
         ib_desc.name = ind_name.c_str();
-        ib_desc.descriptors = CGPU_RESOURCE_TYPE_INDEX_BUFFER;
-        ib_desc.flags = CGPU_BCF_NONE;
+        ib_desc.usages = CGPU_BUFFER_USAGE_INDEX_BUFFER;
+        ib_desc.flags = CGPU_BUFFER_FLAG_NONE;
         ib_desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
         ib_desc.size = total_index_count * sizeof(Csm::csmUint16);
         render_model->index_buffer = cgpu_create_buffer(device, &ib_desc);
@@ -215,7 +215,7 @@ void skr_live2d_render_model_create_from_raw(skr_io_ram_service_t* ram_service, 
             auto request = vram_service->open_texture_request();
             CGPUTextureDescriptor tdesc = {};
             tdesc.name = (const char8_t*)texture_path;
-            tdesc.descriptors = CGPU_RESOURCE_TYPE_TEXTURE;
+            tdesc.usages = CGPU_TEXTURE_USAGE_SHADER_READ;
             tdesc.width = resolution;
             tdesc.height = resolution;
             tdesc.depth = 1;
@@ -262,7 +262,7 @@ void skr_live2d_render_model_create_from_raw(skr_io_ram_service_t* ram_service, 
                         auto request = vram_service->open_texture_request();
                         CGPUTextureDescriptor tdesc = {};
                         tdesc.name = (const char8_t*)texture_path;
-                        tdesc.descriptors = CGPU_RESOURCE_TYPE_TEXTURE;
+                        tdesc.usages = CGPU_TEXTURE_USAGE_SHADER_READ;
                         tdesc.width = decoder->get_width();
                         tdesc.height = decoder->get_height();
                         tdesc.depth = 1;
@@ -339,8 +339,8 @@ void skr_live2d_render_model_create_from_raw(skr_io_ram_service_t* ram_service, 
         auto pos_name = name;
         pos_name.append(u8"-pos");
         vb_desc.name = pos_name.c_str();
-        vb_desc.descriptors = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
-        vb_desc.flags = use_dynamic_buffer ? CGPU_BCF_PERSISTENT_MAP_BIT : CGPU_BCF_NONE;
+        vb_desc.usages = CGPU_BUFFER_USAGE_VERTEX_BUFFER;
+        vb_desc.flags = use_dynamic_buffer ? CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT : CGPU_BUFFER_FLAG_NONE;
         vb_desc.memory_usage = use_dynamic_buffer ? CGPU_MEM_USAGE_CPU_TO_GPU : CGPU_MEM_USAGE_GPU_ONLY;
         vb_desc.prefer_on_device = true;
         vb_desc.size = total_vertex_count * sizeof(skr_live2d_vertex_pos_t);

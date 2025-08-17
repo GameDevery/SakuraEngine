@@ -434,8 +434,8 @@ RenderGraph::BufferBuilder::BufferBuilder(RenderGraph& graph, BufferNode& node) 
     : graph(graph),
       node(node)
 {
-    node.descriptor.descriptors = CGPU_RESOURCE_TYPE_NONE;
-    node.descriptor.flags = CGPU_BCF_NONE;
+    node.descriptor.usages = CGPU_BUFFER_USAGE_NONE;
+    node.descriptor.flags = CGPU_BUFFER_FLAG_NONE;
     node.descriptor.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
 }
 
@@ -459,7 +459,7 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::import(CGPUBufferId buff
     node.imported = buffer;
     node.imported_buffer = buffer;
     node.init_state = init_state;
-    node.descriptor.descriptors = buffer->info->descriptors;
+    node.descriptor.usages = buffer->info->usages;
     node.descriptor.size = buffer->info->size;
     node.descriptor.memory_usage = (ECGPUMemoryUsage)buffer->info->memory_usage;
     graph.imported_buffers[buffer] = node.get_handle();
@@ -468,7 +468,7 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::import(CGPUBufferId buff
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allocate_dedicated() SKR_NOEXCEPT
 {
-    node.descriptor.flags |= CGPU_BCF_DEDICATED_BIT;
+    node.descriptor.flags |= CGPU_BUFFER_FLAG_DEDICATED_BIT;
     return *this;
 }
 
@@ -486,7 +486,7 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::size(uint64_t size) SKR_
     return *this;
 }
 
-RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::with_flags(CGPUBufferCreationFlags flags) SKR_NOEXCEPT
+RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::with_flags(CGPUBufferFlags flags) SKR_NOEXCEPT
 {
     node.descriptor.flags |= flags;
     return *this;
@@ -500,31 +500,19 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::memory_usage(ECGPUMemory
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_structured_readwrite() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_RW_BUFFER;
+    node.descriptor.usages |= CGPU_BUFFER_USAGE_SHADER_READWRITE;
     return *this;
 }
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_structured_read() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_BUFFER;
-    return *this;
-}
-
-RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_raw_readwrite() SKR_NOEXCEPT
-{
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_RW_BUFFER_RAW;
-    return *this;
-}
-
-RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_raw_read() SKR_NOEXCEPT
-{
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_BUFFER_RAW;
+    node.descriptor.usages |= CGPU_BUFFER_USAGE_SHADER_READ;
     return *this;
 }
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::as_upload_buffer() SKR_NOEXCEPT
 {
-    node.descriptor.flags |= CGPU_BCF_PERSISTENT_MAP_BIT;
+    node.descriptor.flags |= CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
     node.descriptor.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
     node.tags |= kRenderGraphDynamicResourceTag;
     return *this;
@@ -532,21 +520,21 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::as_upload_buffer() SKR_N
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::as_vertex_buffer() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
+    node.descriptor.usages |= CGPU_BUFFER_USAGE_VERTEX_BUFFER;
     node.descriptor.start_state = CGPU_RESOURCE_STATE_COPY_DEST;
     return *this;
 }
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::as_index_buffer() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_INDEX_BUFFER;
+    node.descriptor.usages |= CGPU_BUFFER_USAGE_INDEX_BUFFER;
     node.descriptor.start_state = CGPU_RESOURCE_STATE_COPY_DEST;
     return *this;
 }
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::as_uniform_buffer() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_UNIFORM_BUFFER;
+    node.descriptor.usages |= CGPU_BUFFER_USAGE_CONSTANT_BUFFER;
     node.descriptor.start_state = CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
     return *this;
 }
@@ -601,7 +589,7 @@ RenderGraph::TextureBuilder::TextureBuilder(RenderGraph& graph, TextureNode& nod
       node(node)
 {
     node.descriptor.sample_count = CGPU_SAMPLE_COUNT_1;
-    node.descriptor.descriptors = CGPU_RESOURCE_TYPE_TEXTURE;
+    node.descriptor.usages = CGPU_TEXTURE_USAGE_SHADER_READ;
     node.descriptor.is_restrict_dedicated = false;
 }
 
@@ -673,21 +661,21 @@ RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::sample_count(ECGPUSamp
 
 RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::allow_readwrite() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_RW_TEXTURE;
+    node.descriptor.usages |= CGPU_TEXTURE_USAGE_SHADER_READWRITE;
     node.descriptor.start_state = CGPU_RESOURCE_STATE_UNDEFINED;
     return *this;
 }
 
 RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::allow_render_target() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_RENDER_TARGET;
+    node.descriptor.usages |= CGPU_TEXTURE_USAGE_RENDER_TARGET;
     node.descriptor.start_state = CGPU_RESOURCE_STATE_UNDEFINED;
     return *this;
 }
 
 RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::allow_depth_stencil() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_DEPTH_STENCIL;
+    node.descriptor.usages |= CGPU_TEXTURE_USAGE_DEPTH_STENCIL;
     node.descriptor.start_state = CGPU_RESOURCE_STATE_UNDEFINED;
     return *this;
 }

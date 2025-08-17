@@ -46,7 +46,7 @@ void create_sampled_texture()
     sampler_state = cgpu_create_sampler(device, &sampler_desc);
     // Texture
     CGPUTextureDescriptor tex_desc = {
-        .descriptors = CGPU_RESOURCE_TYPE_TEXTURE,
+        .usages = CGPU_TEXTURE_USAGE_SHADER_READ,
         .flags = CGPU_TCF_DEDICATED_BIT,
         .width = TEXTURE_WIDTH,
         .height = TEXTURE_HEIGHT,
@@ -65,8 +65,8 @@ void create_sampled_texture()
         .mip_level_count = 1,
         .base_mip_level = 0,
         .aspects = CGPU_TVA_COLOR,
-        .dims = CGPU_TEX_DIMENSION_2D,
-        .usages = CGPU_TVU_SRV
+        .dims = CGPU_TEXTURE_DIMENSION_2D,
+        .view_usages = CGPU_TEXTURE_VIEW_USAGE_SRV
     };
     sampled_view = cgpu_create_texture_view(device, &sview_desc);
 }
@@ -93,11 +93,9 @@ typedef uint16_t Index;
 void create_vertex_buffer()
 {
     CGPUBufferDescriptor vertex_buffer_desc = {
-        .flags = CGPU_BCF_NONE,
-        .descriptors = CGPU_RESOURCE_TYPE_VERTEX_BUFFER,
+        .flags = CGPU_BUFFER_FLAG_NONE,
+        .usages = CGPU_BUFFER_USAGE_VERTEX_BUFFER,
         .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
-        .element_stride = sizeof(Vertex),
-        .element_count = sizeof(vertices) / sizeof(Vertex),
         .size = sizeof(vertices),
         .name = "VertexBuffer"
     };
@@ -107,11 +105,9 @@ void create_vertex_buffer()
 void create_index_buffer()
 {
     CGPUBufferDescriptor index_buffer_desc = {
-        .flags = CGPU_BCF_NONE,
-        .descriptors = CGPU_RESOURCE_TYPE_INDEX_BUFFER,
+        .flags = CGPU_BUFFER_FLAG_NONE,
+        .usages = CGPU_BUFFER_USAGE_INDEX_BUFFER,
         .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
-        .element_stride = sizeof(Index),
-        .element_count = sizeof(indices) / sizeof(Index),
         .size = sizeof(indices),
         .name = "IndexBuffer"
     };
@@ -122,11 +118,9 @@ void upload_resources()
 {
     CGPUBufferDescriptor upload_buffer_desc = {
         .name = "UploadBuffer",
-        .flags = CGPU_BCF_PERSISTENT_MAP_BIT,
-        .descriptors = CGPU_RESOURCE_TYPE_NONE,
+        .flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT,
+        .usages = CGPU_BUFFER_USAGE_NONE,
         .memory_usage = CGPU_MEM_USAGE_CPU_ONLY,
-        .element_stride = sizeof(TEXTURE_DATA),
-        .element_count = 1,
         .size = sizeof(TEXTURE_DATA)
     };
     CGPUBufferId upload_buffer = cgpu_create_buffer(device, &upload_buffer_desc);
@@ -300,7 +294,7 @@ void create_render_pipeline()
         .fragment_shader = &ppl_shaders[1],
         .render_target_count = 1,
         .rasterizer_state = &rs_state,
-        .color_formats = &views[0]->info.format
+        .color_formats = &views[0]->info->format
     };
     pipeline = cgpu_create_render_pipeline(device, &rp_desc);
     cgpu_free_shader_library(vertex_shader);
@@ -389,9 +383,9 @@ void initialize(void* usrdata)
         CGPUTextureViewDescriptor view_desc = {
             .texture = swapchain->back_buffers[i],
             .aspects = CGPU_TVA_COLOR,
-            .dims = CGPU_TEX_DIMENSION_2D,
+            .dims = CGPU_TEXTURE_DIMENSION_2D,
             .format = swapchain->back_buffers[i]->info->format,
-            .usages = CGPU_TVU_RTV_DSV,
+            .view_usages = CGPU_TEXTURE_VIEW_USAGE_RTV_DSV,
             .array_layer_count = 1
         };
         views[i] = cgpu_create_texture_view(device, &view_desc);

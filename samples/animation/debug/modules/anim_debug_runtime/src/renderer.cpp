@@ -72,8 +72,8 @@ void Renderer::create_resources()
 
     CGPUBufferDescriptor upload_buffer_desc = {};
     upload_buffer_desc.name = u8"UploadBuffer";
-    upload_buffer_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
-    upload_buffer_desc.descriptors = CGPU_RESOURCE_TYPE_NONE;
+    upload_buffer_desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
+    upload_buffer_desc.usages = CGPU_BUFFER_USAGE_NONE;
     upload_buffer_desc.memory_usage = CGPU_MEM_USAGE_CPU_ONLY;
 
     upload_buffer_desc.size = sizeof(BoneGeometry) + sizeof(BoneGeometry::g_Indices) + _instance_count * sizeof(skr_float4x4_t);
@@ -81,8 +81,8 @@ void Renderer::create_resources()
 
     CGPUBufferDescriptor vb_desc = {};
     vb_desc.name = u8"VertexBuffer";
-    vb_desc.flags = CGPU_BCF_NONE;
-    vb_desc.descriptors = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
+    vb_desc.flags = CGPU_BUFFER_FLAG_NONE;
+    vb_desc.usages = CGPU_BUFFER_USAGE_VERTEX_BUFFER;
     vb_desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
     vb_desc.size = sizeof(BoneGeometry);
 
@@ -90,8 +90,8 @@ void Renderer::create_resources()
 
     CGPUBufferDescriptor ib_desc = {};
     ib_desc.name = u8"IndexBuffer";
-    ib_desc.flags = CGPU_BCF_NONE;
-    ib_desc.descriptors = CGPU_RESOURCE_TYPE_INDEX_BUFFER;
+    ib_desc.flags = CGPU_BUFFER_FLAG_NONE;
+    ib_desc.usages = CGPU_BUFFER_USAGE_INDEX_BUFFER;
     ib_desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
     ib_desc.size = sizeof(BoneGeometry::g_Indices);
 
@@ -99,8 +99,8 @@ void Renderer::create_resources()
 
     CGPUBufferDescriptor inb_desc = {};
     inb_desc.name = u8"InstanceBuffer";
-    inb_desc.flags = CGPU_BCF_NONE;
-    inb_desc.descriptors = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
+    inb_desc.flags = CGPU_BUFFER_FLAG_NONE;
+    inb_desc.usages = CGPU_BUFFER_USAGE_VERTEX_BUFFER;
     inb_desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
     inb_desc.size = _instance_count * sizeof(skr_float4x4_t);
 

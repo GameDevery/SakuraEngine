@@ -24,8 +24,8 @@ void SimpleMesh::generate_render_mesh(skr::RendererDevice* render_device, skr_re
     vb_desc.name = u8"scene-renderer-vertices";
     vb_desc.size = vertex_size;
     vb_desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
-    vb_desc.descriptors = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
-    vb_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
+    vb_desc.usages = CGPU_BUFFER_USAGE_VERTEX_BUFFER;
+    vb_desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
     vb_desc.prefer_on_device = true;
 
     vertex_buffer = cgpu_create_buffer(cgpu_device, &vb_desc);
@@ -43,8 +43,8 @@ void SimpleMesh::generate_render_mesh(skr::RendererDevice* render_device, skr_re
     ib_desc.name = u8"scene-renderer-indices";
     ib_desc.size = index_size;
     ib_desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
-    ib_desc.descriptors = CGPU_RESOURCE_TYPE_INDEX_BUFFER;
-    ib_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
+    ib_desc.usages = CGPU_BUFFER_USAGE_INDEX_BUFFER;
+    ib_desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
     ib_desc.prefer_on_device = true;
     index_buffer = cgpu_create_buffer(cgpu_device, &ib_desc);
 

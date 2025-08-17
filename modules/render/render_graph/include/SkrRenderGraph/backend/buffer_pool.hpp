@@ -33,7 +33,7 @@ public:
         CGPUResourceTypes       descriptors    = CGPU_RESOURCE_TYPE_NONE;
         ECGPUMemoryUsage        memory_usage   = CGPU_MEM_USAGE_UNKNOWN;
         ECGPUFormat             format         = CGPU_FORMAT_UNDEFINED;
-        CGPUBufferCreationFlags flags          = 0;
+        CGPUBufferFlags flags          = 0;
         uint64_t                first_element  = 0;
         uint64_t                element_count   = 0;
         uint64_t                element_stride = 0;

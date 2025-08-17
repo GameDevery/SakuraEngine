@@ -246,14 +246,14 @@ void PassExecutionPhase::execute_render_pass(RenderGraph* graph_, RenderGraphFra
             view_desc.aspects =
                 is_depth_only ? CGPU_TVA_DEPTH : CGPU_TVA_DEPTH | CGPU_TVA_STENCIL;
             view_desc.format = view_desc.texture->info->format;
-            view_desc.usages = CGPU_TVU_RTV_DSV;
+            view_desc.view_usages = CGPU_TEXTURE_VIEW_USAGE_RTV_DSV;
             if (sample_count == CGPU_SAMPLE_COUNT_1)
             {
-                view_desc.dims = CGPU_TEX_DIMENSION_2D;
+                view_desc.dims = CGPU_TEXTURE_DIMENSION_2D;
             }
             else
             {
-                view_desc.dims = CGPU_TEX_DIMENSION_2DMS;
+                view_desc.dims = CGPU_TEXTURE_DIMENSION_2DMS;
             }
             ds_attachment.view = graph->texture_view_pool.allocate(view_desc, frame_index);
             ds_attachment.depth_load_action = pass->depth_load_action;
@@ -277,8 +277,8 @@ void PassExecutionPhase::execute_render_pass(RenderGraph* graph_, RenderGraphFra
                 view_desc.mip_level_count = 1; // TODO: resolve MSAA to specific mip slice?
                 view_desc.format = view_desc.texture->info->format;
                 view_desc.aspects = CGPU_TVA_COLOR;
-                view_desc.usages = CGPU_TVU_RTV_DSV;
-                view_desc.dims = CGPU_TEX_DIMENSION_2D;
+                view_desc.view_usages = CGPU_TEXTURE_VIEW_USAGE_RTV_DSV;
+                view_desc.dims = CGPU_TEXTURE_DIMENSION_2D;
                 attachment.resolve_view = graph->texture_view_pool.allocate(view_desc, frame_index);
             }
             // allocate target view
@@ -291,14 +291,14 @@ void PassExecutionPhase::execute_render_pass(RenderGraph* graph_, RenderGraphFra
                 view_desc.mip_level_count = 1; // TODO: mip
                 view_desc.format = view_desc.texture->info->format;
                 view_desc.aspects = CGPU_TVA_COLOR;
-                view_desc.usages = CGPU_TVU_RTV_DSV;
+                view_desc.view_usages = CGPU_TEXTURE_VIEW_USAGE_RTV_DSV;
                 if (sample_count == CGPU_SAMPLE_COUNT_1)
                 {
-                    view_desc.dims = CGPU_TEX_DIMENSION_2D;
+                    view_desc.dims = CGPU_TEXTURE_DIMENSION_2D;
                 }
                 else
                 {
-                    view_desc.dims = CGPU_TEX_DIMENSION_2DMS;
+                    view_desc.dims = CGPU_TEXTURE_DIMENSION_2DMS;
                 }
                 attachment.view = graph->texture_view_pool.allocate(view_desc, frame_index);
             }

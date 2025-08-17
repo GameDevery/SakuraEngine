@@ -136,12 +136,12 @@ void ComputeFunc(void* usrdata)
     // Create data buffer
     CGPUBufferDescriptor buffer_desc = {
         .name = "DataBuffer",
-        .flags = CGPU_BCF_NONE,
-        .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER,
+        .flags = CGPU_BUFFER_FLAG_NONE,
+        .usages = CGPU_BUFFER_USAGE_SHADER_READWRITE,
         .start_state = CGPU_RESOURCE_STATE_UNORDERED_ACCESS,
         .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
-        .element_stride = sizeof(Pixel),
-        .element_count = RAYTRACING_WIDTH * RAYTRACING_HEIGHT,
+        // .element_stride = sizeof(Pixel),
+        // .element_count = RAYTRACING_WIDTH * RAYTRACING_HEIGHT,
         .size = sizeof(Pixel) * RAYTRACING_WIDTH * RAYTRACING_HEIGHT
     };
     CGPUBufferId data_buffer = cgpu_create_buffer(device, &buffer_desc);
@@ -149,12 +149,12 @@ void ComputeFunc(void* usrdata)
     // Create readback buffer
     CGPUBufferDescriptor rb_desc = {
         .name = "ReadbackBuffer",
-        .flags = CGPU_BCF_NONE,
-        .descriptors = CGPU_RESOURCE_TYPE_NONE,
+        .flags = CGPU_BUFFER_FLAG_NONE,
+        .usages = CGPU_BUFFER_USAGE_NONE,
         .start_state = CGPU_RESOURCE_STATE_COPY_DEST,
         .memory_usage = CGPU_MEM_USAGE_GPU_TO_CPU,
-        .element_stride = buffer_desc.element_stride,
-        .element_count = buffer_desc.element_count,
+        //.element_stride = buffer_desc.element_stride,
+        // .element_count = buffer_desc.element_count,
         .size = buffer_desc.size
     };
     CGPUBufferId readback_buffer = cgpu_create_buffer(device, &rb_desc);
@@ -168,12 +168,10 @@ void ComputeFunc(void* usrdata)
     };
     CGPUBufferDescriptor vertex_buffer_desc = {
         .name = "VertexBuffer",
-        .flags = CGPU_BCF_PERSISTENT_MAP_BIT,
-        .descriptors = CGPU_RESOURCE_TYPE_VERTEX_BUFFER,
+        .flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT,
+        .usages = CGPU_BUFFER_USAGE_VERTEX_BUFFER,
         .start_state = CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
         .memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU,
-        .element_stride = sizeof(float) * 3,
-        .element_count = 12,
         .size = sizeof(vertices)
     };
     CGPUBufferId vertex_buffer = cgpu_create_buffer(device, &vertex_buffer_desc);
@@ -186,12 +184,10 @@ void ComputeFunc(void* usrdata)
     };
     CGPUBufferDescriptor index_buffer_desc = {
         .name = "IndexBuffer",
-        .flags = CGPU_BCF_PERSISTENT_MAP_BIT,
-        .descriptors = CGPU_RESOURCE_TYPE_INDEX_BUFFER,
+        .flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT,
+        .usages = CGPU_BUFFER_USAGE_INDEX_BUFFER,
         .start_state = CGPU_RESOURCE_STATE_INDEX_BUFFER,
         .memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU,
-        .element_stride = sizeof(uint16_t),
-        .element_count = 6,
         .size = sizeof(indices)
     };
     CGPUBufferId index_buffer = cgpu_create_buffer(device, &index_buffer_desc);
@@ -235,13 +231,11 @@ void ComputeFunc(void* usrdata)
     CGPUDescriptorData descriptor_data[2] = {
         {
             .name = "buf",
-            .binding_type = CGPU_RESOURCE_TYPE_RW_BUFFER,
             .buffers = &data_buffer,
             .count = 1
         },
         {
             .name = "AS",
-            .binding_type = CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE,
             .acceleration_structures = &tlas,
             .count = 1
         }

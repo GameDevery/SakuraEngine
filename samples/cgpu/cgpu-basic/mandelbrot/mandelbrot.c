@@ -137,12 +137,12 @@ void ComputeFunc(void* usrdata)
     // Create data buffer
     CGPUBufferDescriptor buffer_desc = {
         .name = "DataBuffer",
-        .flags = CGPU_BCF_NONE,
-        .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER,
+        .flags = CGPU_BUFFER_FLAG_NONE,
+        .usages = CGPU_BUFFER_USAGE_SHADER_READWRITE,
         .start_state = CGPU_RESOURCE_STATE_UNORDERED_ACCESS,
         .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
-        .element_stride = sizeof(Pixel),
-        .element_count = MANDELBROT_WIDTH * MANDELBROT_HEIGHT,
+        // .element_stride = sizeof(Pixel),
+        // .element_count = MANDELBROT_WIDTH * MANDELBROT_HEIGHT,
         .size = sizeof(Pixel) * MANDELBROT_WIDTH * MANDELBROT_HEIGHT
     };
     CGPUBufferId data_buffer = cgpu_create_buffer(device, &buffer_desc);
@@ -150,12 +150,12 @@ void ComputeFunc(void* usrdata)
     // Create readback buffer
     CGPUBufferDescriptor rb_desc = {
         .name = "ReadbackBuffer",
-        .flags = CGPU_BCF_NONE,
-        .descriptors = CGPU_RESOURCE_TYPE_NONE,
+        .flags = CGPU_BUFFER_FLAG_NONE,
+        .usages = CGPU_BUFFER_USAGE_NONE,
         .start_state = CGPU_RESOURCE_STATE_COPY_DEST,
         .memory_usage = CGPU_MEM_USAGE_GPU_TO_CPU,
-        .element_stride = buffer_desc.element_stride,
-        .element_count = buffer_desc.element_count,
+        // .element_stride = buffer_desc.element_stride,
+        // .element_count = buffer_desc.element_count,
         .size = buffer_desc.size
     };
     CGPUBufferId readback_buffer = cgpu_create_buffer(device, &rb_desc);
@@ -163,7 +163,6 @@ void ComputeFunc(void* usrdata)
     // Update descriptor set
     CGPUDescriptorData descriptor_data = {
         .name = "buf",
-        .binding_type = CGPU_RESOURCE_TYPE_RW_BUFFER,
         .buffers = &data_buffer,
         .count = 1
     };

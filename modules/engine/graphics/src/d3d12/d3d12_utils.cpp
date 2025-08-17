@@ -11,7 +11,7 @@
 
 #define USE_PIX
 #ifdef USE_PIX
-#include "SkrGraphics/drivers/WinPixEventRuntime/pix3.h" // IWYU pragma: keep
+    #include "SkrGraphics/drivers/WinPixEventRuntime/pix3.h" // IWYU pragma: keep
 #endif
 
 struct CGPUUtil_DXCLoader
@@ -32,7 +32,7 @@ struct CGPUUtil_DXCLoader
     }
     static HMODULE dxcLibrary;
     static void* pDxcCreateInstance;
-}; 
+};
 void* CGPUUtil_DXCLoader::pDxcCreateInstance = nullptr;
 HMODULE CGPUUtil_DXCLoader::dxcLibrary = nullptr;
 
@@ -67,9 +67,9 @@ UINT64 encode_color_for_pix(const float* color)
         return PIX_COLOR(0, 0, 0);
 
     return PIX_COLOR(
-    static_cast<BYTE>(color[0] * 255.f),
-    static_cast<BYTE>(color[1] * 255.f),
-    static_cast<BYTE>(color[2] * 255.f));
+        static_cast<BYTE>(color[0] * 255.f),
+        static_cast<BYTE>(color[1] * 255.f),
+        static_cast<BYTE>(color[2] * 255.f));
 }
 void cgpu_cmd_begin_event_d3d12(CGPUCommandBufferId cmd, const CGPUEventInfo* event)
 {
@@ -148,10 +148,10 @@ void D3D12Util_QueryAllAdapters(CGPUInstance_D3D12* instance, uint32_t* count, b
     // Use DXGI6 interface which lets us specify gpu preference so we dont need to use NVOptimus or AMDPowerExpress
     // exports
     for (UINT i = 0;
-         instance->pDXGIFactory->EnumAdapterByGpuPreference(i,
-         DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
-         IID_PPV_ARGS(&_adapter)) != DXGI_ERROR_NOT_FOUND;
-         i++)
+        instance->pDXGIFactory->EnumAdapterByGpuPreference(i,
+            DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
+            IID_PPV_ARGS(&_adapter)) != DXGI_ERROR_NOT_FOUND;
+        i++)
     {
         SKR_DECLARE_ZERO(DXGI_ADAPTER_DESC3, desc)
         IDXGIAdapter4* adapter = nullptr;
@@ -175,7 +175,7 @@ void D3D12Util_QueryAllAdapters(CGPUInstance_D3D12* instance, uint32_t* count, b
                         SAFE_RELEASE(cgpuAdapter.pDxActiveGPU);
                         instance->mAdaptersCount++;
                         // Add ref
-                        { 
+                        {
                             dxgi_adapters.push_back(adapter);
                             adapter_levels.push_back(d3d_feature_levels[level]);
                         }
@@ -220,7 +220,7 @@ void D3D12Util_EnumFormatSupports(CGPUAdapter_D3D12* D3DAdapter, ID3D12Device* p
 
         adapter_detail->format_supports[i].shader_read = (formatSupport.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE) != 0;
         adapter_detail->format_supports[i].shader_write = (formatSupport.Support2 & D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE) != 0;
-        adapter_detail->format_supports[i].render_target_write = (formatSupport.Support1 & D3D12_FORMAT_SUPPORT1_RENDER_TARGET)  != 0;
+        adapter_detail->format_supports[i].render_target_write = (formatSupport.Support1 & D3D12_FORMAT_SUPPORT1_RENDER_TARGET) != 0;
     }
     return;
 }
@@ -282,19 +282,19 @@ void D3D12Util_RecordAdapterDetail(struct CGPUAdapter_D3D12* D3D12Adapter)
         adapter_detail.support_tiled_buffer = (options.TiledResourcesTier >= D3D12_TILED_RESOURCES_TIER_1);
     }
     D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1 = make_zeroed<D3D12_FEATURE_DATA_D3D12_OPTIONS1>();
-	if (SUCCEEDED(pCheckDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1))))
+    if (SUCCEEDED(pCheckDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1))))
     {
         adapter_detail.wave_lane_count = options1.WaveLaneCountMin;
     }
     D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = make_zeroed<D3D12_FEATURE_DATA_D3D12_OPTIONS5>();
-	if (SUCCEEDED(pCheckDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5))))
+    if (SUCCEEDED(pCheckDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5))))
     {
         adapter.mRayTracingTier = options5.RaytracingTier;
         adapter_detail.support_ray_tracing = options5.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED;
     }
 #ifdef D3D12_HEADER_SUPPORT_VRS
     D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = make_zeroed<D3D12_FEATURE_DATA_D3D12_OPTIONS6>();
-	if (SUCCEEDED(pCheckDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &options6, sizeof(options6))))
+    if (SUCCEEDED(pCheckDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &options6, sizeof(options6))))
     {
 
         if (options6.VariableShadingRateTier == D3D12_VARIABLE_SHADING_RATE_TIER_1)
@@ -352,8 +352,8 @@ void D3D12Util_CreateDMAAllocator(CGPUInstance_D3D12* I, CGPUAdapter_D3D12* A, C
     allocationCallbacks.pAllocate = +[](size_t size, size_t alignment, void*) {
         return cgpu_malloc_alignedN(size, alignment, kD3D12MAMemoryName);
     };
-    allocationCallbacks.pFree = +[](void* ptr, void*) { 
-        cgpu_free_alignedN(ptr, 1, kD3D12MAMemoryName); //TODO: Fix this 
+    allocationCallbacks.pFree = +[](void* ptr, void*) {
+        cgpu_free_alignedN(ptr, 1, kD3D12MAMemoryName); //TODO: Fix this
     };
     desc.pAllocationCallbacks = &allocationCallbacks;
     desc.Flags |= D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED;
@@ -404,34 +404,34 @@ enum DxilFourCC
 
 const char8_t* D3DShaderEntryName = CGPU_NULLPTR;
 static ECGPUResourceType gD3D12_TO_DESCRIPTOR[] = {
-    CGPU_RESOURCE_TYPE_UNIFORM_BUFFER, // D3D_SIT_CBUFFER
-    CGPU_RESOURCE_TYPE_BUFFER,         // D3D_SIT_TBUFFER
-    CGPU_RESOURCE_TYPE_TEXTURE,        // D3D_SIT_TEXTURE
-    CGPU_RESOURCE_TYPE_SAMPLER,        // D3D_SIT_SAMPLER
-    CGPU_RESOURCE_TYPE_RW_TEXTURE,     // D3D_SIT_UAV_RWTYPED
-    CGPU_RESOURCE_TYPE_BUFFER,         // D3D_SIT_STRUCTURED
-    CGPU_RESOURCE_TYPE_RW_BUFFER,      // D3D_SIT_RWSTRUCTURED
-    CGPU_RESOURCE_TYPE_BUFFER,         // D3D_SIT_BYTEADDRESS
-    CGPU_RESOURCE_TYPE_RW_BUFFER,      // D3D_SIT_UAV_RWBYTEADDRESS
-    CGPU_RESOURCE_TYPE_RW_BUFFER,      // D3D_SIT_UAV_APPEND_STRUCTURED
-    CGPU_RESOURCE_TYPE_RW_BUFFER,      // D3D_SIT_UAV_CONSUME_STRUCTURED
-    CGPU_RESOURCE_TYPE_RW_BUFFER,      // D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER
-    CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE,    // D3D_SIT_RTACCELERATIONSTRUCTURE
+    CGPU_RESOURCE_TYPE_UNIFORM_BUFFER,         // D3D_SIT_CBUFFER
+    CGPU_RESOURCE_TYPE_BUFFER,                 // D3D_SIT_TBUFFER
+    CGPU_RESOURCE_TYPE_TEXTURE,                // D3D_SIT_TEXTURE
+    CGPU_RESOURCE_TYPE_SAMPLER,                // D3D_SIT_SAMPLER
+    CGPU_RESOURCE_TYPE_RW_TEXTURE,             // D3D_SIT_UAV_RWTYPED
+    CGPU_RESOURCE_TYPE_BUFFER,                 // D3D_SIT_STRUCTURED
+    CGPU_RESOURCE_TYPE_RW_BUFFER,              // D3D_SIT_RWSTRUCTURED
+    CGPU_RESOURCE_TYPE_BUFFER,                 // D3D_SIT_BYTEADDRESS
+    CGPU_RESOURCE_TYPE_RW_BUFFER,              // D3D_SIT_UAV_RWBYTEADDRESS
+    CGPU_RESOURCE_TYPE_RW_BUFFER,              // D3D_SIT_UAV_APPEND_STRUCTURED
+    CGPU_RESOURCE_TYPE_RW_BUFFER,              // D3D_SIT_UAV_CONSUME_STRUCTURED
+    CGPU_RESOURCE_TYPE_RW_BUFFER,              // D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER
+    CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE, // D3D_SIT_RTACCELERATIONSTRUCTURE
 };
 
 static ECGPUTextureDimension gD3D12_TO_RESOURCE_DIM[D3D_SRV_DIMENSION_BUFFEREX + 1] = {
-    CGPU_TEX_DIMENSION_UNDEFINED,  // D3D_SRV_DIMENSION_UNKNOWN
-    CGPU_TEX_DIMENSION_UNDEFINED,  // D3D_SRV_DIMENSION_BUFFER
-    CGPU_TEX_DIMENSION_1D,         // D3D_SRV_DIMENSION_TEXTURE1D
-    CGPU_TEX_DIMENSION_1D_ARRAY,   // D3D_SRV_DIMENSION_TEXTURE1DARRAY
-    CGPU_TEX_DIMENSION_2D,         // D3D_SRV_DIMENSION_TEXTURE2D
-    CGPU_TEX_DIMENSION_2D_ARRAY,   // D3D_SRV_DIMENSION_TEXTURE2DARRAY
-    CGPU_TEX_DIMENSION_2DMS,       // D3D_SRV_DIMENSION_TEXTURE2DMS
-    CGPU_TEX_DIMENSION_2DMS_ARRAY, // D3D_SRV_DIMENSION_TEXTURE2DMSARRAY
-    CGPU_TEX_DIMENSION_3D,         // D3D_SRV_DIMENSION_TEXTURE3D
-    CGPU_TEX_DIMENSION_CUBE,       // D3D_SRV_DIMENSION_TEXTURECUBE
-    CGPU_TEX_DIMENSION_CUBE_ARRAY, // D3D_SRV_DIMENSION_TEXTURECUBEARRAY
-    CGPU_TEX_DIMENSION_UNDEFINED,  // D3D_SRV_DIMENSION_BUFFEREX
+    CGPU_TEXTURE_DIMENSION_UNDEFINED,  // D3D_SRV_DIMENSION_UNKNOWN
+    CGPU_TEXTURE_DIMENSION_UNDEFINED,  // D3D_SRV_DIMENSION_BUFFER
+    CGPU_TEXTURE_DIMENSION_1D,         // D3D_SRV_DIMENSION_TEXTURE1D
+    CGPU_TEXTURE_DIMENSION_1D_ARRAY,   // D3D_SRV_DIMENSION_TEXTURE1DARRAY
+    CGPU_TEXTURE_DIMENSION_2D,         // D3D_SRV_DIMENSION_TEXTURE2D
+    CGPU_TEXTURE_DIMENSION_2D_ARRAY,   // D3D_SRV_DIMENSION_TEXTURE2DARRAY
+    CGPU_TEXTURE_DIMENSION_2DMS,       // D3D_SRV_DIMENSION_TEXTURE2DMS
+    CGPU_TEXTURE_DIMENSION_2DMS_ARRAY, // D3D_SRV_DIMENSION_TEXTURE2DMSARRAY
+    CGPU_TEXTURE_DIMENSION_3D,         // D3D_SRV_DIMENSION_TEXTURE3D
+    CGPU_TEXTURE_DIMENSION_CUBE,       // D3D_SRV_DIMENSION_TEXTURECUBE
+    CGPU_TEXTURE_DIMENSION_CUBE_ARRAY, // D3D_SRV_DIMENSION_TEXTURECUBEARRAY
+    CGPU_TEXTURE_DIMENSION_UNDEFINED,  // D3D_SRV_DIMENSION_BUFFEREX
 };
 
 static ECGPUFormat gD3D12_TO_VERTEX_FORMAT[] = {
@@ -459,19 +459,19 @@ inline static ECGPUShaderStage D3D12Util_GetShaderStageFromDesc(const D3D12_SHAD
     UINT shaderType = D3D12_SHVER_GET_TYPE(shaderDesc.Version);
     switch (shaderType)
     {
-        case D3D12_SHVER_VERTEX_SHADER:
-            return CGPU_SHADER_STAGE_VERT;
-        case D3D12_SHVER_PIXEL_SHADER:
-            return CGPU_SHADER_STAGE_FRAG;
-        case D3D12_SHVER_GEOMETRY_SHADER:
-            return CGPU_SHADER_STAGE_GEOM;
-        case D3D12_SHVER_HULL_SHADER:
-            return CGPU_SHADER_STAGE_TESC;
-        case D3D12_SHVER_DOMAIN_SHADER:
-            return CGPU_SHADER_STAGE_TESE;
-        case D3D12_SHVER_COMPUTE_SHADER:
-            return CGPU_SHADER_STAGE_COMPUTE;
-        /*
+    case D3D12_SHVER_VERTEX_SHADER:
+        return CGPU_SHADER_STAGE_VERT;
+    case D3D12_SHVER_PIXEL_SHADER:
+        return CGPU_SHADER_STAGE_FRAG;
+    case D3D12_SHVER_GEOMETRY_SHADER:
+        return CGPU_SHADER_STAGE_GEOM;
+    case D3D12_SHVER_HULL_SHADER:
+        return CGPU_SHADER_STAGE_TESC;
+    case D3D12_SHVER_DOMAIN_SHADER:
+        return CGPU_SHADER_STAGE_TESE;
+    case D3D12_SHVER_COMPUTE_SHADER:
+        return CGPU_SHADER_STAGE_COMPUTE;
+    /*
         case D3D12_SHVER_LIBRARY:
             return CGPU_SHADER_STAGE_LIBRARY;
         case D3D12_SHVER_RAY_GENERATION_SHADER:
@@ -491,8 +491,8 @@ inline static ECGPUShaderStage D3D12Util_GetShaderStageFromDesc(const D3D12_SHAD
         case D3D12_SHVER_AMPLIFICATION_SHADER:
             return CGPU_SHADER_STAGE_AMPLIFICATION;
         */
-        default:
-            return CGPU_SHADER_STAGE_NONE;
+    default:
+        return CGPU_SHADER_STAGE_NONE;
     }
 }
 
@@ -595,8 +595,7 @@ inline static void D3D12Util_CollectShaderReflectionData(ID3D12ReflectionT* pRef
             pReflection->GetThreadGroupSize(
                 &Reflection->thread_group_sizes[0],
                 &Reflection->thread_group_sizes[1],
-                &Reflection->thread_group_sizes[2]
-            );
+                &Reflection->thread_group_sizes[2]);
         }
         else if constexpr (std::is_same_v<D3D12_SHADER_DESC_T, D3D12_FUNCTION_DESC>)
         {
@@ -650,7 +649,7 @@ void D3D12Util_InitializeShaderReflection(CGPUDevice_D3D12* D, CGPUShaderLibrary
 
         ID3D12ShaderReflection* pShaderReflection = nullptr;
         CHECK_HRESULT(pReflection->GetPartReflection(shaderIdx, IID_PPV_ARGS(&pShaderReflection)));
-        
+
         S->super.entrys_count = 1;
         S->super.entry_reflections = (CGPUShaderReflection*)cgpu_calloc(S->super.entrys_count, sizeof(CGPUShaderReflection));
         D3D12Util_CollectShaderReflectionData<ID3D12ShaderReflection, D3D12_SHADER_DESC>(pShaderReflection, S, 0);
@@ -690,46 +689,48 @@ void D3D12Util_FreeShaderReflection(CGPUShaderLibrary_D3D12* S)
 }
 
 // Descriptor Heap
-typedef struct D3D12Util_DescriptorHeap {
+typedef struct D3D12Util_AllocZone
+{
+    uint32_t mOffset;  // Start offset in heap
+    uint32_t mSize;    // Zone size
+#ifdef CGPU_THREAD_SAFETY
+    struct SMutex* pMutex;
+    SAtomicU32 mUsedDescriptors;
+#else
+    uint32_t mUsedDescriptors;
+#endif
+    cgpu::Vector<D3D12Util_DescriptorHandle> mFreeList;
+} D3D12Util_AllocZone;
+
+typedef struct D3D12Util_DescriptorHeap
+{
     /// DX Heap
     ID3D12DescriptorHeap* pCurrentHeap;
     ID3D12Device* pDevice;
     D3D12_CPU_DESCRIPTOR_HANDLE* pHandles;
     /// Start position in the heap
     D3D12Util_DescriptorHandle mStartHandle;
-    /// Free List used for CPU only descriptor heaps
-    cgpu::Vector<D3D12Util_DescriptorHandle> mFreeList;
     /// Description
     D3D12_DESCRIPTOR_HEAP_DESC mDesc;
     /// DescriptorInfo Increment Size
     uint32_t mDescriptorSize;
-#ifdef CGPU_THREAD_SAFETY
-    /// Lock for multi-threaded descriptor allocations
-    struct SMutex* pMutex;
-    /// Used
-    SAtomicU32 mUsedDescriptors;
-#else
-    /// Used
-    uint32_t mUsedDescriptors;
-#endif
+    // Allocation zones
+    D3D12Util_AllocZone mZones[2];
 } D3D12Util_DescriptorHeap;
 
 void D3D12Util_CreateDescriptorHeap(ID3D12Device* pDevice, const D3D12_DESCRIPTOR_HEAP_DESC* pDesc, struct D3D12Util_DescriptorHeap** ppDescHeap)
 {
-    uint32_t                  numDescriptors = pDesc->NumDescriptors;
-    D3D12Util_DescriptorHeap* pHeap          = (D3D12Util_DescriptorHeap*)cgpu_calloc(1, sizeof(*pHeap));
-#ifdef CGPU_THREAD_SAFETY
-    pHeap->pMutex = (SMutex*)cgpu_calloc(1, sizeof(SMutex));
-    skr_init_mutex(pHeap->pMutex);
-#endif
+    uint32_t numDescriptors = pDesc->NumDescriptors;
+    D3D12Util_DescriptorHeap* pHeap = (D3D12Util_DescriptorHeap*)cgpu_calloc(1, sizeof(*pHeap));
+
     pHeap->pDevice = pDevice;
 
     // Keep 32 aligned for easy remove
     numDescriptors = cgpu_round_up(numDescriptors, 32);
 
     D3D12_DESCRIPTOR_HEAP_DESC Desc = *pDesc;
-    Desc.NumDescriptors             = numDescriptors;
-    pHeap->mDesc                    = Desc;
+    Desc.NumDescriptors = numDescriptors;
+    pHeap->mDesc = Desc;
 
     CHECK_HRESULT(pDevice->CreateDescriptorHeap(&Desc, IID_ARGS(&pHeap->pCurrentHeap)));
 
@@ -741,14 +742,43 @@ void D3D12Util_CreateDescriptorHeap(ID3D12Device* pDevice, const D3D12_DESCRIPTO
     pHeap->mDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(pHeap->mDesc.Type);
     if (Desc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
         pHeap->pHandles = (D3D12_CPU_DESCRIPTOR_HANDLE*)cgpu_calloc(Desc.NumDescriptors, sizeof(D3D12_CPU_DESCRIPTOR_HANDLE));
-
+    
+    // Initialize zones
+    // Zone 0: front zone (default whole heap)
+    pHeap->mZones[0].mOffset = 0;
+    pHeap->mZones[0].mSize = numDescriptors;
+    pHeap->mZones[0].mUsedDescriptors = 0;
+#ifdef CGPU_THREAD_SAFETY
+    pHeap->mZones[0].pMutex = (SMutex*)cgpu_calloc(1, sizeof(SMutex));
+    skr_init_mutex(pHeap->mZones[0].pMutex);
+#endif
+    
+    // Zone 1: back zone (initially empty)
+    pHeap->mZones[1].mOffset = numDescriptors;
+    pHeap->mZones[1].mSize = 0;
+    pHeap->mZones[1].mUsedDescriptors = 0;
+#ifdef CGPU_THREAD_SAFETY
+    pHeap->mZones[1].pMutex = (SMutex*)cgpu_calloc(1, sizeof(SMutex));
+    skr_init_mutex(pHeap->mZones[1].pMutex);
+#endif
+    
     *ppDescHeap = pHeap;
+}
+
+void D3D12Util_ReserveArgumentBufferZone(D3D12Util_DescriptorHeap* pHeap, uint32_t Offset)
+{
+    // Split heap into two zones
+    pHeap->mZones[0].mSize = Offset;
+    pHeap->mZones[1].mOffset = Offset;
+    pHeap->mZones[1].mSize = pHeap->mDesc.NumDescriptors - Offset;
 }
 
 void D3D12Util_ResetDescriptorHeap(struct D3D12Util_DescriptorHeap* pHeap)
 {
-    pHeap->mUsedDescriptors = 0;
-    pHeap->mFreeList.clear();
+    pHeap->mZones[0].mUsedDescriptors = 0;
+    pHeap->mZones[0].mFreeList.clear();
+    pHeap->mZones[1].mUsedDescriptors = 0;
+    pHeap->mZones[1].mFreeList.clear();
 }
 
 void D3D12Util_FreeDescriptorHeap(D3D12Util_DescriptorHeap* pHeap)
@@ -756,118 +786,226 @@ void D3D12Util_FreeDescriptorHeap(D3D12Util_DescriptorHeap* pHeap)
     if (pHeap == nullptr) return;
     SAFE_RELEASE(pHeap->pCurrentHeap);
 
-// Need delete since object frees allocated memory in destructor
+    std::destroy_at(&pHeap->mZones[0].mFreeList);
+    std::destroy_at(&pHeap->mZones[1].mFreeList);
+    
 #ifdef CGPU_THREAD_SAFETY
-    skr_destroy_mutex(pHeap->pMutex);
-    cgpu_free(pHeap->pMutex);
+    if (pHeap->mZones[0].pMutex) {
+        skr_destroy_mutex(pHeap->mZones[0].pMutex);
+        cgpu_free(pHeap->mZones[0].pMutex);
+    }
+    if (pHeap->mZones[1].pMutex) {
+        skr_destroy_mutex(pHeap->mZones[1].pMutex);
+        cgpu_free(pHeap->mZones[1].pMutex);
+    }
 #endif
-
-    std::destroy_at(&pHeap->mFreeList);
 
     cgpu_free(pHeap->pHandles);
     cgpu_free(pHeap);
 }
 
-D3D12Util_DescriptorHandle D3D12Util_ConsumeDescriptorHandles(D3D12Util_DescriptorHeap* pHeap, uint32_t descriptorCount)
+// Internal helper to resize the heap when any zone needs more space
+static void D3D12Util_ResizeHeap(D3D12Util_DescriptorHeap* pHeap)
 {
-    if (pHeap->mUsedDescriptors + descriptorCount > pHeap->mDesc.NumDescriptors)
+    D3D12_DESCRIPTOR_HEAP_DESC desc = pHeap->mDesc;
+    desc.NumDescriptors <<= 1;
+    desc.NumDescriptors = cgpu_round_up(desc.NumDescriptors, 32);
+    
+    ID3D12Device* pDevice = pHeap->pDevice;
+    ID3D12DescriptorHeap* pNewHeap = NULL;
+    pDevice->CreateDescriptorHeap(&desc, IID_ARGS(&pNewHeap));
+    
+    D3D12_CPU_DESCRIPTOR_HANDLE mNewStartCpu = pNewHeap->GetCPUDescriptorHandleForHeapStart();
+    D3D12_GPU_DESCRIPTOR_HANDLE mNewStartGpu = pNewHeap->GetGPUDescriptorHandleForHeapStart();
+    
+    // Calculate max needed for allocation
+    uint32_t maxAlloc = cgpu_max(pHeap->mZones[0].mUsedDescriptors, pHeap->mZones[1].mUsedDescriptors);
+    uint32_t* rangeSizes = (uint32_t*)alloca(maxAlloc * sizeof(uint32_t));
+    
+    // Copy zones
+    for (int zoneIdx = 0; zoneIdx < 2; zoneIdx++)
     {
+        D3D12Util_AllocZone* pZone = &pHeap->mZones[zoneIdx];
 #ifdef CGPU_THREAD_SAFETY
-        SMutexLock lock(*pHeap->pMutex);
-#endif
-        if ((pHeap->mDesc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
-        {
-            uint32_t currentOffset = pHeap->mUsedDescriptors;
-            (void)currentOffset;
-            D3D12_DESCRIPTOR_HEAP_DESC desc = pHeap->mDesc;
-            while (pHeap->mUsedDescriptors + descriptorCount > desc.NumDescriptors)
-            {
-                desc.NumDescriptors <<= 1;
-            }
-            ID3D12Device* pDevice = pHeap->pDevice;
-            SAFE_RELEASE(pHeap->pCurrentHeap);
-            pDevice->CreateDescriptorHeap(&desc, IID_ARGS(&pHeap->pCurrentHeap));
-            pHeap->mDesc             = desc;
-            pHeap->mStartHandle.mCpu = pHeap->pCurrentHeap->GetCPUDescriptorHandleForHeapStart();
-            pHeap->mStartHandle.mGpu = pHeap->pCurrentHeap->GetGPUDescriptorHandleForHeapStart();
-
-            uint32_t* rangeSizes = (uint32_t*)alloca(pHeap->mUsedDescriptors * sizeof(uint32_t));
-#ifdef CGPU_THREAD_SAFETY
-            uint32_t usedDescriptors = skr_atomic_load_relaxed(&pHeap->mUsedDescriptors);
+        uint32_t used = skr_atomic_load_relaxed(&pZone->mUsedDescriptors);
 #else
-            uint32_t usedDescriptors = pHeap->mUsedDescriptors;
+        uint32_t used = pZone->mUsedDescriptors;
 #endif
-            for (uint32_t i = 0; i < pHeap->mUsedDescriptors; ++i)
+        if (used > 0 && pZone->mSize > 0)
+        {
+            D3D12_CPU_DESCRIPTOR_HANDLE zoneStart = { mNewStartCpu.ptr + pZone->mOffset * pHeap->mDescriptorSize };
+            D3D12_CPU_DESCRIPTOR_HANDLE* pZoneHandles = pHeap->pHandles + pZone->mOffset;
+            for (uint32_t i = 0; i < used; ++i)
                 rangeSizes[i] = 1;
             pDevice->CopyDescriptors(
-            1, &pHeap->mStartHandle.mCpu, &usedDescriptors, pHeap->mUsedDescriptors, pHeap->pHandles, rangeSizes, pHeap->mDesc.Type);
-            D3D12_CPU_DESCRIPTOR_HANDLE* pNewHandles =
-            (D3D12_CPU_DESCRIPTOR_HANDLE*)cgpu_calloc(pHeap->mDesc.NumDescriptors, sizeof(D3D12_CPU_DESCRIPTOR_HANDLE));
-            memcpy(pNewHandles, pHeap->pHandles, pHeap->mUsedDescriptors * sizeof(D3D12_CPU_DESCRIPTOR_HANDLE));
-            cgpu_free(pHeap->pHandles);
-            pHeap->pHandles = pNewHandles;
+                1, &zoneStart, &used, used, pZoneHandles, rangeSizes, pHeap->mDesc.Type);
         }
-        else if (pHeap->mFreeList.size() >= descriptorCount)
+    }
+    
+    // Update handles array
+    D3D12_CPU_DESCRIPTOR_HANDLE* pNewHandles =
+        (D3D12_CPU_DESCRIPTOR_HANDLE*)cgpu_calloc(desc.NumDescriptors, sizeof(D3D12_CPU_DESCRIPTOR_HANDLE));
+    for (int zoneIdx = 0; zoneIdx < 2; zoneIdx++)
+    {
+        D3D12Util_AllocZone* pZone = &pHeap->mZones[zoneIdx];
+#ifdef CGPU_THREAD_SAFETY
+        uint32_t used = skr_atomic_load_relaxed(&pZone->mUsedDescriptors);
+#else
+        uint32_t used = pZone->mUsedDescriptors;
+#endif
+        if (used > 0 && pZone->mSize > 0)
         {
-            if (descriptorCount == 1)
+            memcpy(pNewHandles + pZone->mOffset, pHeap->pHandles + pZone->mOffset, 
+                used * sizeof(D3D12_CPU_DESCRIPTOR_HANDLE));
+        }
+    }
+    
+    cgpu_free(pHeap->pHandles);
+    pHeap->pHandles = pNewHandles;
+    
+    SAFE_RELEASE(pHeap->pCurrentHeap);
+    pHeap->pCurrentHeap = pNewHeap;
+    pHeap->mDesc = desc;
+    pHeap->mStartHandle.mCpu = mNewStartCpu;
+    pHeap->mStartHandle.mGpu = mNewStartGpu;
+    
+    // Update zone sizes after resize
+    if (pHeap->mZones[1].mSize > 0)
+    {
+        // Keep the same split ratio
+        pHeap->mZones[0].mSize = pHeap->mZones[1].mOffset;
+        pHeap->mZones[1].mSize = desc.NumDescriptors - pHeap->mZones[1].mOffset;
+    }
+    else
+    {
+        pHeap->mZones[0].mSize = desc.NumDescriptors;
+    }
+}
+
+// Internal allocation function for zones
+static D3D12Util_DescriptorHandle D3D12Util_AllocateFromZone(D3D12Util_DescriptorHeap* pHeap, D3D12Util_AllocZone* pZone, uint32_t descriptorCount)
+{
+    if (pZone->mUsedDescriptors + descriptorCount > pZone->mSize)
+    {
+#ifdef CGPU_THREAD_SAFETY
+        SMutexLock lock(*pZone->pMutex);
+#endif
+        if (pZone->mUsedDescriptors + descriptorCount > pZone->mSize)
+        {
+            if ((pHeap->mDesc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
             {
-                return pHeap->mFreeList.stack_pop_get();
+                // Resize heap for any zone
+                D3D12Util_ResizeHeap(pHeap);
             }
-
-            // search for continuous free items in the list
-            uint32_t freeCount = 1;
-            for (size_t i = pHeap->mFreeList.size() - 1; i > 0; --i)
+            else if (pZone->mFreeList.size() >= descriptorCount)
             {
-                size_t                     index       = i - 1;
-                D3D12Util_DescriptorHandle mDescHandle = pHeap->mFreeList[index];
-                if (mDescHandle.mCpu.ptr + pHeap->mDescriptorSize == pHeap->mFreeList[i].mCpu.ptr)
-                    ++freeCount;
-                else
-                    freeCount = 1;
-
-                if (freeCount == descriptorCount)
+                if (descriptorCount == 1)
                 {
-                    pHeap->mFreeList.remove_at(index, descriptorCount);
-                    return mDescHandle;
+                    return pZone->mFreeList.stack_pop_get();
+                }
+
+                // search for continuous free items in the list
+                uint32_t freeCount = 1;
+                for (size_t i = pZone->mFreeList.size() - 1; i > 0; --i)
+                {
+                    size_t index = i - 1;
+                    D3D12Util_DescriptorHandle mDescHandle = pZone->mFreeList[index];
+                    if (mDescHandle.mCpu.ptr + pHeap->mDescriptorSize == pZone->mFreeList[i].mCpu.ptr)
+                        ++freeCount;
+                    else
+                        freeCount = 1;
+
+                    if (freeCount == descriptorCount)
+                    {
+                        pZone->mFreeList.remove_at(index, descriptorCount);
+                        return mDescHandle;
+                    }
                 }
             }
         }
     }
+    
 #ifdef CGPU_THREAD_SAFETY
-    uint32_t usedDescriptors = skr_atomic_fetch_add_relaxed(&pHeap->mUsedDescriptors, descriptorCount);
+    uint32_t usedDescriptors = skr_atomic_fetch_add_relaxed(&pZone->mUsedDescriptors, descriptorCount);
 #else
-    uint32_t usedDescriptors = pHeap->mUsedDescriptors = pHeap->mUsedDescriptors + descriptorCount;
+    uint32_t usedDescriptors = pZone->mUsedDescriptors;
+    pZone->mUsedDescriptors = pZone->mUsedDescriptors + descriptorCount;
 #endif
-    cgpu_assert(usedDescriptors + descriptorCount <= pHeap->mDesc.NumDescriptors);
+    cgpu_assert(usedDescriptors + descriptorCount <= pZone->mSize);
+    
+    uint32_t absoluteOffset = pZone->mOffset + usedDescriptors;
     D3D12Util_DescriptorHandle ret = {
-        { pHeap->mStartHandle.mCpu.ptr + usedDescriptors * pHeap->mDescriptorSize },
-        { pHeap->mStartHandle.mGpu.ptr + usedDescriptors * pHeap->mDescriptorSize },
+        { pHeap->mStartHandle.mCpu.ptr + absoluteOffset * pHeap->mDescriptorSize },
+        { pHeap->mStartHandle.mGpu.ptr + absoluteOffset * pHeap->mDescriptorSize },
     };
     return ret;
+}
+
+D3D12Util_DescriptorHandle D3D12Util_ConsumeDescriptorHandles(D3D12Util_DescriptorHeap* pHeap, uint32_t descriptorCount)
+{
+    // Use zone 0 (front zone) for descriptor handles
+    return D3D12Util_AllocateFromZone(pHeap, &pHeap->mZones[0], descriptorCount);
+}
+
+D3D12Util_DescriptorHandle D3D12Util_ConsumeArgumentBuffer(D3D12Util_DescriptorHeap* pHeap, uint32_t descriptorCount)
+{
+    // Use zone 1 (back zone) for argument buffers
+    return D3D12Util_AllocateFromZone(pHeap, &pHeap->mZones[1], descriptorCount);
 }
 
 void D3D12Util_ReturnDescriptorHandles(struct D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE handle, uint32_t count)
 {
     cgpu_assert((pHeap->mDesc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) == 0);
 #ifdef CGPU_THREAD_SAFETY
-    SMutexLock lock(*pHeap->pMutex);
+    SMutexLock lock(*pHeap->mZones[0].pMutex);
 #endif
     for (uint32_t i = 0; i < count; ++i)
     {
         SKR_DECLARE_ZERO(D3D12Util_DescriptorHandle, Free)
         Free.mCpu = { handle.ptr + pHeap->mDescriptorSize * i };
         Free.mGpu = { D3D12_GPU_VIRTUAL_ADDRESS_NULL };
-        pHeap->mFreeList.add(Free);
+        pHeap->mZones[0].mFreeList.add(Free);
     }
 }
 
-void D3D12Util_CopyDescriptorHandle(D3D12Util_DescriptorHeap *pHeap, D3D12_CPU_DESCRIPTOR_HANDLE srcHandle, uint64_t dstHandle, uint32_t index) {
-  pHeap->pHandles[(dstHandle / pHeap->mDescriptorSize) + index] = srcHandle;
-  pHeap->pDevice->CopyDescriptorsSimple(1,
-                                        {pHeap->mStartHandle.mCpu.ptr +
-                                         dstHandle +
-                                         (index * pHeap->mDescriptorSize)},
-                                        srcHandle, pHeap->mDesc.Type);
+void D3D12Util_ReturnArgumentBuffer(D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE handle, uint32_t count)
+{
+    cgpu_assert((pHeap->mDesc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) == 0);
+#ifdef CGPU_THREAD_SAFETY
+    SMutexLock lock(*pHeap->mZones[1].pMutex);
+#endif
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        SKR_DECLARE_ZERO(D3D12Util_DescriptorHandle, Free)
+        Free.mCpu = { handle.ptr + pHeap->mDescriptorSize * i };
+        Free.mGpu = { D3D12_GPU_VIRTUAL_ADDRESS_NULL };
+        pHeap->mZones[1].mFreeList.add(Free);
+    }
+}
+
+void D3D12Util_CopyDescriptorHandle(D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE srcHandle, uint64_t dstHandle, uint32_t index)
+{
+    pHeap->pHandles[(dstHandle / pHeap->mDescriptorSize) + index] = srcHandle;
+    pHeap->pDevice->CopyDescriptorsSimple(1,
+        { pHeap->mStartHandle.mCpu.ptr +
+            dstHandle +
+            (index * pHeap->mDescriptorSize) },
+        srcHandle,
+        pHeap->mDesc.Type);
+}
+
+void D3D12Util_FillArgumentBuffer(D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE srcHandle, uint64_t dstHandle, uint32_t index)
+{
+    // dstHandle is relative to the back zone (zone 1), need to add zone offset
+    uint32_t absoluteIndex = pHeap->mZones[1].mOffset + (dstHandle / pHeap->mDescriptorSize) + index;
+    pHeap->pHandles[absoluteIndex] = srcHandle;
+    pHeap->pDevice->CopyDescriptorsSimple(1,
+        { pHeap->mStartHandle.mCpu.ptr +
+            (pHeap->mZones[1].mOffset * pHeap->mDescriptorSize) +
+            dstHandle +
+            (index * pHeap->mDescriptorSize) },
+        srcHandle,
+        pHeap->mDesc.Type);
 }
 
 D3D12Util_DescriptorHandle D3D12Util_GetStartHandle(const D3D12Util_DescriptorHeap* pHeap)
@@ -885,17 +1023,14 @@ size_t D3D12Util_GetDescriptorSize(const struct D3D12Util_DescriptorHeap* pHeap)
     return pHeap->mDescriptorSize;
 }
 
-void D3D12Util_CreateSRV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
-    const D3D12_SHADER_RESOURCE_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
+void D3D12Util_CreateSRV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
 {
     if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
         *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1).mCpu;
     D->pDxDevice->CreateShaderResourceView(pResource, pSrvDesc, *pHandle);
 }
 
-void D3D12Util_CreateUAV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
-    ID3D12Resource* pCounterResource,
-    const D3D12_UNORDERED_ACCESS_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
+void D3D12Util_CreateUAV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, ID3D12Resource* pCounterResource, const D3D12_UNORDERED_ACCESS_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
 {
     if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
         *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1).mCpu;
@@ -903,7 +1038,8 @@ void D3D12Util_CreateUAV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
 }
 
 void D3D12Util_CreateCBV(CGPUDevice_D3D12* D,
-    const D3D12_CONSTANT_BUFFER_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
+    const D3D12_CONSTANT_BUFFER_VIEW_DESC* pSrvDesc,
+    D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
 {
     if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
         *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1).mCpu;
@@ -912,7 +1048,8 @@ void D3D12Util_CreateCBV(CGPUDevice_D3D12* D,
 
 void D3D12Util_CreateRTV(CGPUDevice_D3D12* D,
     ID3D12Resource* pResource,
-    const D3D12_RENDER_TARGET_VIEW_DESC* pRtvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
+    const D3D12_RENDER_TARGET_VIEW_DESC* pRtvDesc,
+    D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
 {
     if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
         *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV], 1).mCpu;
@@ -921,7 +1058,8 @@ void D3D12Util_CreateRTV(CGPUDevice_D3D12* D,
 
 void D3D12Util_CreateDSV(CGPUDevice_D3D12* D,
     ID3D12Resource* pResource,
-    const D3D12_DEPTH_STENCIL_VIEW_DESC* pDsvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
+    const D3D12_DEPTH_STENCIL_VIEW_DESC* pDsvDesc,
+    D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
 {
     if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
         *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV], 1).mCpu;

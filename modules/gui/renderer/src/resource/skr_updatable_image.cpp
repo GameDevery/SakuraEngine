@@ -93,7 +93,7 @@ void SkrUpdatableImage::update(const UpdatableImageDesc& desc)
     CGPUCommandBufferDescriptor cmd_desc           = {};
     CGPUBufferDescriptor        upload_buffer_desc = {};
     upload_buffer_desc.name                        = u8"updatable_image_upload_buffer";
-    upload_buffer_desc.flags                       = CGPU_BCF_PERSISTENT_MAP_BIT;
+    upload_buffer_desc.flags                       = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
     upload_buffer_desc.descriptors                 = CGPU_RESOURCE_TYPE_NONE;
     upload_buffer_desc.memory_usage                = CGPU_MEM_USAGE_CPU_ONLY;
     upload_buffer_desc.size                        = upload_size;
@@ -139,8 +139,8 @@ void SkrUpdatableImage::update(const UpdatableImageDesc& desc)
     view_desc.mip_level_count           = 1;
     view_desc.base_mip_level            = 0;
     view_desc.aspects                   = CGPU_TVA_COLOR;
-    view_desc.dims                      = CGPU_TEX_DIMENSION_2D;
-    view_desc.usages                    = CGPU_TVU_SRV;
+    view_desc.dims                      = CGPU_TEXTURE_DIMENSION_2D;
+    view_desc.view_usages                    = CGPU_TEXTURE_VIEW_USAGE_SRV;
     _texture_view                       = cgpu_create_texture_view(device, &view_desc);
 
     // create bind table

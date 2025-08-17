@@ -187,7 +187,7 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         CGPUDescriptorData update = {};
         update.count = 1;
         update.name = resource.name;
-        update.binding_type = CGPU_RESOURCE_TYPE_TEXTURE;
+        update.view_usage = CGPU_TEXTURE_VIEW_USAGE_SRV;
         update.binding = resource.binding;
         
         // Create texture view
@@ -198,7 +198,7 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         view_desc.base_mip_level = read_edge->get_mip_base();
         view_desc.mip_level_count = read_edge->get_mip_count();
         view_desc.format = view_desc.texture->info->format;
-        view_desc.usages = CGPU_TVU_SRV;
+        view_desc.view_usages = CGPU_TEXTURE_VIEW_USAGE_SRV;
         view_desc.dims = read_edge->get_dimension();
         
         const bool is_depth_stencil = FormatUtil_IsDepthStencilFormat(view_desc.format);
@@ -231,7 +231,7 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         CGPUDescriptorData update = {};
         update.count = 1;
         update.name = resource.name;
-        update.binding_type = CGPU_RESOURCE_TYPE_RW_TEXTURE;
+        update.view_usage = CGPU_TEXTURE_VIEW_USAGE_UAV;
         update.binding = resource.binding;
         
         // Create UAV texture view
@@ -243,8 +243,8 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         view_desc.mip_level_count = 1;
         view_desc.aspects = CGPU_TVA_COLOR;
         view_desc.format = view_desc.texture->info->format;
-        view_desc.usages = CGPU_TVU_UAV;
-        view_desc.dims = CGPU_TEX_DIMENSION_2D;
+        view_desc.view_usages = CGPU_TEXTURE_VIEW_USAGE_UAV;
+        view_desc.dims = CGPU_TEXTURE_DIMENSION_2D;
         
         tex_uavs[e_idx] = graph->get_texture_view_pool().allocate(view_desc, graph->get_frame_index());
         update.textures = &tex_uavs[e_idx];

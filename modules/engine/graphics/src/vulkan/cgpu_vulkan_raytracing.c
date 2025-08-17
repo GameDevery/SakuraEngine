@@ -145,7 +145,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
             CGPUBufferDescriptor bufferDesc = {
                 .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER | CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE,
                 .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
-                .flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION | CGPU_BCF_DEDICATED_BIT,
+                .flags = CGPU_BUFFER_FLAG_NO_DESCRIPTOR_VIEW_CREATION | CGPU_BUFFER_FLAG_DEDICATED_BIT,
                 .element_stride = sizeof(uint32_t),
                 .first_element = 0,
                 .element_count = (uint32_t)(sizeInfo.accelerationStructureSize / sizeof(uint32_t)),
@@ -167,7 +167,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
         CGPUBufferDescriptor instanceDesc = {
             .descriptors = CGPU_RESOURCE_TYPE_BUFFER,
             .memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU,
-            .flags = CGPU_BCF_PERSISTENT_MAP_BIT,
+            .flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT,
             .size = desc->top.count * sizeof(VkAccelerationStructureInstanceKHR),
         };
         AS->asTop.pInstanceDescBuffer = cgpu_create_buffer(device, &instanceDesc);
@@ -249,7 +249,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
         CGPUBufferDescriptor bufferDesc = {
             .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER | CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE,
             .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
-            .flags = CGPU_BCF_DEDICATED_BIT,
+            .flags = CGPU_BUFFER_FLAG_DEDICATED_BIT,
             .element_stride = sizeof(uint32_t),
             .first_element = 0,
             .element_count = (uint32_t)(sizeInfo.accelerationStructureSize / sizeof(uint32_t)),
@@ -291,7 +291,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_vulkan(CGPUDevice
         .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER,
         .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
         .start_state = CGPU_RESOURCE_STATE_COMMON,
-        .flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION,
+        .flags = CGPU_BUFFER_FLAG_NO_DESCRIPTOR_VIEW_CREATION,
         .size = AS->super.scratch_buffer_size,
     };
     AS->pScratchBuffer = cgpu_create_buffer(device, &scratchBufferDesc);

@@ -782,7 +782,7 @@ CGPUBufferId cgpu_create_buffer_metal(CGPUDeviceId device, const CGPUBufferDescr
     B->mtlBuffer = [D->pDevice newBufferWithLength:pInfo->size options:options];
     B->mOffset = 0;
 
-    if (desc->flags & CGPU_BCF_PERSISTENT_MAP_BIT)
+    if (desc->flags & CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT)
         pInfo->cpu_mapped_address = B->mtlBuffer.contents + B->mOffset;
 
     pInfo->descriptors = desc->descriptors;

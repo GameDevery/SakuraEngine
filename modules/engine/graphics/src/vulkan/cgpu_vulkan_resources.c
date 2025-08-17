@@ -37,8 +37,8 @@ SKR_FORCEINLINE static VkBufferCreateInfo VkUtil_CreateBufferCreateInfo(CGPUAdap
     // This includes vertex buffers, index buffers, and storage buffers when raytracing is supported
     if (A->adapter_detail.support_ray_tracing)
     {
-        if ((desc->descriptors & CGPU_RESOURCE_TYPE_VERTEX_BUFFER) ||
-            (desc->descriptors & CGPU_RESOURCE_TYPE_INDEX_BUFFER) ||
+        if ((desc->descriptors & CGPU_BUFFER_USAGE_VERTEX_BUFFER) ||
+            (desc->descriptors & CGPU_BUFFER_USAGE_INDEX_BUFFER) ||
             (desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER) ||
             (desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER))
         {
@@ -123,12 +123,12 @@ CGPUBufferId cgpu_create_buffer_vulkan(CGPUDeviceId device, const struct CGPUBuf
     VmaAllocationCreateInfo vma_mem_reqs = {
         .usage = (VmaMemoryUsage)desc->memory_usage
     };
-    if (desc->flags & CGPU_BCF_DEDICATED_BIT)
+    if (desc->flags & CGPU_BUFFER_FLAG_DEDICATED_BIT)
         vma_mem_reqs.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-    if (desc->flags & CGPU_BCF_PERSISTENT_MAP_BIT)
+    if (desc->flags & CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT)
         vma_mem_reqs.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
-    if ((desc->flags & CGPU_BCF_HOST_VISIBLE && desc->memory_usage & CGPU_MEM_USAGE_GPU_ONLY) ||
-        (desc->flags & CGPU_BCF_PERSISTENT_MAP_BIT && desc->memory_usage & CGPU_MEM_USAGE_GPU_ONLY))
+    if ((desc->flags & CGPU_BUFFER_FLAG_HOST_VISIBLE && desc->memory_usage & CGPU_MEM_USAGE_GPU_ONLY) ||
+        (desc->flags & CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT && desc->memory_usage & CGPU_MEM_USAGE_GPU_ONLY))
         vma_mem_reqs.preferredFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
     // VMA recommanded upload & readback usage
     if (desc->memory_usage == CGPU_MEM_USAGE_CPU_TO_GPU)
@@ -189,17 +189,8 @@ CGPUBufferId cgpu_create_buffer_vulkan(CGPUDeviceId device, const struct CGPUBuf
     info->size = desc->size;
     info->cpu_mapped_address = alloc_info.pMappedData;
     info->memory_usage = desc->memory_usage;
-    info->descriptors = desc->descriptors;
+    info->usages = desc->usages;
 
-    // Setup Descriptors
-    if ((desc->descriptors & CGPU_RESOURCE_TYPE_UNIFORM_BUFFER) || (desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER) ||
-        (desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER))
-    {
-        if ((desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER) || (desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER))
-        {
-            B->mOffset = desc->element_stride * desc->first_element;
-        }
-    }
     // Setup Uniform Texel View
     if ((add_info.usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT) || (add_info.usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT))
     {
@@ -1423,9 +1414,9 @@ CGPUTextureViewId cgpu_create_texture_view_vulkan(CGPUDeviceId device, const str
             break;
         case VK_IMAGE_TYPE_2D:
             if (pInfo->is_cube)
-                view_type = (desc->dims == CGPU_TEX_DIMENSION_CUBE_ARRAY) ? VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
+                view_type = (desc->dims == CGPU_TEXTURE_DIMENSION_CUBE_ARRAY) ? VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
             else
-                view_type = ((desc->dims == CGPU_TEX_DIMENSION_2D_ARRAY) || (desc->dims == CGPU_TEX_DIMENSION_2DMS_ARRAY)) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
+                view_type = ((desc->dims == CGPU_TEXTURE_DIMENSION_2D_ARRAY) || (desc->dims == CGPU_TEXTURE_DIMENSION_2DMS_ARRAY)) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
             break;
         case VK_IMAGE_TYPE_3D:
             if (desc->array_layer_count > 1)
@@ -1468,12 +1459,12 @@ CGPUTextureViewId cgpu_create_texture_view_vulkan(CGPUDeviceId device, const str
         .subresourceRange.baseArrayLayer = desc->base_array_layer,
         .subresourceRange.layerCount = desc->array_layer_count
     };
-    if (desc->usages & CGPU_TVU_SRV)
+    if (desc->usages & CGPU_TEXTURE_VIEW_USAGE_SRV)
     {
         CHECK_VKRESULT(D->mVkDeviceTable.vkCreateImageView(D->pVkDevice, &srvDesc, GLOBAL_VkAllocationCallbacks, &TV->pVkSRVDescriptor));
     }
     // UAV
-    if (desc->usages & CGPU_TVU_UAV)
+    if (desc->usages & CGPU_TEXTURE_VIEW_USAGE_UAV)
     {
         VkImageViewCreateInfo uavDesc = srvDesc;
         // #NOTE : We dont support imageCube, imageCubeArray for consistency with other APIs
@@ -1484,7 +1475,7 @@ CGPUTextureViewId cgpu_create_texture_view_vulkan(CGPUDeviceId device, const str
         CHECK_VKRESULT(D->mVkDeviceTable.vkCreateImageView(D->pVkDevice, &uavDesc, GLOBAL_VkAllocationCallbacks, &TV->pVkUAVDescriptor));
     }
     // RTV & DSV
-    if (desc->usages & CGPU_TVU_RTV_DSV)
+    if (desc->usages & CGPU_TEXTURE_VIEW_USAGE_RTV_DSV)
     {
         CHECK_VKRESULT(D->mVkDeviceTable.vkCreateImageView(D->pVkDevice, &srvDesc, GLOBAL_VkAllocationCallbacks, &TV->pVkRTVDSVDescriptor));
     }

@@ -215,8 +215,8 @@ void GPUScene::PrepareUploadBuffer(skr::render_graph::RenderGraph* graph)
         // Create new upload buffer
         CGPUBufferDescriptor upload_desc = {};
         upload_desc.name = u8"GPUScene-UploadBuffer";
-        upload_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
-        upload_desc.descriptors = CGPU_RESOURCE_TYPE_BUFFER_RAW;
+        upload_desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
+        upload_desc.usages = CGPU_BUFFER_USAGE_NONE;
         upload_desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
         upload_desc.size = required_size;
         upload_desc.prefer_on_device = true;

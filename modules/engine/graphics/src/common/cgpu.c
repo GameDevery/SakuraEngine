@@ -1083,7 +1083,7 @@ CGPUBufferId cgpu_create_buffer(CGPUDeviceId device, const struct CGPUBufferDesc
     memcpy(&new_desc, desc, sizeof(CGPUBufferDescriptor));
     if (desc->flags == 0)
     {
-        new_desc.flags |= CGPU_BCF_NONE;
+        new_desc.flags |= CGPU_BUFFER_FLAG_NONE;
     }
     CGPUProcCreateBuffer fn_create_buffer = device->proc_table_cache->create_buffer;
     CGPUBuffer* buffer = (CGPUBuffer*)fn_create_buffer(device, &new_desc);
@@ -1345,7 +1345,7 @@ uint64_t size, const char8_t* name, bool device_local_preferred)
     buf_desc.name = name;
     const CGPUAdapterDetail* detail = cgpu_query_adapter_detail(device->adapter);
     buf_desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
-    buf_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT | CGPU_BCF_HOST_VISIBLE;
+    buf_desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT | CGPU_BUFFER_FLAG_HOST_VISIBLE;
     buf_desc.start_state = CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
     if (device_local_preferred && detail->support_host_visible_vram)
     {
@@ -1362,7 +1362,7 @@ uint64_t size, const char8_t* name)
     buf_desc.size = size;
     buf_desc.name = name;
     buf_desc.memory_usage = CGPU_MEM_USAGE_CPU_ONLY;
-    buf_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
+    buf_desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
     buf_desc.start_state = CGPU_RESOURCE_STATE_COPY_DEST;
     return cgpu_create_buffer(device, &buf_desc);
 }

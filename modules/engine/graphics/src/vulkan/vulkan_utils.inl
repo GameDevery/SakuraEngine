@@ -90,12 +90,12 @@ SKR_FORCEINLINE static VkPrimitiveTopology VkUtil_TranslateTopology(ECGPUPrimiti
     return topology;
 }
 
-SKR_FORCEINLINE static VkImageUsageFlags VkUtil_DescriptorTypesToImageUsage(CGPUResourceTypes descriptors)
+SKR_FORCEINLINE static VkImageUsageFlags VkUtil_DescriptorTypesToImageUsage(CGPUTextureUsages usages)
 {
     VkImageUsageFlags result = 0;
-    if (CGPU_RESOURCE_TYPE_TEXTURE == (descriptors & CGPU_RESOURCE_TYPE_TEXTURE))
+    if (CGPU_TEXTURE_USAGE_SHADER_READ == (usages & CGPU_TEXTURE_USAGE_SHADER_READ))
         result |= VK_IMAGE_USAGE_SAMPLED_BIT;
-    if (CGPU_RESOURCE_TYPE_RW_TEXTURE == (descriptors & CGPU_RESOURCE_TYPE_RW_TEXTURE))
+    if (CGPU_TEXTURE_USAGE_SHADER_READWRITE == (usages & CGPU_TEXTURE_USAGE_SHADER_READWRITE))
         result |= VK_IMAGE_USAGE_STORAGE_BIT;
     return result;
 }
@@ -210,36 +210,32 @@ SKR_FORCEINLINE static VkImageAspectFlags VkUtil_DeterminAspectMask(VkFormat for
     return result;
 }
 
-SKR_FORCEINLINE static VkBufferUsageFlags VkUtil_DescriptorTypesToBufferUsage(CGPUResourceTypes descriptors, bool texel)
+SKR_FORCEINLINE static VkBufferUsageFlags VkUtil_DescriptorTypesToBufferUsage(CGPUBufferUsages usages, bool texel)
 {
     VkBufferUsageFlags result = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    if (descriptors & CGPU_RESOURCE_TYPE_UNIFORM_BUFFER)
+    if (usages & CGPU_BUFFER_USAGE_CONSTANT_BUFFER)
     {
         result |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     }
-    if (descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER)
+    if (usages & CGPU_BUFFER_USAGE_SHADER_READWRITE)
     {
         result |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
         if (texel) result |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
     }
-    if (descriptors & CGPU_RESOURCE_TYPE_BUFFER)
+    if (usages & CGPU_BUFFER_USAGE_SHADER_READ)
     {
         result |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
         if (texel) result |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
     }
-    if (descriptors & CGPU_RESOURCE_TYPE_INDEX_BUFFER)
+    if (usages & CGPU_BUFFER_USAGE_INDEX_BUFFER)
     {
         result |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     }
-    if (descriptors & CGPU_RESOURCE_TYPE_VERTEX_BUFFER)
+    if (usages & CGPU_BUFFER_USAGE_VERTEX_BUFFER)
     {
         result |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     }
-    if (descriptors & CGPU_RESOURCE_TYPE_INDIRECT_BUFFER)
-    {
-        result |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-    }
-    if (descriptors & CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE)
+    if (usages & CGPU_BUFFER_USAGE_ACCELERATION_STRUCTURE)
     {
         result |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
     }
@@ -341,25 +337,48 @@ SKR_FORCEINLINE static VkFragmentShadingRateCombinerOpKHR VkUtil_TranslateShadin
 }
 
 /* clang-format off */
-SKR_FORCEINLINE static VkDescriptorType VkUtil_TranslateResourceType(ECGPUResourceType type)
+SKR_FORCEINLINE static VkDescriptorType VkUtil_TranslateResourceType(ECGPUResourceType type, CGPUFlags usages)
 {
-	switch (type)
+	switch (type) 
 	{
-		case CGPU_RESOURCE_TYPE_NONE: cgpu_assert(0 && "Invalid DescriptorInfo Type"); return VK_DESCRIPTOR_TYPE_MAX_ENUM;
-		case CGPU_RESOURCE_TYPE_SAMPLER: return VK_DESCRIPTOR_TYPE_SAMPLER;
-		case CGPU_RESOURCE_TYPE_TEXTURE: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		case CGPU_RESOURCE_TYPE_UNIFORM_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		case CGPU_RESOURCE_TYPE_RW_TEXTURE: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-		case CGPU_RESOURCE_TYPE_BUFFER:
-		case CGPU_RESOURCE_TYPE_RW_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		case CGPU_RESOURCE_TYPE_INPUT_ATTACHMENT: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-		case CGPU_RESOURCE_TYPE_TEXEL_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-		case CGPU_RESOURCE_TYPE_RW_TEXEL_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-		case CGPU_RESOURCE_TYPE_COMBINED_IMAGE_SAMPLER: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		case CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE: return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+		case CGPU_RESOURCE_TYPE2_BUFFER:
+		{
+			if (usages & CGPU_BUFFER_USAGE_CONSTANT_BUFFER)
+				return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			else if (usages & CGPU_BUFFER_USAGE_SHADER_READ)
+				return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			else if (usages & CGPU_BUFFER_USAGE_SHADER_READWRITE)
+				return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			else
+				cgpu_assert(0 && "CGPU ASSERT: UNEXPECTED RESOURCE SLOT!");
+		}
+		break;
+		case CGPU_RESOURCE_TYPE2_TEXTURE:
+		{
+			if (usages & CGPU_TEXTURE_USAGE_SHADER_READ)
+				return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			else if (usages & CGPU_TEXTURE_USAGE_SHADER_READWRITE)
+				return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+			else
+				cgpu_assert(0 && "CGPU ASSERT: UNEXPECTED RESOURCE SLOT!");
+		}
+		break;
+		case CGPU_RESOURCE_TYPE2_SAMPLER:
+		{
+			return VK_DESCRIPTOR_TYPE_SAMPLER;
+		}	
+		break;
+		case CGPU_RESOURCE_TYPE2_ACCELERATION_STRUCTURE:
+		{
+			return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+		}
+		break;
 		default:
-			cgpu_assert(0 && "Invalid DescriptorInfo Type");
+		{
+			cgpu_assert(false && "Invalid DescriptorInfo Type");
 			return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+		}
+		break;
 	}
 	return VK_DESCRIPTOR_TYPE_MAX_ENUM;
 }

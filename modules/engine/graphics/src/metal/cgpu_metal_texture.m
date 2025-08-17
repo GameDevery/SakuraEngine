@@ -14,11 +14,11 @@ static MTLTextureType MetalUtil_TranslateTextureType(ECGPUTextureDimension dim, 
     
     switch (dim)
     {
-        case CGPU_TEX_DIMENSION_1D:
+        case CGPU_TEXTURE_DIMENSION_1D:
             return array_size > 1 ? MTLTextureType1DArray : MTLTextureType1D;
-        case CGPU_TEX_DIMENSION_2D:
+        case CGPU_TEXTURE_DIMENSION_2D:
             return array_size > 1 ? MTLTextureType2DArray : MTLTextureType2D;
-        case CGPU_TEX_DIMENSION_3D:
+        case CGPU_TEXTURE_DIMENSION_3D:
             return MTLTextureType3D;
         default:
             cgpu_assert(false && "Invalid texture dimension");
@@ -54,23 +54,23 @@ static MTLTextureUsage MetalUtil_TranslateTextureUsage(CGPUResourceTypes descrip
 // Determine texture dimension
 static ECGPUTextureDimension MetalUtil_CalculateTextureDimension(const CGPUTextureDescriptor* desc)
 {
-    ECGPUTextureDimension dim = CGPU_TEX_DIMENSION_2D;
+    ECGPUTextureDimension dim = CGPU_TEXTURE_DIMENSION_2D;
     
     if (desc->flags & CGPU_TCF_FORCE_2D)
     {
-        dim = CGPU_TEX_DIMENSION_2D;
+        dim = CGPU_TEXTURE_DIMENSION_2D;
     }
     else if (desc->flags & CGPU_TCF_FORCE_3D)
     {
-        dim = CGPU_TEX_DIMENSION_3D;
+        dim = CGPU_TEXTURE_DIMENSION_3D;
     }
     else if (desc->depth > 1)
     {
-        dim = CGPU_TEX_DIMENSION_3D;
+        dim = CGPU_TEXTURE_DIMENSION_3D;
     }
     else if (desc->height == 1)
     {
-        dim = CGPU_TEX_DIMENSION_1D;
+        dim = CGPU_TEXTURE_DIMENSION_1D;
     }
     
     return dim;
@@ -163,9 +163,9 @@ CGPUTextureId cgpu_create_texture_metal(CGPUDeviceId device, const struct CGPUTe
             textureDesc.pixelFormat = MetalUtil_TranslatePixelFormat(desc->format);
             textureDesc.width = desc->width;
             textureDesc.height = desc->height;
-            textureDesc.depth = (dimension == CGPU_TEX_DIMENSION_3D) ? desc->depth : 1;
+            textureDesc.depth = (dimension == CGPU_TEXTURE_DIMENSION_3D) ? desc->depth : 1;
             textureDesc.mipmapLevelCount = desc->mip_levels;
-            textureDesc.arrayLength = (dimension != CGPU_TEX_DIMENSION_3D) ? desc->array_size : 1;
+            textureDesc.arrayLength = (dimension != CGPU_TEXTURE_DIMENSION_3D) ? desc->array_size : 1;
             textureDesc.sampleCount = desc->sample_count;
             
             // Set usage flags
@@ -269,7 +269,7 @@ CGPUTextureViewId cgpu_create_texture_view_metal(CGPUDeviceId device, const stru
         
         // Check if we need a different view type
         MTLTextureType viewType = texture->pTexture.textureType;
-        if (desc->dims != CGPU_TEX_DIMENSION_UNDEFINED)
+        if (desc->dims != CGPU_TEXTURE_DIMENSION_UNDEFINED)
         {
             viewType = MetalUtil_TranslateTextureType(desc->dims, layerCount, false);
         }

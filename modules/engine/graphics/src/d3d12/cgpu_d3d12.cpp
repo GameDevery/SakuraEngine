@@ -351,8 +351,8 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
         alloc_desc.Flags &= ~D3D12MA::ALLOCATION_FLAG_COMMITTED; // 不能使用 COMMITTED 标志与自定义池
     }
 #ifdef CGPU_USE_NVAPI
-    if ((desc->memory_usage == CGPU_MEM_USAGE_GPU_ONLY && desc->flags & CGPU_BCF_HOST_VISIBLE) ||
-        (desc->memory_usage & CGPU_MEM_USAGE_GPU_ONLY && desc->flags == CGPU_BCF_PERSISTENT_MAP_BIT))
+    if ((desc->memory_usage == CGPU_MEM_USAGE_GPU_ONLY && desc->flags & CGPU_BUFFER_FLAG_HOST_VISIBLE) ||
+        (desc->memory_usage & CGPU_MEM_USAGE_GPU_ONLY && desc->flags == CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT))
     {
         bool cpuVisibleVRamSupported = false;
         D3D12_HEAP_PROPERTIES heapProps = {};
@@ -417,7 +417,7 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
     }
 
     // MemMaps
-    if (desc->flags & CGPU_BCF_PERSISTENT_MAP_BIT)
+    if (desc->flags & CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT)
     {
         SkrZoneScopedN("Map(Buffer)");
 
@@ -436,115 +436,7 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
     B->super.cpu_mapped_address->pCpuMappedAddress = (void*)B->mDxGpuAddress;
 #endif
 
-    // Create Descriptors
-    if (!(desc->flags & CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION))
-    {
-        D3D12Util_DescriptorHeap* pHeap = D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
-        const size_t kDescriptorSize = D3D12Util_GetDescriptorSize(pHeap);
 
-        uint32_t handleCount = ((desc->descriptors & CGPU_RESOURCE_TYPE_UNIFORM_BUFFER) ? 1 : 0) +
-            ((desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER) ? 1 : 0) +
-            ((desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER) ? 1 : 0);
-        B->mDxDescriptorHandles = D3D12Util_ConsumeDescriptorHandles(pHeap, handleCount).mCpu;
-
-        uint32_t currentOffset = 0;
-
-        // Create CBV
-        if (desc->descriptors & CGPU_RESOURCE_TYPE_UNIFORM_BUFFER)
-        {
-            D3D12_CPU_DESCRIPTOR_HANDLE cbv = { B->mDxDescriptorHandles.ptr + currentOffset };
-
-            D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-            cbvDesc.BufferLocation = B->mDxGpuAddress;
-            cbvDesc.SizeInBytes = (UINT)allocationSize;
-            D3D12Util_CreateCBV(D, &cbvDesc, &cbv);
-
-            currentOffset += kDescriptorSize;
-        }
-        // Create SRV
-        if (desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER)
-        {
-            B->mDxSrvOffset = currentOffset;
-            D3D12_CPU_DESCRIPTOR_HANDLE srv = { B->mDxDescriptorHandles.ptr + B->mDxSrvOffset };
-
-            currentOffset += kDescriptorSize;
-
-            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srvDesc.Buffer.FirstElement = desc->first_element;
-            srvDesc.Buffer.NumElements = (UINT)(desc->element_count);
-            srvDesc.Buffer.StructureByteStride = (UINT)(desc->element_stride);
-            srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-            srvDesc.Format = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, false);
-            if (CGPU_RESOURCE_TYPE_BUFFER_RAW == (desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER_RAW))
-            {
-                if (desc->format != CGPU_FORMAT_UNDEFINED)
-                {
-                    cgpu_warn(u8"Raw buffers use R32 typeless format. Format will be ignored");
-                }
-                srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-                srvDesc.Buffer.Flags |= D3D12_BUFFER_SRV_FLAG_RAW;
-                srvDesc.Buffer.NumElements = (UINT)allocationSize / sizeof(uint32_t);
-            }
-            // Cannot create a typed StructuredBuffer
-            if (srvDesc.Format != DXGI_FORMAT_UNKNOWN)
-            {
-                srvDesc.Buffer.StructureByteStride = 0;
-            }
-            D3D12Util_CreateSRV(D, B->pDxResource, &srvDesc, &srv);
-        }
-        // Create UAV
-        if (desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER)
-        {
-            B->mDxUavOffset = currentOffset;
-            D3D12_CPU_DESCRIPTOR_HANDLE uav = { B->mDxDescriptorHandles.ptr + B->mDxUavOffset };
-
-            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-            uavDesc.Format = DXGI_FORMAT_UNKNOWN;
-            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-            uavDesc.Buffer.FirstElement = desc->first_element;
-            uavDesc.Buffer.NumElements = (UINT)(desc->element_count);
-            uavDesc.Buffer.StructureByteStride = (UINT)(desc->element_stride);
-            uavDesc.Buffer.CounterOffsetInBytes = 0;
-            uavDesc.Buffer.Flags |= D3D12_BUFFER_UAV_FLAG_NONE;
-            if (CGPU_RESOURCE_TYPE_RW_BUFFER_RAW == (desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER_RAW))
-            {
-                if (desc->format != CGPU_FORMAT_UNDEFINED)
-                {
-                    cgpu_warn(u8"Raw buffers use R32 typeless format. Format will be ignored");
-                }
-                uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-                uavDesc.Buffer.Flags |= D3D12_BUFFER_UAV_FLAG_RAW;
-                uavDesc.Buffer.NumElements = (UINT)allocationSize / sizeof(uint32_t);
-            }
-            else if (desc->format != CGPU_FORMAT_UNDEFINED)
-            {
-                uavDesc.Format = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, false);
-                D3D12_FEATURE_DATA_FORMAT_SUPPORT FormatSupport = {
-                    uavDesc.Format,
-                    D3D12_FORMAT_SUPPORT1_NONE,
-                    D3D12_FORMAT_SUPPORT2_NONE
-                };
-                HRESULT hr = D->pDxDevice->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &FormatSupport, sizeof(FormatSupport));
-                if (!SUCCEEDED(hr) || !(FormatSupport.Support2 & D3D12_FORMAT_SUPPORT2_UAV_TYPED_LOAD) ||
-                    !(FormatSupport.Support2 & D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE))
-                {
-                    // Format does not support UAV Typed Load
-                    cgpu_warn(u8"Cannot use Typed UAV for buffer format %u", (uint32_t)desc->format);
-                    uavDesc.Format = DXGI_FORMAT_UNKNOWN;
-                }
-            }
-            // Cannot create a typed RWStructuredBuffer
-            if (uavDesc.Format != DXGI_FORMAT_UNKNOWN)
-            {
-                uavDesc.Buffer.StructureByteStride = 0;
-            }
-            CGPUBuffer_D3D12* pCountBuffer = (CGPUBuffer_D3D12*)desc->count_buffer;
-            ID3D12Resource* pCounterResource = pCountBuffer ? pCountBuffer->pDxResource : NULL;
-            D3D12Util_CreateUAV(D, B->pDxResource, pCounterResource, &uavDesc, &uav);
-        }
-    }
     // Set Debug Name
     if (device->adapter->instance->enable_set_name && desc->name)
     {
@@ -561,7 +453,7 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
     B->super.info = pInfo;
     pInfo->size = allocationSize;
     pInfo->memory_usage = desc->memory_usage;
-    pInfo->descriptors = desc->descriptors;
+    pInfo->usages = desc->usages;
     return &B->super;
 }
 
@@ -595,17 +487,171 @@ void cgpu_free_buffer_d3d12(CGPUBufferId buffer)
     CGPUBuffer_D3D12* B = (CGPUBuffer_D3D12*)buffer;
     CGPUBufferInfo* pInfo = (CGPUBufferInfo*)B->super.info;
     CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)B->super.device;
-    if (B->mDxDescriptorHandles.ptr != D3D12_GPU_VIRTUAL_ADDRESS_NULL)
-    {
-        uint32_t handleCount = ((pInfo->descriptors & CGPU_RESOURCE_TYPE_UNIFORM_BUFFER) ? 1 : 0) +
-            ((pInfo->descriptors & CGPU_RESOURCE_TYPE_BUFFER) ? 1 : 0) +
-            ((pInfo->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER) ? 1 : 0);
-        D3D12Util_ReturnDescriptorHandles(
-            D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], B->mDxDescriptorHandles, handleCount);
-    }
     SAFE_RELEASE(B->pDxAllocation);
     SAFE_RELEASE(B->pDxResource);
     cgpu_delete(B);
+}
+
+CGPUBufferViewId cgpu_create_buffer_view_d3d12(CGPUDeviceId device, const struct CGPUBufferViewDescriptor* desc)
+{
+    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)device;
+    const CGPUBuffer_D3D12* B = (const CGPUBuffer_D3D12*)desc->buffer;
+    CGPUBufferView_D3D12* BV = cgpu_new_sized<CGPUBufferView_D3D12>(sizeof(CGPUBufferView_D3D12) + sizeof(CGPUBufferViewDescriptor));
+    CGPUBufferViewDescriptor* Info = (CGPUBufferViewDescriptor*)(BV + 1);
+    BV->super.info = Info;
+
+    D3D12Util_DescriptorHeap* pHeap = D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
+    const size_t kDescriptorSize = D3D12Util_GetDescriptorSize(pHeap);
+
+    uint32_t handleCount = ((desc->view_usages & CGPU_BUFFER_VIEW_USAGE_CBV) ? 1 : 0) +
+        ((desc->view_usages & CGPU_BUFFER_VIEW_USAGE_UAV_STRUCTURED) ? 1 : 0) +
+        ((desc->view_usages & CGPU_BUFFER_VIEW_USAGE_UAV_RAW) ? 1 : 0) +
+        ((desc->view_usages & CGPU_BUFFER_VIEW_USAGE_UAV_TEXEL) ? 1 : 0) +
+
+        ((desc->view_usages & CGPU_BUFFER_VIEW_USAGE_SRV_STRUCTURED) ? 1 : 0) +
+        ((desc->view_usages & CGPU_BUFFER_VIEW_USAGE_SRV_RAW) ? 1 : 0) +
+        ((desc->view_usages & CGPU_BUFFER_VIEW_USAGE_SRV_TEXEL) ? 1 : 0);
+    BV->mDxDescriptorHandles = D3D12Util_ConsumeDescriptorHandles(pHeap, handleCount).mCpu;
+
+    uint32_t currentOffset = 0;
+    const auto BufferSize = desc->size ? desc->size : B->super.info->size;
+    const auto BufferOffset = desc->offset;
+
+    // Create CBV
+    if (desc->view_usages & CGPU_BUFFER_VIEW_USAGE_CBV)
+    {
+        D3D12_CPU_DESCRIPTOR_HANDLE cbv = { BV->mDxDescriptorHandles.ptr + currentOffset };
+
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+        cbvDesc.BufferLocation = B->mDxGpuAddress + desc->offset;
+        cbvDesc.SizeInBytes = (UINT)BufferSize;
+        D3D12Util_CreateCBV(D, &cbvDesc, &cbv);
+
+        currentOffset += kDescriptorSize;
+    }
+
+    // Create SRV
+    auto CreateSRV = [&](D3D12_CPU_DESCRIPTOR_HANDLE srv, UINT ElementStride, D3D12_BUFFER_SRV_FLAGS Flags, DXGI_FORMAT Format){
+        const auto FirstElement = BufferOffset / ElementStride;
+        const auto ElementCount = BufferSize / ElementStride;
+        const auto Mod = BufferOffset % ElementStride;
+
+        cgpu_assert((Mod == 0) && "Offset for structured view must aligns element_stride!");
+        SKR_DECLARE_ZERO(D3D12_SHADER_RESOURCE_VIEW_DESC, srvDesc);
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Format = Format;
+
+        srvDesc.Buffer.Flags = Flags;
+        srvDesc.Buffer.FirstElement = FirstElement;
+        srvDesc.Buffer.NumElements = (UINT)ElementCount;
+
+        if (Format == DXGI_FORMAT_UNKNOWN)
+            srvDesc.Buffer.StructureByteStride = ElementStride;
+        else
+            srvDesc.Buffer.StructureByteStride = 0;
+
+        D3D12Util_CreateSRV(D, B->pDxResource, &srvDesc, &srv);
+    };
+    if (desc->view_usages & CGPU_BUFFER_VIEW_USAGE_SRV_RAW)
+    {
+        BV->mDxRawSrvOffset = currentOffset;
+        D3D12_CPU_DESCRIPTOR_HANDLE srv = { BV->mDxDescriptorHandles.ptr + BV->mDxRawSrvOffset };
+        currentOffset += kDescriptorSize;
+
+        CreateSRV(srv, sizeof(uint32_t), D3D12_BUFFER_SRV_FLAG_RAW, DXGI_FORMAT_R32_TYPELESS);
+    }
+    if (desc->view_usages & CGPU_BUFFER_VIEW_USAGE_SRV_STRUCTURED)
+    {
+        BV->mDxStructuredSrvOffset = currentOffset;
+        D3D12_CPU_DESCRIPTOR_HANDLE srv = { BV->mDxDescriptorHandles.ptr + BV->mDxStructuredSrvOffset };
+        currentOffset += kDescriptorSize;
+
+        CreateSRV(srv, desc->structure.element_stride, D3D12_BUFFER_SRV_FLAG_NONE, DXGI_FORMAT_UNKNOWN);
+    }
+    if (desc->view_usages & CGPU_BUFFER_VIEW_USAGE_SRV_TEXEL)
+    {
+        BV->mDxTexelSrvOffset = currentOffset;
+        D3D12_CPU_DESCRIPTOR_HANDLE srv = { BV->mDxDescriptorHandles.ptr + BV->mDxTexelSrvOffset };
+        currentOffset += kDescriptorSize;
+
+        const auto ElementStride = FormatUtil_BitSizeOfBlock(desc->texel.format) / 8u;
+        const auto Format = DXGIUtil_TranslatePixelFormat(desc->texel.format, false);
+        CreateSRV(srv, ElementStride, D3D12_BUFFER_SRV_FLAG_NONE, Format);
+    }
+
+
+    // Create UAV
+    auto CreateUAV = [&](D3D12_CPU_DESCRIPTOR_HANDLE uav, UINT ElementStride, D3D12_BUFFER_UAV_FLAGS Flags, DXGI_FORMAT Format){
+        const auto FirstElement = BufferOffset / ElementStride;
+        const auto ElementCount = BufferSize / ElementStride;
+        const auto Mod = BufferOffset % ElementStride;
+
+        cgpu_assert((Mod == 0) && "Offset for structured view must aligns element_stride!");
+        SKR_DECLARE_ZERO(D3D12_UNORDERED_ACCESS_VIEW_DESC, uavDesc);
+        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+        uavDesc.Format = Format;
+
+        uavDesc.Buffer.Flags = Flags;
+        uavDesc.Buffer.FirstElement = FirstElement;
+        uavDesc.Buffer.NumElements = (UINT)ElementCount;
+
+        if (Format == DXGI_FORMAT_UNKNOWN)
+            uavDesc.Buffer.StructureByteStride = ElementStride;
+        else
+            uavDesc.Buffer.StructureByteStride = 0;
+
+        D3D12Util_CreateUAV(D, B->pDxResource, CGPU_NULLPTR, &uavDesc, &uav);
+    };
+    if (desc->view_usages & CGPU_BUFFER_VIEW_USAGE_UAV_RAW)
+    {
+        BV->mDxRawUavOffset = currentOffset;
+        D3D12_CPU_DESCRIPTOR_HANDLE uav = { BV->mDxDescriptorHandles.ptr + BV->mDxRawUavOffset };
+        currentOffset += kDescriptorSize;
+
+        CreateUAV(uav, sizeof(uint32_t), D3D12_BUFFER_UAV_FLAG_RAW, DXGI_FORMAT_R32_TYPELESS);
+    }
+    if (desc->view_usages & CGPU_BUFFER_VIEW_USAGE_UAV_STRUCTURED)
+    {
+        BV->mDxStructuredUavOffset = currentOffset;
+        D3D12_CPU_DESCRIPTOR_HANDLE uav = { BV->mDxDescriptorHandles.ptr + BV->mDxStructuredUavOffset };
+        currentOffset += kDescriptorSize;
+
+        CreateUAV(uav, desc->structure.element_stride, D3D12_BUFFER_UAV_FLAG_NONE, DXGI_FORMAT_UNKNOWN);
+    }
+    if (desc->view_usages & CGPU_BUFFER_VIEW_USAGE_UAV_TEXEL)
+    {
+        BV->mDxTexelUavOffset = currentOffset;
+        D3D12_CPU_DESCRIPTOR_HANDLE uav = { BV->mDxDescriptorHandles.ptr + BV->mDxTexelUavOffset };
+        currentOffset += kDescriptorSize;
+
+        const auto ElementStride = FormatUtil_BitSizeOfBlock(desc->texel.format) / 8u;
+        const auto Format = DXGIUtil_TranslatePixelFormat(desc->texel.format, false);
+        CreateUAV(uav, ElementStride, D3D12_BUFFER_UAV_FLAG_NONE, Format);
+    }
+
+    *Info = *desc;
+    return &BV->super;
+}
+
+void cgpu_free_buffer_view_d3d12(CGPUBufferViewId view)
+{
+    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)view->device;
+    CGPUBufferView_D3D12* BV = (CGPUBufferView_D3D12*)view;
+    auto desc = BV->super.info;
+    if (BV->mDxDescriptorHandles.ptr != D3D12_GPU_VIRTUAL_ADDRESS_NULL)
+    {
+        uint32_t handleCount = ((desc->view_usages & CGPU_BUFFER_VIEW_USAGE_CBV) ? 1 : 0) +
+            ((desc->view_usages & CGPU_BUFFER_VIEW_USAGE_UAV_STRUCTURED) ? 1 : 0) +
+            ((desc->view_usages & CGPU_BUFFER_VIEW_USAGE_UAV_RAW) ? 1 : 0) +
+            ((desc->view_usages & CGPU_BUFFER_VIEW_USAGE_UAV_TEXEL) ? 1 : 0) +
+
+            ((desc->view_usages & CGPU_BUFFER_VIEW_USAGE_SRV_STRUCTURED) ? 1 : 0) +
+            ((desc->view_usages & CGPU_BUFFER_VIEW_USAGE_SRV_RAW) ? 1 : 0) +
+            ((desc->view_usages & CGPU_BUFFER_VIEW_USAGE_SRV_TEXEL) ? 1 : 0);
+        D3D12Util_ReturnDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], BV->mDxDescriptorHandles, handleCount);
+    }
+    cgpu_delete(BV);
 }
 
 CGPUTexture_D3D12::CGPUTexture_D3D12()
@@ -1622,7 +1668,7 @@ inline static D3D12MA::ALLOCATION_DESC D3D12Util_CreateAllocationDesc(const stru
     SKR_DECLARE_ZERO(D3D12MA::ALLOCATION_DESC, alloc_desc)
     alloc_desc.HeapType = D3D12Util_TranslateHeapType(desc->memory_usage);
 
-    if (desc->flags & CGPU_BCF_DEDICATED_BIT)
+    if (desc->flags & CGPU_BUFFER_FLAG_DEDICATED_BIT)
         alloc_desc.Flags |= D3D12MA::ALLOCATION_FLAG_COMMITTED;
     return alloc_desc;
 }

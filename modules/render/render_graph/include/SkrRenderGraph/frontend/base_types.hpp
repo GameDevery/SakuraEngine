@@ -227,7 +227,7 @@ struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::Texture> {
         uint32_t mip_count = 1;
         uint32_t array_base = 0;
         uint32_t array_count = 1;
-        ECGPUTextureDimension dim = CGPU_TEX_DIMENSION_2D;
+        ECGPUTextureDimension dim = CGPU_TEXTURE_DIMENSION_2D;
     };
 
     struct SKR_RENDER_GRAPH_API ShaderWriteHandle {

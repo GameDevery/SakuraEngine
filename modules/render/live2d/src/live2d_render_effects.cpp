@@ -392,7 +392,7 @@ protected:
                     datas[0].name = color_texture_name;
                     datas[0].count = 1;
                     datas[0].textures = &texture_view;
-                    datas[0].binding_type = CGPU_RESOURCE_TYPE_TEXTURE;
+                    datas[0].view_usage = CGPU_TEXTURE_VIEW_USAGE_SRV;
                     cgpux_bind_table_update(bind_table, datas, 1);
                 }
             }
@@ -413,7 +413,7 @@ protected:
                     datas[0].name = color_texture_name;
                     datas[0].count = 1;
                     datas[0].textures = &texture_view;
-                    datas[0].binding_type = CGPU_RESOURCE_TYPE_TEXTURE;
+                    datas[0].view_usage = CGPU_TEXTURE_VIEW_USAGE_SRV;
                     cgpux_bind_table_update(bind_table, datas, 1);
                 }
             }

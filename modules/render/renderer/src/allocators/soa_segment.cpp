@@ -265,8 +265,8 @@ void SOASegmentBuffer::create_buffer()
     buffer_desc.name = u8"SOASegmentBuffer";
     buffer_desc.size = capacity_bytes;
     buffer_desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
-    buffer_desc.descriptors = CGPU_RESOURCE_TYPE_BUFFER_RAW | CGPU_RESOURCE_TYPE_RW_BUFFER_RAW;
-    buffer_desc.flags = CGPU_BCF_DEDICATED_BIT;
+    buffer_desc.usages = CGPU_BUFFER_USAGE_SHADER_READ | CGPU_BUFFER_USAGE_SHADER_READWRITE;
+    buffer_desc.flags = CGPU_BUFFER_FLAG_DEDICATED_BIT;
 
     buffer = cgpu_create_buffer(device, &buffer_desc);
     if (!buffer)
@@ -438,8 +438,8 @@ CGPUBufferId SOASegmentBuffer::create_buffer_with_capacity(uint32_t capacity)
     buffer_desc.name = u8"SOASegmentBuffer";
     buffer_desc.size = capacity_bytes;
     buffer_desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
-    buffer_desc.descriptors = CGPU_RESOURCE_TYPE_BUFFER_RAW | CGPU_RESOURCE_TYPE_RW_BUFFER_RAW;
-    buffer_desc.flags = CGPU_BCF_DEDICATED_BIT;
+    buffer_desc.usages = CGPU_BUFFER_USAGE_SHADER_READ | CGPU_BUFFER_USAGE_SHADER_READWRITE;
+    buffer_desc.flags = CGPU_BUFFER_FLAG_DEDICATED_BIT;
     
     CGPUBufferId new_buffer = cgpu_create_buffer(device, &buffer_desc);
     if (!new_buffer)

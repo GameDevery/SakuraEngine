@@ -42,7 +42,8 @@ void VkUtil_DeInitializeEnvironment(struct CGPUInstance* Inst)
     Inst->nvapi_status = CGPU_NVAPI_NONE;
 }
 
-typedef struct VkUtil_MessageToSkip {
+typedef struct VkUtil_MessageToSkip
+{
     const char* what;
     uint64_t hash;
 } VkUtil_MessageToSkip;
@@ -50,7 +51,6 @@ typedef struct VkUtil_MessageToSkip {
 VkUtil_MessageToSkip kSkippedMessages[] = {
     { "UNASSIGNED-BestPractices-vkCreateDevice-deprecated-extension" },
 };
-
 
 SKR_FORCEINLINE bool VkUtil_TryIgnoreMessage(const char* MessageId, bool Scan)
 {
@@ -101,12 +101,12 @@ void VkUtil_EnableValidationLayer(
             .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
             .pfnUserCallback = VkUtil_DebugUtilsCallback,
             .messageSeverity =
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+                VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
             .messageType =
-            VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-            VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+                VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
             .flags = 0,
             .pUserData = NULL
         };
@@ -115,7 +115,8 @@ void VkUtil_EnableValidationLayer(
 
         cgpu_assert(vkCreateDebugUtilsMessengerEXT && "Load vkCreateDebugUtilsMessengerEXT failed!");
         VkResult res = vkCreateDebugUtilsMessengerEXT(I->pVkInstance,
-            messengerInfoPtr, GLOBAL_VkAllocationCallbacks,
+            messengerInfoPtr,
+            GLOBAL_VkAllocationCallbacks,
             &(I->pVkDebugUtilsMessenger));
         if (VK_SUCCESS != res)
         {
@@ -130,15 +131,16 @@ void VkUtil_EnableValidationLayer(
             .pfnCallback = VkUtil_DebugReportCallback,
             .flags =
 #if defined(NX64) || defined(__ANDROID__)
-            VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT | // Performance warnings are not very vaild on desktop
+                VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT | // Performance warnings are not very vaild on desktop
 #endif
-            VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_DEBUG_BIT_EXT /* | VK_DEBUG_REPORT_INFORMATION_BIT_EXT*/
+                VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_DEBUG_BIT_EXT /* | VK_DEBUG_REPORT_INFORMATION_BIT_EXT*/
         };
         const VkDebugReportCallbackCreateInfoEXT* reportInfoPtr =
-        (report_info_ptr != CGPU_NULLPTR) ? report_info_ptr : &reportInfo;
+            (report_info_ptr != CGPU_NULLPTR) ? report_info_ptr : &reportInfo;
         VkResult res = vkCreateDebugReportCallbackEXT(I->pVkInstance,
-        reportInfoPtr, GLOBAL_VkAllocationCallbacks,
-        &(I->pVkDebugReport));
+            reportInfoPtr,
+            GLOBAL_VkAllocationCallbacks,
+            &(I->pVkDebugReport));
         cgpu_assert(vkCreateDebugUtilsMessengerEXT && "Load vkCreateDebugReportCallbackEXT failed!");
         if (VK_SUCCESS != res)
         {
@@ -148,8 +150,10 @@ void VkUtil_EnableValidationLayer(
 }
 
 void VkUtil_QueryAllAdapters(CGPUInstance_Vulkan* I,
-const char* const* device_layers, uint32_t device_layers_count,
-const char* const* device_extensions, uint32_t device_extension_count)
+    const char* const* device_layers,
+    uint32_t device_layers_count,
+    const char* const* device_extensions,
+    uint32_t device_extension_count)
 {
     cgpu_assert((I->mPhysicalDeviceCount == 0) && "VkUtil_QueryAllAdapters should only be called once!");
 
@@ -157,7 +161,7 @@ const char* const* device_extensions, uint32_t device_extension_count)
     if (I->mPhysicalDeviceCount != 0)
     {
         I->pVulkanAdapters =
-        (CGPUAdapter_Vulkan*)cgpu_calloc(I->mPhysicalDeviceCount, sizeof(CGPUAdapter_Vulkan));
+            (CGPUAdapter_Vulkan*)cgpu_calloc(I->mPhysicalDeviceCount, sizeof(CGPUAdapter_Vulkan));
         SKR_DECLARE_ZERO_VLA(VkPhysicalDevice, pysicalDevices, I->mPhysicalDeviceCount)
         vkEnumeratePhysicalDevices(I->pVkInstance, &I->mPhysicalDeviceCount, pysicalDevices);
         for (uint32_t i = 0; i < I->mPhysicalDeviceCount; i++)
@@ -309,41 +313,57 @@ void VkUtil_CreatePipelineCache(CGPUDevice_Vulkan* D)
         .pInitialData = NULL
     };
     D->mVkDeviceTable.vkCreatePipelineCache(D->pVkDevice,
-    &info, GLOBAL_VkAllocationCallbacks, &D->pPipelineCache);
+        &info,
+        GLOBAL_VkAllocationCallbacks,
+        &D->pPipelineCache);
 }
 
 // Shader Reflection
-static const ECGPUResourceType RTLut[] = {
-    CGPU_RESOURCE_TYPE_SAMPLER,                // SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER
-    CGPU_RESOURCE_TYPE_COMBINED_IMAGE_SAMPLER, // SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-    CGPU_RESOURCE_TYPE_TEXTURE,                // SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE
-    CGPU_RESOURCE_TYPE_RW_TEXTURE,             // SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE
-    CGPU_RESOURCE_TYPE_TEXEL_BUFFER,           // SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
-    CGPU_RESOURCE_TYPE_RW_TEXEL_BUFFER,        // SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
-    CGPU_RESOURCE_TYPE_UNIFORM_BUFFER,         // SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-    CGPU_RESOURCE_TYPE_RW_BUFFER,              // SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER
-    CGPU_RESOURCE_TYPE_UNIFORM_BUFFER,         // SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
-    CGPU_RESOURCE_TYPE_RW_BUFFER,              // SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC
-    CGPU_RESOURCE_TYPE_INPUT_ATTACHMENT,       // SPV_REFLECT_DESCRIPTOR_TYPE_INPUT_ATTACHMENT
-    CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE             // SPV_REFLECT_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR
+static const ECGPUResourceType ResourceTypeLUT[] = {
+    CGPU_RESOURCE_TYPE2_SAMPLER,               // SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER
+    CGPU_RESOURCE_TYPE2_TEXTURE,               // SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+    CGPU_RESOURCE_TYPE2_TEXTURE,               // SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE
+    CGPU_RESOURCE_TYPE2_TEXTURE,               // SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE
+    CGPU_RESOURCE_TYPE2_BUFFER,                // SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
+    CGPU_RESOURCE_TYPE2_BUFFER,                // SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+    CGPU_RESOURCE_TYPE2_BUFFER,                // SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+    CGPU_RESOURCE_TYPE2_BUFFER,                // SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER
+    CGPU_RESOURCE_TYPE2_BUFFER,                // SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+    CGPU_RESOURCE_TYPE2_BUFFER,                // SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC
+    CGPU_RESOURCE_TYPE2_TEXTURE,               // SPV_REFLECT_DESCRIPTOR_TYPE_INPUT_ATTACHMENT
+    CGPU_RESOURCE_TYPE2_ACCELERATION_STRUCTURE // SPV_REFLECT_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR
+};
+static const CGPUFlags ViewUsageLUT[] = {
+    0,                                // SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER
+    CGPU_TEXTURE_VIEW_USAGE_SRV,      // SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+    CGPU_TEXTURE_VIEW_USAGE_SRV,      // SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE
+    CGPU_TEXTURE_VIEW_USAGE_UAV,      // SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE
+    CGPU_BUFFER_VIEW_USAGE_SRV_TEXEL, // SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
+    CGPU_BUFFER_VIEW_USAGE_UAV_TEXEL, // SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+    CGPU_BUFFER_VIEW_USAGE_CBV,       // SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+    CGPU_BUFFER_VIEW_USAGE_UAV_RAW,   // SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER
+    CGPU_BUFFER_VIEW_USAGE_CBV,       // SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+    CGPU_BUFFER_VIEW_USAGE_UAV_RAW,   // SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC
+    CGPU_TEXTURE_VIEW_USAGE_SRV,      // SPV_REFLECT_DESCRIPTOR_TYPE_INPUT_ATTACHMENT
+    0                                 // SPV_REFLECT_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR
 };
 static ECGPUTextureDimension DIMLut[SpvDimSubpassData + 1] = {
-    CGPU_TEX_DIMENSION_1D,        // SpvDim1D
-    CGPU_TEX_DIMENSION_2D,        // SpvDim2D
-    CGPU_TEX_DIMENSION_3D,        // SpvDim3D
-    CGPU_TEX_DIMENSION_CUBE,      // SpvDimCube
-    CGPU_TEX_DIMENSION_UNDEFINED, // SpvDimRect
-    CGPU_TEX_DIMENSION_UNDEFINED, // SpvDimBuffer
-    CGPU_TEX_DIMENSION_UNDEFINED  // SpvDimSubpassData
+    CGPU_TEXTURE_DIMENSION_1D,        // SpvDim1D
+    CGPU_TEXTURE_DIMENSION_2D,        // SpvDim2D
+    CGPU_TEXTURE_DIMENSION_3D,        // SpvDim3D
+    CGPU_TEXTURE_DIMENSION_CUBE,      // SpvDimCube
+    CGPU_TEXTURE_DIMENSION_UNDEFINED, // SpvDimRect
+    CGPU_TEXTURE_DIMENSION_UNDEFINED, // SpvDimBuffer
+    CGPU_TEXTURE_DIMENSION_UNDEFINED  // SpvDimSubpassData
 };
 static ECGPUTextureDimension ArrDIMLut[SpvDimSubpassData + 1] = {
-    CGPU_TEX_DIMENSION_1D_ARRAY,   // SpvDim1D
-    CGPU_TEX_DIMENSION_2D_ARRAY,   // SpvDim2D
-    CGPU_TEX_DIMENSION_UNDEFINED,  // SpvDim3D
-    CGPU_TEX_DIMENSION_CUBE_ARRAY, // SpvDimCube
-    CGPU_TEX_DIMENSION_UNDEFINED,  // SpvDimRect
-    CGPU_TEX_DIMENSION_UNDEFINED,  // SpvDimBuffer
-    CGPU_TEX_DIMENSION_UNDEFINED   // SpvDimSubpassData
+    CGPU_TEXTURE_DIMENSION_1D_ARRAY,   // SpvDim1D
+    CGPU_TEXTURE_DIMENSION_2D_ARRAY,   // SpvDim2D
+    CGPU_TEXTURE_DIMENSION_UNDEFINED,  // SpvDim3D
+    CGPU_TEXTURE_DIMENSION_CUBE_ARRAY, // SpvDimCube
+    CGPU_TEXTURE_DIMENSION_UNDEFINED,  // SpvDimRect
+    CGPU_TEXTURE_DIMENSION_UNDEFINED,  // SpvDimBuffer
+    CGPU_TEXTURE_DIMENSION_UNDEFINED   // SpvDimSubpassData
 };
 const char8_t* push_constants_name = "push_constants";
 void VkUtil_InitializeShaderReflection(CGPUDeviceId device, CGPUShaderLibrary_Vulkan* S, const struct CGPUShaderLibraryDescriptor* desc)
@@ -423,12 +443,18 @@ void VkUtil_InitializeShaderReflection(CGPUDeviceId device, CGPUShaderLibrary_Vu
                     current_res->binding = current_binding->binding;
                     current_res->stages = S->pReflect->shader_stage;
                     if (current_binding->descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR)
-                        current_res->type = CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE;
-                    else    
-                        current_res->type = RTLut[current_binding->descriptor_type];
+                    {
+                        current_res->type = CGPU_RESOURCE_TYPE2_ACCELERATION_STRUCTURE;
+                        current_res->view_usages = 0;
+                    }
+                    else
+                    {
+                        current_res->type = ResourceTypeLUT[current_binding->descriptor_type];
+                        current_res->view_usages = ViewUsageLUT[current_binding->descriptor_type];
+                    }
                     current_res->name = current_binding->name;
                     current_res->name_hash =
-                    skr_hash_of(current_binding->name, strlen(current_binding->name), SKR_DEFAULT_HASH_SEED);
+                        skr_hash_of(current_binding->name, strlen(current_binding->name), SKR_DEFAULT_HASH_SEED);
                     current_res->size = current_binding->count;
                     // Solve Dimension
                     if ((current_binding->type_description->type_flags & SPV_REFLECT_TYPE_FLAG_EXTERNAL_IMAGE) ||
@@ -440,8 +466,8 @@ void VkUtil_InitializeShaderReflection(CGPUDeviceId device, CGPUShaderLibrary_Vu
                             current_res->dim = DIMLut[current_binding->image.dim];
                         if (current_binding->image.ms)
                         {
-                            current_res->dim = current_res->dim & CGPU_TEX_DIMENSION_2D ? CGPU_TEX_DIMENSION_2DMS : current_res->dim;
-                            current_res->dim = current_res->dim & CGPU_TEX_DIMENSION_2D_ARRAY ? CGPU_TEX_DIMENSION_2DMS_ARRAY : current_res->dim;
+                            current_res->dim = current_res->dim & CGPU_TEXTURE_DIMENSION_2D ? CGPU_TEXTURE_DIMENSION_2DMS : current_res->dim;
+                            current_res->dim = current_res->dim & CGPU_TEXTURE_DIMENSION_2D_ARRAY ? CGPU_TEXTURE_DIMENSION_2DMS_ARRAY : current_res->dim;
                         }
                     }
                 }
@@ -451,11 +477,12 @@ void VkUtil_InitializeShaderReflection(CGPUDeviceId device, CGPUShaderLibrary_Vu
             {
                 CGPUShaderResource* current_res = &reflection->shader_resources[i_res + i];
                 current_res->set = 0;
-                current_res->type = CGPU_RESOURCE_TYPE_PUSH_CONSTANT;
+                current_res->type = CGPU_RESOURCE_TYPE2_BUFFER;
+                current_res->view_usages = CGPU_BUFFER_VIEW_USAGE_PUSH_CONSTANT;
                 current_res->binding = 0;
                 current_res->name = push_constants_name;
                 current_res->name_hash =
-                skr_hash_of(current_res->name, strlen(current_res->name), SKR_DEFAULT_HASH_SEED);
+                    skr_hash_of(current_res->name, strlen(current_res->name), SKR_DEFAULT_HASH_SEED);
                 current_res->stages = S->pReflect->shader_stage;
                 current_res->size = root_sets[i]->size;
                 current_res->offset = root_sets[i]->offset;
@@ -538,7 +565,7 @@ void VkUtil_FreePipelineCache(CGPUInstance_Vulkan* I, CGPUAdapter_Vulkan* A, CGP
     if (D->pPipelineCache != VK_NULL_HANDLE)
     {
         D->mVkDeviceTable.vkDestroyPipelineCache(
-        D->pVkDevice, D->pPipelineCache, GLOBAL_VkAllocationCallbacks);
+            D->pVkDevice, D->pPipelineCache, GLOBAL_VkAllocationCallbacks);
     }
 }
 
@@ -555,12 +582,12 @@ struct VkUtil_DescriptorPool* VkUtil_CreateDescriptorPool(CGPUDevice_Vulkan* D)
     flags |= VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     Pool->Device = D;
     Pool->mFlags = flags;
-    
+
     // Create pool sizes array with acceleration structure support
     VkDescriptorPoolSize poolSizes[CGPU_VK_DESCRIPTOR_TYPE_RANGE_SIZE + 1];
     memcpy(poolSizes, gDescriptorPoolSizes, sizeof(gDescriptorPoolSizes));
     uint32_t poolSizeCount = CGPU_VK_DESCRIPTOR_TYPE_RANGE_SIZE;
-    
+
     // Add acceleration structure pool size if raytracing is supported
     const CGPUAdapterDetail* adapter_detail = cgpu_query_adapter_detail(D->super.adapter);
     if (adapter_detail->support_ray_tracing)
@@ -571,7 +598,7 @@ struct VkUtil_DescriptorPool* VkUtil_CreateDescriptorPool(CGPUDevice_Vulkan* D)
         };
         poolSizeCount++;
     }
-    
+
     VkDescriptorPoolCreateInfo poolCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .pNext = NULL,
@@ -586,7 +613,9 @@ struct VkUtil_DescriptorPool* VkUtil_CreateDescriptorPool(CGPUDevice_Vulkan* D)
 }
 
 void VkUtil_ConsumeDescriptorSets(struct VkUtil_DescriptorPool* pPool,
-const VkDescriptorSetLayout* pLayouts, VkDescriptorSet* pSets, uint32_t numDescriptorSets)
+    const VkDescriptorSetLayout* pLayouts,
+    VkDescriptorSet* pSets,
+    uint32_t numDescriptorSets)
 {
 #ifdef CGPU_THREAD_SAFETY
     skr_mutex_acquire(pPool->pMutex);
@@ -643,7 +672,8 @@ void VkUtil_FreeDescriptorPool(struct VkUtil_DescriptorPool* DescPool)
 }
 
 VkDescriptorSetLayout VkUtil_CreateDescriptorSetLayout(CGPUDevice_Vulkan* D,
-const VkDescriptorSetLayoutBinding* bindings, uint32_t bindings_count)
+    const VkDescriptorSetLayoutBinding* bindings,
+    uint32_t bindings_count)
 {
     VkDescriptorSetLayout out_layout = VK_NULL_HANDLE;
     VkDescriptorSetLayoutCreateInfo layout_info = {
@@ -654,7 +684,7 @@ const VkDescriptorSetLayoutBinding* bindings, uint32_t bindings_count)
         .flags = 0
     };
     CHECK_VKRESULT(D->mVkDeviceTable.vkCreateDescriptorSetLayout(
-    D->pVkDevice, &layout_info, GLOBAL_VkAllocationCallbacks, &out_layout));
+        D->pVkDevice, &layout_info, GLOBAL_VkAllocationCallbacks, &out_layout));
     return out_layout;
 }
 
@@ -685,16 +715,16 @@ void VkUtil_QueryHostVisbleVramInfo(CGPUAdapter_Vulkan* VkAdapter)
             if (mem_prop.memoryHeaps[heap_index].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
             {
                 const bool isDeviceLocal =
-                mem_prop.memoryTypes[j].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+                    mem_prop.memoryTypes[j].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 const bool isHostVisible =
-                mem_prop.memoryTypes[j].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+                    mem_prop.memoryTypes[j].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
                 if (isDeviceLocal && isHostVisible)
                 {
                     adapter_detail->support_host_visible_vram = true;
                     adapter_detail->host_visible_vram_budget =
-                    budget.heapBudget[heap_index] ?
-                    budget.heapBudget[heap_index] :
-                    mem_prop.memoryHeaps[heap_index].size;
+                        budget.heapBudget[heap_index] ?
+                        budget.heapBudget[heap_index] :
+                        mem_prop.memoryHeaps[heap_index].size;
                     break;
                 }
             }
@@ -712,9 +742,9 @@ void VkUtil_QueryHostVisbleVramInfo(CGPUAdapter_Vulkan* VkAdapter)
             if (mem_prop.memoryHeaps[heap_index].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
             {
                 const bool isDeviceLocal =
-                mem_prop.memoryTypes[j].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+                    mem_prop.memoryTypes[j].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 const bool isHostVisible =
-                mem_prop.memoryTypes[j].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+                    mem_prop.memoryTypes[j].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
                 if (isDeviceLocal && isHostVisible)
                 {
                     adapter_detail->support_host_visible_vram = true;
@@ -726,18 +756,17 @@ void VkUtil_QueryHostVisbleVramInfo(CGPUAdapter_Vulkan* VkAdapter)
     }
 }
 
-static inline uint32_t VkUtil_CombineVersion(uint32_t a, uint32_t b) 
+static inline uint32_t VkUtil_CombineVersion(uint32_t a, uint32_t b)
 {
-   uint32_t times = 1;
-   while (times <= b)
-      times *= 10;
-   return a*times + b;
-} 
+    uint32_t times = 1;
+    while (times <= b)
+        times *= 10;
+    return a * times + b;
+}
 
 void VkUitl_QueryDynamicPipelineStates(CGPUAdapter_Vulkan* VkAdapter, uint32_t* pCount, VkDynamicState* pStates)
 {
-    VkDynamicState base_states[] =
-    {
+    VkDynamicState base_states[] = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR,
         VK_DYNAMIC_STATE_BLEND_CONSTANTS,
@@ -761,7 +790,6 @@ void VkUitl_QueryDynamicPipelineStates(CGPUAdapter_Vulkan* VkAdapter, uint32_t* 
     {
         *pCount = total_states_count;
     }
-
 }
 
 void VkUtil_RecordAdapterDetail(CGPUAdapter_Vulkan* VkAdapter)
@@ -778,16 +806,16 @@ void VkUtil_RecordAdapterDetail(CGPUAdapter_Vulkan* VkAdapter)
     adapter_detail->vendor_preset.vendor_id = prop->vendorID;
     if (adapter_detail->vendor_preset.vendor_id == 0x10DE) // NVIDIA
     {
-        const uint32_t vraw = prop->driverVersion; 
+        const uint32_t vraw = prop->driverVersion;
         const uint32_t v0 = (vraw >> 22) & 0x3ff;
         const uint32_t v1 = (vraw >> 14) & 0x0ff;
         const uint32_t v2 = (vraw >> 6) & 0x0ff;
         const uint32_t v3 = (vraw) & 0x03f;
         adapter_detail->vendor_preset.driver_version = VkUtil_CombineVersion(VkUtil_CombineVersion(VkUtil_CombineVersion(v0, v1), v2), v3);
     }
-    else if (adapter_detail->vendor_preset.vendor_id == 0x8086 ) // Intel
+    else if (adapter_detail->vendor_preset.vendor_id == 0x8086) // Intel
     {
-        const uint32_t vraw = prop->driverVersion; 
+        const uint32_t vraw = prop->driverVersion;
         const uint32_t v0 = (vraw >> 14);
         const uint32_t v1 = (vraw) & 0x3fff;
         adapter_detail->vendor_preset.driver_version = VkUtil_CombineVersion(v0, v1);
@@ -801,11 +829,11 @@ void VkUtil_RecordAdapterDetail(CGPUAdapter_Vulkan* VkAdapter)
 
     // some features
     adapter_detail->uniform_buffer_alignment =
-    (uint32_t)prop->limits.minUniformBufferOffsetAlignment;
+        (uint32_t)prop->limits.minUniformBufferOffsetAlignment;
     adapter_detail->upload_buffer_texture_alignment =
-    (uint32_t)prop->limits.optimalBufferCopyOffsetAlignment;
+        (uint32_t)prop->limits.optimalBufferCopyOffsetAlignment;
     adapter_detail->upload_buffer_texture_row_alignment =
-    (uint32_t)prop->limits.optimalBufferCopyRowPitchAlignment;
+        (uint32_t)prop->limits.optimalBufferCopyRowPitchAlignment;
     adapter_detail->max_vertex_input_bindings = prop->limits.maxVertexInputBindings;
     adapter_detail->multidraw_indirect = prop->limits.maxDrawIndirectCount > 1;
     adapter_detail->wave_lane_count = VkAdapter->mSubgroupProperties.subgroupSize;
@@ -870,12 +898,12 @@ void VkUtil_SelectQueueIndices(CGPUAdapter_Vulkan* VkAdapter)
 {
     // Query Queue Information.
     vkGetPhysicalDeviceQueueFamilyProperties(
-        VkAdapter->pPhysicalDevice, &VkAdapter->mQueueFamiliesCount,
-        CGPU_NULLPTR);
+        VkAdapter->pPhysicalDevice, &VkAdapter->mQueueFamiliesCount, CGPU_NULLPTR);
     VkAdapter->pQueueFamilyProperties = (VkQueueFamilyProperties*)cgpu_calloc(
-    VkAdapter->mQueueFamiliesCount, sizeof(VkQueueFamilyProperties));
-        vkGetPhysicalDeviceQueueFamilyProperties(VkAdapter->pPhysicalDevice,
-        &VkAdapter->mQueueFamiliesCount, VkAdapter->pQueueFamilyProperties);
+        VkAdapter->mQueueFamiliesCount, sizeof(VkQueueFamilyProperties));
+    vkGetPhysicalDeviceQueueFamilyProperties(VkAdapter->pPhysicalDevice,
+        &VkAdapter->mQueueFamiliesCount,
+        VkAdapter->pQueueFamilyProperties);
 
     for (uint32_t j = 0; j < VkAdapter->mQueueFamiliesCount; j++)
     {
@@ -886,17 +914,17 @@ void VkUtil_SelectQueueIndices(CGPUAdapter_Vulkan* VkAdapter)
             VkAdapter->mQueueFamilyIndices[CGPU_QUEUE_TYPE_GRAPHICS] = j;
         }
         else if ((VkAdapter->mQueueFamilyIndices[CGPU_QUEUE_TYPE_COMPUTE] == -1) &&
-                 (prop->queueFlags & VK_QUEUE_COMPUTE_BIT))
+            (prop->queueFlags & VK_QUEUE_COMPUTE_BIT))
         {
             VkAdapter->mQueueFamilyIndices[CGPU_QUEUE_TYPE_COMPUTE] = j;
         }
         else if ((VkAdapter->mQueueFamilyIndices[CGPU_QUEUE_TYPE_TRANSFER] == -1) &&
-                 (prop->queueFlags & VK_QUEUE_TRANSFER_BIT))
+            (prop->queueFlags & VK_QUEUE_TRANSFER_BIT))
         {
             VkAdapter->mQueueFamilyIndices[CGPU_QUEUE_TYPE_TRANSFER] = j;
         }
         else if ((VkAdapter->mQueueFamilyIndices[CGPU_QUEUE_TYPE_TILE_MAPPING] == -1) &&
-                 (prop->queueFlags & VK_QUEUE_SPARSE_BINDING_BIT))
+            (prop->queueFlags & VK_QUEUE_SPARSE_BINDING_BIT))
         {
             VkAdapter->mQueueFamilyIndices[CGPU_QUEUE_TYPE_TILE_MAPPING] = j;
         }
@@ -930,7 +958,8 @@ void VkUtil_EnumFormatSupports(CGPUAdapter_Vulkan* VkAdapter)
 }
 
 void VkUtil_SelectInstanceLayers(struct CGPUInstance_Vulkan* vkInstance,
-const char* const* instance_layers, uint32_t instance_layers_count)
+    const char* const* instance_layers,
+    uint32_t instance_layers_count)
 {
     uint32_t count = 0;
     vkEnumerateInstanceLayerProperties(&count, NULL);
@@ -962,7 +991,8 @@ const char* const* instance_layers, uint32_t instance_layers_count)
 }
 
 void VkUtil_SelectInstanceExtensions(struct CGPUInstance_Vulkan* VkInstance,
-const char* const* instance_extensions, uint32_t instance_extension_count)
+    const char* const* instance_extensions,
+    uint32_t instance_extension_count)
 {
     const char* layer_name = NULL; // Query Vulkan implementation or by implicitly enabled layers
     uint32_t count = 0;
@@ -995,7 +1025,8 @@ const char* const* instance_extensions, uint32_t instance_extension_count)
 }
 
 void VkUtil_SelectPhysicalDeviceLayers(struct CGPUAdapter_Vulkan* VkAdapter,
-const char* const* device_layers, uint32_t device_layers_count)
+    const char* const* device_layers,
+    uint32_t device_layers_count)
 {
     uint32_t count;
     vkEnumerateDeviceLayerProperties(VkAdapter->pPhysicalDevice, &count, NULL);
@@ -1026,7 +1057,8 @@ const char* const* device_layers, uint32_t device_layers_count)
 }
 
 void VkUtil_SelectPhysicalDeviceExtensions(struct CGPUAdapter_Vulkan* VkAdapter,
-const char* const* device_extensions, uint32_t device_extension_count)
+    const char* const* device_extensions,
+    uint32_t device_extension_count)
 {
     const char* layer_name = NULL; // Query Vulkan implementation or by implicitly enabled layers
     uint32_t count = 0;
@@ -1059,8 +1091,7 @@ const char* const* device_extensions, uint32_t device_extension_count)
 }
 
 // Debug Callback
-SKR_FORCEINLINE static void VkUtil_DebugUtilsSetObjectName(VkDevice pDevice, uint64_t handle,
-VkObjectType type, const char* pName)
+SKR_FORCEINLINE static void VkUtil_DebugUtilsSetObjectName(VkDevice pDevice, uint64_t handle, VkObjectType type, const char* pName)
 {
     VkDebugUtilsObjectNameInfoEXT nameInfo = {
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
@@ -1071,8 +1102,7 @@ VkObjectType type, const char* pName)
     vkSetDebugUtilsObjectNameEXT(pDevice, &nameInfo);
 }
 
-SKR_FORCEINLINE static void VkUtil_DebugReportSetObjectName(VkDevice pDevice, uint64_t handle,
-    VkDebugReportObjectTypeEXT type, const char* pName)
+SKR_FORCEINLINE static void VkUtil_DebugReportSetObjectName(VkDevice pDevice, uint64_t handle, VkDebugReportObjectTypeEXT type, const char* pName)
 {
     VkDebugMarkerObjectNameInfoEXT nameInfo = {
         .sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT,
@@ -1111,51 +1141,49 @@ VkUtil_DebugUtilsCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity
 
     switch (messageSeverity)
     {
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-            cgpu_trace("Vulkan validation layer: %s\n", pCallbackData->pMessage);
-            break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-            cgpu_info("Vulkan validation layer: %s\n", pCallbackData->pMessage);
-            break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-            cgpu_warn("Vulkan validation layer: %s\n", pCallbackData->pMessage);
-            break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-            cgpu_error("Vulkan validation layer: %s\n", pCallbackData->pMessage);
-            break;
-        default:
-            return VK_TRUE;
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+        cgpu_trace("Vulkan validation layer: %s\n", pCallbackData->pMessage);
+        break;
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+        cgpu_info("Vulkan validation layer: %s\n", pCallbackData->pMessage);
+        break;
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+        cgpu_warn("Vulkan validation layer: %s\n", pCallbackData->pMessage);
+        break;
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+        cgpu_error("Vulkan validation layer: %s\n", pCallbackData->pMessage);
+        break;
+    default:
+        return VK_TRUE;
     }
     return VK_FALSE;
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL
 VkUtil_DebugReportCallback(
-    VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType,
-    uint64_t object, size_t location, int32_t messageCode,
-    const char* pLayerPrefix, const char* pMessage, void* pUserData)
+    VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
 {
     if (VkUtil_TryIgnoreMessage(pMessage, true))
         return VK_FALSE;
 
     switch (flags)
     {
-        case VK_DEBUG_REPORT_INFORMATION_BIT_EXT:
-            cgpu_info("Vulkan validation layer: %s\n", pMessage);
-        case VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT:
-            cgpu_warn("Vulkan validation layer: %s\n", pMessage);
-            break;
-        case VK_DEBUG_REPORT_WARNING_BIT_EXT:
-            cgpu_warn("Vulkan validation layer: %s\n", pMessage);
-            break;
-        case VK_DEBUG_REPORT_DEBUG_BIT_EXT:
-            cgpu_debug("Vulkan validation layer: %s\n", pMessage);
-            break;
-        case VK_DEBUG_REPORT_ERROR_BIT_EXT:
-            cgpu_error("Vulkan validation layer: %s\n", pMessage);
-            break;
-        default:
-            return VK_TRUE;
+    case VK_DEBUG_REPORT_INFORMATION_BIT_EXT:
+        cgpu_info("Vulkan validation layer: %s\n", pMessage);
+    case VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT:
+        cgpu_warn("Vulkan validation layer: %s\n", pMessage);
+        break;
+    case VK_DEBUG_REPORT_WARNING_BIT_EXT:
+        cgpu_warn("Vulkan validation layer: %s\n", pMessage);
+        break;
+    case VK_DEBUG_REPORT_DEBUG_BIT_EXT:
+        cgpu_debug("Vulkan validation layer: %s\n", pMessage);
+        break;
+    case VK_DEBUG_REPORT_ERROR_BIT_EXT:
+        cgpu_error("Vulkan validation layer: %s\n", pMessage);
+        break;
+    default:
+        return VK_TRUE;
     }
     return VK_FALSE;
 }

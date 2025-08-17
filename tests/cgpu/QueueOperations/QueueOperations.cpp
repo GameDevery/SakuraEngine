@@ -118,7 +118,7 @@ void QueueOperations<backend>::test_all()
         CGPUBufferId upload_buffer, index_buffer;
         {
             SKR_DECLARE_ZERO(CGPUBufferDescriptor, desc)
-            desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
+            desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
             desc.descriptors = CGPU_RESOURCE_TYPE_BUFFER;
             desc.memory_usage = CGPU_MEM_USAGE_CPU_ONLY;
             desc.element_stride = sizeof(uint16_t);
@@ -135,7 +135,7 @@ void QueueOperations<backend>::test_all()
         }
         {
             SKR_DECLARE_ZERO(CGPUBufferDescriptor, desc)
-            desc.flags = CGPU_BCF_NONE;
+            desc.flags = CGPU_BUFFER_FLAG_NONE;
             desc.descriptors = CGPU_RESOURCE_TYPE_NONE;
             desc.start_state = CGPU_RESOURCE_STATE_COPY_DEST;
             desc.memory_usage = CGPU_MEM_USAGE_GPU_TO_CPU;

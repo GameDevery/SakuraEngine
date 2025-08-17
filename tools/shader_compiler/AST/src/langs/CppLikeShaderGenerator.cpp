@@ -703,7 +703,7 @@ void CppLikeShaderGenerator::GenerateKernelWrapper(SourceBuilderNew& sb, const s
 void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::VarDecl* varDecl)
 {
     const auto isGlobal = dynamic_cast<const skr::CppSL::GlobalVarDecl*>(varDecl);
-    if (auto asResource = dynamic_cast<const ResourceTypeDecl*>(&varDecl->type()))
+    if (varDecl->type().is_resource())
     {
         VisitGlobalResource(sb, varDecl);
     }

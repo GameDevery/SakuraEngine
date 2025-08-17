@@ -358,22 +358,22 @@ void RenderEffectForward::prepare_geometry_resources(SRendererId renderer)
     // upload
     CGPUBufferDescriptor upload_buffer_desc = {};
     upload_buffer_desc.name = u8"UploadBuffer";
-    upload_buffer_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
+    upload_buffer_desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
     upload_buffer_desc.descriptors = CGPU_RESOURCE_TYPE_NONE;
     upload_buffer_desc.memory_usage = CGPU_MEM_USAGE_CPU_ONLY;
     upload_buffer_desc.size = sizeof(CubeGeometry) + sizeof(CubeGeometry::g_Indices);
     auto upload_buffer = cgpu_create_buffer(device, &upload_buffer_desc);
     CGPUBufferDescriptor vb_desc = {};
     vb_desc.name = u8"VertexBuffer";
-    vb_desc.flags = CGPU_BCF_NONE;
-    vb_desc.descriptors = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
+    vb_desc.flags = CGPU_BUFFER_FLAG_NONE;
+    vb_desc.descriptors = CGPU_BUFFER_USAGE_VERTEX_BUFFER;
     vb_desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
     vb_desc.size = sizeof(CubeGeometry);
     vertex_buffer = cgpu_create_buffer(device, &vb_desc);
     CGPUBufferDescriptor ib_desc = {};
     ib_desc.name = u8"IndexBuffer";
-    ib_desc.flags = CGPU_BCF_NONE;
-    ib_desc.descriptors = CGPU_RESOURCE_TYPE_INDEX_BUFFER;
+    ib_desc.flags = CGPU_BUFFER_FLAG_NONE;
+    ib_desc.descriptors = CGPU_BUFFER_USAGE_INDEX_BUFFER;
     ib_desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
     ib_desc.size = sizeof(CubeGeometry::g_Indices);
     index_buffer = cgpu_create_buffer(device, &ib_desc);

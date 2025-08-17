@@ -81,7 +81,7 @@ auto vertex_buffer = graph.create_buffer(
     [](BufferBuilder& builder) {
         builder.set_name(u8"vertex_buffer")
                .size(sizeof(Vertex) * vertex_count)
-               .with_flags(CGPU_BCF_PERSISTENT_MAP_BIT)
+               .with_flags(CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT)
                .as_vertex_buffer();
     }
 );
@@ -91,7 +91,7 @@ auto storage_buffer = graph.create_buffer(
     [](BufferBuilder& builder) {
         builder.set_name(u8"storage_buffer")
                .size(sizeof(ParticleData) * max_particles)
-               .with_flags(CGPU_BCF_PERSISTENT_MAP_BIT)
+               .with_flags(CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT)
                .allow_structured_readwrite();
     }
 );

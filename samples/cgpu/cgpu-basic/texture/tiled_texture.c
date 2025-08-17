@@ -48,7 +48,7 @@ void create_sampled_texture()
     sampler_state = cgpu_create_sampler(App.device, &sampler_desc);
     // Texture
     CGPUTextureDescriptor tex_desc = {
-        .descriptors = CGPU_RESOURCE_TYPE_TEXTURE,
+        .usages = CGPU_TEXTURE_USAGE_SHADER_READ,
         .flags = CGPU_TCF_TILED_RESOURCE,
         .width = TEXTURE_WIDTH,
         .height = TEXTURE_HEIGHT,
@@ -70,18 +70,16 @@ void create_sampled_texture()
             .mip_level_count = 1,
             .base_mip_level = i,
             .aspects = CGPU_TVA_COLOR,
-            .dims = CGPU_TEX_DIMENSION_2D,
-            .usages = CGPU_TVU_SRV
+            .dims = CGPU_TEXTURE_DIMENSION_2D,
+            .view_usages = CGPU_TEXTURE_VIEW_USAGE_SRV
         };
         sampled_views[i] = cgpu_create_texture_view(App.device, &sview_desc);
     }
     CGPUBufferDescriptor upload_buffer_desc = {
         .name = "UploadBuffer",
-        .flags = CGPU_BCF_PERSISTENT_MAP_BIT,
-        .descriptors = CGPU_RESOURCE_TYPE_NONE,
+        .flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT,
+        .usages = CGPU_BUFFER_USAGE_NONE,
         .memory_usage = CGPU_MEM_USAGE_CPU_ONLY,
-        .element_stride = sizeof(TEXTURE_DATA),
-        .element_count = 1,
         .size = sizeof(TEXTURE_DATA)
     };
     streaming_heap = cgpu_create_buffer(App.device, &upload_buffer_desc);
@@ -310,7 +308,7 @@ void create_render_pipeline()
         .vertex_shader = &ppl_shaders[0],
         .fragment_shader = &ppl_shaders[1],
         .render_target_count = 1,
-        .color_formats = &views[0]->info.format
+        .color_formats = &views[0]->info->format
     };
     pipeline = cgpu_create_render_pipeline(App.device, &rp_desc);
     cgpu_free_shader_library(vertex_shader);
@@ -352,9 +350,9 @@ void initialize(void* usrdata)
         CGPUTextureViewDescriptor view_desc = {
             .texture = App.swapchain->back_buffers[i],
             .aspects = CGPU_TVA_COLOR,
-            .dims = CGPU_TEX_DIMENSION_2D,
+            .dims = CGPU_TEXTURE_DIMENSION_2D,
             .format = App.swapchain->back_buffers[i]->info->format,
-            .usages = CGPU_TVU_RTV_DSV,
+            .view_usages = CGPU_TEXTURE_VIEW_USAGE_RTV_DSV,
             .array_layer_count = 1
         };
         views[i] = cgpu_create_texture_view(App.device, &view_desc);
@@ -486,9 +484,9 @@ void raster_program()
                         CGPUTextureViewDescriptor view_desc = {
                             .texture = App.swapchain->back_buffers[i],
                             .aspects = CGPU_TVA_COLOR,
-                            .dims = CGPU_TEX_DIMENSION_2D,
+                            .dims = CGPU_TEXTURE_DIMENSION_2D,
                             .format = App.swapchain->back_buffers[i]->info->format,
-                            .usages = CGPU_TVU_RTV_DSV,
+                            .view_usages = CGPU_TEXTURE_VIEW_USAGE_RTV_DSV,
                             .array_layer_count = 1
                         };
                         views[i] = cgpu_create_texture_view(App.device, &view_desc);

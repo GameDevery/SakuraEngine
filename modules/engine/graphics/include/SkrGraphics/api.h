@@ -37,11 +37,13 @@ DEFINE_CGPU_OBJECT(CGPUShaderLibrary)
 DEFINE_CGPU_OBJECT(CGPURootSignature)
 DEFINE_CGPU_OBJECT(CGPURootSignaturePool)
 DEFINE_CGPU_OBJECT(CGPUDescriptorSet)
+DEFINE_CGPU_OBJECT(CGPUDescriptorBuffer)
 DEFINE_CGPU_OBJECT(CGPUMemoryPool)
 DEFINE_CGPU_OBJECT(CGPUBuffer)
+DEFINE_CGPU_OBJECT(CGPUBufferView)
 DEFINE_CGPU_OBJECT(CGPUTexture)
-DEFINE_CGPU_OBJECT(CGPUSampler)
 DEFINE_CGPU_OBJECT(CGPUTextureView)
+DEFINE_CGPU_OBJECT(CGPUSampler)
 DEFINE_CGPU_OBJECT(CGPUQueryPool)
 DEFINE_CGPU_OBJECT(CGPURenderPassEncoder)
 DEFINE_CGPU_OBJECT(CGPUComputePassEncoder)
@@ -274,7 +276,7 @@ typedef CGPUShaderLibraryId (*CGPUProcCreateShaderLibrary)(CGPUDeviceId device, 
 CGPU_API void cgpu_free_shader_library(CGPUShaderLibraryId library);
 typedef void (*CGPUProcFreeShaderLibrary)(CGPUShaderLibraryId library);
 
-// Buffer APIs
+// Buffer/BufferView APIs
 CGPU_API CGPUBufferId cgpu_create_buffer(CGPUDeviceId device, const struct CGPUBufferDescriptor* desc);
 typedef CGPUBufferId (*CGPUProcCreateBuffer)(CGPUDeviceId device, const struct CGPUBufferDescriptor* desc);
 CGPU_API void cgpu_map_buffer(CGPUBufferId buffer, const struct CGPUBufferRange* range);
@@ -283,6 +285,10 @@ CGPU_API void cgpu_unmap_buffer(CGPUBufferId buffer);
 typedef void (*CGPUProcUnmapBuffer)(CGPUBufferId buffer);
 CGPU_API void cgpu_free_buffer(CGPUBufferId buffer);
 typedef void (*CGPUProcFreeBuffer)(CGPUBufferId buffer);
+CGPU_API CGPUBufferViewId cgpu_create_buffer_view(CGPUDeviceId device, const struct CGPUBufferViewDescriptor* desc);
+typedef CGPUBufferViewId (*CGPUProcCreateBufferView)(CGPUDeviceId device, const struct CGPUBufferViewDescriptor* desc);
+CGPU_API void cgpu_free_buffer_view(CGPUBufferViewId view);
+typedef void (*CGPUProcFreeBufferView)(CGPUBufferViewId view);
 
 // Sampler APIs
 CGPU_API CGPUSamplerId cgpu_create_sampler(CGPUDeviceId device, const struct CGPUSamplerDescriptor* desc);
@@ -926,6 +932,7 @@ typedef struct CGPUShaderResource {
     const char8_t* name;
     uint64_t name_hash;
     ECGPUResourceType type;
+    CGPUFlags view_usages;
     ECGPUTextureDimension dim;
     uint32_t set;
     uint32_t binding;
@@ -966,51 +973,17 @@ typedef struct CGPUPipelineReflection {
 } CGPUPipelineReflection;
 
 typedef struct CGPUDescriptorData {
-    // Update Via Shader Reflection.
     const char8_t* name;
-    // Update Via Binding Slot.
     uint32_t binding;
-    ECGPUResourceType binding_type;
-    union
-    {
-        struct
-        {
-            /// Offset to bind the buffer descriptor
-            const uint64_t* offsets;
-            const uint64_t* sizes;
-        } buffers_params;
-        // Descriptor set buffer extraction options
-        // TODO: Support descriptor buffer extraction
-        //struct
-        //{
-        //    struct CGPUShaderEntryDescriptor* shader;
-        //    uint32_t buffer_index;
-        //    ECGPUShaderStage shader_stage;
-        //} extraction_params;
-        struct
-        {
-            uint32_t uav_mip_slice;
-            bool blend_mip_chain;
-        } uav_params;
-        bool enable_stencil_resource;
-    };
+    CGPUFlags view_usage;
     union
     {
         const void** ptrs;
-        /// Array of texture descriptors (srv and uav textures)
         CGPUTextureViewId* textures;
-        /// Array of sampler descriptors
-        CGPUSamplerId* samplers;
-        /// Array of buffer descriptors (srv, uav and cbv buffers)
-        CGPUBufferId* buffers;
-        /// Array of pipeline descriptors
-        CGPURenderPipelineId* render_pipelines;
-        /// Array of pipeline descriptors
-        CGPUComputePipelineId* compute_pipelines;
-        /// DescriptorSet buffer extraction
-        CGPUDescriptorSetId* descriptor_sets;
-        /// Custom binding (raytracing acceleration structure ...)
+        CGPUBufferViewId* buffers;
         CGPUAccelerationStructureId* acceleration_structures;
+        CGPUSamplerId* samplers;
+        CGPUDescriptorBufferId* descriptor_buffers;
     };
     uint32_t count;
 } CGPUDescriptorData;
@@ -1532,20 +1505,12 @@ typedef struct CGPUBufferDescriptor {
     /// Debug name used in gpu profile
     const char8_t* name;
     /// Flags specifying the suitable usage of this buffer (Uniform buffer, Vertex Buffer, Index Buffer,...)
-    CGPUResourceTypes descriptors;
+    CGPUBufferUsages usages;
     /// Memory usage
     /// Decides which memory heap buffer will use (default, upload, readback)
     ECGPUMemoryUsage memory_usage;
-    /// Image format
-    ECGPUFormat format;
     /// Creation flags
-    CGPUBufferCreationFlags flags;
-    /// Index of the first element accessible by the SRV/UAV (applicable to BUFFER_USAGE_STORAGE_SRV, BUFFER_USAGE_STORAGE_UAV)
-    uint64_t first_element;
-    /// Number of elements in the buffer (applicable to BUFFER_USAGE_STORAGE_SRV, BUFFER_USAGE_STORAGE_UAV)
-    uint64_t element_count;
-    /// Size of each element (in bytes) in the buffer (applicable to BUFFER_USAGE_STORAGE_SRV, BUFFER_USAGE_STORAGE_UAV)
-    uint64_t element_stride;
+    CGPUBufferFlags flags;
     /// Owner queue of the resource at creation
     CGPUQueueId owner_queue;
     /// What state will the buffer get created in
@@ -1563,7 +1528,7 @@ typedef struct CGPUBufferDescriptor {
 typedef struct CGPUBufferInfo {
     uint64_t size;
     void* cpu_mapped_address;
-    CGPUResourceTypes descriptors;
+    CGPUBufferUsages usages;
     CGPUMemoryUsages memory_usage;
 } CGPUBufferInfo;
 
@@ -1571,6 +1536,11 @@ typedef struct CGPUBuffer {
     CGPUDeviceId device;
     const struct CGPUBufferInfo* info;
 } CGPUBuffer;
+
+typedef struct CGPUBufferView {
+    CGPUDeviceId device;
+    const struct CGPUBufferViewDescriptor* info;
+} CGPUBufferView;
 
 typedef struct CGPUTextureDescriptor {
     /// Debug name used in gpu profile
@@ -1600,8 +1570,8 @@ typedef struct CGPUTextureDescriptor {
     CGPUQueueId owner_queue;
     /// What state will the texture get created in
     ECGPUResourceState start_state;
-    /// Descriptor creation
-    CGPUResourceTypes descriptors;
+    /// Usages
+    CGPUTextureUsages usages;
     /// Memory Aliasing
     uint32_t is_restrict_dedicated;
     /// Memory pool to allocate from (optional)
@@ -1623,12 +1593,28 @@ typedef struct CGPUImportTextureDescriptor {
     uint32_t mip_levels;
 } CGPUImportTextureDescriptor;
 
+typedef struct CGPUBufferViewDescriptor {
+    const char8_t* name;
+    CGPUBufferId buffer;
+    CGPUBufferViewUsages view_usages;
+    uint32_t offset;
+    uint32_t size;
+    struct 
+    {
+        ECGPUFormat format;
+    } texel;
+    struct
+    {
+        uint32_t element_stride;
+    } structure;
+} CGPUBufferViewDescriptor;
+
 typedef struct CGPUTextureViewDescriptor {
     /// Debug name used in gpu profile
     const char8_t* name;
     CGPUTextureId texture;
     ECGPUFormat format;
-    CGPUTexutreViewUsages usages : 8;
+    CGPUTextureViewUsages view_usages : 8;
     CGPUTextureViewAspects aspects : 8;
     ECGPUTextureDimension dims : 8;
     uint32_t base_array_layer : 8;
@@ -1698,7 +1684,7 @@ typedef struct CGPUTexture {
 
 typedef struct CGPUTextureView {
     CGPUDeviceId device;
-    CGPUTextureViewDescriptor info;
+    const CGPUTextureViewDescriptor* info;
 } CGPUTextureView;
 
 typedef struct CGPUSamplerDescriptor {

@@ -202,8 +202,8 @@ void SkrImageUploadTask::from_image(const SkrImageData& image)
         view_desc.mip_level_count           = 1;
         view_desc.base_mip_level            = 0;
         view_desc.aspects                   = CGPU_TVA_COLOR;
-        view_desc.dims                      = CGPU_TEX_DIMENSION_2D;
-        view_desc.usages                    = CGPU_TVU_SRV;
+        view_desc.dims                      = CGPU_TEXTURE_DIMENSION_2D;
+        view_desc.view_usages                    = CGPU_TEXTURE_VIEW_USAGE_SRV;
         task->_texture_view                 = cgpu_create_texture_view(device, &view_desc);
 
         const char8_t*           color_texture_name = u8"color_texture";

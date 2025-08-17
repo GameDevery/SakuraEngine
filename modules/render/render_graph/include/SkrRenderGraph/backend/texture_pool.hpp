@@ -37,7 +37,7 @@ public:
         uint32_t mip_levels;
         ECGPUSampleCount sample_count;
         uint32_t sample_quality;
-        CGPUResourceTypes descriptors;
+        CGPUTextureViewUsages usages;
         bool is_restrict_dedicated = 0;
         operator size_t() const;
         friend class TexturePool;

@@ -749,7 +749,7 @@ void ImGuiApp::add_render_pass(
             builder.set_name(name.c_str())
                 .size(vertex_size)
                 .memory_usage(useCVV ? CGPU_MEM_USAGE_CPU_TO_GPU : CGPU_MEM_USAGE_GPU_ONLY)
-                .with_flags(useCVV ? CGPU_BCF_PERSISTENT_MAP_BIT : CGPU_BCF_NONE)
+                .with_flags(useCVV ? CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT : CGPU_BUFFER_FLAG_NONE)
                 .with_tags(useCVV ? kRenderGraphDynamicResourceTag : kRenderGraphDefaultResourceTag)
                 .prefer_on_device()
                 .as_vertex_buffer();
@@ -762,7 +762,7 @@ void ImGuiApp::add_render_pass(
             builder.set_name(name.c_str())
                 .size(index_size)
                 .memory_usage(useCVV ? CGPU_MEM_USAGE_CPU_TO_GPU : CGPU_MEM_USAGE_GPU_ONLY)
-                .with_flags(useCVV ? CGPU_BCF_PERSISTENT_MAP_BIT : CGPU_BCF_NONE)
+                .with_flags(useCVV ? CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT : CGPU_BUFFER_FLAG_NONE)
                 .with_tags(useCVV ? kRenderGraphDynamicResourceTag : kRenderGraphDefaultResourceTag)
                 .prefer_on_device()
                 .as_index_buffer();
@@ -814,7 +814,7 @@ void ImGuiApp::add_render_pass(
             builder.set_name(name.c_str())
                 .size(sizeof(float) * 4 * 4)
                 .memory_usage(CGPU_MEM_USAGE_CPU_TO_GPU)
-                .with_flags(CGPU_BCF_PERSISTENT_MAP_BIT)
+                .with_flags(CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT)
                 .prefer_on_device()
                 .as_uniform_buffer();
         });
@@ -986,7 +986,7 @@ void ImGuiApp::create_texture(ImTextureData* tex_data)
     tex_desc.width = static_cast<uint32_t>(tex_data->Width);
     tex_desc.height = static_cast<uint32_t>(tex_data->Height);
     tex_desc.depth = 1;
-    tex_desc.descriptors = CGPU_RESOURCE_TYPE_TEXTURE;
+    tex_desc.usages = CGPU_TEXTURE_USAGE_SHADER_READ;
     tex_desc.array_size = 1;
     tex_desc.flags = CGPU_TCF_NONE;
     tex_desc.mip_levels = 1;
@@ -1004,8 +1004,8 @@ void ImGuiApp::create_texture(ImTextureData* tex_data)
     view_desc.mip_level_count = 1;
     view_desc.format = user_data->texture->info->format;
     view_desc.aspects = CGPU_TVA_COLOR;
-    view_desc.usages = CGPU_TVU_SRV;
-    view_desc.dims = CGPU_TEX_DIMENSION_2D;
+    view_desc.view_usages = CGPU_TEXTURE_VIEW_USAGE_SRV;
+    view_desc.dims = CGPU_TEXTURE_DIMENSION_2D;
     user_data->srv = cgpu_create_texture_view(_gfx_queue->device, &view_desc);
 
     tex_data->TexID = reinterpret_cast<ImTextureID>(user_data->srv);
@@ -1035,8 +1035,8 @@ void ImGuiApp::update_texture(ImTextureData* tex_data)
     // TODO. use updata rect
     CGPUBufferDescriptor upload_buffer_desc{};
     upload_buffer_desc.name = u8"IMGUI_FontUploadBuffer";
-    upload_buffer_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
-    upload_buffer_desc.descriptors = CGPU_RESOURCE_TYPE_NONE;
+    upload_buffer_desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
+    upload_buffer_desc.usages = CGPU_BUFFER_USAGE_NONE;
     upload_buffer_desc.memory_usage = CGPU_MEM_USAGE_CPU_ONLY;
     upload_buffer_desc.size = tex_data->GetSizeInBytes();
     CGPUBufferId tex_upload_buffer = cgpu_create_buffer(_gfx_queue->device, &upload_buffer_desc);

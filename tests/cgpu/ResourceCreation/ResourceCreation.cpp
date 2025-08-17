@@ -106,8 +106,8 @@ void ResourceCreation<backend>::test_all()
     SUBCASE("CreateIndexBuffer")
     {
         SKR_DECLARE_ZERO(CGPUBufferDescriptor, desc)
-        desc.flags = CGPU_BCF_NONE;
-        desc.descriptors = CGPU_RESOURCE_TYPE_INDEX_BUFFER;
+        desc.flags = CGPU_BUFFER_FLAG_NONE;
+        desc.descriptors = CGPU_BUFFER_USAGE_INDEX_BUFFER;
         desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
         desc.element_stride = sizeof(uint16_t);
         desc.element_count = 3;
@@ -157,8 +157,8 @@ void ResourceCreation<backend>::test_all()
     SUBCASE("CreateUploadBuffer")
     {
         SKR_DECLARE_ZERO(CGPUBufferDescriptor, desc)
-        desc.flags = CGPU_BCF_NONE;
-        desc.descriptors = CGPU_RESOURCE_TYPE_INDEX_BUFFER | CGPU_RESOURCE_TYPE_BUFFER;
+        desc.flags = CGPU_BUFFER_FLAG_NONE;
+        desc.descriptors = CGPU_BUFFER_USAGE_INDEX_BUFFER | CGPU_RESOURCE_TYPE_BUFFER;
         desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
         desc.element_stride = sizeof(uint16_t);
         desc.element_count = 3;
@@ -191,7 +191,7 @@ void ResourceCreation<backend>::test_all()
     SUBCASE("CreateUploadBufferPersistent")
     {
         SKR_DECLARE_ZERO(CGPUBufferDescriptor, desc)
-        desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
+        desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
         desc.descriptors = CGPU_RESOURCE_TYPE_BUFFER;
         desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
         desc.element_stride = sizeof(uint16_t);
@@ -207,7 +207,7 @@ void ResourceCreation<backend>::test_all()
     SUBCASE("CreateHostVisibleDeviceMemory")
     {
         SKR_DECLARE_ZERO(CGPUBufferDescriptor, desc)
-        desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT | CGPU_BCF_HOST_VISIBLE;
+        desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT | CGPU_BUFFER_FLAG_HOST_VISIBLE;
         desc.descriptors = CGPU_RESOURCE_TYPE_BUFFER;
         desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
         desc.element_stride = sizeof(uint16_t);

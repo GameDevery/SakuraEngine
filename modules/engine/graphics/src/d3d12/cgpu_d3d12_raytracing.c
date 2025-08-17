@@ -116,12 +116,9 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
         {
             SkrCZoneN(zzz, "CreateASBuffer", 1);
             CGPUBufferDescriptor bufferDesc = {
-                .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER,
+                .usages = CGPU_BUFFER_USAGE_SHADER_READWRITE,
                 .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
-                .flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION | CGPU_BCF_DEDICATED_BIT,
-                .element_stride = sizeof(uint32_t),
-                .first_element = 0,
-                .element_count = (uint32_t)(info.ResultDataMaxSizeInBytes / sizeof(UINT32)),
+                .flags = CGPU_BUFFER_FLAG_DEDICATED_BIT,
                 .size = info.ResultDataMaxSizeInBytes,
                 .start_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE
             };
@@ -172,7 +169,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
 
         CGPUBufferDescriptor instanceDesc = {
             .memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU,
-            .flags = CGPU_BCF_PERSISTENT_MAP_BIT,
+            .flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT,
             .size = desc->top.count * sizeof(instanceDescs[0]),
         };
         AS->asTop.pInstanceDescBuffer = cgpu_create_buffer(device, &instanceDesc);
@@ -185,25 +182,31 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
         // Allocate Acceleration Structure Buffer
         /************************************************************************/
         CGPUBufferDescriptor bufferDesc = {
-            .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER_RAW | CGPU_RESOURCE_TYPE_BUFFER_RAW,
+            .usages = CGPU_BUFFER_USAGE_SHADER_READWRITE | CGPU_BUFFER_USAGE_SHADER_READ,
             .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
-            .flags = CGPU_BCF_DEDICATED_BIT,
-            .element_stride = sizeof(uint32_t),
-            .first_element = 0,
-            .element_count = (uint32_t)(info.ResultDataMaxSizeInBytes / sizeof(UINT32)),
+            .flags = CGPU_BUFFER_FLAG_DEDICATED_BIT,
             .size = info.ResultDataMaxSizeInBytes,
             .start_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE
         };
         AS->pASBuffer = cgpu_create_buffer(device, &bufferDesc);
+
+        CGPUBufferViewDescriptor as_desc = {
+            .buffer = AS->pASBuffer,
+            .view_usages = CGPU_BUFFER_VIEW_USAGE_SRV_RAW,
+            .offset = 0,
+            .size = 0
+        };
+        AS->pASBufferView = cgpu_create_buffer_view(device, &as_desc);
         
         const CGPUBuffer_D3D12* pASBuffer = (const CGPUBuffer_D3D12*)AS->pASBuffer;
+        const CGPUBufferView_D3D12* pASBufferView = (const CGPUBufferView_D3D12*)AS->pASBufferView;
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {
             .ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE,
             .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
             .Format = DXGI_FORMAT_UNKNOWN,
             .RaytracingAccelerationStructure.Location = pASBuffer->mDxGpuAddress
         };
-        D3D12_CPU_DESCRIPTOR_HANDLE SRV = { pASBuffer->mDxDescriptorHandles.ptr + pASBuffer->mDxSrvOffset };
+        D3D12_CPU_DESCRIPTOR_HANDLE SRV = { pASBufferView->mDxDescriptorHandles.ptr + pASBufferView->mDxRawSrvOffset };
         D3D12Util_CreateSRV(D, CGPU_NULLPTR, &srvDesc, &SRV);
 
         AS->super.scratch_buffer_size = (UINT)info.ScratchDataSizeInBytes;
@@ -212,10 +215,9 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
 
     // Create scratch buffer
     CGPUBufferDescriptor scratchBufferDesc = {
-        .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER,
+        .usages = CGPU_BUFFER_USAGE_SHADER_READWRITE,
         .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
         .start_state = CGPU_RESOURCE_STATE_COMMON,
-        .flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION,
         .size = AS->super.scratch_buffer_size,
     };
     AS->pScratchBuffer = cgpu_create_buffer(device, &scratchBufferDesc);
@@ -229,6 +231,11 @@ void cgpu_free_acceleration_structure_d3d12(CGPUAccelerationStructureId as)
     {
         cgpu_free_buffer(AS->pASBuffer);
         AS->pASBuffer = CGPU_NULLPTR;
+    }
+    if (AS->pASBufferView)
+    {
+        cgpu_free_buffer_view(AS->pASBufferView);
+        AS->pASBufferView = CGPU_NULLPTR;
     }
     if (AS->pScratchBuffer)
     {

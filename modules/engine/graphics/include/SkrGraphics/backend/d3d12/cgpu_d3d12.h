@@ -91,11 +91,13 @@ CGPU_API void cgpu_cmd_end_event_d3d12(CGPUCommandBufferId cmd);
 CGPU_API CGPUShaderLibraryId cgpu_create_shader_library_d3d12(CGPUDeviceId device, const struct CGPUShaderLibraryDescriptor* desc);
 CGPU_API void cgpu_free_shader_library_d3d12(CGPUShaderLibraryId shader_module);
 
-// Buffer APIs
+// Buffer/BufferView APIs
 CGPU_API CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBufferDescriptor* desc);
 CGPU_API void cgpu_map_buffer_d3d12(CGPUBufferId buffer, const struct CGPUBufferRange* range);
 CGPU_API void cgpu_unmap_buffer_d3d12(CGPUBufferId buffer);
 CGPU_API void cgpu_free_buffer_d3d12(CGPUBufferId buffer);
+CGPU_API CGPUBufferViewId cgpu_create_buffer_view_d3d12(CGPUDeviceId device, const struct CGPUBufferViewDescriptor* desc);
+CGPU_API void cgpu_free_buffer_view_d3d12(CGPUBufferViewId view);
 
 // Sampler APIs
 CGPU_API CGPUSamplerId cgpu_create_sampler_d3d12(CGPUDeviceId device, const struct CGPUSamplerDescriptor* desc);
@@ -214,8 +216,8 @@ typedef struct CGPUAdapter_D3D12 {
 
 typedef struct CGPUEmptyDescriptors_D3D12 {
     D3D12_CPU_DESCRIPTOR_HANDLE Sampler;
-    D3D12_CPU_DESCRIPTOR_HANDLE TextureSRV[CGPU_TEX_DIMENSION_COUNT];
-    D3D12_CPU_DESCRIPTOR_HANDLE TextureUAV[CGPU_TEX_DIMENSION_COUNT];
+    D3D12_CPU_DESCRIPTOR_HANDLE TextureSRV[CGPU_TEXTURE_DIMENSION_COUNT];
+    D3D12_CPU_DESCRIPTOR_HANDLE TextureUAV[CGPU_TEXTURE_DIMENSION_COUNT];
     D3D12_CPU_DESCRIPTOR_HANDLE BufferSRV;
     D3D12_CPU_DESCRIPTOR_HANDLE BufferUAV;
     D3D12_CPU_DESCRIPTOR_HANDLE BufferCBV;
@@ -334,12 +336,6 @@ typedef struct CGPUBuffer_D3D12 {
     CGPUBuffer super;
     /// GPU Address - Cache to avoid calls to ID3D12Resource::GetGpuVirtualAddress
     D3D12_GPU_VIRTUAL_ADDRESS mDxGpuAddress;
-    /// Descriptor handle of the CBV in a CPU visible descriptor heap (applicable to BUFFER_USAGE_UNIFORM)
-    D3D12_CPU_DESCRIPTOR_HANDLE mDxDescriptorHandles;
-    /// Offset from mDxDescriptors for srv descriptor handle
-    uint8_t mDxSrvOffset;
-    /// Offset from mDxDescriptors for uav descriptor handle
-    uint8_t mDxUavOffset;
     /// Native handle of the underlying resource
     struct ID3D12Resource* pDxResource;
     /// Contains resource allocation info such as parent heap, offset in heap
@@ -349,6 +345,20 @@ typedef struct CGPUBuffer_D3D12 {
     struct DMA_Allocation* pDxAllocation;
 #endif
 } CGPUBuffer_D3D12;
+
+typedef struct CGPUBufferView_D3D12 {
+    CGPUBufferView super;
+    /// Descriptor handle of the CBV in a CPU visible descriptor heap (applicable to BUFFER_USAGE_UNIFORM)
+    D3D12_CPU_DESCRIPTOR_HANDLE mDxDescriptorHandles;
+    /// Offset from mDxDescriptors for srv descriptor handle
+    uint8_t mDxRawSrvOffset;
+    uint8_t mDxStructuredSrvOffset;
+    uint8_t mDxTexelSrvOffset;
+    /// Offset from mDxDescriptors for uav descriptor handle
+    uint8_t mDxRawUavOffset;
+    uint8_t mDxStructuredUavOffset;
+    uint8_t mDxTexelUavOffset;
+} CGPUBufferView_D3D12;
 
 typedef struct CGPUTexture_D3D12 {
     CGPUTexture super;

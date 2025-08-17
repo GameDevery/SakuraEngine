@@ -610,11 +610,9 @@ void RGRaytracingSampleModule::create_sphere_blas()
     CGPUBufferDescriptor vertex_buffer_desc = {
         .size = vertices.size() * sizeof(skr_float3_t),
         .name = u8"SphereVertexBuffer",
-        .descriptors = CGPU_RESOURCE_TYPE_VERTEX_BUFFER,
+        .usages = CGPU_BUFFER_USAGE_VERTEX_BUFFER,
         .memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU,
-        .flags = CGPU_BCF_PERSISTENT_MAP_BIT,
-        .element_count = vertices.size(),
-        .element_stride = sizeof(skr_float3_t),
+        .flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT,
         .start_state = CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER
     };
     sphere_vertex_buffer = cgpu_create_buffer(device, &vertex_buffer_desc);
@@ -624,11 +622,9 @@ void RGRaytracingSampleModule::create_sphere_blas()
     CGPUBufferDescriptor index_buffer_desc = {
         .size = indices.size() * sizeof(uint16_t),
         .name = u8"SphereIndexBuffer",
-        .descriptors = CGPU_RESOURCE_TYPE_INDEX_BUFFER,
+        .usages = CGPU_BUFFER_USAGE_INDEX_BUFFER,
         .memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU,
-        .flags = CGPU_BCF_PERSISTENT_MAP_BIT,
-        .element_count = indices.size(),
-        .element_stride = sizeof(uint16_t),
+        .flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT,
         .start_state = CGPU_RESOURCE_STATE_INDEX_BUFFER
     };
     sphere_index_buffer = cgpu_create_buffer(device, &index_buffer_desc);

@@ -345,11 +345,15 @@ typedef struct CGPUCommandBuffer_Vulkan {
 typedef struct CGPUBuffer_Vulkan {
     CGPUBuffer super;
     VkBuffer pVkBuffer;
+    struct VmaAllocation_T* pVkAllocation;
+} CGPUBuffer_Vulkan;
+
+typedef struct CGPUBufferView_Vulkan {
+    CGPUBufferView super;
+    VkBuffer pVkBuffer;
     VkBufferView pVkStorageTexelView;
     VkBufferView pVkUniformTexelView;
-    struct VmaAllocation_T* pVkAllocation;
-    uint64_t mOffset;
-} CGPUBuffer_Vulkan;
+} CGPUBufferView_Vulkan;
 
 typedef struct CGPUTileMapping_Vulkan
 {
@@ -445,7 +449,6 @@ typedef union VkDescriptorUpdateData
 {
     VkDescriptorImageInfo mImageInfo;
     VkDescriptorBufferInfo mBufferInfo;
-    VkBufferView mBuferView;
     VkAccelerationStructureKHR mAccelerationStructure;
 } VkDescriptorUpdateData;
 
