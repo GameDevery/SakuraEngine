@@ -4,7 +4,10 @@
 #include "SkrAnimTool/ozz/animation_optimizer.h"
 #include "SkrAnimTool/ozz/additive_animation_builder.h"
 #include "SkrAnimTool/ozz/animation_builder.h"
+#include "SkrAnimTool/ozz/raw_animation.h"
+
 #include "tools/import2ozz_utils.h"
+
 #include "SkrAnim/ozz/base/containers/vector.h"
 #include "SkrAnim/ozz/base/memory/unique_ptr.h"
 #include "SkrAnim/resources/skeleton_resource.hpp"
@@ -30,6 +33,7 @@ bool AnimCooker::Cook(CookContext* ctx)
         return false;
     }
     auto idx = ctx->AddStaticDependency(anim_asset.skeletonAsset.get_serialized(), true);
+
     if (ctx->GetStaticDependency(idx).get_status() == SKR_LOADING_STATUS_ERROR)
         return false;
     SkeletonResource* skeletonResource = (SkeletonResource*)ctx->GetStaticDependency(idx).get_ptr();
@@ -132,6 +136,7 @@ bool AnimCooker::Cook(CookContext* ctx)
     // no runtime dependencies
     //------write resource object
     ctx->Save(resource);
+
     return true;
 }
 } // namespace skd::asset

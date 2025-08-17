@@ -1,3 +1,4 @@
+#include "SkrAnim/resources/animation_resource.hpp"
 #include "SkrOS/filesystem.hpp"
 #include "SkrBase/misc/defer.hpp"
 #include "SkrRT/misc/cmd_parser.hpp"
@@ -30,7 +31,11 @@ skr::renderer::ShaderResourceFactory* shaderResourceFactory = nullptr;
 skr::renderer::ShaderOptionsFactory* shaderOptionsFactory = nullptr;
 skr::renderer::MaterialTypeFactory* matTypeFactory = nullptr;
 skr::resource::LocalResourceRegistry* registry = nullptr;
-skr::resource::SSkelFactory* skelFactory = nullptr;
+
+// Animation Factory
+
+skr::resource::SkelFactory* skelFactory = nullptr;
+skr::resource::AnimFactory* animFactory = nullptr;
 
 void InitializeResourceSystem(skd::SProject& proj)
 {
@@ -59,8 +64,12 @@ void InitializeResourceSystem(skd::SProject& proj)
         resource_system->RegisterFactory(matTypeFactory);
     }
     {
-        skelFactory = SkrNew<skr::resource::SSkelFactory>();
+        skelFactory = SkrNew<skr::resource::SkelFactory>();
         resource_system->RegisterFactory(skelFactory);
+    }
+    {
+        animFactory = SkrNew<skr::resource::AnimFactory>();
+        resource_system->RegisterFactory(animFactory);
     }
 }
 
@@ -69,6 +78,9 @@ void DestroyResourceSystem(skd::SProject& proj)
     skr::renderer::MaterialTypeFactory::Destroy(matTypeFactory);
     skr::renderer::ShaderOptionsFactory::Destroy(shaderOptionsFactory);
     skr::renderer::ShaderResourceFactory::Destroy(shaderResourceFactory);
+
+    SkrDelete(skelFactory);
+    SkrDelete(animFactory);
 
     skr::resource::GetResourceSystem()->Shutdown();
     SkrDelete(registry);
@@ -79,7 +91,7 @@ skr::Vector<skd::SProject*> open_projects(int argc, char** argv)
     skr::cmd::parser parser(argc, argv);
     parser.add(u8"project", u8"project path", u8"-p", false);
     parser.add(u8"workspace", u8"workspace path", u8"-w", true);
-    if(!parser.parse())
+    if (!parser.parse())
     {
         SKR_LOG_ERROR(u8"Failed to parse command line arguments.");
         return {};
@@ -120,18 +132,18 @@ int compile_project(skd::SProject* project)
             }
         }
     };
-    scanAssetDirectory(skr::Path{project->GetAssetPath()});
+    // find all .meta files in the project asset directory and push them to paths
+    scanAssetDirectory(skr::Path{ project->GetAssetPath() });
     SKR_LOG_INFO(u8"Project dir scan finished.");
     //----- load project asset meta data (guid & type & path)
     {
         using iter_t = typename decltype(paths)::iterator;
-        skr::parallel_for(paths.begin(), paths.end(), 20,
-        [&](iter_t begin, iter_t end) {
+        skr::parallel_for(paths.begin(), paths.end(), 20, [&](iter_t begin, iter_t end) {
             SkrZoneScopedN("LoadMeta");
             for (auto i = begin; i != end; ++i)
             {
                 // Calculate relative path
-                skr::Path assetPath{project->GetAssetPath()};
+                skr::Path assetPath{ project->GetAssetPath() };
                 auto relpath = (*i).relative_to(assetPath);
                 system.LoadAssetMeta(project, relpath.string());
             }
@@ -142,21 +154,21 @@ int compile_project(skd::SProject* project)
     //----- schedule cook tasks (checking dependencies)
     {
         system.ParallelForEachAsset(1,
-        [&](skr::span<skr::RC<skd::asset::AssetMetaFile>> assets) {
-            SkrZoneScopedN("Cook");
-            for (auto asset : assets)
-            {
-                system.EnsureCooked(asset->GetGUID());
-            }
-        });
+            [&](skr::span<skr::RC<skd::asset::AssetMetaFile>> assets) {
+                SkrZoneScopedN("Cook");
+                for (auto asset : assets)
+                {
+                    system.EnsureCooked(asset->GetGUID());
+                }
+            });
     }
     SKR_LOG_INFO(u8"Project asset import finished.");
     auto resource_system = skr::resource::GetResourceSystem();
-    skr::task::schedule([&]
-    {
+    skr::task::schedule([&] {
         system.WaitForAll();
         resource_system->Quit();
-    }, nullptr);
+    },
+        nullptr);
     resource_system->Update();
     //----- wait
     while (!system.AllCompleted() && resource_system->WaitRequest())
@@ -170,7 +182,7 @@ int compile_project(skd::SProject* project)
 int compile_all(int argc, char** argv)
 {
     skr_log_set_level(SKR_LOG_LEVEL_INFO);
-    
+
     skr::task::scheduler_t scheduler;
     scheduler.initialize(skr::task::scheudler_config_t());
     scheduler.bind();
@@ -178,16 +190,16 @@ int compile_all(int argc, char** argv)
     system.Initialize();
     //----- register project
     auto projects = open_projects(argc, argv);
-    SKR_DEFER({ 
-        for(auto& project : projects)
+    SKR_DEFER({
+        for (auto& project : projects)
         {
             project->CloseProject();
             SkrDelete(project);
         }
     });
-    for(auto& project : projects)
+    for (auto& project : projects)
         compile_project(project);
-    
+
     scheduler.unbind();
     system.Shutdown();
 

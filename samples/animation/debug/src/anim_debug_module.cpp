@@ -379,7 +379,6 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         // Update animation
         if (!m_anim_file.is_empty() && is_playing)
         {
-            /// TODO: sample animation
             int64_t us = skr_hires_timer_get_usec(&tick_timer, true);
             double deltaTime = (double)us / 1000 / 1000; // in seconds
             current_time += deltaTime;

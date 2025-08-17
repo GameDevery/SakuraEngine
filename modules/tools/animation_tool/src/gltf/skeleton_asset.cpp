@@ -6,17 +6,17 @@
 
 namespace skd::asset
 {
-void SkelGltfImporter::Destroy(void* data)
+void GltfSkelImporter::Destroy(void* data)
 {
     RawSkeleton* raw = (RawSkeleton*)data;
     raw->~RawSkeleton();
     ozz::memory::default_allocator()->Deallocate(data, alignof(RawSkeleton));
 }
 
-void* SkelGltfImporter::Import(skr::io::IRAMService*, CookContext* context)
+void* GltfSkelImporter::Import(skr::io::IRAMService*, CookContext* context)
 {
     using namespace ozz::animation::offline;
-    GltfImporter impl;
+    GltfOzzImporter impl;
     ozz::animation::offline::OzzImporter& impoter = impl;
     OzzImporter::NodeType types = {};
     types.skeleton = true;

@@ -17,24 +17,27 @@ namespace anim
 {
 
 sreflect_struct(guid = "1876BF35-E4DC-450B-B9D4-09259397F4BA")
-SkeletonResource {
+SkeletonResource
+{
     ozz::animation::Skeleton skeleton;
 };
 } // namespace anim
 
 template <>
-struct SKR_ANIM_API BinSerde<skr::anim::SkeletonResource> {
+struct SKR_ANIM_API BinSerde<skr::anim::SkeletonResource>
+{
     static bool read(SBinaryReader* r, skr::anim::SkeletonResource& v);
     static bool write(SBinaryWriter* w, const skr::anim::SkeletonResource& v);
 };
 
 namespace resource
 {
-struct SKR_ANIM_API SSkelFactory : public ResourceFactory {
+struct SKR_ANIM_API SkelFactory : public ResourceFactory
+{
 public:
-    virtual ~SSkelFactory() noexcept = default;
+    virtual ~SkelFactory() noexcept = default;
     skr_guid_t GetResourceType() override;
-    bool       AsyncIO() override { return true; }
+    bool AsyncIO() override { return true; }
 };
 } // namespace resource
 } // namespace skr

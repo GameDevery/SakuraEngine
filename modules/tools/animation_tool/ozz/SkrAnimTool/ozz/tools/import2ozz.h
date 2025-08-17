@@ -60,6 +60,7 @@ namespace offline
 // done by the tool.
 class OZZ_ANIMTOOLS_DLL OzzImporter
 {
+
 public:
     virtual ~OzzImporter() {}
 
@@ -74,7 +75,8 @@ public:
     // Skeleton management.
 
     // Defines node types that should be considered as skeleton joints.
-    struct NodeType {
+    struct NodeType
+    {
         bool skeleton : 1; // Uses skeleton nodes as skeleton joints.
         bool marker : 1;   // Uses marker nodes as skeleton joints.
         bool camera : 1;   // Uses camera nodes as skeleton joints.
@@ -94,7 +96,7 @@ public:
     // Gets the name of all the animations/clips/takes available from the source
     // data file.
     typedef ozz::vector<ozz::string> AnimationNames;
-    virtual AnimationNames           GetAnimationNames() = 0;
+    virtual AnimationNames GetAnimationNames() = 0;
 
     // Import animation "_animation_name" from the source data file.
     // The skeleton is provided such that implementation can look for its joints
@@ -106,7 +108,8 @@ public:
 
     // Defines properties, aka user-channel data: animations that aren't only
     // joint transforms.
-    struct NodeProperty {
+    struct NodeProperty
+    {
         ozz::string name;
 
         enum Type
@@ -123,15 +126,19 @@ public:
 
     // Get all properties available for a node.
     typedef ozz::vector<NodeProperty> NodeProperties;
-    virtual NodeProperties            GetNodeProperties(const char* _node_name) = 0;
+    virtual NodeProperties GetNodeProperties(const char* _node_name) = 0;
 
     // Imports a track of type 1, 2, 3 or 4 floats, for the triplet
     // _animation_name/_node_name/_track_name.
     // Returning false will report and error.
-    virtual bool Import(const char* _animation_name, const char* _node_name, const char* _track_name, NodeProperty::Type _track_type, float _sampling_rate, RawFloatTrack* _track)  = 0;
+    virtual bool Import(const char* _animation_name, const char* _node_name, const char* _track_name, NodeProperty::Type _track_type, float _sampling_rate, RawFloatTrack* _track) = 0;
     virtual bool Import(const char* _animation_name, const char* _node_name, const char* _track_name, NodeProperty::Type _track_type, float _sampling_rate, RawFloat2Track* _track) = 0;
     virtual bool Import(const char* _animation_name, const char* _node_name, const char* _track_name, NodeProperty::Type _track_type, float _sampling_rate, RawFloat3Track* _track) = 0;
     virtual bool Import(const char* _animation_name, const char* _node_name, const char* _track_name, NodeProperty::Type _track_type, float _sampling_rate, RawFloat4Track* _track) = 0;
+
+    // Build a filename from a wildcard string.
+    ozz::string BuildFilename(const char* _filename,
+        const char* _data_name) const;
 };
 } // namespace offline
 } // namespace animation

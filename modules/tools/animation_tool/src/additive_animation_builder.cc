@@ -63,23 +63,27 @@ void MakeDelta(const _RawTrack& _src, const _RefType& reference, const _MakeDelt
     }
 }
 
-math::Float3 MakeDeltaTranslation(const math::Float3& _reference, const math::Float3& _value)
+math::Float3 MakeDeltaTranslation(const math::Float3& _reference,
+    const math::Float3& _value)
 {
     return _value - _reference;
 }
 
-math::Quaternion MakeDeltaRotation(const math::Quaternion& _reference, const math::Quaternion& _value)
+math::Quaternion MakeDeltaRotation(const math::Quaternion& _reference,
+    const math::Quaternion& _value)
 {
     return Conjugate(_reference) * _value;
 }
 
-math::Float3 MakeDeltaScale(const math::Float3& _reference, const math::Float3& _value)
+math::Float3 MakeDeltaScale(const math::Float3& _reference,
+    const math::Float3& _value)
 {
     return _value / _reference;
 }
 } // namespace
 
-bool AdditiveAnimationBuilder::operator()(const RawAnimation& _input, RawAnimation* _output) const
+bool AdditiveAnimationBuilder::operator()(const RawAnimation& _input,
+    RawAnimation* _output) const
 {
     if (!_output)
     {
@@ -95,25 +99,25 @@ bool AdditiveAnimationBuilder::operator()(const RawAnimation& _input, RawAnimati
     }
 
     // Rebuilds output animation.
-    _output->name     = _input.name;
+    _output->name = _input.name;
     _output->duration = _input.duration;
     _output->tracks.resize(_input.tracks.size());
 
     for (size_t i = 0; i < _input.tracks.size(); ++i)
     {
-        const RawAnimation::JointTrack& track_in  = _input.tracks[i];
-        RawAnimation::JointTrack&       track_out = _output->tracks[i];
+        const RawAnimation::JointTrack& track_in = _input.tracks[i];
+        RawAnimation::JointTrack& track_out = _output->tracks[i];
 
         const RawAnimation::JointTrack::Translations& translations =
             track_in.translations;
         const math::Float3 ref_translation =
             translations.size() > 0 ? translations[0].value : math::Float3::zero();
 
-        const RawAnimation::JointTrack::Rotations& rotations    = track_in.rotations;
-        const math::Quaternion                     ref_rotation = rotations.size() > 0 ? rotations[0].value : math::Quaternion::identity();
+        const RawAnimation::JointTrack::Rotations& rotations = track_in.rotations;
+        const math::Quaternion ref_rotation = rotations.size() > 0 ? rotations[0].value : math::Quaternion::identity();
 
         const RawAnimation::JointTrack::Scales& scales = track_in.scales;
-        const math::Float3                      ref_scale =
+        const math::Float3 ref_scale =
             scales.size() > 0 ? scales[0].value : math::Float3::one();
 
         MakeDelta(translations, ref_translation, MakeDeltaTranslation, &track_out.translations);
@@ -126,10 +130,9 @@ bool AdditiveAnimationBuilder::operator()(const RawAnimation& _input, RawAnimati
 }
 
 bool AdditiveAnimationBuilder::operator()(
-    const RawAnimation&                _input,
+    const RawAnimation& _input,
     const span<const math::Transform>& _reference_pose,
-    RawAnimation*                      _output
-) const
+    RawAnimation* _output) const
 {
     if (!_output)
     {
@@ -153,7 +156,7 @@ bool AdditiveAnimationBuilder::operator()(
     }
 
     // Rebuilds output animation.
-    _output->name     = _input.name;
+    _output->name = _input.name;
     _output->duration = _input.duration;
     _output->tracks.resize(_input.tracks.size());
 

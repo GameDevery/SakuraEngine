@@ -4,10 +4,13 @@
 #include "SkrAnimTool/ozz/tools/import2ozz.h"
 #include "tinygltf/tiny_gltf.h"
 
-class GltfImporter : public ozz::animation::offline::OzzImporter
+namespace skd
+{
+
+class GltfOzzImporter : public ozz::animation::offline::OzzImporter
 {
 public:
-    GltfImporter();
+    GltfOzzImporter();
 
 private:
     bool Load(const char* _filename) override;
@@ -27,15 +30,11 @@ private:
     bool Import(const char* _animation_name, const ozz::animation::Skeleton& skeleton, float _sampling_rate, ozz::animation::offline::RawAnimation* _animation) override;
 
     bool SampleAnimationChannel(
-        const tinygltf::Model& _model, const tinygltf::AnimationSampler& _sampler,
-        const std::string& _target_path, float _sampling_rate, float* _duration,
-        ozz::animation::offline::RawAnimation::JointTrack* _track
-    );
+        const tinygltf::Model& _model, const tinygltf::AnimationSampler& _sampler, const std::string& _target_path, float _sampling_rate, float* _duration, ozz::animation::offline::RawAnimation::JointTrack* _track);
 
     // Returns all skins belonging to a given gltf scene
     ozz::vector<tinygltf::Skin> GetSkinsForScene(
-        const tinygltf::Scene& _scene
-    ) const;
+        const tinygltf::Scene& _scene) const;
 
     const tinygltf::Node* FindNodeByName(const std::string& _name) const;
 
@@ -62,5 +61,7 @@ private:
     }
 
     tinygltf::TinyGLTF m_loader;
-    tinygltf::Model    m_model;
+    tinygltf::Model m_model;
 };
+
+} // namespace skd

@@ -5,6 +5,7 @@
 #include <SkrCore/platform/vfs.h>
 #include <SkrCore/time.h>
 #include <SkrCore/async/thread_job.hpp>
+#include "SkrCore/memory/impl/skr_new_delete.hpp"
 #include <SkrRT/io/vram_io.hpp>
 #include "SkrOS/thread.h"
 #include "SkrProfile/profile.h"
@@ -13,7 +14,6 @@
 #include "SkrRTTR/rttr_traits.hpp"
 
 #include <SkrOS/filesystem.hpp>
-#include "SkrCore/memory/impl/skr_new_delete.hpp"
 #include "SkrSystem/advanced_input.h"
 #include <SkrRT/ecs/world.hpp>
 #include <SkrRT/resource/resource_system.h>
@@ -96,6 +96,7 @@ void SceneSampleMeshModule::InitializeResourceSystem()
     auto resource_system = skr::resource::GetResourceSystem();
     registry = SkrNew<skr::resource::LocalResourceRegistry>(project.GetResourceVFS());
     resource_system->Initialize(registry, project.GetRamService());
+
     const auto resource_root = project.GetResourceVFS()->mount_dir;
     {
         skr::String qn = u8"SceneSampleMesh-JobQueue";
@@ -212,7 +213,6 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     skr::String projectName = u8"SceneSampleMesh";
     skr::String rootPath = projectRoot.string().c_str();
     project.OpenProject(projectName.c_str(), rootPath.c_str(), projectConfig);
-
     {
         InitializeResourceSystem();
         InitializeAssetSystem();
@@ -246,14 +246,18 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
     auto& System = *skd::asset::GetCookSystem();
     auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
     auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
-    metadata->vertexType = u8"1b357a40-83ff-471c-8903-23e99d95b273"_guid; // GLTFVertexLayoutWithoutTangentId
+
+    // metadata->vertexType = u8"1b357a40-83ff-471c-8903-23e99d95b273"_guid; // GLTFVertexLayoutWithoutTangentId
+    metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; // GLTFVertexLayoutWithJointId
     auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"girl.gltf.meta",
         MeshAssetID,
         skr::type_id_of<skr::renderer::MeshResource>(),
         skr::type_id_of<skd::asset::MeshCooker>());
     importer->assetPath = gltf_path.c_str();
+
     System.ImportAssetMeta(&project, asset, importer, metadata);
+
     auto event = System.EnsureCooked(asset->GetGUID());
     event.wait(true);
 }
@@ -324,11 +328,10 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     skr_render_mesh_id render_mesh = SkrNew<skr_render_mesh_t>();
 
     utils::Grid2DMesh dummy_mesh;
-    actor1.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
-    // actor2.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
+    actor1.lock()->GetComponent<skr::renderer::MeshComponent>()->mesh_resource = MeshAssetID;
     for (auto& actor : hierarchy_actors)
     {
-        actor.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
+        actor.lock()->GetComponent<skr::renderer::MeshComponent>()->mesh_resource = MeshAssetID;
     }
 
     if (use_gltf)
@@ -398,20 +401,6 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             auto main_window = imgui_app->main_window();
             const auto size = main_window->get_physical_size();
             camera.aspect = (float)size.x / (float)size.y;
-
-            // if (use_gltf)
-            // {
-            //     actor1.lock()->GetMeshComponent()->mesh_resource.resolve(true, 0, ESkrRequesterType::SKR_REQUESTER_SYSTEM);
-            //     if (actor1.lock()->GetMeshComponent()->mesh_resource.is_resolved())
-            //     {
-            //         mesh_resource = actor1.lock()->GetMeshComponent()->mesh_resource.get_resolved(true);
-            //     }
-            // }
-
-            // if (mesh_resource && mesh_resource->render_mesh)
-            // {
-            //     scene_renderer->draw_primitives(render_graph, mesh_resource->render_mesh->primitive_commands);
-            // }
         };
         {
             scene_render_system->update();

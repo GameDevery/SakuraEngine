@@ -7,6 +7,8 @@
 #include <SkrCore/time.h>
 #include <SkrCore/async/thread_job.hpp>
 #include <SkrRT/io/vram_io.hpp>
+#include "SkrAnim/ozz/local_to_model_job.h"
+#include "SkrAnim/resources/skin_resource.hpp"
 #include "SkrOS/thread.h"
 #include "SkrProfile/profile.h"
 #include "SkrRT/io/ram_io.hpp"
@@ -31,15 +33,33 @@
 #include "SkrGLTFTool/mesh_asset.hpp"
 
 #include "SkrScene/actor.h"
+
 #include "SkrSceneCore/transform_system.h"
 
 #include "scene_renderer.hpp"
-#include "scene_render_system.h"
+// #include "scene_render_system.h"
+#include "anim_render_system.h"
 
 #include "helper.hpp"
 
+#include "SkrAnimTool/skeleton_asset.h"
+#include "SkrAnimTool/animation_asset.h"
+#include "SkrAnimTool/skin_asset.h"
+#include "SkrAnim/resources/animation_resource.hpp"
+#include "SkrAnim/resources/skeleton_resource.hpp"
+#include "SkrAnim/resources/skin_resource.hpp"
+#include "SkrAnim/components/skin_component.hpp"
+#include "SkrAnim/components/skeleton_component.hpp"
+
+#include "SkrAnim/ozz/base/containers/vector.h"
+#include "SkrAnim/ozz/sampling_job.h"
+#include "SkrAnim/ozz/base/maths/soa_transform.h"
+
 using namespace skr::literals;
 const auto MeshAssetID = u8"01988203-c467-72ef-916b-c8a5db2ec18d"_guid;
+const auto SkelAssetID = u8"0198a7d5-6819-76e2-88c3-fad2f6c3d5d5"_guid;
+const auto AnimAssetID = u8"0198a890-b5f8-750e-8e4d-cb200eb53b0e"_guid;
+const auto SkinAssetID = u8"0198ab86-af53-72bd-be58-ef888ea9c023"_guid;
 
 // The Three-Triangle Example: simple mesh scene hierarchy
 struct SceneSampleSkelMeshModule : public skr::IDynamicModule
@@ -54,6 +74,8 @@ struct SceneSampleSkelMeshModule : public skr::IDynamicModule
     void DestroyResourceSystem();
     void CookAndLoadGLTF();
 
+    float current_time = 0.0f;
+
     skr::task::scheduler_t scheduler;
     skr::ecs::World world{ scheduler };
     skr_vfs_t* resource_vfs = nullptr;
@@ -67,11 +89,17 @@ struct SceneSampleSkelMeshModule : public skr::IDynamicModule
 
     skr::String gltf_path = u8"";
     skr::resource::LocalResourceRegistry* registry = nullptr;
+
     skr::renderer::MeshFactory* mesh_factory = nullptr;
+    skr::resource::SkelFactory* skelFactory = nullptr;
+    skr::resource::AnimFactory* animFactory = nullptr;
+    skr::resource::SkinFactory* skinFactory = nullptr;
+
     skd::SProject project;
     skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
     skr::TransformSystem* transform_system = nullptr;
-    skr::scene::SceneRenderSystem* scene_render_system = nullptr;
+    // skr::scene::SceneRenderSystem* scene_render_system = nullptr;
+    skr::scene::AnimRenderSystem* anim_render_system = nullptr;
 };
 
 IMPLEMENT_DYNAMIC_MODULE(SceneSampleSkelMeshModule, SceneSample_SkelMesh);
@@ -133,6 +161,21 @@ void SceneSampleSkelMeshModule::InitializeResourceSystem()
         mesh_factory = skr::renderer::MeshFactory::Create(factoryRoot);
         resource_system->RegisterFactory(mesh_factory);
     }
+    // skel factory
+    {
+        skelFactory = SkrNew<skr::resource::SkelFactory>();
+        resource_system->RegisterFactory(skelFactory);
+    }
+    // anim factory
+    {
+        animFactory = SkrNew<skr::resource::AnimFactory>();
+        resource_system->RegisterFactory(animFactory);
+    }
+    // skin factory
+    {
+        skinFactory = SkrNew<skr::resource::SkinFactory>();
+        resource_system->RegisterFactory(skinFactory);
+    }
 }
 
 void SceneSampleSkelMeshModule::DestroyResourceSystem()
@@ -141,6 +184,9 @@ void SceneSampleSkelMeshModule::DestroyResourceSystem()
     resource_system->Shutdown();
 
     skr::renderer::MeshFactory::Destroy(mesh_factory);
+    SkrDelete(skelFactory);
+    SkrDelete(animFactory);
+    SkrDelete(skinFactory);
 
     skr_io_ram_service_t::destroy(ram_service);
     skr_io_vram_service_t::destroy(vram_service);
@@ -175,7 +221,8 @@ void SceneSampleSkelMeshModule::on_load(int argc, char8_t** argv)
     world.initialize();
     actor_manager.initialize(&world);
     transform_system = skr_transform_system_create(&world);
-    scene_render_system = skr_scene_render_system_create(&world);
+    // scene_render_system = skr_scene_render_system_create(&world);
+    anim_render_system = skr::scene::AnimRenderSystem::Create(&world);
     render_device = SkrRendererModule::Get()->get_render_device();
 
     auto resourceRoot = (skr::fs::current_directory() / u8"../resources");
@@ -206,7 +253,8 @@ void SceneSampleSkelMeshModule::on_load(int argc, char8_t** argv)
     }
     scene_renderer = skr::SceneRenderer::Create();
     scene_renderer->initialize(render_device, &world, resource_vfs);
-    scene_render_system->bind_renderer(scene_renderer);
+    // scene_render_system->bind_renderer(scene_renderer);
+    anim_render_system->bind_renderer(scene_renderer);
 }
 
 void SceneSampleSkelMeshModule::on_unload()
@@ -220,7 +268,7 @@ void SceneSampleSkelMeshModule::on_unload()
         DestroyResourceSystem();
     }
     skr_transform_system_destroy(transform_system);
-    skr_scene_render_system_destroy(scene_render_system);
+    skr::scene::AnimRenderSystem::Destroy(anim_render_system);
 
     actor_manager.finalize();
     world.finalize();
@@ -230,19 +278,73 @@ void SceneSampleSkelMeshModule::on_unload()
 
 void SceneSampleSkelMeshModule::CookAndLoadGLTF()
 {
-    auto& System = *skd::asset::GetCookSystem();
+    auto& cook_system = *skd::asset::GetCookSystem();
     auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
     auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
-    metadata->vertexType = u8"1b357a40-83ff-471c-8903-23e99d95b273"_guid; // GLTFVertexLayoutWithoutTangentId
+
+    // metadata->vertexType = u8"1b357a40-83ff-471c-8903-23e99d95b273"_guid; // GLTFVertexLayoutWithoutTangentId
+    metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; // GLTFVertexLayoutWithJointId
+
     auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"girl.gltf.meta",
         MeshAssetID,
         skr::type_id_of<skr::renderer::MeshResource>(),
         skr::type_id_of<skd::asset::MeshCooker>());
     importer->assetPath = gltf_path.c_str();
-    System.ImportAssetMeta(&project, asset, importer, metadata);
-    auto event = System.EnsureCooked(asset->GetGUID());
-    event.wait(true);
+    cook_system.ImportAssetMeta(&project, asset, importer, metadata);
+
+    auto skelImporter = skd::asset::GltfSkelImporter::Create<skd::asset::GltfSkelImporter>();
+    auto meshdata = skd::asset::SkeletonAsset::Create<skd::asset::SkeletonAsset>();
+    auto skel_asset = skr::RC<skd::asset::AssetMetaFile>::New(
+        u8"test_skeleton.gltf.meta",
+        SkelAssetID,
+        skr::type_id_of<skr::anim::SkeletonResource>(),
+        skr::type_id_of<skd::asset::SkelCooker>());
+    skelImporter->assetPath = gltf_path.c_str();
+    cook_system.ImportAssetMeta(&project, skel_asset, skelImporter, meshdata);
+
+    auto animImporter = skd::asset::GltfAnimImporter::Create<skd::asset::GltfAnimImporter>();
+    auto animdata = skd::asset::AnimAsset::Create<skd::asset::AnimAsset>();
+
+    animdata->skeletonAsset = skel_asset->GetGUID();
+    auto anim_asset = skr::RC<skd::asset::AssetMetaFile>::New(
+        u8"test_animation.gltf.meta",
+        AnimAssetID,
+        skr::type_id_of<skr::anim::AnimResource>(),
+        skr::type_id_of<skd::asset::AnimCooker>());
+    animImporter->assetPath = gltf_path.c_str();
+    animImporter->animationName = u8"Take 001";
+
+    cook_system.ImportAssetMeta(&project, anim_asset, animImporter, animdata);
+
+    // skin shares the same mesh with mesh asset
+    auto skin_asset = skr::RC<skd::asset::AssetMetaFile>::New(
+        u8"test_skin.gltf.meta",
+        SkinAssetID,
+        skr::type_id_of<skr::anim::SkinResource>(),
+        skr::type_id_of<skd::asset::SkinCooker>());
+
+    cook_system.ImportAssetMeta(&project, skin_asset, importer, metadata);
+
+    {
+        cook_system.ParallelForEachAsset(1,
+            [&](skr::span<skr::RC<skd::asset::AssetMetaFile>> assets) {
+                SkrZoneScopedN("Cook");
+                for (auto asset : assets)
+                {
+                    cook_system.EnsureCooked(asset->GetGUID());
+                }
+            });
+    }
+
+    auto resource_system = skr::resource::GetResourceSystem();
+    skr::task::schedule([&] {
+        cook_system.WaitForAll();
+        // resource_system->Quit();
+    },
+        nullptr);
+    resource_system->Update();
+    //----- wait
 }
 
 int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
@@ -266,7 +368,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
     auto cgpu_device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
 
-    skr::Vector<skr::RCWeak<skr::MeshActor>> hierarchy_actors;
+    skr::Vector<skr::RCWeak<skr::SkelMeshActor>> hierarchy_actors;
     constexpr int hierarchy_count = 3; // Number of actors in the hierarchy
 
     auto root = skr::Actor::GetRoot();
@@ -281,41 +383,38 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
 
     root.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
-    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 1.0f, 0.0f });
+    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, -5.0f, 10.0f });
     actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
-    actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
-    for (auto i = 0; i < hierarchy_count; ++i)
-    {
-        auto actor = actor_manager.CreateActor<skr::SkelMeshActor>().cast_static<skr::SkelMeshActor>();
-        hierarchy_actors.push_back(actor);
+    actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.8f, 0.0f });
 
-        actor.lock()->SetDisplayName(skr::format(u8"Actor {}", i + 2).c_str());
-        actor.lock()->CreateEntity();
-        if (i == 0)
-        {
-            actor.lock()->AttachTo(actor1);
-        }
-        else
-        {
-            actor.lock()->AttachTo(hierarchy_actors[i - 1]);
-        }
+    // for (auto i = 0; i < hierarchy_count; ++i)
+    // {
+    //     auto actor = actor_manager.CreateActor<skr::SkelMeshActor>().cast_static<skr::SkelMeshActor>();
+    //     hierarchy_actors.push_back(actor);
 
-        actor.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, (float)(i + 1) * 5.0f });
-        actor.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .8f, .8f, .8f });
-    }
+    //     actor.lock()->SetDisplayName(skr::format(u8"Actor {}", i + 2).c_str());
+    //     actor.lock()->CreateEntity();
+    //     if (i == 0)
+    //     {
+    //         actor.lock()->AttachTo(actor1);
+    //     }
+    //     else
+    //     {
+    //         actor.lock()->AttachTo(hierarchy_actors[i - 1]);
+    //     }
+
+    //     actor.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, (float)(i + 1) * 5.0f });
+    //     actor.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .8f, .8f, .8f });
+    // }
 
     transform_system->update();
     skr::ecs::TaskScheduler::Get()->sync_all();
 
-    skr_mesh_resource_t* mesh_resource = nullptr;
-    skr_render_mesh_id render_mesh = SkrNew<skr_render_mesh_t>();
-
-    actor1.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
-    // actor2.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
-    for (auto& actor : hierarchy_actors)
-    {
-        actor.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
-    }
+    actor1.lock()->GetComponent<skr::renderer::MeshComponent>()->mesh_resource = MeshAssetID;
+    // for (auto& actor : hierarchy_actors)
+    // {
+    //     actor.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
+    // }
 
     CookAndLoadGLTF();
 
@@ -347,6 +446,13 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
 
     auto resource_system = skr::resource::GetResourceSystem();
 
+    actor1.lock()->GetComponent<skr::anim::SkeletonComponent>()->skeleton_resource = SkelAssetID;
+    actor1.lock()->GetComponent<skr::anim::SkinComponent>()->skin_resource = SkinAssetID;
+
+    skr::resource::AsyncResource<skr::anim::AnimResource> anim_resource_handle = AnimAssetID;
+    // actor1.lock()->GetComponent<skr::anim::AnimComponent>()->use_dynamic_buffer = true; // use CPU/GPU dynamic buffer for simplicity
+    ozz::animation::SamplingJob::Context context_;
+
     while (!imgui_app->want_exit().comsume())
     {
         SkrZoneScopedN("LoopBody");
@@ -358,6 +464,173 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
             // ResourceSystem Update
             resource_system->Update();
         }
+
+        {
+
+            auto* mesh_comp = actor1.lock()->GetComponent<skr::renderer::MeshComponent>();
+            auto* skel_comp = actor1.lock()->GetComponent<skr::anim::SkeletonComponent>();
+            auto* skin_comp = actor1.lock()->GetComponent<skr::anim::SkinComponent>();
+
+            mesh_comp->mesh_resource.resolve(true, 0);
+            skel_comp->skeleton_resource.resolve(true, 0);
+            skin_comp->skin_resource.resolve(true, 0);
+            anim_resource_handle.resolve(true, 0);
+            if (
+                mesh_comp->mesh_resource.is_resolved() &&
+                skel_comp->skeleton_resource.is_resolved() &&
+                skin_comp->skin_resource.is_resolved() &&
+                anim_resource_handle.is_resolved())
+
+            {
+
+                auto* skeleton_resource = skel_comp->skeleton_resource.get_resolved(true);
+                auto* skin_resource = skin_comp->skin_resource.get_resolved(true);
+                auto* anim = anim_resource_handle.get_resolved(true);
+                auto* mesh_resource = mesh_comp->mesh_resource.get_resolved(true);
+                // SKR_LOG_INFO(u8"Skeleton has %d joints", skeleton_resource->skeleton.num_joints());
+                // SKR_LOG_INFO(u8"Animation has %d tracks", anim->animation.num_tracks());
+                // SKR_LOG_INFO(u8"Skin has %d poses", skin_resource->inverse_bind_poses.size());
+                auto* runtime_anim_component = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+
+                if (skeleton_resource && skin_resource && anim && runtime_anim_component && mesh_resource && mesh_resource->render_mesh)
+                {
+                    skr_init_skin_component(skin_comp, skeleton_resource);
+                    skr_init_anim_component(runtime_anim_component, mesh_resource, skeleton_resource);
+                    skr_init_anim_buffers(cgpu_device, runtime_anim_component, mesh_resource);
+                }
+                {
+                    int64_t us = skr_hires_timer_get_usec(&tick_timer, true);
+                    double deltaTime = (double)us / 1000 / 1000; // in seconds
+                    current_time += deltaTime;
+                    if (current_time > anim->animation.duration())
+                    {
+                        current_time = 0.0f;
+                    }
+
+                    float ratio = current_time / anim->animation.duration();
+                    ozz::animation::SamplingJob::Context context_;
+                    context_.Resize(skeleton_resource->skeleton.num_joints());
+                    ozz::vector<ozz::math::SoaTransform> locals_;
+                    locals_.resize(skeleton_resource->skeleton.num_soa_joints());
+                    ozz::animation::SamplingJob sampling_job;
+                    sampling_job.animation = &anim->animation;
+                    sampling_job.ratio = ratio;
+                    sampling_job.context = &context_;
+                    sampling_job.output = ozz::make_span(locals_);
+                    if (!sampling_job.Run())
+                    {
+                        SKR_LOG_ERROR(u8"Failed to run SamplingJob");
+                    }
+
+                    ozz::animation::LocalToModelJob ltm_job;
+                    ltm_job.skeleton = &skeleton_resource->skeleton;
+                    // ltm_job.input = skeleton_resource->skeleton.joint_rest_poses();
+                    ltm_job.input = ozz::make_span(locals_);
+                    ltm_job.output = ozz::span{ runtime_anim_component->joint_matrices.data(), runtime_anim_component->joint_matrices.size() };
+                    if (!ltm_job.Run())
+                    {
+                        SKR_LOG_ERROR(u8"Failed to run LocalToModelJob");
+                    }
+                }
+                {
+                    // update joint matrices
+                    SkrZoneScopedN("UpdateJointMatrices");
+                    auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+                }
+                {
+                    if (!(skin_comp->joint_remaps.is_empty() || runtime_anim_component->buffers.is_empty()))
+                    {
+                        skr_cpu_skin(skin_comp, runtime_anim_component, mesh_resource);
+                    }
+                }
+                {
+                    // upload skin mesh data
+                    uint64_t skinVerticesSize = 0;
+                    {
+                        SkrZoneScopedN("CalculateSkinMeshSize");
+                        auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+                        for (size_t j = 0u; j < anim->buffers.size(); j++)
+                        {
+                            skinVerticesSize += anim->buffers[j]->get_size();
+                        }
+                        // SKR_LOG_INFO(u8"Skin mesh size: %llu bytes", skinVerticesSize);
+                    }
+                    auto upload_buffer_handle = render_graph->create_buffer(
+                        [=](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
+                            builder.set_name(SKR_UTF8("SkinMeshUploadBuffer"))
+                                .size(skinVerticesSize)
+                                .with_tags(kRenderGraphDefaultResourceTag)
+                                .as_upload_buffer();
+                        });
+
+                    render_graph->add_copy_pass(
+                        [=](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassBuilder& builder) {
+                            builder.set_name(SKR_UTF8("CopySkinMesh"))
+                                .from_buffer(upload_buffer_handle.range(0, skinVerticesSize))
+                                .can_be_lone();
+                        },
+                        [=](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassContext& context) {
+                            SkrZoneScopedN("CopySkinMesh");
+
+                            auto upload_buffer = context.resolve(upload_buffer_handle);
+                            auto mapped = (uint8_t*)upload_buffer->info->cpu_mapped_address;
+
+                            // barrier from vb to copy dest
+                            {
+                                SkrZoneScopedN("Barriers");
+                                CGPUResourceBarrierDescriptor barrier_desc = {};
+                                skr::Vector<CGPUBufferBarrier> barriers;
+
+                                auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+                                for (size_t j = 0u; j < anim->buffers.size(); j++)
+                                {
+                                    const bool use_dynamic_buffer = anim->use_dynamic_buffer;
+                                    if (anim->vbs[j] && !use_dynamic_buffer)
+                                    {
+                                        CGPUBufferBarrier& barrier = barriers.emplace().ref();
+                                        barrier.buffer = anim->vbs[j];
+                                        barrier.src_state = CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+                                        barrier.dst_state = CGPU_RESOURCE_STATE_COPY_DEST;
+                                    }
+                                }
+
+                                barrier_desc.buffer_barriers = barriers.data();
+                                barrier_desc.buffer_barriers_count = (uint32_t)barriers.size();
+                                cgpu_cmd_resource_barrier(context.cmd, &barrier_desc);
+                            }
+
+                            // upload
+                            {
+                                SkrZoneScopedN("MemCopies");
+                                uint64_t cursor = 0;
+
+                                auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+                                const bool use_dynamic_buffer = anim->use_dynamic_buffer;
+                                if (!use_dynamic_buffer)
+                                {
+                                    for (size_t j = 0u; j < anim->buffers.size(); j++)
+                                    {
+                                        // memcpy
+                                        memcpy(mapped + cursor, anim->buffers[j]->get_data(), anim->buffers[j]->get_size());
+
+                                        // queue cpy
+                                        CGPUBufferToBufferTransfer b2b = {};
+                                        b2b.src = upload_buffer;
+                                        b2b.src_offset = cursor;
+                                        b2b.dst = anim->vbs[j];
+                                        b2b.dst_offset = 0;
+                                        b2b.size = anim->buffers[j]->get_size();
+                                        cgpu_cmd_transfer_buffer_to_buffer(context.cmd, &b2b);
+
+                                        cursor += anim->buffers[j]->get_size();
+                                    }
+                                }
+                            }
+                        });
+                }
+            }
+        }
+
         {
             // Update Actor Transform
             transform_system->update();
@@ -377,11 +650,11 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
             camera.aspect = (float)size.x / (float)size.y;
         };
         {
-            scene_render_system->update();
+            SkrZoneScopedN("AnimRenderJob");
+            anim_render_system->update();
             skr::ecs::TaskScheduler::Get()->sync_all();
-            scene_renderer->draw_primitives(
-                render_graph,
-                scene_render_system->get_drawcalls());
+            scene_renderer->draw_primitives(render_graph,
+                anim_render_system->get_drawcalls());
         }
 
         {
@@ -402,9 +675,5 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
     cgpu_wait_queue_idle(gfx_queue);
     imgui_app->shutdown();
     skr::input::Input::Finalize();
-    skr_render_mesh_free(render_mesh);
-    mesh_resource->bins.clear();
-    mesh_resource->render_mesh = nullptr;
-    SkrDelete(mesh_resource);
     return 0;
 }

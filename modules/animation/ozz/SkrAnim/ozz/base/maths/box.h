@@ -32,53 +32,68 @@
 
 #include "SkrAnim/ozz/base/maths/vec_float.h"
 
-namespace ozz {
-namespace math {
+namespace ozz
+{
+namespace math
+{
 
 // Matrix forward declaration.
 struct Float4x4;
 
 // Defines an axis aligned box.
-struct OZZ_BASE_DLL Box {
-  // Constructs an invalid box.
-  Box();
+struct OZZ_BASE_DLL Box
+{
+    // Constructs an invalid box.
+    Box();
 
-  // Constructs a box with the specified _min and _max bounds.
-  Box(const Float3& _min, const Float3& _max) : min(_min), max(_max) {}
+    // Constructs a box with the specified _min and _max bounds.
+    Box(const Float3& _min, const Float3& _max)
+        : min(_min)
+        , max(_max)
+    {
+    }
 
-  // Constructs the smallest box that contains the _count points _points.
-  // _stride is the number of bytes between points.
-  explicit Box(const Float3& _point) : min(_point), max(_point) {}
+    // Constructs the smallest box that contains the _count points _points.
+    // _stride is the number of bytes between points.
+    explicit Box(const Float3& _point)
+        : min(_point)
+        , max(_point)
+    {
+    }
 
-  // Constructs the smallest box that contains the _count points _points.
-  // _stride is the number of bytes between points, it must be greater or
-  // equal to sizeof(Float3).
-  Box(const Float3* _points, size_t _stride, size_t _count);
+    // Constructs the smallest box that contains the _count points _points.
+    // _stride is the number of bytes between points, it must be greater or
+    // equal to sizeof(Float3).
+    Box(const Float3* _points, size_t _stride, size_t _count);
 
-  // Tests whether *this is a valid box.
-  bool is_valid() const { return min <= max; }
+    // Tests whether *this is a valid box.
+    bool is_valid() const { return min <= max; }
 
-  // Tests whether _p is within box bounds.
-  bool is_inside(const Float3& _p) const { return _p >= min && _p <= max; }
+    // Tests whether _p is within box bounds.
+    bool is_inside(const Float3& _p) const { return _p >= min && _p <= max; }
 
-  // Box's min and max bounds.
-  Float3 min;
-  Float3 max;
+    // Box's min and max bounds.
+    Float3 min;
+    Float3 max;
 };
 
 // Merges two boxes _a and _b.
 // Both _a and _b can be invalid.
-OZZ_INLINE Box Merge(const Box& _a, const Box& _b) {
-  if (!_a.is_valid()) {
-    return _b;
-  } else if (!_b.is_valid()) {
-    return _a;
-  }
-  return Box(Min(_a.min, _b.min), Max(_a.max, _b.max));
+OZZ_INLINE Box Merge(const Box& _a, const Box& _b)
+{
+    if (!_a.is_valid())
+    {
+        return _b;
+    }
+    else if (!_b.is_valid())
+    {
+        return _a;
+    }
+    return Box(Min(_a.min, _b.min), Max(_a.max, _b.max));
 }
 
 // Compute box transformation by a matrix.
 OZZ_BASE_DLL Box TransformBox(const Float4x4& _matrix, const Box& _box);
-}  // namespace math
-}  // namespace ozz
-#endif  // OZZ_OZZ_BASE_MATHS_BOX_H_
+} // namespace math
+} // namespace ozz
+#endif // OZZ_OZZ_BASE_MATHS_BOX_H_

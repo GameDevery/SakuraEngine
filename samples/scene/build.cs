@@ -8,7 +8,7 @@ public static class SceneSamples
     {
         Engine.Module("SceneRenderer", "SCENE_RENDERER")
             .Depend(Visibility.Public, "SkrScene", "SkrGraphics"
-                , "SkrImGui", "SkrCore", "SkrSystem")
+                , "SkrImGui", "SkrCore", "SkrSystem", "SkrAnim")
             .IncludeDirs(Visibility.Public, "renderer")
             .AddCppFiles("renderer/*.cpp")
             .AddCppSLFiles("renderer/shaders/*.cppsl")
@@ -38,6 +38,7 @@ public static class SceneSamples
         Engine.Program("SceneSample_SkelMesh")
             .AddCppFiles("skelmesh/*.cpp")
             .Depend(Visibility.Private, "SceneRenderer")
+            .Depend(Visibility.Private, "SkrAnimTool")
             .Depend(Visibility.Private, "SkrGLTFTool");
 
         Engine.Program("SceneSample_Project")
