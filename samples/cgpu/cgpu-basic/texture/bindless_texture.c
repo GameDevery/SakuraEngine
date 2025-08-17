@@ -162,7 +162,7 @@ void create_descriptor_buffer()
             .resource_type = CGPU_RESOURCE_TYPE2_TEXTURE,
             .texture = sview_desc
         };
-        cgpu_update_descriptor_buffer(descriptor_buffer, &elem, i);
+        cgpu_update_descriptor_buffer(descriptor_buffer, &elem, 1);
     }
 }
 

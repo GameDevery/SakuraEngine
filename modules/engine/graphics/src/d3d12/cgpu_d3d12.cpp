@@ -1732,7 +1732,7 @@ void cgpu_update_descriptor_buffer_d3d12(CGPUDescriptorBufferId buffer_id, const
 #ifdef CGPU_THREAD_SAFETY
         SMutexLock lock(buffer->mDirtyMutex);
 #endif
-        buffer->mDirtyIndices.add(i);
+        buffer->mDirtyIndices.add(element->index);
     }
 }
 
