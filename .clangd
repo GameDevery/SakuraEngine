@@ -16,7 +16,7 @@ CompileFlags:
 ---
 
 If:
-  PathMatch: tools/shader_compiler/LLVM/test_shaders/.*
+  PathMatch: engine/tools/shader_compiler/ShaderSTL/.*
 CompileFlags:
   CompilationDatabase: .sb/compile_commands/shaders/
 
