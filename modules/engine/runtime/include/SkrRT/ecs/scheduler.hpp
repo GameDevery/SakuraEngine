@@ -28,7 +28,7 @@ struct TaskDependency
 
 struct WorkUnit
 {
-    mutable sugoi_chunk_view_t chunk_view;
+    mutable StackVector<sugoi_chunk_view_t> chunk_views;
     mutable skr::task::counter_t finish;
     StackVector<skr::task::weak_counter_t> dependencies;
 };

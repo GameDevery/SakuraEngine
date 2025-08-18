@@ -17,10 +17,12 @@ constexpr AddressType align_up = (v + a - 1) & ~(a - 1);
 template <typename... Cs>
 struct ComponentBundle
 {
+public:
     static constexpr size_t component_count = sizeof...(Cs);
     static constexpr AddressType size() {
         return size_helper<Cs...>();
     }
+
 private:
     template <typename F, typename... Rs>
     static constexpr AddressType size_helper() {
@@ -40,6 +42,7 @@ private:
             return size_helper_impl<aligned + sizeof(F), Rs...>();
         }
     }
+
 public:
     static constexpr AddressType alignment() {
         AddressType max_align = 1;
@@ -71,6 +74,7 @@ template <typename T> inline constexpr bool is_bundle_v = is_bundle<T>::value;
 template <uint32_t PageSize = 16384, typename... Es>
 struct PagedLayout
 {
+public:
     template <typename... T> struct TypePack {};
     using Elements = TypePack<Es...>;
     static constexpr uint32_t page_size = PageSize;
@@ -106,6 +110,7 @@ struct PagedLayout
     {
         return align_up<page_stride_helper<0, Es...>(), 256>;
     }
+
 private:
     template <AddressType Off, typename E, typename... Rs>
     static constexpr AddressType page_stride_helper() {
@@ -171,9 +176,10 @@ private:
     }
 };
 
-#define BUNDLE(...) skr::renderer::ComponentBundle<__VA_ARGS__>
+// #define BUNDLE(...) skr::renderer::ComponentBundle<__VA_ARGS__>
 
 // 连续布局（需要 capacity）
+/*
 template <typename... Es>
 struct ContinuousLayout
 {
@@ -246,5 +252,6 @@ private:
         }
     }
 };
+*/
 
 } // namespace skr::renderer

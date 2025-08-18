@@ -41,8 +41,7 @@ sreflect_managed_component(guid = "fd6cd47d-bb68-4d1c-bd26-ad3717f10ea7")
 GPUSceneInstance
 {
     skr::ecs::Entity entity;
-    GPUSceneInstanceID instance_index;
-    GPUSceneCustomIndex custom_index;
+    GPUSceneInstanceID instance_index = ~0;
 };
 
 struct GPUSceneComponentType
@@ -105,6 +104,9 @@ public:
     void Initialize(const struct GPUSceneConfig& config, const SOASegmentBuffer::Builder& soa_builder);
     void Shutdown();
 
+    // TODO: ADD A TRACKER COMPONENT TO REPLACE THIS KIND OF API
+    bool CanRemoveEntity(skr::ecs::Entity entity);
+
     void AddEntity(skr::ecs::Entity entity);
     void RemoveEntity(skr::ecs::Entity entity);
 
@@ -128,7 +130,6 @@ public:
 protected:
     void InitializeComponentTypes(const GPUSceneConfig& config);
     void AdjustBuffer(skr::render_graph::RenderGraph* graph);
-    uint64_t CalculateDirtySize() const;
 
 private:
     struct Upload
@@ -139,7 +140,7 @@ private:
     };
     void CreateSparseUploadPipeline(CGPUDeviceId device);
     void PrepareUploadBuffer(skr::render_graph::RenderGraph* graph);
-    void DispatchSparseUpload(skr::render_graph::RenderGraph* graph, skr::Vector<Upload>&& core_uploads, skr::Vector<Upload>&& additional_uploads);
+    void DispatchSparseUpload(skr::render_graph::RenderGraph* graph, skr::Vector<Upload>&& core_uploads);
 
     friend struct GPUSceneInstanceTask;
     friend struct AddEntityToGPUScene;
@@ -187,38 +188,50 @@ private:
     };
     skr::render_graph::FrameResource<BufferContext> buffer_ctx;
 
-    // 类型注册表
+    // type registry
     skr::Map<CPUTypeID, SOAIndex> type_registry;
     skr::Vector<GPUSceneComponentType> component_types;
 
     // instance counters
-    GPUSceneInstanceID instance_count = 0;
+    skr::ParallelFlatHashMap<skr::ecs::Entity, GPUSceneInstanceID, skr::Hash<skr::ecs::Entity>> entity_ids;
+    std::atomic<GPUSceneInstanceID> instance_count = 0;
     std::atomic<GPUSceneInstanceID> latest_index = 0;
     skr::ConcurrentQueue<GPUSceneInstanceID> free_ids;
+    std::atomic<GPUSceneInstanceID> free_id_count = 0;
 
     // core data 的 graph handle
     SOASegmentBuffer soa_segments;
     skr::render_graph::BufferHandle scene_buffer; 
 
 private:
-    // dirties
-    shared_atomic_mutex add_mtx;
-    skr::Vector<skr::ecs::Entity> add_ents;
+    static constexpr uint32_t kLaneCount = 2;
+    struct UpdateLane
+    {
+        shared_atomic_mutex add_mtx;
+        skr::Vector<skr::ecs::Entity> add_ents;
 
-    shared_atomic_mutex remove_mtx;
-    skr::Vector<skr::ecs::Entity> remove_ents;
+        shared_atomic_mutex remove_mtx;
+        skr::Vector<skr::ecs::Entity> remove_ents;
 
-    std::atomic<uint64_t> dirty_comp_count = 0;
-    shared_atomic_mutex dirty_mtx;
-    skr::Vector<skr::ecs::Entity> dirty_ents;
-    skr::Map<skr::ecs::Entity, skr::InlineVector<CPUTypeID, 4>> dirties;
+        shared_atomic_mutex dirty_mtx;
+        skr::Vector<skr::ecs::Entity> dirty_ents;
 
+        std::atomic<uint64_t> dirty_comp_count = 0;
+        
+        skr::Map<skr::ecs::Entity, skr::InlineVector<CPUTypeID, 4>> dirties;
+        uint64_t dirty_buffer_size;
+    } lanes[kLaneCount];
+    std::atomic_uint32_t front_lane = 0;
+
+    UpdateLane& GetFrontLane() { return lanes[front_lane]; }
+    UpdateLane& GetLaneForUpload() { return lanes[(front_lane + kLaneCount - 1) % kLaneCount]; }
+    void SwitchLane() { front_lane = (front_lane + kLaneCount + 1) % kLaneCount; }
+ 
     // upload buffer management
     struct UploadContext
     {
         CGPUBufferId upload_buffer = nullptr;
-        skr::Vector<Upload> soa_segments_uploads;       // Core Data上传操作
-        skr::Vector<Upload> additional_data_uploads; // Additional Data上传操作
+        skr::Vector<Upload> soa_segments_uploads; 
         skr::Vector<uint8_t> DRAMCache;
         std::atomic<uint64_t> upload_cursor = 0; // upload_buffer 中的当前写入位置
     };

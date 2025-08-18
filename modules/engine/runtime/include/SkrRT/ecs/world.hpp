@@ -256,7 +256,7 @@ public:
     }
 
     template <typename T>
-    requires std::is_copy_constructible_v<T>
+        requires std::is_copy_constructible_v<T>
     void dispatch_task(T TaskBody, uint32_t batch_size, skr::span<skr::ecs::Entity> entities)
     {
         SKR_ASSERT(TaskScheduler::Get());
@@ -307,7 +307,7 @@ public:
     }
 
     template <typename T>
-    requires std::is_copy_constructible_v<T>
+        requires std::is_copy_constructible_v<T>
     EntityQuery* dispatch_task(T TaskBody, uint32_t batch_size, sugoi_query_t* reuse_query)
     {
         SKR_ASSERT(TaskScheduler::Get());

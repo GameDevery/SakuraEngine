@@ -119,7 +119,8 @@ protected:
     void InitializeReosurceSystem();
     void DestroyResourceSystem();
 
-    void CreateEntities(skr::render_graph::RenderGraph* graph, uint32_t count = 3);
+    void CreateEntities(uint32_t count = 4);
+    void DestroyRandomEntities(uint32_t count = 1);
     void CreateComputePipeline();
     void render();
 
@@ -207,6 +208,7 @@ protected:
 
     // RenderGraph and swapchain for rendering
     CGPUSwapChainId swapchain = nullptr;
+    skr::ParallelFlatHashSet<skr::ecs::Entity, skr::Hash<skr::ecs::Entity>> all_entities;
 };
 IMPLEMENT_DYNAMIC_MODULE(ModelViewerModule, SkrModelViewer);
 
@@ -376,11 +378,10 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
         render_app->get_event_queue()->pump_messages();
         render_app->acquire_frames();
 
-        // Create new random entities every few frames for 3D validation demo
-        if (frame_index < 1'000'000) // Update every 30 frames (~0.5 seconds at 60fps)
+        if (frame_index < 1'000'000)
         {
-            // Create new random entities (small batch for better visualization)
-            CreateEntities(render_app->render_graph(), 3);
+            CreateEntities(4);
+            DestroyRandomEntities(1);
         }
 
         auto render_graph = render_app->render_graph();
@@ -425,34 +426,38 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
         camera_constants.screenSize = { static_cast<float>(screen_size.x), static_cast<float>(screen_size.y) };
 
         // Add raytracing compute pass (write to intermediate texture)
-        render_graph->add_compute_pass(
-            [=, this](render_graph::RenderGraph& g, render_graph::ComputePassBuilder& builder) {
-                builder.set_name(u8"RayTracingPass")
-                    .set_pipeline(compute_pipeline)
-                    .read(u8"scene_tlas", GPUScene.GetTLAS(render_graph))
-                    .read(u8"gpu_scene", GPUScene.GetSceneBuffer())
-                    .readwrite(u8"output_texture", render_target_handle);
-            },
-            [=, this](render_graph::RenderGraph& g, render_graph::ComputePassContext& ctx) {
-                // Push constants
-                cgpu_compute_encoder_push_constants(ctx.encoder, root_signature, u8"camera_constants", &camera_constants);
+        auto TLASHandle = GPUScene.GetTLAS(render_graph);
+        if (TLASHandle != skr::render_graph::kInvalidHandle)
+        {
+            render_graph->add_compute_pass(
+                [=, this](render_graph::RenderGraph& g, render_graph::ComputePassBuilder& builder) {
+                    builder.set_name(u8"RayTracingPass")
+                        .set_pipeline(compute_pipeline)
+                        .read(u8"scene_tlas", GPUScene.GetTLAS(render_graph))
+                        .read(u8"gpu_scene", GPUScene.GetSceneBuffer())
+                        .readwrite(u8"output_texture", render_target_handle);
+                },
+                [=, this](render_graph::RenderGraph& g, render_graph::ComputePassContext& ctx) {
+                    // Push constants
+                    cgpu_compute_encoder_push_constants(ctx.encoder, root_signature, u8"camera_constants", &camera_constants);
 
-                // Dispatch compute shader
-                uint32_t group_count_x = (static_cast<uint32_t>(camera_constants.screenSize.x) + 15) / 16;
-                uint32_t group_count_y = (static_cast<uint32_t>(camera_constants.screenSize.y) + 15) / 16;
-                cgpu_compute_encoder_dispatch(ctx.encoder, group_count_x, group_count_y, 1);
-            });
+                    // Dispatch compute shader
+                    uint32_t group_count_x = (static_cast<uint32_t>(camera_constants.screenSize.x) + 15) / 16;
+                    uint32_t group_count_y = (static_cast<uint32_t>(camera_constants.screenSize.y) + 15) / 16;
+                    cgpu_compute_encoder_dispatch(ctx.encoder, group_count_x, group_count_y, 1);
+                });
 
-        // Add copy pass to copy render target to backbuffer
-        auto backbuffer_handle = render_graph->get_imported(render_app->get_backbuffer(render_app->get_main_window()));
-        render_graph->add_copy_pass(
-            [=](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassBuilder& builder) {
-                builder.set_name(u8"CopyToBackbuffer")
-                    .texture_to_texture(render_target_handle, backbuffer_handle);
-            },
-            [=](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassContext& ctx) {
-                // Copy implementation handled by render graph
-            });
+            // Add copy pass to copy render target to backbuffer
+            auto backbuffer_handle = render_graph->get_imported(render_app->get_backbuffer(render_app->get_main_window()));
+            render_graph->add_copy_pass(
+                [=](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassBuilder& builder) {
+                    builder.set_name(u8"CopyToBackbuffer")
+                        .texture_to_texture(render_target_handle, backbuffer_handle);
+                },
+                [=](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassContext& ctx) {
+                    // Copy implementation handled by render graph
+                });
+        }
 
         frame_index = render_graph->execute();
         if (frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)
@@ -507,7 +512,7 @@ void ModelViewerModule::CookAndLoadGLTF()
     }
 }
 
-void ModelViewerModule::CreateEntities(skr::render_graph::RenderGraph* graph, uint32_t count)
+void ModelViewerModule::CreateEntities(uint32_t count)
 {
     using namespace skr::ecs;
     using namespace skr::renderer;
@@ -516,7 +521,7 @@ void ModelViewerModule::CreateEntities(skr::render_graph::RenderGraph* graph, ui
     static std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
     static std::uniform_real_distribution<float> pos_xy_dist(-1000.f, 1000.f); // Wider XY range, some outside viewport
     static std::uniform_real_distribution<float> pos_z_dist(-1000.f, 1000.f);  // Z behind camera (negative Z)
-    static std::uniform_real_distribution<float> scale_dist(0.05f, 0.2f);        // Smaller spheres
+    static std::uniform_real_distribution<float> scale_dist(0.05f, 0.2f);      // Smaller spheres
     static std::uniform_real_distribution<float> color_dist(0.2f, 1.0f);       // Bright colors
     static std::uniform_real_distribution<float> use_emission(-1.f, 1.f);
 
@@ -592,9 +597,12 @@ void ModelViewerModule::CreateEntities(skr::render_graph::RenderGraph* graph, ui
                 meshes[i].mesh_resource.resolve(true, pScene->GetECSWorld()->get_storage());
 
                 local_index += 1;
+
+                pModule->all_entities.insert(entities[i]);
             }
         }
 
+        ModelViewerModule* pModule = nullptr;
         skr::renderer::GPUScene* pScene = nullptr;
         ComponentView<GPUSceneInstance> instances;
         ComponentView<GPUSceneInstanceColor> colors;
@@ -610,7 +618,30 @@ void ModelViewerModule::CreateEntities(skr::render_graph::RenderGraph* graph, ui
     } spawner;
     spawner.pScene = &GPUScene;
     spawner.rng_ptr = &rng;
+    spawner.pModule = this;
     world.create_entities(spawner, count);
+}
+
+void ModelViewerModule::DestroyRandomEntities(uint32_t count)
+{
+    using namespace skr::ecs;
+    using namespace skr::renderer;
+
+    static std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
+    static std::uniform_real_distribution<float> rand(0.f, 1.f);
+    for (uint32_t i = 0; i < count; i++)
+    {
+        for (auto entity : all_entities)
+        {
+            if (rand(rng) > 0.2f && GPUScene.CanRemoveEntity(entity))
+            {
+                GPUScene.RemoveEntity(entity);
+                world.destroy_entities({ &entity, 1 });
+                all_entities.erase(entity);
+                break;
+            }
+        }
+    }
 }
 
 void ModelViewerModule::InitializeAssetSystem()

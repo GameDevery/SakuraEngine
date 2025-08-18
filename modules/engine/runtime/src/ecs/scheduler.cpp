@@ -84,6 +84,7 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
         skr::task::weak_counter_t last_unit_finish;
         WorkGroup* work_group = nullptr;
         uint64_t total_units = 0;
+        uint64_t total_jobs = 0;
     } ctx;
     ctx.query = new_task->query;
     ctx._this = this;
@@ -95,37 +96,37 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
 
         CollectContext* ctx = (CollectContext*)usr_data;
         auto try_add = ctx->work_group->units.try_add_default(view->chunk);
-        if (try_add.already_exist())
-        {
-            SKR_LOG_FATAL(u8"Unit with this chunk already exists!");
-        }
         auto& unit = try_add.value();
-        unit.chunk_view = *view;
-        unit.finish.add(1);
-        if (ctx->new_task->self_confict && (ctx->total_units != 0))
+        if (!try_add.already_exist())
         {
-            unit.dependencies.add(ctx->last_unit_finish);
-        }
-        ctx->total_units += 1;
-        ctx->last_unit_finish = unit.finish;
-
-        for (auto [dependency, mode] : ctx->work_group->dependencies)
-        {
-            if (mode == EDependencySyncMode::WholeTask)
+            if (ctx->new_task->self_confict && (ctx->total_units != 0))
             {
-                unit.dependencies.add(dependency->_finish);
+                unit.dependencies.add(ctx->last_unit_finish);
             }
-            else if (mode == EDependencySyncMode::PerChunk)
+            ctx->total_units += 1;
+            ctx->last_unit_finish = unit.finish;
+
+            for (auto [dependency, mode] : ctx->work_group->dependencies)
             {
-                if (auto depend_group = dependency->_work_groups.find(ctx->work_group->group))
+                if (mode == EDependencySyncMode::WholeTask)
                 {
-                    if (auto depend_unit = depend_group.value().units.find(view->chunk))
+                    unit.dependencies.add(dependency->_finish);
+                }
+                else if (mode == EDependencySyncMode::PerChunk)
+                {
+                    if (auto depend_group = dependency->_work_groups.find(ctx->work_group->group))
                     {
-                        unit.dependencies.add(depend_unit.value().finish);
+                        if (auto depend_unit = depend_group.value().units.find(view->chunk))
+                        {
+                            unit.dependencies.add(depend_unit.value().finish);
+                        }
                     }
                 }
             }
         }
+        unit.chunk_views.add(*view);
+        unit.finish.add(1);
+        ctx->total_jobs += 1;
     };
 
     if (new_task->_is_run_with)
@@ -188,7 +189,7 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
         };
         sugoiQ_get_groups(ctx.query, filter_group, &ctx);
     }
-    new_task->_finish.add(ctx.total_units);
+    new_task->_finish.add(ctx.total_jobs);
     ctx.new_task->_work_groups.compact();
 }
 
@@ -258,50 +259,52 @@ void TaskScheduler::dispatch(skr::RC<TaskSignature> signature)
         for (uint32_t i = 0; i < work_group.units.size(); i++)
         {
             SkrZoneScopedN("TaskScheduler::DispatchUnit");
-            
             const auto& [__, unit] = work_group.units.at(i);
-            auto batch_size = signature->task->batch_size ? signature->task->batch_size : unit.chunk_view.count;
-            batch_size = signature->self_confict ? UINT32_MAX : batch_size; // if self-confict, we can't batch
-            batch_size = std::min(batch_size, unit.chunk_view.count);
-            const auto batch_count = (unit.chunk_view.count + batch_size - 1) / batch_size;
-            running.add(1);
+            
+            for (auto chunk_view : unit.chunk_views)
             {
-                SkrZoneScopedN("DispatchUnit::ScheduleTask");
-                skr::task::schedule([
-                    this, &unit, signature, batch_count, batch_size,
-                    // capture task lifetime into payload body
-                    task = signature->task
-                ](){
-                    {
-                        for (auto dep : unit.dependencies)
-                            dep.lock().wait(false);
-                    }
-                    SKR_DEFER({ running.decrement(); unit.finish.decrement(); signature->_finish.decrement(); });
-                    if (batch_count == 1)
-                    {
-                        task->func(unit.chunk_view, unit.chunk_view.count, 0);
-                    }
-                    else
-                    {
-                        SkrZoneScopedN("WorkUnit::Batch");
-                        skr::task::counter_t batch_counter;
-                        batch_counter.add(batch_count);
-                        for (uint32_t i = 0; i < batch_count; i += 1)
+                auto batch_size = signature->task->batch_size ? signature->task->batch_size : chunk_view.count;
+                batch_size = signature->self_confict ? UINT32_MAX : batch_size; // if self-confict, we can't batch
+                batch_size = std::min(batch_size, chunk_view.count);
+                const auto batch_count = (chunk_view.count + batch_size - 1) / batch_size;
+                running.add(1);
+                {
+                    SkrZoneScopedN("DispatchUnit::ScheduleTask");
+                    skr::task::schedule([
+                        this, &unit, chunk_view, signature, batch_count, batch_size,
+                        // capture task lifetime into payload body
+                        task = signature->task
+                    ](){
                         {
-                            const auto remain = unit.chunk_view.count - i * batch_size;
-                            auto view = unit.chunk_view;
-                            const auto count = std::min(remain, batch_size);
-                            const auto offset = i * batch_size;
-                            skr::task::schedule(
-                            [task, view, batch_counter, count, offset]() mutable {
-                                task->func(view, count, offset);
-                                batch_counter.decrement();
-                            }, nullptr);
+                            for (auto dep : unit.dependencies)
+                                dep.lock().wait(false);
                         }
-                        batch_counter.wait(true);
-                    }
-                    unit.chunk_view = {};
-                }, nullptr);
+                        SKR_DEFER({ running.decrement(); unit.finish.decrement(); signature->_finish.decrement(); });
+                        if (batch_count == 1)
+                        {
+                            task->func(chunk_view, chunk_view.count, 0);
+                        }
+                        else
+                        {
+                            SkrZoneScopedN("WorkUnit::Batch");
+                            skr::task::counter_t batch_counter;
+                            batch_counter.add(batch_count);
+                            for (uint32_t i = 0; i < batch_count; i += 1)
+                            {
+                                const auto remain = chunk_view.count - i * batch_size;
+                                auto view = chunk_view;
+                                const auto count = std::min(remain, batch_size);
+                                const auto offset = i * batch_size;
+                                skr::task::schedule(
+                                [task, view, batch_counter, count, offset]() mutable {
+                                    task->func(view, count, offset);
+                                    batch_counter.decrement();
+                                }, nullptr);
+                            }
+                            batch_counter.wait(true);
+                        }
+                    }, nullptr);
+                }
             }
         }
     }
