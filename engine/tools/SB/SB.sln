@@ -9,7 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SB.SourceGenerator", "SB.So
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SB.Engine", "SB.Engine\SB.Engine.csproj", "{6AE4359A-7F79-49B7-B7D6-5CCEE9AF1B8B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SB", "..\..\SB.csproj", "{B2731AAF-F604-40D3-86F2-10CAB7E55E7C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SB", "..\..\..\SB.csproj", "{B2731AAF-F604-40D3-86F2-10CAB7E55E7C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
