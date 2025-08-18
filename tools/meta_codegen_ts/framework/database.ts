@@ -125,6 +125,7 @@ export class Record {
   line: number;
   comment: string;
   has_generate_body_flag: boolean = false;
+  generate_body_flag_mark: string = "";
   generate_body_line: number = 0;
   generate_body_content: CodeBuilder = new CodeBuilder();
 
@@ -153,9 +154,12 @@ export class Record {
     // load methods
     this.methods = [];
     for (const method of json_obj.methods) {
-      const short_name = method.name.split("::").pop();
-      if (short_name === "_zz_skr_generate_body_flag") {
+      const short_name = method.name.split("::").pop() as string;
+      if (short_name.startsWith("_zz_skr_generate_body_flag_")) {
         this.has_generate_body_flag = true;
+        this.generate_body_flag_mark = short_name.substring(
+          "_zz_skr_generate_body_flag_".length
+        );
         this.generate_body_line = method.line;
       } else {
         this.methods.push(new Method(this, method));

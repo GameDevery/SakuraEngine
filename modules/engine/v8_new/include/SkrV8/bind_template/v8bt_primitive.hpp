@@ -8,10 +8,20 @@ struct V8BTPrimitive final : V8BindTemplate {
 
     static V8BTPrimitive* TryCreate(V8Isolate* isolate, GUID type_id);
 
-    // kind
+    inline bool is_string() const
+    {
+        return _type_id == type_id_of<String>() ||
+               _type_id == type_id_of<StringView>();
+    }
+
+    // basic info
     EV8BTKind kind() const override;
     String    type_name() const override;
     String    cpp_namespace() const override;
+
+    // error process
+    bool any_error() const override final;
+    void dump_error(V8ErrorBuilderTreeStyle& builder) const override final;
 
     // convert helper
     v8::Local<v8::Value> to_v8(
@@ -78,22 +88,33 @@ struct V8BTPrimitive final : V8BindTemplate {
         bool&                appare_in_param
     ) const override final;
     bool check_param(
-        const V8BTDataParam& param_bind_tp
+        const V8BTDataParam& param_bind_tp,
+        V8ErrorCache&        errors
     ) const override final;
     bool check_return(
-        const V8BTDataReturn& return_bind_tp
+        const V8BTDataReturn& return_bind_tp,
+        V8ErrorCache&         errors
     ) const override final;
     bool check_field(
-        const V8BTDataField& field_bind_tp
+        const V8BTDataField& field_bind_tp,
+        V8ErrorCache&        errors
     ) const override final;
     bool check_static_field(
-        const V8BTDataStaticField& field_bind_tp
+        const V8BTDataStaticField& field_bind_tp,
+        V8ErrorCache&              errors
     ) const override final;
 
     // v8 export
     bool has_v8_export_obj(
     ) const override final;
     v8::Local<v8::Value> get_v8_export_obj(
+    ) const override final;
+    void dump_ts_def(
+        TSDefBuilder& builder
+    ) const override final;
+    String get_ts_type_name(
+    ) const override final;
+    bool ts_is_nullable(
     ) const override final;
 
 private:
@@ -138,7 +159,8 @@ private:
         void* native_data
     ) const;
     bool _basic_type_check(
-        const V8BTDataModifier& modifiers
+        const V8BTDataModifier& modifiers,
+        V8ErrorCache&           errors
     ) const;
 
 private:

@@ -2,6 +2,7 @@
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/bind_template/v8bt_primitive.hpp>
 #include <SkrV8/v8_isolate.hpp>
+#include <SkrV8/ts_def_builder.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -17,9 +18,6 @@ V8BTMapping* V8BTMapping::TryCreate(V8Isolate* isolate, const RTTRType* type)
 {
     SKR_ASSERT(type->is_record());
 
-    auto& _logger    = isolate->logger();
-    auto  _log_stack = _logger.stack(u8"export mapping type {}", type->name());
-
     // check flag
     // clang-format off
     if (!flag_all(
@@ -33,7 +31,8 @@ V8BTMapping* V8BTMapping::TryCreate(V8Isolate* isolate, const RTTRType* type)
 
     auto* result = SkrNew<V8BTMapping>();
     result->set_isolate(isolate);
-    result->_rttr_type = type;
+    result->_rttr_type    = type;
+    result->_default_ctor = type->find_default_ctor();
 
     // each field
     type->each_field([&](const RTTRFieldData* field, const RTTRType* owner_type) {
@@ -41,6 +40,8 @@ V8BTMapping* V8BTMapping::TryCreate(V8Isolate* isolate, const RTTRType* type)
         auto& field_data = result->_fields.try_add_default(field->name).value();
         field_data.setup(isolate, field, owner_type);
     });
+
+    result->_make_template();
     return result;
 }
 
@@ -56,6 +57,32 @@ String V8BTMapping::type_name() const
 String V8BTMapping::cpp_namespace() const
 {
     return _rttr_type->name_space_str();
+}
+
+// error process
+bool V8BTMapping::any_error() const
+{
+    for (const auto& [field_name, field_data] : _fields)
+    {
+        if (field_data.any_error()) { return true; }
+    }
+    return false;
+}
+void V8BTMapping::dump_error(V8ErrorBuilderTreeStyle& builder) const
+{
+    builder.write_line(u8"{} <Mapping>", _rttr_type->name());
+    builder.indent([&]() {
+        for (const auto& [field_name, field_data] : _fields)
+        {
+            if (field_data.any_error())
+            {
+                builder.write_line(u8"<Field> {}:", field_name);
+                builder.indent([&]() {
+                    field_data.dump_error(builder);
+                });
+            }
+        }
+    });
 }
 
 v8::Local<v8::Value> V8BTMapping::to_v8(
@@ -280,56 +307,100 @@ void V8BTMapping::solve_invoke_behaviour(
     }
 }
 bool V8BTMapping::check_param(
-    const V8BTDataParam& param_bind_tp
+    const V8BTDataParam& param_bind_tp,
+    V8ErrorCache&        errors
 ) const
 {
 
-    return _basic_type_check(param_bind_tp.modifiers);
+    return _basic_type_check(param_bind_tp.modifiers, errors);
 }
 bool V8BTMapping::check_return(
-    const V8BTDataReturn& return_bind_tp
+    const V8BTDataReturn& return_bind_tp,
+    V8ErrorCache&         errors
 ) const
 {
-    return _basic_type_check(return_bind_tp.modifiers);
+    return _basic_type_check(return_bind_tp.modifiers, errors);
 }
 bool V8BTMapping::check_field(
-    const V8BTDataField& field_bind_tp
+    const V8BTDataField& field_bind_tp,
+    V8ErrorCache&        errors
 ) const
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        isolate()->logger().error(
+        errors.error(
             u8"mapping cannot be exported as decayed pointer type in field"
         );
         return false;
     }
-    return _basic_type_check(field_bind_tp.modifiers);
+    return _basic_type_check(field_bind_tp.modifiers, errors);
 }
 bool V8BTMapping::check_static_field(
-    const V8BTDataStaticField& field_bind_tp
+    const V8BTDataStaticField& field_bind_tp,
+    V8ErrorCache&              errors
 ) const
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        isolate()->logger().error(
+        errors.error(
             u8"mapping cannot be exported as decayed pointer type in field"
         );
         return false;
     }
-    return _basic_type_check(field_bind_tp.modifiers);
+    return _basic_type_check(field_bind_tp.modifiers, errors);
 }
 
 // v8 export
 bool V8BTMapping::has_v8_export_obj(
 ) const
 {
-    return false;
+    return true;
 }
 v8::Local<v8::Value> V8BTMapping::get_v8_export_obj(
 ) const
 {
-    SKR_UNREACHABLE_CODE();
-    return {};
+    using namespace ::v8;
+
+    auto isolate = Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+    return _v8_template.Get(isolate)->GetFunction(context).ToLocalChecked();
+}
+void V8BTMapping::dump_ts_def(
+    TSDefBuilder& builder
+) const
+{
+    builder.$line(u8"// export as mapping");
+    // print cpp symbol
+    builder.$line(
+        u8"// cpp symbol: {}::{}",
+        _rttr_type->name_space_str(),
+        _rttr_type->name()
+    );
+
+    // dump as interface
+    builder.$line(u8"export interface {} {{", _rttr_type->name());
+    builder.$indent([&] {
+        // fields
+        for (auto& [field_name, field_value] : _fields)
+        {
+            builder.$line(
+                u8"{}: {};",
+                field_name,
+                builder.type_name_with_ns(field_value.bind_tp)
+            );
+        }
+    });
+    builder.$line(u8"}}");
+}
+String V8BTMapping::get_ts_type_name(
+) const
+{
+    return _rttr_type->name();
+}
+bool V8BTMapping::ts_is_nullable(
+) const
+{
+    return false;
 }
 
 void V8BTMapping::_init_native(
@@ -338,19 +409,36 @@ void V8BTMapping::_init_native(
 {
     _default_ctor.invoke(native_data);
 }
-
 bool V8BTMapping::_basic_type_check(
-    const V8BTDataModifier& modifiers
+    const V8BTDataModifier& modifiers,
+    V8ErrorCache&           errors
 ) const
 {
     if (modifiers.is_pointer)
     {
-        isolate()->logger().error(
+        errors.error(
             u8"export mapping {} as pointer type",
             _rttr_type->name()
         );
         return false;
     }
     return true;
+}
+void V8BTMapping::_make_template()
+{
+    using namespace ::v8;
+    auto* isolate = Isolate::GetCurrent();
+
+    HandleScope handle_scope(isolate);
+
+    auto tp = FunctionTemplate::New(
+        isolate,
+        +[](const ::v8::FunctionCallbackInfo<::v8::Value>& info) {
+            info.GetIsolate()->ThrowError("mappint object cannot be constructed with new");
+        },
+        External::New(isolate, this)
+    );
+
+    _v8_template.Reset(isolate, tp);
 }
 } // namespace skr

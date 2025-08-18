@@ -6,12 +6,16 @@ namespace skr
 struct V8BTEnum final : V8BindTemplate {
     inline static constexpr EV8BTKind kKind = EV8BTKind::Enum;
 
-    static V8BTEnum* Create(V8Isolate* isolate, const RTTRType* type);
+    static V8BTEnum* TryCreate(V8Isolate* isolate, const RTTRType* type);
 
-    // kind
-    EV8BTKind kind() const override;
-    String    type_name() const override;
-    String    cpp_namespace() const override;
+    // basic info
+    EV8BTKind kind() const override final;
+    String    type_name() const override final;
+    String    cpp_namespace() const override final;
+
+    // error process
+    bool any_error() const override final;
+    void dump_error(V8ErrorBuilderTreeStyle& builder) const override final;
 
     // convert helper
     v8::Local<v8::Value> to_v8(
@@ -78,16 +82,20 @@ struct V8BTEnum final : V8BindTemplate {
         bool&                appare_in_param
     ) const override final;
     bool check_param(
-        const V8BTDataParam& param_bind_tp
+        const V8BTDataParam& param_bind_tp,
+        V8ErrorCache&        errors
     ) const override final;
     bool check_return(
-        const V8BTDataReturn& return_bind_tp
+        const V8BTDataReturn& return_bind_tp,
+        V8ErrorCache&         errors
     ) const override final;
     bool check_field(
-        const V8BTDataField& field_bind_tp
+        const V8BTDataField& field_bind_tp,
+        V8ErrorCache&        errors
     ) const override final;
     bool check_static_field(
-        const V8BTDataStaticField& field_bind_tp
+        const V8BTDataStaticField& field_bind_tp,
+        V8ErrorCache&              errors
     ) const override final;
 
     // v8 export
@@ -95,11 +103,18 @@ struct V8BTEnum final : V8BindTemplate {
     ) const override final;
     v8::Local<v8::Value> get_v8_export_obj(
     ) const override final;
+    void dump_ts_def(
+        TSDefBuilder& builder
+    ) const override final;
+    String get_ts_type_name(
+    ) const override final;
+    bool ts_is_nullable(
+    ) const override final;
 
 private:
     static void _enum_to_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _enum_from_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    bool        _basic_type_check(const V8BTDataModifier& modifiers) const;
+    bool        _basic_type_check(const V8BTDataModifier& modifiers, V8ErrorCache& errors) const;
     void        _make_template();
 
 private:

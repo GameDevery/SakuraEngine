@@ -2,6 +2,7 @@
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_bind_proxy.hpp>
 #include <SkrV8/v8_isolate.hpp>
+#include <SkrV8/ts_def_builder.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -15,12 +16,11 @@ namespace skr
 {
 V8BTValue* V8BTValue::TryCreate(V8Isolate* isolate, const RTTRType* type)
 {
-    auto& _logger    = isolate->logger();
-    auto  _log_stack = _logger.stack(u8"export value type {}", type->name());
-
     V8BTValue* result = SkrNew<V8BTValue>();
     result->_setup(isolate, type);
     result->_make_template();
+    result->_copy_ctor = type->find_copy_ctor();
+    result->_assign    = type->find_assign();
     return result;
 }
 
@@ -36,6 +36,19 @@ String V8BTValue::type_name() const
 String V8BTValue::cpp_namespace() const
 {
     return _rttr_type->name_space_str();
+}
+
+// error process
+bool V8BTValue::any_error() const
+{
+    return _any_error();
+}
+void V8BTValue::dump_error(V8ErrorBuilderTreeStyle& builder) const
+{
+    builder.write_line(u8"{} <Value>", _rttr_type->name());
+    builder.indent([&]() {
+        _dump_error(builder);
+    });
 }
 
 // convert helper
@@ -191,7 +204,7 @@ v8::Local<v8::Value> V8BTValue::read_return_from_out_param(
 
     // get created value proxy
     native_data            = *reinterpret_cast<void**>(native_data);
-    auto  bind_proxy       = isolate()->find_bind_proxy(native_data);
+    auto  bind_proxy       = isolate()->map_bind_proxy(native_data);
     auto* bind_proxy_value = static_cast<V8BPValue*>(bind_proxy);
     return bind_proxy_value->v8_object.Get(v8::Isolate::GetCurrent());
 }
@@ -222,7 +235,7 @@ v8::Local<v8::Value> V8BTValue::get_field(
 {
     // find cache
     void* field_address = field_bind_tp.solve_address(obj, obj_type);
-    if (auto found = isolate()->find_bind_proxy(field_address))
+    if (auto found = isolate()->map_bind_proxy(field_address))
     {
         auto* bind_proxy = static_cast<V8BPValue*>(found);
         return bind_proxy->v8_object.Get(v8::Isolate::GetCurrent());
@@ -233,7 +246,7 @@ v8::Local<v8::Value> V8BTValue::get_field(
     bind_proxy->need_delete = false;
 
     // setup owner ship
-    auto* parent_bind_proxy = isolate()->find_bind_proxy(obj);
+    auto* parent_bind_proxy = isolate()->map_bind_proxy(obj);
     bind_proxy->set_parent(parent_bind_proxy);
 
     return bind_proxy->v8_object.Get(v8::Isolate::GetCurrent());
@@ -257,7 +270,7 @@ v8::Local<v8::Value> V8BTValue::get_static_field(
 {
     // find cache
     void* field_address = field_bind_tp.solve_address();
-    if (auto found = isolate()->find_bind_proxy(field_address))
+    if (auto found = isolate()->map_bind_proxy(field_address))
     {
         auto* bind_proxy = static_cast<V8BPValue*>(found);
         return bind_proxy->v8_object.Get(v8::Isolate::GetCurrent());
@@ -305,42 +318,46 @@ void V8BTValue::solve_invoke_behaviour(
     }
 }
 bool V8BTValue::check_param(
-    const V8BTDataParam& param_bind_tp
+    const V8BTDataParam& param_bind_tp,
+    V8ErrorCache&        errors
 ) const
 {
-    return _basic_type_check(param_bind_tp.modifiers);
+    return _basic_type_check(param_bind_tp.modifiers, errors);
 }
 bool V8BTValue::check_return(
-    const V8BTDataReturn& return_bind_tp
+    const V8BTDataReturn& return_bind_tp,
+    V8ErrorCache&         errors
 ) const
 {
-    return _basic_type_check(return_bind_tp.modifiers);
+    return _basic_type_check(return_bind_tp.modifiers, errors);
 }
 bool V8BTValue::check_field(
-    const V8BTDataField& field_bind_tp
+    const V8BTDataField& field_bind_tp,
+    V8ErrorCache&        errors
 ) const
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        isolate()->logger().error(
+        errors.error(
             u8"value cannot be exported as decayed pointer type in field"
         );
         return false;
     }
-    return _basic_type_check(field_bind_tp.modifiers);
+    return _basic_type_check(field_bind_tp.modifiers, errors);
 }
 bool V8BTValue::check_static_field(
-    const V8BTDataStaticField& field_bind_tp
+    const V8BTDataStaticField& field_bind_tp,
+    V8ErrorCache&              errors
 ) const
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        isolate()->logger().error(
+        errors.error(
             u8"value cannot be exported as decayed pointer type in field"
         );
         return false;
     }
-    return _basic_type_check(field_bind_tp.modifiers);
+    return _basic_type_check(field_bind_tp.modifiers, errors);
 }
 
 // v8 export
@@ -358,6 +375,50 @@ v8::Local<v8::Value> V8BTValue::get_v8_export_obj(
     auto context = isolate->GetCurrentContext();
 
     return _v8_template.Get(isolate)->GetFunction(context).ToLocalChecked();
+}
+void V8BTValue::dump_ts_def(
+    TSDefBuilder& builder
+) const
+{
+    builder.$line(u8"// export as value");
+
+    // print cpp symbol
+    builder.$line(
+        u8"// cpp symbol: {}::{}",
+        _rttr_type->name_space_str(),
+        _rttr_type->name()
+    );
+
+    // body
+    builder.$line(u8"export class {} {{", _rttr_type->name());
+    builder.$indent([&] {
+        // ctors
+        if (_ctor.is_valid())
+        {
+            builder.$line(
+                u8"// cpp symbol: {}::{}",
+                _rttr_type->name_space_str(),
+                _rttr_type->name()
+            );
+            builder.$line(
+                u8"constructor({});",
+                builder.params_signature(_ctor.params_data)
+            );
+        }
+
+        _dump_ts_def(builder);
+    });
+    builder.$line(u8"}}");
+}
+String V8BTValue::get_ts_type_name(
+) const
+{
+    return _rttr_type->name();
+}
+bool V8BTValue::ts_is_nullable(
+) const
+{
+    return false;
 }
 
 // helper
@@ -402,11 +463,12 @@ V8BPValue* V8BTValue::_new_bind_proxy(void* address, v8::Local<v8::Object> self)
                     self;
 
     // make bind core
-    V8BPValue* bind_proxy = SkrNew<V8BPValue>();
+    V8BPValue* bind_proxy = this->isolate()->create_bind_proxy<V8BPValue>();
     bind_proxy->rttr_type = _rttr_type;
     bind_proxy->isolate   = this->isolate();
     bind_proxy->bind_tp   = this;
     bind_proxy->address   = address;
+    bind_proxy->v8_object.Reset(isolate, object);
 
     // setup gc callback
     bind_proxy->v8_object.SetWeak(
@@ -419,15 +481,15 @@ V8BPValue* V8BTValue::_new_bind_proxy(void* address, v8::Local<v8::Object> self)
     object->SetInternalField(0, External::New(isolate, bind_proxy));
 
     // register bind proxy
-    this->isolate()->add_bind_proxy(address, bind_proxy);
+    this->isolate()->register_bind_proxy(address, bind_proxy);
 
     return bind_proxy;
 }
-bool V8BTValue::_basic_type_check(const V8BTDataModifier& modifiers) const
+bool V8BTValue::_basic_type_check(const V8BTDataModifier& modifiers, V8ErrorCache& errors) const
 {
     if (modifiers.is_pointer)
     {
-        isolate()->logger().error(
+        errors.error(
             u8"export value {} as pointer type",
             _rttr_type->name()
         );
@@ -454,30 +516,9 @@ void V8BTValue::_make_template()
 // v8 callback
 void V8BTValue::_gc_callback(const ::v8::WeakCallbackInfo<V8BPValue>& data)
 {
-    using namespace ::v8;
-
     auto* bind_proxy = data.GetParameter();
-
-    // do release
-    if (bind_proxy->need_delete)
-    {
-        // call dtor
-        if (bind_proxy->bind_tp->_dtor)
-        {
-            bind_proxy->bind_tp->_dtor(bind_proxy->address);
-        }
-
-        // free memory
-        bind_proxy->rttr_type->free(bind_proxy->address);
-    }
-
-    // unregister bind proxy
-    bind_proxy->isolate->remove_bind_proxy(bind_proxy->address, bind_proxy);
-
-    // delete bind proxy
-    bind_proxy->v8_object.Reset();
     bind_proxy->invalidate();
-    SkrDelete(bind_proxy);
+    bind_proxy->isolate->destroy_bind_proxy(bind_proxy);
 }
 void V8BTValue::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {

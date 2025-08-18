@@ -5,6 +5,9 @@
 #include <SkrCore/error_collector.hpp>
 #include <SkrV8/v8_fwd.hpp>
 #include <SkrV8/bind_template/v8_bind_template.hpp>
+#include <SkrContainers/set.hpp>
+#include <SkrV8/v8_bind_proxy.hpp>
+#include <SkrV8/v8_inspector.hpp>
 
 // v8 includes
 #include <v8-isolate.h>
@@ -16,13 +19,62 @@
 
 namespace skr
 {
+struct V8BindProxyPool {
+    inline V8BindProxyPool() = default;
+    inline ~V8BindProxyPool()
+    {
+        release();
+    }
+
+    template <std::derived_from<V8BindProxy> T>
+    inline T* alloc()
+    {
+        auto* pooled = try_alloc();
+        if (pooled) { return static_cast<T*>(pooled); }
+        auto* result = SkrNew<T>();
+        _used_proxies.push_back(result);
+        return result;
+    }
+    inline V8BindProxy* try_alloc()
+    {
+        if (_free_proxies.is_empty()) { return nullptr; }
+        auto result = _free_proxies.pop_back_get();
+        _used_proxies.push_back(result);
+        return result;
+    }
+    inline void take_back(V8BindProxy* proxy)
+    {
+        bool done_remove = _used_proxies.remove_swap(proxy);
+        SKR_ASSERT(done_remove);
+        _free_proxies.push_back(proxy);
+    }
+    inline void release()
+    {
+        for (auto* proxy : _used_proxies)
+        {
+            SkrDelete(proxy);
+        }
+        for (auto* proxy : _free_proxies)
+        {
+            SkrDelete(proxy);
+        }
+
+        _used_proxies.clear();
+        _free_proxies.clear();
+    }
+
+private:
+    Vector<V8BindProxy*> _free_proxies = {};
+    Vector<V8BindProxy*> _used_proxies = {};
+};
+
 // clang-format off
 sreflect_struct(
     guid = "921187d2-4d38-42b5-81b1-cc79d5739cef"
 )
 SKR_V8_NEW_API V8Isolate : IScriptMixinCore {
     // clang-format on
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(V8Isolate)
 
     // ctor & dtor
     V8Isolate();
@@ -90,16 +142,25 @@ SKR_V8_NEW_API V8Isolate : IScriptMixinCore {
         return solve_bind_tp(type_id)->as<T>();
     }
 
+    // bind proxy pool
+    template <std::derived_from<V8BindProxy> T>
+    inline T* create_bind_proxy()
+    {
+        V8BindProxyPool& pool = _bind_proxy_pools.try_add_default(type_id_of<T>()).value();
+        return pool.alloc<T>();
+    }
+    void destroy_bind_proxy(V8BindProxy* bind_proxy);
+
     // bind proxy management
-    void add_bind_proxy(
+    void register_bind_proxy(
         void*        native_ptr,
         V8BindProxy* bind_proxy
     );
-    void remove_bind_proxy(
+    void unregister_bind_proxy(
         void*        native_ptr,
         V8BindProxy* bind_proxy
     );
-    V8BindProxy* find_bind_proxy(
+    V8BindProxy* map_bind_proxy(
         void* native_ptr
     ) const;
 
@@ -110,11 +171,13 @@ SKR_V8_NEW_API V8Isolate : IScriptMixinCore {
         V8BindProxy* bind_proxy
     );
 
-    // mixin
-    IScriptMixinCore* get_mixin_core() const;
-
-    // get logger
-    ErrorCollector& logger() { return _logger; }
+    // debugger
+    void init_debugger(int port = 9229);
+    void shutdown_debugger();
+    bool is_debugger_init() const;
+    void pump_debugger_messages();
+    void wait_for_debugger_connected(uint64_t timeout_ms = std::numeric_limits<uint64_t>::max());
+    bool any_debugger_connected() const;
 
 private:
     // helper
@@ -128,6 +191,9 @@ private:
     Map<GUID, V8BindTemplate*>          _bind_tp_map         = {};
     Map<TypeSignature, V8BindTemplate*> _bind_tp_map_generic = {};
 
+    // bind proxy pool
+    Map<GUID, V8BindProxyPool> _bind_proxy_pools = {};
+
     // bind proxy cache
     Map<void*, V8BindProxy*> _bind_proxy_map = {};
 
@@ -139,11 +205,12 @@ private:
     Vector<V8BindProxy*> _call_v8_param_proxy       = {};
     Vector<uint64_t>     _call_v8_param_proxy_stack = {};
 
-    ErrorCollector _logger = {};
+    // debugger
+    V8WebSocketServer _websocket_server = {};
+    V8InspectorClient _inspector_client = {};
 
     // TODO. cpp module manage
     // TODO. script module manage
-    // TODO. debugger
 };
 } // namespace skr
 

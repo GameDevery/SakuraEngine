@@ -4,12 +4,29 @@
 namespace skr
 {
 struct V8BTRecordBase : V8BindTemplate {
+    inline void call_dtor(void* address) const
+    {
+        if (_dtor)
+        {
+            _dtor(address);
+        }
+    }
+    inline const V8BTDataMethod* find_method(
+        StringView name
+    ) const
+    {
+        auto found = _methods.find(name);
+        return found ? &found.value() : nullptr;
+    }
 
 protected:
     void _setup(V8Isolate* isolate, const RTTRType* type);
     void _fill_template(
         v8::Local<v8::FunctionTemplate> ctor_template
     );
+    bool _any_error() const;
+    void _dump_error(V8ErrorBuilderTreeStyle& builder) const;
+    void _dump_ts_def(TSDefBuilder& builder) const;
 
     static void _call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
@@ -35,5 +52,7 @@ protected:
     Map<String, V8BTDataStaticMethod>   _static_methods    = {};
     Map<String, V8BTDataProperty>       _properties        = {};
     Map<String, V8BTDataStaticProperty> _static_properties = {};
+
+    V8ErrorCache _errors = {};
 };
 } // namespace skr

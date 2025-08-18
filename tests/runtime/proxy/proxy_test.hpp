@@ -10,7 +10,7 @@ sreflect_struct(
     proxy = @enable
 )
 TestProxy {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(TestProxy)
 
     sattr(proxy = @enable)
     int  inc(int i) const noexcept;

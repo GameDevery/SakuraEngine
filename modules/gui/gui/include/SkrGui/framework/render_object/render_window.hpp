@@ -11,7 +11,7 @@ namespace skr::gui
 sreflect_struct(guid = "358b1333-d5b8-4529-b4ad-9c800d5c9caf")
 SKR_GUI_API RenderWindow : public RenderObject,
                            public ISingleChildRenderObject {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(RenderWindow)
 
     RenderWindow(INativeWindow* window);
 

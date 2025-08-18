@@ -2,6 +2,7 @@
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_bind_proxy.hpp>
 #include <SkrV8/v8_isolate.hpp>
+#include <SkrV8/ts_def_builder.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -15,9 +16,6 @@ namespace skr
 {
 V8BTObject* V8BTObject::TryCreate(V8Isolate* isolate, const RTTRType* type)
 {
-    auto& _logger    = isolate->logger();
-    auto  _log_stack = _logger.stack(u8"export value type {}", type->name());
-
     if (type->is_record() && type->based_on(type_id_of<ScriptbleObject>()))
     {
         V8BTObject* result = SkrNew<V8BTObject>();
@@ -43,6 +41,19 @@ String V8BTObject::type_name() const
 String V8BTObject::cpp_namespace() const
 {
     return _rttr_type->name_space_str();
+}
+
+// error process
+bool V8BTObject::any_error() const
+{
+    return _any_error();
+}
+void V8BTObject::dump_error(V8ErrorBuilderTreeStyle& builder) const
+{
+    builder.write_line(u8"{} <Object>", _rttr_type->name());
+    builder.indent([&]() {
+        _dump_error(builder);
+    });
 }
 
 // convert helper
@@ -212,37 +223,43 @@ void V8BTObject::solve_invoke_behaviour(
     appare_in_return = false;
 }
 bool V8BTObject::check_param(
-    const V8BTDataParam& param_bind_tp
+    const V8BTDataParam& param_bind_tp,
+    V8ErrorCache&        errors
 ) const
 {
     switch (param_bind_tp.inout_flag)
     {
     case ERTTRParamFlag::Out:
     case ERTTRParamFlag::InOut:
-        isolate()->logger().warning(
+        errors.warning(
             u8"Out/InOut param flag will be ignored for object type"
         );
         break;
+    default:
+        break;
     }
-    return _basic_type_check(param_bind_tp.modifiers);
+    return _basic_type_check(param_bind_tp.modifiers, errors);
 }
 bool V8BTObject::check_return(
-    const V8BTDataReturn& return_bind_tp
+    const V8BTDataReturn& return_bind_tp,
+    V8ErrorCache&         errors
 ) const
 {
-    return _basic_type_check(return_bind_tp.modifiers);
+    return _basic_type_check(return_bind_tp.modifiers, errors);
 }
 bool V8BTObject::check_field(
-    const V8BTDataField& field_bind_tp
+    const V8BTDataField& field_bind_tp,
+    V8ErrorCache&        errors
 ) const
 {
-    return _basic_type_check(field_bind_tp.modifiers);
+    return _basic_type_check(field_bind_tp.modifiers, errors);
 }
 bool V8BTObject::check_static_field(
-    const V8BTDataStaticField& field_bind_tp
+    const V8BTDataStaticField& field_bind_tp,
+    V8ErrorCache&              errors
 ) const
 {
-    return _basic_type_check(field_bind_tp.modifiers);
+    return _basic_type_check(field_bind_tp.modifiers, errors);
 }
 
 // v8 export
@@ -261,14 +278,57 @@ v8::Local<v8::Value> V8BTObject::get_v8_export_obj(
 
     return _v8_template.Get(isolate)->GetFunction(context).ToLocalChecked();
 }
+void V8BTObject::dump_ts_def(
+    TSDefBuilder& builder
+) const
+{
+    builder.$line(u8"// export as object");
 
+    // print cpp symbol
+    builder.$line(
+        u8"// cpp symbol: {}::{}",
+        _rttr_type->name_space_str(),
+        _rttr_type->name()
+    );
+
+    // body
+    builder.$line(u8"export class {} {{", _rttr_type->name());
+    builder.$indent([&] {
+        // ctors
+        if (_ctor.is_valid())
+        {
+            builder.$line(
+                u8"// cpp symbol: {}::{}",
+                _rttr_type->name_space_str(),
+                _rttr_type->name()
+            );
+            builder.$line(
+                u8"constructor({});",
+                builder.params_signature(_ctor.params_data)
+            );
+        }
+
+        _dump_ts_def(builder);
+    });
+    builder.$line(u8"}}");
+}
+String V8BTObject::get_ts_type_name(
+) const
+{
+    return _rttr_type->name();
+}
+bool V8BTObject::ts_is_nullable(
+) const
+{
+    return true;
+}
 // helper
 V8BPObject* V8BTObject::_get_or_make_proxy(void* address) const
 {
     using namespace ::v8;
 
     // find exist bind proxy
-    if (auto found = isolate()->find_bind_proxy(address))
+    if (auto found = isolate()->map_bind_proxy(address))
     {
         return static_cast<V8BPObject*>(found);
     }
@@ -301,12 +361,13 @@ V8BPObject* V8BTObject::_new_bind_proxy(void* address, v8::Local<v8::Object> sel
                     self;
 
     // make bind proxy
-    V8BPObject* bind_proxy = SkrNew<V8BPObject>();
+    V8BPObject* bind_proxy = this->isolate()->create_bind_proxy<V8BPObject>();
     bind_proxy->rttr_type  = _rttr_type;
     bind_proxy->isolate    = this->isolate();
     bind_proxy->bind_tp    = this;
     bind_proxy->address    = address;
     bind_proxy->object     = scriptble_object;
+    bind_proxy->v8_object.Reset(isolate, object);
 
     // setup gc callback
     bind_proxy->v8_object.SetWeak(
@@ -319,18 +380,18 @@ V8BPObject* V8BTObject::_new_bind_proxy(void* address, v8::Local<v8::Object> sel
     object->SetInternalField(0, ::v8::External::New(isolate, bind_proxy));
 
     // register bind proxy
-    this->isolate()->add_bind_proxy(address, bind_proxy);
+    this->isolate()->register_bind_proxy(address, bind_proxy);
 
     // bind mixin core
-    scriptble_object->set_mixin_core(this->isolate()->get_mixin_core());
+    scriptble_object->set_mixin_core(this->isolate());
 
     return bind_proxy;
 }
-bool V8BTObject::_basic_type_check(const V8BTDataModifier& modifiers) const
+bool V8BTObject::_basic_type_check(const V8BTDataModifier& modifiers, V8ErrorCache& errors) const
 {
     if (!modifiers.is_pointer)
     {
-        isolate()->logger().error(
+        errors.error(
             u8"export object {} as value or reference type",
             _rttr_type->name()
         );
@@ -357,27 +418,9 @@ void V8BTObject::_make_template()
 // v8 callback
 void V8BTObject::_gc_callback(const ::v8::WeakCallbackInfo<V8BPObject>& data)
 {
-    using namespace ::v8;
-
     auto* bind_proxy = data.GetParameter();
-
-    // do release
-    if (bind_proxy->is_valid())
-    {
-        // remove mixin first, for prevent delete callback
-        bind_proxy->object->set_mixin_core(nullptr);
-
-        // release object
-        if (bind_proxy->object->ownership() == EScriptbleObjectOwnership::Script)
-        {
-            SkrDelete(bind_proxy->object);
-        }
-    }
-
-    // delete bind proxy
-    bind_proxy->v8_object.Reset();
     bind_proxy->invalidate();
-    SkrDelete(bind_proxy);
+    bind_proxy->isolate->destroy_bind_proxy(bind_proxy);
 }
 void V8BTObject::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
@@ -400,6 +443,13 @@ void V8BTObject::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     if (!bind_tp->_is_script_newable)
     {
         Isolate->ThrowError("object is not constructable");
+        return;
+    }
+
+    // check ctor
+    if (!bind_tp->_ctor.is_valid())
+    {
+        Isolate->ThrowError("object has no exported ctor");
         return;
     }
 

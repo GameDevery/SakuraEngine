@@ -6,6 +6,11 @@ namespace skr
 {
 // ctor & dtor
 V8Value::V8Value() = default;
+V8Value::V8Value(V8Context* context)
+    : _context(context)
+{
+    SKR_ASSERT(_context != nullptr);
+}
 V8Value::V8Value(v8::Global<v8::Value> v8_value, V8Context* context)
     : _v8_value(std::move(v8_value))
     , _context(context)
@@ -46,7 +51,7 @@ bool V8Value::is_function() const
 }
 
 // get field
-V8Value V8Value::get(StringView name) const
+V8Value V8Value::get_field(StringView name) const
 {
     using namespace ::v8;
 
@@ -73,16 +78,40 @@ V8Value V8Value::get(StringView name) const
     }
     else
     {
-        Global<Value> result(isolate, found.ToLocalChecked());
+        auto value = found.ToLocalChecked();
+        if (value->IsNullOrUndefined()) { return {}; }
         return {
-            std::move(result),
+            { isolate, value },
             _context
         };
     }
 }
+bool V8Value::set_field_value(StringView name, const V8Value& value) const
+{
+    using namespace ::v8;
+
+    // scopes
+    auto*          isolate = _context->isolate()->v8_isolate();
+    Isolate::Scope isolate_scope(isolate);
+    HandleScope    handle_scope(isolate);
+    auto           context = _context->v8_context().Get(isolate);
+
+    // check object
+    if (!_v8_value.Get(isolate)->IsObject()) { return false; }
+
+    // get object
+    Local<Object> obj = _v8_value.Get(isolate)->ToObject(context).ToLocalChecked();
+
+    auto result = obj->Set(
+        context,
+        V8Bind::to_v8(name, true),
+        value.v8_value().Get(isolate)
+    );
+    return result.IsJust();
+}
 
 // helper
-void V8Value::_as(TypeSignatureView sig, void* ptr) const
+void V8Value::_get(TypeSignatureView sig, void* ptr) const
 {
     using namespace ::v8;
 
@@ -116,6 +145,28 @@ bool V8Value::_is(TypeSignatureView sig) const
     if (!bind_tp) { return false; }
 
     return bind_tp->match_param(_v8_value.Get(isolate));
+}
+bool V8Value::_set(TypeSignatureView sig, void* ptr)
+{
+    using namespace ::v8;
+
+    // scopes
+    auto*          isolate = _context->isolate()->v8_isolate();
+    Isolate::Scope isolate_scope(isolate);
+    HandleScope    handle_scope(isolate);
+
+    // solve context
+    Local<Context> solved_context = _context->v8_context().Get(isolate);
+    Context::Scope context_scope(solved_context);
+
+    // find bind template
+    auto* bind_tp = _context->isolate()->solve_bind_tp(sig);
+    if (!bind_tp) { return false; }
+
+    // do export
+    auto local_value = bind_tp->to_v8(ptr);
+    _v8_value.Reset(isolate, local_value);
+    return true;
 }
 bool V8Value::_call(
     const span<const StackProxy> params,

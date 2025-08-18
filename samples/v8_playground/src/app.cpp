@@ -1,4 +1,4 @@
-#include "SkrV8/ts_define_exporter.hpp"
+#include "SkrV8/ts_def_builder.hpp"
 #include "v8-exception.h"
 #include <V8Playground/app.hpp>
 #include "SkrOS/filesystem.hpp"
@@ -37,7 +37,7 @@ void V8PlaygroundApp::shutdown()
     {
         _isolate->shutdown();
         SkrDelete(_isolate);
-        _isolate      = nullptr;
+        _isolate = nullptr;
     }
 }
 
@@ -63,7 +63,7 @@ void V8PlaygroundApp::wait_for_debugger_connected()
 void V8PlaygroundApp::load_native_types()
 {
     load_all_types();
-    _isolate->main_context()->build_global_export([](ScriptModule& module) {
+    _isolate->main_context()->build_export([](V8VirtualModule& module) {
         each_types_of_module(u8"V8Playground", [&](const RTTRType* type) -> bool {
             bool do_export =
                 (type->is_record() && flag_all(type->record_flag(), ERTTRRecordFlag::ScriptVisible)) ||
@@ -73,7 +73,7 @@ void V8PlaygroundApp::load_native_types()
             {
                 auto ns = type->name_space_str();
                 ns.remove_prefix(u8"skr");
-                module.register_type(type, ns);
+                module.raw_register_type(type->type_id(), ns);
             }
             return true;
         });
@@ -101,7 +101,7 @@ bool V8PlaygroundApp::run_script(StringView script_path)
     // v8::TryCatch try_catch(isolate);
 
     // run script
-    _isolate->main_context()->exec_module(script, script_path);
+    _isolate->main_context()->exec_file(script_path);
 
     // auto _inspect_str = +[](const skr_char8* str) {
     //     return v8_inspector::StringView{
@@ -139,7 +139,7 @@ bool V8PlaygroundApp::run_script(StringView script_path)
 bool V8PlaygroundApp::dump_types(StringView output_dir)
 {
     // get name
-    skr::Path out_dir_path{output_dir};
+    skr::Path out_dir_path{ output_dir };
     skr::Path out_file_path = out_dir_path / u8"global.d.ts";
 
     // create dir
@@ -158,16 +158,16 @@ bool V8PlaygroundApp::dump_types(StringView output_dir)
     }
 
     // do export
-    TSDefineExporter exporter;
-    exporter.module = &_isolate->main_context()->global_module();
-    return _save_to_file(out_file_path.string(), exporter.generate_global());
+    TSDefBuilder builder;
+    builder.virtual_module = &_isolate->main_context()->virtual_module();
+    return _save_to_file(out_file_path.string(), builder.generate_global());
 }
 
 // helper
 String V8PlaygroundApp::_load_from_file(StringView path)
 {
     String result;
-    auto   handle = fopen(path.data_raw(), "rb");
+    auto handle = fopen(path.data_raw(), "rb");
     if (handle)
     {
         // resize string to file size

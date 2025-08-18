@@ -16,7 +16,7 @@ sreflect_struct(guid = "76044661-E2C9-43A7-A4DE-AEDD8FB5C847"; serde = @json)
 TOOL_CORE_API Importer
 {
 public:
-    SKR_GENERATE_BODY();
+    SKR_GENERATE_BODY(Importer);
     
     using CreateFN = skr::RC<Importer> (*)();
     using LoadFromJson = bool (*)(skr::archive::JsonReader* reader, skr::RC<Importer> object);

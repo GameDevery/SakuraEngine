@@ -8,10 +8,14 @@ struct V8BTObject : V8BTRecordBase {
 
     static V8BTObject* TryCreate(V8Isolate* isolate, const RTTRType* type);
 
-    // kind
+    // basic info
     EV8BTKind kind() const override;
     String    type_name() const override;
     String    cpp_namespace() const override;
+
+    // error process
+    bool any_error() const override final;
+    void dump_error(V8ErrorBuilderTreeStyle& builder) const override final;
 
     // convert helper
     v8::Local<v8::Value> to_v8(
@@ -78,16 +82,20 @@ struct V8BTObject : V8BTRecordBase {
         bool&                appare_in_param
     ) const override final;
     bool check_param(
-        const V8BTDataParam& param_bind_tp
+        const V8BTDataParam& param_bind_tp,
+        V8ErrorCache&        errors
     ) const override final;
     bool check_return(
-        const V8BTDataReturn& return_bind_tp
+        const V8BTDataReturn& return_bind_tp,
+        V8ErrorCache&         errors
     ) const override final;
     bool check_field(
-        const V8BTDataField& field_bind_tp
+        const V8BTDataField& field_bind_tp,
+        V8ErrorCache&        errors
     ) const override final;
     bool check_static_field(
-        const V8BTDataStaticField& field_bind_tp
+        const V8BTDataStaticField& field_bind_tp,
+        V8ErrorCache&              errors
     ) const override final;
 
     // v8 export
@@ -95,12 +103,19 @@ struct V8BTObject : V8BTRecordBase {
     ) const override final;
     v8::Local<v8::Value> get_v8_export_obj(
     ) const override final;
+    void dump_ts_def(
+        TSDefBuilder& builder
+    ) const override final;
+    String get_ts_type_name(
+    ) const override final;
+    bool ts_is_nullable(
+    ) const override final;
 
 protected:
     // helper
     V8BPObject* _get_or_make_proxy(void* address) const;
     V8BPObject* _new_bind_proxy(void* address, v8::Local<v8::Object> self = {}) const;
-    bool        _basic_type_check(const V8BTDataModifier& modifiers) const;
+    bool        _basic_type_check(const V8BTDataModifier& modifiers, V8ErrorCache& errors) const;
     void        _make_template();
 
     // v8 callback

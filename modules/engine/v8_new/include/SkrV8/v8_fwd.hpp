@@ -38,4 +38,7 @@ struct V8BindProxy;
 struct V8BPRecord;
 struct V8BPValue;
 struct V8BPObject;
+
+// dumper
+struct TSDefBuilder;
 } // namespace skr

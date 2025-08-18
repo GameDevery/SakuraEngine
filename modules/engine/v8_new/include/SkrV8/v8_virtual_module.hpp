@@ -153,14 +153,14 @@ struct SKR_V8_NEW_API V8VirtualModule {
     inline void                       set_isolate(V8Isolate* isolate) { _isolate = isolate; }
 
     // mapping
-    inline String bind_tp_to_ns(V8BindTemplate* bind_tp) const
+    inline String bind_tp_to_ns(const V8BindTemplate* bind_tp) const
     {
-        SKR_ASSERT(_bind_tp_to_ns.contains(bind_tp));
+        // SKR_ASSERT(_bind_tp_to_ns.contains(bind_tp));
         return _bind_tp_to_ns.find(bind_tp).value_or({});
     }
     inline V8BindTemplate* ns_to_bind_tp(StringView name_space) const
     {
-        SKR_ASSERT(_ns_to_bind_tp.contains(name_space));
+        // SKR_ASSERT(_ns_to_bind_tp.contains(name_space));
         return _ns_to_bind_tp.find(name_space).value_or(nullptr);
     }
 
@@ -215,6 +215,9 @@ struct SKR_V8_NEW_API V8VirtualModule {
     bool raw_register_type(V8BindTemplate* bind_tp, StringView ns);
     bool raw_register_type(const GUID& type_id);
     bool raw_register_type(const GUID& type_id, StringView ns);
+
+    // dump bind tp error
+    void dump_bind_tp_error();
 
 private:
     inline void _save_mapping(String ns, V8BindTemplate* bind_tp)

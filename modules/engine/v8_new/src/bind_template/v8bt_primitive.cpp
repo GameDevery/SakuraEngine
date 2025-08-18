@@ -55,6 +55,16 @@ String V8BTPrimitive::cpp_namespace() const
     return _rttr_type->name_space_str();
 }
 
+// error process
+bool V8BTPrimitive::any_error() const
+{
+    return false;
+}
+void V8BTPrimitive::dump_error(V8ErrorBuilderTreeStyle& builder) const
+{
+    SKR_UNREACHABLE_CODE();
+}
+
 v8::Local<v8::Value> V8BTPrimitive::to_v8(
     void* native_data
 ) const
@@ -350,20 +360,22 @@ void V8BTPrimitive::solve_invoke_behaviour(
     }
 }
 bool V8BTPrimitive::check_param(
-    const V8BTDataParam& param_bind_tp
+    const V8BTDataParam& param_bind_tp,
+    V8ErrorCache&        errors
 ) const
 {
-    return _basic_type_check(param_bind_tp.modifiers);
+    return _basic_type_check(param_bind_tp.modifiers, errors);
 }
 bool V8BTPrimitive::check_return(
-    const V8BTDataReturn& return_bind_tp
+    const V8BTDataReturn& return_bind_tp,
+    V8ErrorCache&         errors
 ) const
 {
     if (_type_id == type_id_of<void>())
     {
         if (return_bind_tp.modifiers.is_decayed_pointer())
         {
-            isolate()->logger().error(
+            errors.error(
                 u8"void* is not supported",
                 _type_id
             );
@@ -373,52 +385,54 @@ bool V8BTPrimitive::check_return(
     }
     else if (_type_id == type_id_of<StringView>())
     {
-        isolate()->logger().error(
+        errors.error(
             u8"StringView is not supported as return type"
         );
         return false;
     }
-    return _basic_type_check(return_bind_tp.modifiers);
+    return _basic_type_check(return_bind_tp.modifiers, errors);
 }
 bool V8BTPrimitive::check_field(
-    const V8BTDataField& field_bind_tp
+    const V8BTDataField& field_bind_tp,
+    V8ErrorCache&        errors
 ) const
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        isolate()->logger().error(
+        errors.error(
             u8"primitive cannot be exported as decayed pointer type in field"
         );
         return false;
     }
     else if (_type_id == type_id_of<StringView>())
     {
-        isolate()->logger().error(
+        errors.error(
             u8"StringView cannot be exported as field type"
         );
         return false;
     }
-    return _basic_type_check(field_bind_tp.modifiers);
+    return _basic_type_check(field_bind_tp.modifiers, errors);
 }
 bool V8BTPrimitive::check_static_field(
-    const V8BTDataStaticField& field_bind_tp
+    const V8BTDataStaticField& field_bind_tp,
+    V8ErrorCache&              errors
 ) const
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        isolate()->logger().error(
+        errors.error(
             u8"primitive cannot be exported as decayed pointer type in field"
         );
         return false;
     }
     else if (_type_id == type_id_of<StringView>())
     {
-        isolate()->logger().error(
+        errors.error(
             u8"StringView cannot be exported as field type"
         );
         return false;
     }
-    return _basic_type_check(field_bind_tp.modifiers);
+    return _basic_type_check(field_bind_tp.modifiers, errors);
 }
 
 // v8 export
@@ -432,6 +446,44 @@ v8::Local<v8::Value> V8BTPrimitive::get_v8_export_obj(
 {
     SKR_UNREACHABLE_CODE();
     return {};
+}
+void V8BTPrimitive::dump_ts_def(
+    TSDefBuilder& builder
+) const
+{
+    SKR_UNREACHABLE_CODE();
+}
+String V8BTPrimitive::get_ts_type_name(
+) const
+{
+    switch (_type_id.get_hash())
+    {
+    case type_id_of<bool>().get_hash():
+        return u8"boolean";
+    case type_id_of<int8_t>().get_hash():
+    case type_id_of<uint8_t>().get_hash():
+    case type_id_of<int16_t>().get_hash():
+    case type_id_of<uint16_t>().get_hash():
+    case type_id_of<int32_t>().get_hash():
+    case type_id_of<uint32_t>().get_hash():
+    case type_id_of<float>().get_hash():
+    case type_id_of<double>().get_hash():
+        return u8"number";
+    case type_id_of<int64_t>().get_hash():
+    case type_id_of<uint64_t>().get_hash():
+        return u8"bigint";
+    case type_id_of<StringView>().get_hash():
+    case type_id_of<String>().get_hash():
+        return u8"string";
+    default:
+        SKR_UNREACHABLE_CODE()
+        return {};
+    }
+}
+bool V8BTPrimitive::ts_is_nullable(
+) const
+{
+    return false;
 }
 
 void V8BTPrimitive::_init_native(
@@ -464,12 +516,13 @@ void V8BTPrimitive::_init_native(
     }
 }
 bool V8BTPrimitive::_basic_type_check(
-    const V8BTDataModifier& modifiers
+    const V8BTDataModifier& modifiers,
+    V8ErrorCache&           errors
 ) const
 {
     if (modifiers.is_pointer)
     {
-        isolate()->logger().error(
+        errors.error(
             u8"export primitive {} as pointer type",
             _type_id
         );
@@ -477,7 +530,7 @@ bool V8BTPrimitive::_basic_type_check(
     }
     else if (modifiers.is_decayed_pointer() && _type_id == type_id_of<StringView>())
     {
-        isolate()->logger().error(u8"StringView can only be used as value type");
+        errors.error(u8"StringView can only be used as value type");
         return false;
     }
     return true;

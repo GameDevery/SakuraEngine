@@ -2,6 +2,7 @@
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_bind_proxy.hpp>
 #include <SkrV8/v8_isolate.hpp>
+#include <SkrV8/bind_template/v8bt_primitive.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -136,7 +137,7 @@ void V8BTDataField::setup(
     field_owner = owner;
     rttr_data   = field_data;
     modifiers.solve(field_data->type.view());
-    bind_tp->check_field(*this);
+    bind_tp->check_field(*this, errors);
 }
 
 //===============================V8BTDataStaticField===============================
@@ -154,17 +155,16 @@ void V8BTDataStaticField::setup(
     field_owner = owner;
     rttr_data   = field_data;
     modifiers.solve(field_data->type.view());
-    bind_tp->check_static_field(*this);
+    bind_tp->check_static_field(*this, errors);
 }
 
 //===============================V8BTDataParam===============================
 void V8BTDataParam::setup(
     V8Isolate*           isolate,
-    const RTTRParamData* param_data
+    const RTTRParamData* param_data,
+    V8ErrorCache&        errors
 )
 {
-    auto& _logger = isolate->logger();
-
     {
         auto type_sig_view = param_data->type.view();
         type_sig_view.jump_modifier();
@@ -183,7 +183,7 @@ void V8BTDataParam::setup(
         // check pointer level
         if (type_sig_view.decayed_pointer_level() > 1)
         {
-            _logger.error(u8"pointer level greater than 1");
+            errors.error(u8"param {}: pointer level greater than 1", index);
             return;
         }
 
@@ -206,7 +206,7 @@ void V8BTDataParam::setup(
                 inout_flag |= ERTTRParamFlag::Out;
                 if (!modifiers.is_any_ref() || modifiers.is_const)
                 {
-                    _logger.error(u8"only T& can be out param");
+                    errors.error(u8"param {}: only T& can be out param", index);
                 }
             }
         }
@@ -217,32 +217,31 @@ void V8BTDataParam::setup(
         appare_in_return,
         appare_in_param
     );
-    bind_tp->check_param(*this);
+    bind_tp->check_param(*this, errors);
 }
 
 void V8BTDataParam::setup(
     V8Isolate*        isolate,
     const StackProxy* proxy,
-    int32_t           index
+    int32_t           index,
+    V8ErrorCache&     errors
 )
 {
     RTTRParamData param_data = {};
     param_data.type          = proxy->signature;
     param_data.index         = index;
     format_to(param_data.name, u8"#{}", index);
-    setup(isolate, &param_data);
+    setup(isolate, &param_data, errors);
     rttr_data = nullptr;
 }
 
 //===============================V8BTDataParam===============================
 void V8BTDataReturn::setup(
     V8Isolate*        isolate,
-    TypeSignatureView signature
+    TypeSignatureView signature,
+    V8ErrorCache&     errors
 )
 {
-    auto& _logger    = isolate->logger();
-    auto  _log_stack = _logger.stack(u8"export return");
-
     {
         auto type_sig_view = signature;
         modifiers.solve(type_sig_view);
@@ -254,7 +253,129 @@ void V8BTDataReturn::setup(
     TypeSignatureTyped<void> void_sig;
     is_void = signature.equal(void_sig);
 
-    bind_tp->check_return(*this);
+    bind_tp->check_return(*this, errors);
+}
+
+//===============================V8BTDataFunctionBase===============================
+bool V8BTDataFunctionBase::call_v8_read_return(
+    span<const StackProxy>    params,
+    StackProxy                return_value,
+    v8::MaybeLocal<v8::Value> v8_return_value
+) const
+{
+    auto* isolate = v8::Isolate::GetCurrent();
+    auto  context = isolate->GetCurrentContext();
+
+    if (return_count == 0)
+    {
+        return true;
+    }
+    else if (return_count == 1)
+    {
+        if (v8_return_value.IsEmpty()) { return false; }
+
+        if (return_data.is_void)
+        { // read to out param
+            for (const auto& param : params_data)
+            {
+                if (param.appare_in_return)
+                {
+                    return param.bind_tp->to_native(
+                        params[param.index].data,
+                        v8_return_value.ToLocalChecked(),
+                        true
+                    );
+                }
+            }
+
+            // must checked before
+            SKR_UNREACHABLE_CODE()
+            return false;
+        }
+
+        else
+        {
+            return return_data.bind_tp->to_native(
+                return_value.data,
+                v8_return_value.ToLocalChecked(),
+                false
+            );
+        }
+    }
+    else
+    {
+        if (v8_return_value.IsEmpty()) { return false; }
+        if (!v8_return_value.ToLocalChecked()->IsArray()) { return false; }
+        v8::Local<v8::Array> v8_array = v8_return_value.ToLocalChecked().As<v8::Array>();
+        if (v8_array.IsEmpty() || v8_array->Length() != return_count) { return false; }
+
+        uint32_t cur_index = 0;
+
+        // read return value
+        bool success = true;
+        if (!return_data.is_void)
+        {
+            success &= return_data.bind_tp->to_native(
+                return_value.data,
+                v8_array->Get(context, cur_index).ToLocalChecked(),
+                false
+            );
+            ++cur_index;
+        }
+
+        // read out param
+        for (const auto& param : params_data)
+        {
+            if (param.appare_in_return)
+            {
+                success &= param.bind_tp->to_native(
+                    params[param.index].data,
+                    v8_array->Get(context, cur_index).ToLocalChecked(),
+                    true
+                );
+                ++cur_index;
+            }
+        }
+
+        return success;
+    }
+}
+void V8BTDataFunctionBase::call_v8_setup(
+    V8Isolate*             isolate,
+    span<const StackProxy> params,
+    StackProxy             return_value
+)
+{
+    uint32_t param_index = 0;
+    for (const auto& param : params)
+    {
+        params_data.add_default().ref().setup(
+            isolate,
+            &param,
+            param_index,
+            errors
+        );
+        ++param_index;
+    }
+
+    if (return_value)
+    {
+        return_data.setup(isolate, return_value.signature, errors);
+    }
+    else
+    {
+        TypeSignatureTyped<void> sig;
+        return_data.setup(isolate, sig, errors);
+    }
+
+    // solve count
+    return_count = return_data.is_void ? 0 : 1;
+    params_count = 0;
+    for (const auto& param : params_data)
+    {
+        if (param.appare_in_param) ++params_count;
+        if (param.appare_in_return) ++return_count;
+    }
 }
 
 //===============================V8BTDataMethod===============================
@@ -334,11 +455,11 @@ void V8BTDataMethod::setup(
     rttr_data    = method_data;
 
     // setup info
-    return_data.setup(isolate, method_data->ret_type);
+    return_data.setup(isolate, method_data->ret_type, errors);
     for (const auto* param : method_data->param_data)
     {
         auto& param_binder = params_data.add_default().ref();
-        param_binder.setup(isolate, param);
+        param_binder.setup(isolate, param, errors);
     }
 
     // solve count
@@ -414,11 +535,11 @@ void V8BTDataStaticMethod::setup(
 {
     method_owner = owner;
     rttr_data    = method_data;
-    return_data.setup(isolate, method_data->ret_type);
+    return_data.setup(isolate, method_data->ret_type, errors);
     for (const auto* param : method_data->param_data)
     {
         auto& param_binder = params_data.add_default().ref();
-        param_binder.setup(isolate, param);
+        param_binder.setup(isolate, param, errors);
     }
 
     // solve count
@@ -428,6 +549,192 @@ void V8BTDataStaticMethod::setup(
     {
         if (param.appare_in_param) ++params_count;
         if (param.appare_in_return) ++return_count;
+    }
+}
+
+//===============================V8BTDataProperty===============================
+void V8BTDataProperty::setup_getter(
+    V8Isolate*            isolate,
+    const RTTRMethodData* method_data,
+    const RTTRType*       owner
+)
+{
+    getter.setup(isolate, method_data, owner);
+
+    // check param count
+    if (getter.params_count != 0)
+    {
+        errors.error(
+            u8"getter param count must be 0, but got {}",
+            getter.params_count
+        );
+    }
+    // check return type
+    if (getter.return_count != 1)
+    {
+        errors.error(
+            u8"getter return count must be 1, but got {}",
+            getter.return_count
+        );
+    }
+}
+void V8BTDataProperty::setup_setter(
+    V8Isolate*            isolate,
+    const RTTRMethodData* method_data,
+    const RTTRType*       owner
+)
+{
+    setter.setup(isolate, method_data, owner);
+
+    // check param count
+    if (setter.params_count != 1)
+    {
+        errors.error(
+            u8"setter param count must be 1, but got {}",
+            setter.params_count
+        );
+    }
+    // check return type
+    if (setter.return_count != 0)
+    {
+        errors.error(
+            u8"setter return count must be 0, but got {}",
+            setter.return_count
+        );
+    }
+}
+void V8BTDataProperty::check_conflict()
+{
+    auto getter_tp = getter_bind_tp();
+    auto setter_tp = setter_bind_tp();
+
+    if (getter_tp && setter_tp)
+    {
+        bool prop_mismatch = false;
+        if (getter_tp != setter_tp)
+        { // maybe mismatch
+            if (
+                getter_tp->is<V8BTPrimitive>() &&
+                setter_tp->is<V8BTPrimitive>()
+            )
+            {
+                bool getter_is_str = getter_tp->as<V8BTPrimitive>()->is_string();
+                bool setter_is_str = setter_tp->as<V8BTPrimitive>()->is_string();
+
+                if (getter_is_str && setter_is_str)
+                { // optimize for string
+                }
+                else
+                {
+                    prop_mismatch = true;
+                }
+            }
+            else
+            {
+                prop_mismatch = true;
+            }
+        }
+        if (prop_mismatch)
+        {
+            errors.error(
+                u8"getter and setter type mismatch, getter '{}', setter '{}'",
+                getter.rttr_data->name,
+                setter.rttr_data->name
+            );
+        }
+    }
+}
+
+//===============================V8BTDataStaticProperty===============================
+void V8BTDataStaticProperty::setup_getter(
+    V8Isolate*                  isolate,
+    const RTTRStaticMethodData* method_data,
+    const RTTRType*             owner
+)
+{
+    getter.setup(isolate, method_data, owner);
+
+    // check param count
+    if (getter.params_count != 0)
+    {
+        errors.error(
+            u8"getter param count must be 0, but got {}",
+            getter.params_count
+        );
+    }
+    // check return type
+    if (getter.return_count != 1)
+    {
+        errors.error(
+            u8"getter return count must be 1, but got {}",
+            getter.return_count
+        );
+    }
+}
+void V8BTDataStaticProperty::setup_setter(
+    V8Isolate*                  isolate,
+    const RTTRStaticMethodData* method_data,
+    const RTTRType*             owner
+)
+{
+    setter.setup(isolate, method_data, owner);
+
+    // check param count
+    if (setter.params_count != 1)
+    {
+        errors.error(
+            u8"setter param count must be 1, but got {}",
+            setter.params_count
+        );
+    }
+    // check return type
+    if (setter.return_count != 0)
+    {
+        errors.error(
+            u8"setter return count must be 0, but got {}",
+            setter.return_count
+        );
+    }
+}
+void V8BTDataStaticProperty::check_conflict()
+{
+    auto getter_tp = getter_bind_tp();
+    auto setter_tp = setter_bind_tp();
+
+    if (getter_tp && setter_tp)
+    {
+        bool prop_mismatch = false;
+        if (getter_tp != setter_tp)
+        { // maybe mismatch
+            if (
+                getter_tp->is<V8BTPrimitive>() &&
+                setter_tp->is<V8BTPrimitive>()
+            )
+            {
+                bool getter_is_str = getter_tp->as<V8BTPrimitive>()->is_string();
+                bool setter_is_str = setter_tp->as<V8BTPrimitive>()->is_string();
+
+                if (getter_is_str && setter_is_str)
+                { // optimize for string
+                }
+                else
+                {
+                    prop_mismatch = true;
+                }
+            }
+            else
+            {
+                prop_mismatch = true;
+            }
+        }
+        if (prop_mismatch)
+        {
+            errors.error(
+                u8"getter and setter type mismatch, getter '{}', setter '{}'",
+                getter.rttr_data->name,
+                setter.rttr_data->name
+            );
+        }
     }
 }
 
@@ -470,16 +777,13 @@ void V8BTDataCtor::setup(
     const RTTRCtorData* ctor_data
 )
 {
-    auto& _logger    = isolate->logger();
-    auto  _log_stack = _logger.stack(u8"export ctor");
-
     rttr_data = ctor_data;
 
     // export params
     for (const auto* param : ctor_data->param_data)
     {
         auto& param_binder = params_data.add_default().ref();
-        param_binder.setup(isolate, param);
+        param_binder.setup(isolate, param, errors);
     }
 
     // check out flag
@@ -487,134 +791,11 @@ void V8BTDataCtor::setup(
     {
         if (flag_all(param_binder.inout_flag, ERTTRParamFlag::Out))
         {
-            auto _param_log_stack = _logger.stack(
-                u8"export param '{}', index {}",
-                param_binder.rttr_data->name,
-                param_binder.rttr_data->index
-            );
-            _logger.error(u8"ctor param cannot has out flag");
-        }
-    }
-}
-
-//===============================V8BTDataCallScript===============================
-bool V8BTDataCallScript::read_return(
-    span<const StackProxy>    params,
-    StackProxy                return_value,
-    v8::MaybeLocal<v8::Value> v8_return_value
-)
-{
-    auto* isolate = v8::Isolate::GetCurrent();
-    auto  context = isolate->GetCurrentContext();
-
-    if (return_count == 0)
-    {
-        return true;
-    }
-    else if (return_count == 1)
-    {
-        if (v8_return_value.IsEmpty()) { return false; }
-
-        if (return_data.is_void)
-        { // read to out param
-            for (const auto& param : params_data)
-            {
-                if (param.appare_in_return)
-                {
-                    return param.bind_tp->to_native(
-                        params[param.index].data,
-                        v8_return_value.ToLocalChecked(),
-                        true
-                    );
-                }
-            }
-
-            // must checked before
-            SKR_UNREACHABLE_CODE()
-            return false;
-        }
-
-        else
-        {
-            return return_data.bind_tp->to_native(
-                return_value.data,
-                v8_return_value.ToLocalChecked(),
-                false
+            errors.error(
+                u8"param {}: ctor param cannot has out flag",
+                param_binder.index
             );
         }
-    }
-    else
-    {
-        if (v8_return_value.IsEmpty()) { return false; }
-        if (!v8_return_value.ToLocalChecked()->IsArray()) { return false; }
-        v8::Local<v8::Array> v8_array = v8_return_value.ToLocalChecked().As<v8::Array>();
-        if (v8_array.IsEmpty() || v8_array->Length() != return_count) { return false; }
-
-        uint32_t cur_index = 0;
-
-        // read return value
-        bool success = true;
-        if (!return_data.is_void)
-        {
-            success &= return_data.bind_tp->to_native(
-                return_value.data,
-                v8_array->Get(context, cur_index).ToLocalChecked(),
-                false
-            );
-            ++cur_index;
-        }
-
-        // read out param
-        for (const auto& param : params_data)
-        {
-            if (param.appare_in_return)
-            {
-                success &= param.bind_tp->to_native(
-                    params[param.index].data,
-                    v8_array->Get(context, cur_index).ToLocalChecked(),
-                    true
-                );
-                ++cur_index;
-            }
-        }
-
-        return success;
-    }
-}
-void V8BTDataCallScript::setup(
-    V8Isolate*             isolate,
-    span<const StackProxy> params,
-    StackProxy             return_value
-)
-{
-    uint32_t param_index = 0;
-    for (const auto& param : params)
-    {
-        params_data.add_default().ref().setup(
-            isolate,
-            &param,
-            param_index
-        );
-        ++param_index;
-    }
-
-    if (return_value)
-    {
-        return_data.setup(isolate, return_value.signature);
-    }
-    else
-    {
-        TypeSignatureTyped<void> sig;
-        return_data.setup(isolate, sig);
-    }
-
-    // solve count
-    return_count = return_data.is_void ? 0 : 1;
-    params_count = 0;
-    for (const auto& param : params_data)
-    {
-        if (param.appare_in_param) ++params_count;
-        if (param.appare_in_return) ++return_count;
     }
 }
 } // namespace skr

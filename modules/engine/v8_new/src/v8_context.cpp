@@ -29,6 +29,20 @@ V8Context::~V8Context()
     return ::v8::Global<::v8::Context>(_isolate->v8_isolate(), _context);
 }
 
+// context op
+void V8Context::enter()
+{
+    using namespace ::v8;
+    HandleScope handle_scope(_isolate->v8_isolate());
+    _context.Get(_isolate->v8_isolate())->Enter();
+}
+void V8Context::exit()
+{
+    using namespace ::v8;
+    HandleScope handle_scope(_isolate->v8_isolate());
+    _context.Get(_isolate->v8_isolate())->Exit();
+}
+
 // build export
 void V8Context::build_export(FunctionRef<void(V8VirtualModule&)> build_func)
 {
@@ -40,6 +54,7 @@ void V8Context::build_export(FunctionRef<void(V8VirtualModule&)> build_func)
 
     // build module
     build_func(_virtual_module);
+    _virtual_module.dump_bind_tp_error();
 
     // setup context
     _virtual_module.export_v8_to(
@@ -87,11 +102,31 @@ V8Value V8Context::get_global(StringView name)
     }
     else
     {
+        auto value = maybe_value.ToLocalChecked();
+        if (value->IsNullOrUndefined()) { return {}; }
         return {
-            { isolate, maybe_value.ToLocalChecked() },
+            { isolate, value },
             this
         };
     }
+}
+bool V8Context::set_global_value(StringView name, const V8Value& value)
+{
+    using namespace ::v8;
+
+    // scopes
+    auto           isolate = _isolate->v8_isolate();
+    Isolate::Scope isolate_scope(isolate);
+    HandleScope    handle_scope(isolate);
+    Local<Context> context = _context.Get(isolate);
+    Context::Scope context_scope(context);
+
+    auto result = context->Global()->Set(
+        context,
+        V8Bind::to_v8(name, true),
+        value.v8_value().Get(isolate)
+    );
+    return result.IsJust();
 }
 
 // exec

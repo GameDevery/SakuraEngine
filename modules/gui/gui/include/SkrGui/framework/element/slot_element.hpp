@@ -8,7 +8,7 @@ namespace skr::gui
 {
 sreflect_struct(guid = "cddf8085-4ab4-46be-8de7-34bd1a2c290e")
 SlotElement : public ProxyElement {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(SlotElement)
     using Super = ProxyElement;
     using Super::Super;
 

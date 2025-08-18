@@ -98,4 +98,19 @@ bool V8VirtualModule::raw_register_type(const GUID& type_id, StringView ns)
 
     return raw_register_type(bind_tp, ns);
 }
+
+// dump bind tp error
+void V8VirtualModule::dump_bind_tp_error()
+{
+    for (const auto& [ns, bind_tp] : _ns_to_bind_tp)
+    {
+        if (bind_tp->any_error())
+        {
+            V8ErrorBuilderTreeStyle builder;
+            bind_tp->dump_error(builder);
+            auto errors = builder.build();
+            SKR_LOG_FMT_ERROR(u8"error detected when export v8\n{}", errors);
+        }
+    }
+}
 } // namespace skr

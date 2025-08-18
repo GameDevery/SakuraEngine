@@ -8,7 +8,7 @@ namespace skr::gui
 {
 sreflect_struct(guid = "5d639330-f012-4e0e-aef7-86e96c95eb51")
 SKR_GUI_API RenderNativeWindowWidget : public RenderWindowWidget {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(RenderNativeWindowWidget)
 
     NotNull<Element*>      create_element() SKR_NOEXCEPT override;
     NotNull<RenderObject*> create_render_object() SKR_NOEXCEPT override;

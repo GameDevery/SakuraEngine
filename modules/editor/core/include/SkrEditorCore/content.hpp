@@ -11,6 +11,6 @@ namespace skr
 sreflect_struct(guid = "1aace33a-f09c-4a6b-928b-33e325ccc12f")
 SKR_EDITOR_CORE_API EdContent : virtual IObject {
     // clang-format on
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(EdContent)
 };
 } // namespace skr

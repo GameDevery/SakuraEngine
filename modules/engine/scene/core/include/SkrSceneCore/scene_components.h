@@ -44,7 +44,7 @@ sreflect_struct(
 RotationComponent
 {
 public:
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(RotationComponent)
 
     inline RotationComponent() = default;
     inline RotationComponent(float pitch, float yaw, float roll)
@@ -85,7 +85,7 @@ sreflect_struct(
 SKR_ALIGNAS(16) PositionComponent
 {
 public:
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(PositionComponent)
 
     inline PositionComponent() = default;
     inline PositionComponent(PositionElement x, PositionElement y, PositionElement z)
@@ -126,7 +126,7 @@ sreflect_struct(
 SKR_ALIGNAS(16) ScaleComponent
 {
 public:
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(ScaleComponent)
 
     inline ScaleComponent() = default;
     inline ScaleComponent(float x, float y, float z)
