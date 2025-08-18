@@ -209,6 +209,35 @@ struct SKR_RUNTIME_API IIOService {
     IIOService() SKR_NOEXCEPT          = default;
 };
 
+/*
+typedef enum ESkrIOTickStage
+{
+    SKR_IO_TICK_STAGE_LOAD,
+    SKR_IO_TICK_STAGE_UNLOAD,
+
+    SKR_IO_TICK_STAGE_COMPLETE_CALLBACK,
+    SKR_IO_TICK_STAGE_CANCEL_CALLBACK,
+    SKR_IO_TICK_STAGE_ERROR_CALLBACK,
+
+    SKR_IO_TICK_STAGE_COUNT,
+
+    SKR_IO_TICK_STAGE_CALLBACKS_START = SKR_IO_TICK_STAGE_COMPLETE_CALLBACK,
+    SKR_IO_TICK_STAGE_CALLBACKS_END = SKR_IO_TICK_STAGE_ERROR_CALLBACK
+} ESkrIOTickStage;
+ 
+struct SKR_RUNTIME_API IIOServiceV3
+{
+    virtual void cancel(IOFuture* future) SKR_NOEXCEPT = 0;
+
+    virtual void tick(ESkrIOTickStage type) SKR_NOEXCEPT = 0;
+
+    virtual uint64_t remaining_count(ESkrIOTickStage type) SKR_NOEXCEPT = 0;
+
+    virtual ~IIOServiceV3() SKR_NOEXCEPT = default;
+    IIOServiceV3() SKR_NOEXCEPT = default;
+};
+*/
+
 } // namespace io
 } // namespace skr
 
