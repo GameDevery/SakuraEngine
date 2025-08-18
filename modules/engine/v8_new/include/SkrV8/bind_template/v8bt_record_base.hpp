@@ -26,6 +26,7 @@ protected:
     );
     bool _any_error() const;
     void _dump_error(V8ErrorBuilderTreeStyle& builder) const;
+    void _dump_ts_def(TSDefBuilder& builder) const;
 
     static void _call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);

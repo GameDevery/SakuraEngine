@@ -2,6 +2,8 @@
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_bind_proxy.hpp>
 #include <SkrV8/v8_isolate.hpp>
+#include <SkrV8/ts_def_builder.hpp>
+#include <SkrV8/bind_template/v8bt_primitive.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -59,19 +61,32 @@ void V8BTRecordBase::_setup(V8Isolate* isolate, const RTTRType* type)
         }
         mixin_consumed_methods.add(found_impl_method);
 
-        // export
+        // check overload
         if (auto found_mixin = _methods.find(method->name))
         {
             _errors.error(u8"overload is not supported yet for mixin method '{}'", method->name);
+            return;
         }
-        else
+
+        // add method
+        auto& mixin_method_data                = _methods.try_add_default(method->name).value();
+        mixin_method_data.rttr_data_mixin_impl = found_impl_method;
+        mixin_method_data.setup(
+            isolate,
+            method,
+            owner_type
+        );
+
+        // check signature
+        if (!method->signature_equal(
+                *found_impl_method,
+                ETypeSignatureCompareFlag::Strict
+            ))
         {
-            auto& mixin_method_data                = _methods.try_add_default(method->name, found_mixin).value();
-            mixin_method_data.rttr_data_mixin_impl = found_impl_method;
-            mixin_method_data.setup(
-                isolate,
-                method,
-                owner_type
+            mixin_method_data.errors.error(
+                u8"mixin method '{}' and '{}'_impl signature miss match",
+                method->name,
+                impl_method_name
             );
         }
         // clang-format off
@@ -257,7 +272,15 @@ void V8BTRecordBase::_setup(V8Isolate* isolate, const RTTRType* type)
     }, { .include_bases = true });
     // clang-format on
 
-    // TODO. check properties conflict
+    // check properties conflict
+    for (auto& [name, prop] : _properties)
+    {
+        prop.check_conflict();
+    }
+    for (auto& [name, static_prop] : _static_properties)
+    {
+        static_prop.check_conflict();
+    }
 }
 void V8BTRecordBase::_fill_template(
     v8::Local<v8::FunctionTemplate> ctor_template
@@ -541,6 +564,143 @@ void V8BTRecordBase::_dump_error(V8ErrorBuilderTreeStyle& builder) const
             builder.indent([&]() {
                 static_property_binder.dump_error(builder);
             });
+        }
+    }
+}
+void V8BTRecordBase::_dump_ts_def(TSDefBuilder& builder) const
+{
+    String record_full_name = String::Build(
+        _rttr_type->name_space_str(),
+        u8"::",
+        _rttr_type->name()
+    );
+
+    // fields
+    for (auto& [field_name, field_value] : _fields)
+    {
+        builder.$line(
+            u8"// cpp symbol: {}::{}",
+            record_full_name,
+            field_value.rttr_data->name
+        );
+        builder.$line(
+            u8"{}: {};",
+            field_name,
+            builder.type_name_with_ns(field_value.bind_tp)
+        );
+    }
+
+    // methods
+    for (auto& [method_name, method_value] : _methods)
+    {
+        if (method_value.rttr_data_mixin_impl)
+        {
+            builder.$line(u8"// [MIXIN]");
+        }
+
+        builder.$line(
+            u8"// cpp symbol: {}::{}",
+            record_full_name,
+            method_value.rttr_data->name
+        );
+        builder.$line(
+            u8"{}({}): {};",
+            method_name,
+            builder.params_signature(method_value.params_data),
+            builder.return_signature(method_value)
+        );
+    }
+
+    // static fields
+    for (auto& [static_field_name, static_field_value] : _static_fields)
+    {
+        builder.$line(
+            u8"// cpp symbol: {}::{}",
+            record_full_name,
+            static_field_value.rttr_data->name
+        );
+        builder.$line(
+            u8"static {}: {};",
+            static_field_name,
+            builder.type_name_with_ns(static_field_value.bind_tp)
+        );
+    }
+
+    // static methods
+    for (auto& [static_method_name, static_method_value] : _static_methods)
+    {
+        builder.$line(
+            u8"// cpp symbol: {}::{}",
+            record_full_name,
+            static_method_value.rttr_data->name
+        );
+        builder.$line(
+            u8"static {}({}): {};",
+            static_method_name,
+            builder.params_signature(static_method_value.params_data),
+            builder.return_signature(static_method_value)
+        );
+    }
+
+    // properties
+    for (auto& [property_name, property_value] : _properties)
+    {
+        if (property_value.setter.is_valid())
+        {
+            builder.$line(
+                u8"// cpp symbol: {}::{}",
+                record_full_name,
+                property_value.setter.rttr_data->name
+            );
+            builder.$line(
+                u8"set {}(value: {});",
+                property_name,
+                builder.type_name_with_ns(property_value.proxy_bind_tp())
+            );
+        }
+        if (property_value.getter.is_valid())
+        {
+            builder.$line(
+                u8"// cpp symbol: {}::{}",
+                record_full_name,
+                property_value.getter.rttr_data->name
+            );
+            builder.$line(
+                u8"get {}(): {};",
+                property_name,
+                builder.type_name_with_ns(property_value.proxy_bind_tp())
+            );
+        }
+    }
+
+    // static properties
+    for (auto& [static_property_name, static_property_value] : _static_properties)
+    {
+        if (static_property_value.setter.is_valid())
+        {
+            builder.$line(
+                u8"// cpp symbol: {}::{}",
+                record_full_name,
+                static_property_value.setter.rttr_data->name
+            );
+            builder.$line(
+                u8"static set {}(value: {});",
+                static_property_name,
+                builder.type_name_with_ns(static_property_value.proxy_bind_tp())
+            );
+        }
+        if (static_property_value.getter.is_valid())
+        {
+            builder.$line(
+                u8"// cpp symbol: {}::{}",
+                record_full_name,
+                static_property_value.getter.rttr_data->name
+            );
+            builder.$line(
+                u8"static get {}(): {};",
+                static_property_name,
+                builder.type_name_with_ns(static_property_value.proxy_bind_tp())
+            );
         }
     }
 }

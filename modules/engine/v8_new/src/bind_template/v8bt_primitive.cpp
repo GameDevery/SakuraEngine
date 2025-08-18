@@ -447,6 +447,44 @@ v8::Local<v8::Value> V8BTPrimitive::get_v8_export_obj(
     SKR_UNREACHABLE_CODE();
     return {};
 }
+void V8BTPrimitive::dump_ts_def(
+    TSDefBuilder& builder
+) const
+{
+    SKR_UNREACHABLE_CODE();
+}
+String V8BTPrimitive::get_ts_type_name(
+) const
+{
+    switch (_type_id.get_hash())
+    {
+    case type_id_of<bool>().get_hash():
+        return u8"boolean";
+    case type_id_of<int8_t>().get_hash():
+    case type_id_of<uint8_t>().get_hash():
+    case type_id_of<int16_t>().get_hash():
+    case type_id_of<uint16_t>().get_hash():
+    case type_id_of<int32_t>().get_hash():
+    case type_id_of<uint32_t>().get_hash():
+    case type_id_of<float>().get_hash():
+    case type_id_of<double>().get_hash():
+        return u8"number";
+    case type_id_of<int64_t>().get_hash():
+    case type_id_of<uint64_t>().get_hash():
+        return u8"bigint";
+    case type_id_of<StringView>().get_hash():
+    case type_id_of<String>().get_hash():
+        return u8"string";
+    default:
+        SKR_UNREACHABLE_CODE()
+        return {};
+    }
+}
+bool V8BTPrimitive::ts_is_nullable(
+) const
+{
+    return false;
+}
 
 void V8BTPrimitive::_init_native(
     void* native_data

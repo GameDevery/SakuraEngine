@@ -2,6 +2,7 @@
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_bind_proxy.hpp>
 #include <SkrV8/v8_isolate.hpp>
+#include <SkrV8/ts_def_builder.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -277,7 +278,50 @@ v8::Local<v8::Value> V8BTObject::get_v8_export_obj(
 
     return _v8_template.Get(isolate)->GetFunction(context).ToLocalChecked();
 }
+void V8BTObject::dump_ts_def(
+    TSDefBuilder& builder
+) const
+{
+    builder.$line(u8"// export as object");
 
+    // print cpp symbol
+    builder.$line(
+        u8"// cpp symbol: {}::{}",
+        _rttr_type->name_space_str(),
+        _rttr_type->name()
+    );
+
+    // body
+    builder.$line(u8"export class {} {{", _rttr_type->name());
+    builder.$indent([&] {
+        // ctors
+        if (_ctor.is_valid())
+        {
+            builder.$line(
+                u8"// cpp symbol: {}::{}",
+                _rttr_type->name_space_str(),
+                _rttr_type->name()
+            );
+            builder.$line(
+                u8"constructor({});",
+                builder.params_signature(_ctor.params_data)
+            );
+        }
+
+        _dump_ts_def(builder);
+    });
+    builder.$line(u8"}}");
+}
+String V8BTObject::get_ts_type_name(
+) const
+{
+    return _rttr_type->name();
+}
+bool V8BTObject::ts_is_nullable(
+) const
+{
+    return true;
+}
 // helper
 V8BPObject* V8BTObject::_get_or_make_proxy(void* address) const
 {
@@ -339,7 +383,7 @@ V8BPObject* V8BTObject::_new_bind_proxy(void* address, v8::Local<v8::Object> sel
     this->isolate()->register_bind_proxy(address, bind_proxy);
 
     // bind mixin core
-    scriptble_object->set_mixin_core(this->isolate()->get_mixin_core());
+    scriptble_object->set_mixin_core(this->isolate());
 
     return bind_proxy;
 }

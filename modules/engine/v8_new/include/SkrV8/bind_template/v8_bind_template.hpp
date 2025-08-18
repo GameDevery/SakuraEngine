@@ -182,17 +182,23 @@ struct V8BTDataStaticMethod : V8BTDataFunctionBase {
     );
 };
 struct V8BTDataProperty {
-    const V8BindTemplate* proxy_bind_tp = nullptr;
-    V8BTDataMethod        getter        = {};
-    V8BTDataMethod        setter        = {};
+    V8BTDataMethod getter = {};
+    V8BTDataMethod setter = {};
+    V8ErrorCache   errors = {};
 
     inline bool any_error() const
     {
-        return (getter.is_valid() && getter.any_error()) ||
+        return errors.has_error() ||
+               (getter.is_valid() && getter.any_error()) ||
                (setter.is_valid() && setter.any_error());
     }
     inline void dump_error(V8ErrorBuilderTreeStyle& builder) const
     {
+        if (errors.has_error())
+        {
+            builder.dump_errors(errors);
+        }
+
         if (getter.is_valid() && getter.any_error())
         {
             builder.write_line(u8"getter");
@@ -208,19 +214,71 @@ struct V8BTDataProperty {
             });
         }
     }
+
+    inline const V8BindTemplate* proxy_bind_tp() const
+    {
+        auto getter_tp = getter_bind_tp();
+        return getter_tp ? getter_tp : setter_bind_tp();
+    }
+    inline const V8BindTemplate* getter_bind_tp() const
+    {
+        if (getter.is_valid())
+        {
+            if (getter.return_data.is_void)
+            {
+                if (getter.params_data.size() > 0)
+                {
+                    return getter.params_data[0].bind_tp;
+                }
+            }
+            else
+            {
+                return getter.return_data.bind_tp;
+            }
+        }
+        return nullptr;
+    }
+    inline const V8BindTemplate* setter_bind_tp() const
+    {
+        if (setter.is_valid())
+        {
+            if (setter.params_data.size() > 0)
+            {
+                return setter.params_data[0].bind_tp;
+            }
+        }
+        return nullptr;
+    }
+
+    void setup_getter(
+        V8Isolate*            isolate,
+        const RTTRMethodData* method_data,
+        const RTTRType*       owner
+    );
+    void setup_setter(
+        V8Isolate*            isolate,
+        const RTTRMethodData* method_data,
+        const RTTRType*       owner
+    );
+    void check_conflict();
 };
 struct V8BTDataStaticProperty {
-    const V8BindTemplate* proxy_bind_tp = nullptr;
-    V8BTDataStaticMethod  getter        = {};
-    V8BTDataStaticMethod  setter        = {};
+    V8BTDataStaticMethod getter = {};
+    V8BTDataStaticMethod setter = {};
+    V8ErrorCache         errors = {};
 
     inline bool any_error() const
     {
-        return (getter.is_valid() && getter.any_error()) ||
+        return errors.has_error() ||
+               (getter.is_valid() && getter.any_error()) ||
                (setter.is_valid() && setter.any_error());
     }
     inline void dump_error(V8ErrorBuilderTreeStyle& builder) const
     {
+        if (errors.has_error())
+        {
+            builder.dump_errors(errors);
+        }
         if (getter.is_valid() && getter.any_error())
         {
             builder.write_line(u8"getter");
@@ -236,6 +294,53 @@ struct V8BTDataStaticProperty {
             });
         }
     }
+
+    inline const V8BindTemplate* proxy_bind_tp() const
+    {
+        auto getter_tp = getter_bind_tp();
+        return getter_tp ? getter_tp : setter_bind_tp();
+    }
+    inline const V8BindTemplate* getter_bind_tp() const
+    {
+        if (getter.is_valid())
+        {
+            if (getter.return_data.is_void)
+            {
+                if (getter.params_data.size() > 0)
+                {
+                    return getter.params_data[0].bind_tp;
+                }
+            }
+            else
+            {
+                return getter.return_data.bind_tp;
+            }
+        }
+        return nullptr;
+    }
+    inline const V8BindTemplate* setter_bind_tp() const
+    {
+        if (setter.is_valid())
+        {
+            if (setter.params_data.size() > 0)
+            {
+                return setter.params_data[0].bind_tp;
+            }
+        }
+        return nullptr;
+    }
+
+    void setup_getter(
+        V8Isolate*                  isolate,
+        const RTTRStaticMethodData* method_data,
+        const RTTRType*             owner
+    );
+    void setup_setter(
+        V8Isolate*                  isolate,
+        const RTTRStaticMethodData* method_data,
+        const RTTRType*             owner
+    );
+    void check_conflict();
 };
 struct V8BTDataCtor {
     const RTTRCtorData*   rttr_data   = nullptr;
@@ -380,6 +485,13 @@ struct V8BindTemplate {
     virtual bool has_v8_export_obj(
     ) const = 0;
     virtual v8::Local<v8::Value> get_v8_export_obj(
+    ) const = 0;
+    virtual void dump_ts_def(
+        TSDefBuilder& builder
+    ) const = 0;
+    virtual String get_ts_type_name(
+    ) const = 0;
+    virtual bool ts_is_nullable(
     ) const = 0;
 
     // cast helper

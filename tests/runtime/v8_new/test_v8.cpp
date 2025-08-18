@@ -3,6 +3,7 @@
 #include "test_v8_types_new.hpp"
 #include "SkrV8/v8_isolate.hpp"
 #include "SkrV8/v8_context.hpp"
+#include <SkrV8/ts_def_builder.hpp>
 
 skr::V8Isolate isolate;
 
@@ -33,7 +34,7 @@ TEST_CASE("dump error export")
     });
 }
 
-TEST_CASE("basic export test")
+TEST_CASE("test basic export")
 {
     using namespace skr;
 
@@ -723,5 +724,35 @@ TEST_CASE("basic export test")
                 REQUIRE_EQ(test.get<uint32_t>().value(), 1111);
             }
         }
+    }
+}
+
+TEST_CASE("test export defines")
+{
+    auto* context = isolate.create_context();
+    SKR_DEFER({ isolate.destroy_context(context); });
+
+    context->build_export([&](skr::V8VirtualModule& module) {
+        skr::each_types_of_module(u8"V8TestNew", [&](const skr::RTTRType* type) -> bool {
+            module.raw_register_type(type->type_id());
+            return true;
+        });
+    });
+
+    // export module
+    skr::TSDefBuilder builder;
+    builder.virtual_module = &context->virtual_module();
+    auto result = builder.generate_global();
+
+    // write to file
+    auto file = fopen("test_v8.d.ts", "wb");
+    if (file)
+    {
+        fwrite(result.c_str(), 1, result.size(), file);
+        fclose(file);
+    }
+    else
+    {
+        SKR_LOG_ERROR(u8"failed to open test_v8.d.ts");
     }
 }

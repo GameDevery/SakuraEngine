@@ -7,6 +7,7 @@
 #include <SkrV8/bind_template/v8_bind_template.hpp>
 #include <SkrContainers/set.hpp>
 #include <SkrV8/v8_bind_proxy.hpp>
+#include <SkrV8/v8_inspector.hpp>
 
 // v8 includes
 #include <v8-isolate.h>
@@ -170,8 +171,13 @@ SKR_V8_NEW_API V8Isolate : IScriptMixinCore {
         V8BindProxy* bind_proxy
     );
 
-    // mixin
-    IScriptMixinCore* get_mixin_core() const;
+    // debugger
+    void init_debugger(int port = 9229);
+    void shutdown_debugger();
+    bool is_debugger_init() const;
+    void pump_debugger_messages();
+    void wait_for_debugger_connected(uint64_t timeout_ms = std::numeric_limits<uint64_t>::max());
+    bool any_debugger_connected() const;
 
 private:
     // helper
@@ -199,9 +205,12 @@ private:
     Vector<V8BindProxy*> _call_v8_param_proxy       = {};
     Vector<uint64_t>     _call_v8_param_proxy_stack = {};
 
+    // debugger
+    V8WebSocketServer _websocket_server = {};
+    V8InspectorClient _inspector_client = {};
+
     // TODO. cpp module manage
     // TODO. script module manage
-    // TODO. debugger
 };
 } // namespace skr
 

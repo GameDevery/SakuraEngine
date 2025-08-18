@@ -42,6 +42,7 @@ struct SKR_V8_NEW_API V8Context {
     void build_export(FunctionRef<void(V8VirtualModule&)> build_func);
     bool is_export_built() const;
     void clear_export();
+    inline const V8VirtualModule& virtual_module() const { return _virtual_module; }
 
     // set & get global value
     V8Value get_global(StringView name);

@@ -2,6 +2,7 @@
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/bind_template/v8bt_primitive.hpp>
 #include <SkrV8/v8_isolate.hpp>
+#include <SkrV8/ts_def_builder.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -363,6 +364,43 @@ v8::Local<v8::Value> V8BTMapping::get_v8_export_obj(
     auto isolate = Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
     return _v8_template.Get(isolate)->GetFunction(context).ToLocalChecked();
+}
+void V8BTMapping::dump_ts_def(
+    TSDefBuilder& builder
+) const
+{
+    builder.$line(u8"// export as mapping");
+    // print cpp symbol
+    builder.$line(
+        u8"// cpp symbol: {}::{}",
+        _rttr_type->name_space_str(),
+        _rttr_type->name()
+    );
+
+    // dump as interface
+    builder.$line(u8"export interface {} {{", _rttr_type->name());
+    builder.$indent([&] {
+        // fields
+        for (auto& [field_name, field_value] : _fields)
+        {
+            builder.$line(
+                u8"{}: {};",
+                field_name,
+                builder.type_name_with_ns(field_value.bind_tp)
+            );
+        }
+    });
+    builder.$line(u8"}}");
+}
+String V8BTMapping::get_ts_type_name(
+) const
+{
+    return _rttr_type->name();
+}
+bool V8BTMapping::ts_is_nullable(
+) const
+{
+    return false;
 }
 
 void V8BTMapping::_init_native(

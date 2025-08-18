@@ -2,6 +2,7 @@
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_bind_proxy.hpp>
 #include <SkrV8/v8_isolate.hpp>
+#include <SkrV8/ts_def_builder.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -374,6 +375,50 @@ v8::Local<v8::Value> V8BTValue::get_v8_export_obj(
     auto context = isolate->GetCurrentContext();
 
     return _v8_template.Get(isolate)->GetFunction(context).ToLocalChecked();
+}
+void V8BTValue::dump_ts_def(
+    TSDefBuilder& builder
+) const
+{
+    builder.$line(u8"// export as value");
+
+    // print cpp symbol
+    builder.$line(
+        u8"// cpp symbol: {}::{}",
+        _rttr_type->name_space_str(),
+        _rttr_type->name()
+    );
+
+    // body
+    builder.$line(u8"export class {} {{", _rttr_type->name());
+    builder.$indent([&] {
+        // ctors
+        if (_ctor.is_valid())
+        {
+            builder.$line(
+                u8"// cpp symbol: {}::{}",
+                _rttr_type->name_space_str(),
+                _rttr_type->name()
+            );
+            builder.$line(
+                u8"constructor({});",
+                builder.params_signature(_ctor.params_data)
+            );
+        }
+
+        _dump_ts_def(builder);
+    });
+    builder.$line(u8"}}");
+}
+String V8BTValue::get_ts_type_name(
+) const
+{
+    return _rttr_type->name();
+}
+bool V8BTValue::ts_is_nullable(
+) const
+{
+    return false;
 }
 
 // helper

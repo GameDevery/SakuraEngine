@@ -495,10 +495,66 @@ void V8Isolate::push_param_proxy(
     _call_v8_param_proxy.push_back(bind_proxy);
 }
 
-// mixin
-IScriptMixinCore* V8Isolate::get_mixin_core() const
+// debugger
+void V8Isolate::init_debugger(int port)
 {
-    return const_cast<V8Isolate*>(this);
+    SKR_ASSERT(is_init());
+    SKR_ASSERT(!is_debugger_init());
+    _websocket_server.init(port);
+    _inspector_client.server = &_websocket_server;
+    _inspector_client.init(this);
+
+    // notify main context created
+    _inspector_client.notify_context_created(_main_context);
+
+    // notify created context
+    for (const auto& [name, context] : _contexts)
+    {
+        _inspector_client.notify_context_created(context);
+    }
+}
+void V8Isolate::shutdown_debugger()
+{
+    SKR_ASSERT(is_init());
+    SKR_ASSERT(is_debugger_init());
+    _inspector_client.shutdown();
+    _inspector_client.server = nullptr;
+    _websocket_server.shutdown();
+}
+bool V8Isolate::is_debugger_init() const
+{
+    return _websocket_server.is_init();
+}
+void V8Isolate::pump_debugger_messages()
+{
+    _websocket_server.pump_messages();
+}
+void V8Isolate::wait_for_debugger_connected(uint64_t timeout_ms)
+{
+    auto start_time = std::chrono::high_resolution_clock::now();
+    while (!_inspector_client.is_connected())
+    {
+        // pump v8 messages
+        this->pump_message_loop();
+
+        // pump net messages
+        _websocket_server.pump_messages();
+
+        // check timeout
+        auto current_time = std::chrono::high_resolution_clock::now();
+        auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time).count();
+        if (elapsed_time >= timeout_ms)
+        {
+            break;
+        }
+
+        // sleep for a while
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+}
+bool V8Isolate::any_debugger_connected() const
+{
+    return is_debugger_init() && _inspector_client.is_connected();
 }
 
 //============================global init============================

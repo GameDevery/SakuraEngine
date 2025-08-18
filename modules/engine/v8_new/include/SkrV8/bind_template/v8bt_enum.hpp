@@ -103,6 +103,13 @@ struct V8BTEnum final : V8BindTemplate {
     ) const override final;
     v8::Local<v8::Value> get_v8_export_obj(
     ) const override final;
+    void dump_ts_def(
+        TSDefBuilder& builder
+    ) const override final;
+    String get_ts_type_name(
+    ) const override final;
+    bool ts_is_nullable(
+    ) const override final;
 
 private:
     static void _enum_to_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info);

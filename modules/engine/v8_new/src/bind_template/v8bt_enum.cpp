@@ -2,6 +2,7 @@
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/bind_template/v8bt_primitive.hpp>
 #include <SkrV8/v8_isolate.hpp>
+#include <SkrV8/ts_def_builder.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -269,6 +270,56 @@ v8::Local<v8::Value> V8BTEnum::get_v8_export_obj(
     auto context = isolate->GetCurrentContext();
 
     return _v8_template.Get(isolate)->NewInstance(context).ToLocalChecked();
+}
+void V8BTEnum::dump_ts_def(
+    TSDefBuilder& builder
+) const
+{
+    // print cpp symbol
+    builder.$line(
+        u8"// cpp symbol: {}::{}",
+        _rttr_type->name_space_str(),
+        _rttr_type->name()
+    );
+
+    // enum body
+    builder.$line(u8"export enum {} {{", _rttr_type->name());
+    builder.$indent([&] {
+        // enum values
+        for (auto& [item_name, item_value] : _items)
+        {
+            if (item_value->value.is_signed())
+            {
+                builder.$line(u8"{} = {},", item_name, item_value->value.value_signed());
+            }
+            else
+            {
+                builder.$line(u8"{} = {},", item_name, item_value->value.value_unsigned());
+            }
+        }
+    });
+    builder.$line(u8"}}");
+
+    // to_string & from_string
+    builder.$line(u8"export namespace {} {{", _rttr_type->name());
+    builder.$indent([&] {
+        // to_string
+        builder.$line(u8"export function to_string(value: {}): string", _rttr_type->name());
+
+        // from_string
+        builder.$line(u8"export function from_string(value: string): {}", _rttr_type->name());
+    });
+    builder.$line(u8"}}");
+}
+String V8BTEnum::get_ts_type_name(
+) const
+{
+    return _rttr_type->name();
+}
+bool V8BTEnum::ts_is_nullable(
+) const
+{
+    return false;
 }
 
 void V8BTEnum::_enum_to_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info)

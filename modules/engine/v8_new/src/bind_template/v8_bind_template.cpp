@@ -2,6 +2,7 @@
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_bind_proxy.hpp>
 #include <SkrV8/v8_isolate.hpp>
+#include <SkrV8/bind_template/v8bt_primitive.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -548,6 +549,192 @@ void V8BTDataStaticMethod::setup(
     {
         if (param.appare_in_param) ++params_count;
         if (param.appare_in_return) ++return_count;
+    }
+}
+
+//===============================V8BTDataProperty===============================
+void V8BTDataProperty::setup_getter(
+    V8Isolate*            isolate,
+    const RTTRMethodData* method_data,
+    const RTTRType*       owner
+)
+{
+    getter.setup(isolate, method_data, owner);
+
+    // check param count
+    if (getter.params_count != 0)
+    {
+        errors.error(
+            u8"getter param count must be 0, but got {}",
+            getter.params_count
+        );
+    }
+    // check return type
+    if (getter.return_count != 1)
+    {
+        errors.error(
+            u8"getter return count must be 1, but got {}",
+            getter.return_count
+        );
+    }
+}
+void V8BTDataProperty::setup_setter(
+    V8Isolate*            isolate,
+    const RTTRMethodData* method_data,
+    const RTTRType*       owner
+)
+{
+    setter.setup(isolate, method_data, owner);
+
+    // check param count
+    if (setter.params_count != 1)
+    {
+        errors.error(
+            u8"setter param count must be 1, but got {}",
+            setter.params_count
+        );
+    }
+    // check return type
+    if (setter.return_count != 0)
+    {
+        errors.error(
+            u8"setter return count must be 0, but got {}",
+            setter.return_count
+        );
+    }
+}
+void V8BTDataProperty::check_conflict()
+{
+    auto getter_tp = getter_bind_tp();
+    auto setter_tp = setter_bind_tp();
+
+    if (getter_tp && setter_tp)
+    {
+        bool prop_mismatch = false;
+        if (getter_tp != setter_tp)
+        { // maybe mismatch
+            if (
+                getter_tp->is<V8BTPrimitive>() &&
+                setter_tp->is<V8BTPrimitive>()
+            )
+            {
+                bool getter_is_str = getter_tp->as<V8BTPrimitive>()->is_string();
+                bool setter_is_str = setter_tp->as<V8BTPrimitive>()->is_string();
+
+                if (getter_is_str && setter_is_str)
+                { // optimize for string
+                }
+                else
+                {
+                    prop_mismatch = true;
+                }
+            }
+            else
+            {
+                prop_mismatch = true;
+            }
+        }
+        if (prop_mismatch)
+        {
+            errors.error(
+                u8"getter and setter type mismatch, getter '{}', setter '{}'",
+                getter.rttr_data->name,
+                setter.rttr_data->name
+            );
+        }
+    }
+}
+
+//===============================V8BTDataStaticProperty===============================
+void V8BTDataStaticProperty::setup_getter(
+    V8Isolate*                  isolate,
+    const RTTRStaticMethodData* method_data,
+    const RTTRType*             owner
+)
+{
+    getter.setup(isolate, method_data, owner);
+
+    // check param count
+    if (getter.params_count != 0)
+    {
+        errors.error(
+            u8"getter param count must be 0, but got {}",
+            getter.params_count
+        );
+    }
+    // check return type
+    if (getter.return_count != 1)
+    {
+        errors.error(
+            u8"getter return count must be 1, but got {}",
+            getter.return_count
+        );
+    }
+}
+void V8BTDataStaticProperty::setup_setter(
+    V8Isolate*                  isolate,
+    const RTTRStaticMethodData* method_data,
+    const RTTRType*             owner
+)
+{
+    setter.setup(isolate, method_data, owner);
+
+    // check param count
+    if (setter.params_count != 1)
+    {
+        errors.error(
+            u8"setter param count must be 1, but got {}",
+            setter.params_count
+        );
+    }
+    // check return type
+    if (setter.return_count != 0)
+    {
+        errors.error(
+            u8"setter return count must be 0, but got {}",
+            setter.return_count
+        );
+    }
+}
+void V8BTDataStaticProperty::check_conflict()
+{
+    auto getter_tp = getter_bind_tp();
+    auto setter_tp = setter_bind_tp();
+
+    if (getter_tp && setter_tp)
+    {
+        bool prop_mismatch = false;
+        if (getter_tp != setter_tp)
+        { // maybe mismatch
+            if (
+                getter_tp->is<V8BTPrimitive>() &&
+                setter_tp->is<V8BTPrimitive>()
+            )
+            {
+                bool getter_is_str = getter_tp->as<V8BTPrimitive>()->is_string();
+                bool setter_is_str = setter_tp->as<V8BTPrimitive>()->is_string();
+
+                if (getter_is_str && setter_is_str)
+                { // optimize for string
+                }
+                else
+                {
+                    prop_mismatch = true;
+                }
+            }
+            else
+            {
+                prop_mismatch = true;
+            }
+        }
+        if (prop_mismatch)
+        {
+            errors.error(
+                u8"getter and setter type mismatch, getter '{}', setter '{}'",
+                getter.rttr_data->name,
+                setter.rttr_data->name
+            );
+        }
     }
 }
 
