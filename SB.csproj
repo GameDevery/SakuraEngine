@@ -18,6 +18,11 @@
 
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
 	
+	<ItemGroup>
+		<Compile Include="./**/**/build.cs" />
+		<Compile Remove="./engine/tools/SB/**/build.cs" />
+	</ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Remove="**" />
     <EmbeddedResource Remove="**/**" />
@@ -27,7 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
-	<ProjectReference Include="tools\SB\SB.Engine\SB.Engine.csproj" />
+	<ProjectReference Include="engine\tools\SB\SB.Engine\SB.Engine.csproj" />
   </ItemGroup>
 
 </Project>
