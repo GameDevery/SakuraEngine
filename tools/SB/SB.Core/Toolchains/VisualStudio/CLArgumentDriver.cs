@@ -18,6 +18,18 @@
                 RawArguments.Add("/TP");
                 RawArguments.Add("/Zc:__cplusplus");
             }
+            if (BuildSystem.TargetOS == OSPlatform.Windows)
+            {
+                if (BuildSystem.TargetArch == Architecture.X86)
+                {
+                    RawArguments.Add("-D_WIN32=1");
+                }
+                else if (BuildSystem.TargetArch == Architecture.X64)
+                {
+                    RawArguments.Add("-D_WIN32=1");
+                    RawArguments.Add("-D_WIN64=1");
+                }
+            }
         }
 
         [TargetProperty] 
@@ -131,7 +143,7 @@
         protected CFamily Language { get; }
         protected bool isPCH { get; }
         public ArgumentDictionary Arguments { get; } = new();
-        public HashSet<string> RawArguments { get; } = new HashSet<string> { "/c", "/cgthreads1", "/nologo", "/FC" };
+        public HashSet<string> RawArguments { get; } = new HashSet<string> { "/c", "/cgthreads1", "/nologo", "/bigobj", "/FC" };
         // /c: dont link while compiling, https://learn.microsoft.com/zh-cn/cpp/build/reference/c-compile-without-linking?view=msvc-170
         // /logo: dont show info to output stream, https://learn.microsoft.com/zh-cn/cpp/build/reference/nologo-suppress-startup-banner-c-cpp?view=msvc-170
         // /FC use full path within compiler diagnostics

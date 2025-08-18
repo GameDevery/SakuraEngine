@@ -1,5 +1,0 @@
- shared_module("SkrInspector", "SKR_INSPECT")
-    public_dependency("SkrDevCore")
-    skr_unity_build()
-    add_includedirs("include", {public=true})
-    add_files("src/**.cpp")

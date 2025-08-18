@@ -40,7 +40,7 @@ MemoryTraitsData GenericOptional::memory_traits_data() const
 uint64_t GenericOptional::size() const
 {
     SKR_ASSERT(is_valid());
-    auto alignment        = std::max(_inner_alignment, alignof(bool));
+    auto alignment        = std::max(_inner_alignment, (uint64_t)alignof(bool));
     auto padded_bool_size = ::skr::memory::padded_size(sizeof(bool), alignment);
 
     return padded_bool_size + _inner_size;
@@ -48,7 +48,7 @@ uint64_t GenericOptional::size() const
 uint64_t GenericOptional::alignment() const
 {
     SKR_ASSERT(is_valid());
-    return std::max(sizeof(bool), _inner_alignment);
+    return std::max((uint64_t)sizeof(bool), _inner_alignment);
 }
 
 // operations, used for generic container algorithms
@@ -252,7 +252,7 @@ bool GenericOptional::equal(const void* lhs, const void* rhs, uint64_t count) co
     SKR_ASSERT(false && "equal not support for GenericOptional, please check feature before call this function");
     return false;
 }
-size_t GenericOptional::hash(const void* src) const
+skr_hash GenericOptional::hash(const void* src) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(false && "hash not support for GenericOptional, please check feature before call this function");
@@ -326,7 +326,7 @@ void* GenericOptional::value_ptr(void* memory) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(memory);
-    auto alignment        = std::max(_inner_alignment, alignof(bool));
+    auto alignment        = std::max(_inner_alignment, (uint64_t)alignof(bool));
     auto padded_bool_size = ::skr::memory::padded_size(sizeof(bool), alignment);
     return ::skr::memory::offset_bytes(
         memory,
@@ -337,7 +337,7 @@ const void* GenericOptional::value_ptr(const void* memory) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(memory);
-    auto alignment        = std::max(_inner_alignment, alignof(bool));
+    auto alignment        = std::max(_inner_alignment, (uint64_t)alignof(bool));
     auto padded_bool_size = ::skr::memory::padded_size(sizeof(bool), alignment);
     return ::skr::memory::offset_bytes(
         memory,

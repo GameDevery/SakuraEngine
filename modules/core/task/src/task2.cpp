@@ -398,7 +398,7 @@ namespace task2
                 notifyAdded = true;
                 while(!f())
                 {
-                    skr_wait_condition_vars(&added, &mutex, TIMEOUT_INFINITE);
+                    skr_wait_condition_vars(&added, &mutex, SKR_TIMEOUT_INFINITE);
                 }
                 notifyAdded = false;
             }
@@ -588,7 +588,7 @@ namespace task2
     void condvar_t::wait(SMutex& mutex)
     {
         ++numWaitingOnCondition;
-        skr_wait_condition_vars(&cv, &mutex, TIMEOUT_INFINITE);
+        skr_wait_condition_vars(&cv, &mutex, SKR_TIMEOUT_INFINITE);
         --numWaitingOnCondition;
     }
 

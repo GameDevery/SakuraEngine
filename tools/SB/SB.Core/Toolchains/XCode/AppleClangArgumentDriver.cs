@@ -4,19 +4,19 @@ namespace SB.Core
     using BS = BuildSystem;
     public class AppleClangArgumentDriver : IArgumentDriver
     {
-        public AppleClangArgumentDriver(string SDKDirectory, CFamily Language, bool isPCH)
+        public AppleClangArgumentDriver(string DeveloperDirectory, string SDKDirectory, Version ClangVersion, CFamily Language, bool isPCH)
         {
             this.Language = Language;
             this.isPCH = isPCH;
             RawArguments.Add("-isysroot");
             RawArguments.Add($"{SDKDirectory}");
-            /*
-            RawArguments.Add($"-isystem {SDKDirectory}/System/Library/Frameworks");
-            RawArguments.Add($"-isystem {SDKDirectory}/usr/include/c++/v1");
-            RawArguments.Add($"-isystem {SDKDirectory}/usr/include");
-            RawArguments.Add("-isystem /Library/Developer/CommandLineTools/usr/lib/clang/16/include");
-            RawArguments.Add("-isystem /Library/Developer/CommandLineTools/usr/include");
-            */
+
+            // WE MUST KEEP THIS ORDER OTHER WISE IT WILL BREAK THE BUILD!
+            RawArguments.Add($"-isystem {Path.Combine(SDKDirectory, "usr/include/c++/v1")}");
+            RawArguments.Add($"-isystem {Path.Combine(DeveloperDirectory, $"usr/lib/clang/{ClangVersion.Major}/include")}");
+            RawArguments.Add($"-isystem {Path.Combine(SDKDirectory, "usr/include")}");
+            RawArguments.Add($"-isystem {Path.Combine(DeveloperDirectory, "usr/include")}");
+            RawArguments.Add($"-isystem {Path.Combine(SDKDirectory, "System/Library/Frameworks")}");
         }
 
         [TargetProperty]
@@ -65,8 +65,14 @@ namespace SB.Core
         [TargetProperty]
         public string FpModel(FpModel v) => $"-ffp-model={v}".ToLowerInvariant();
 
-        [TargetProperty(InheritBehavior = true)]
-        public string[] CppFlags(ArgumentList<string> flags) => flags.Select(flag => flag).ToArray();
+        [TargetProperty(InheritBehavior = true)] 
+        public virtual string[] CppFlags(ArgumentList<string> flags) => (Language == CFamily.Cpp) ? CXFlags(flags) : new string[0];
+
+        [TargetProperty(InheritBehavior = true)] 
+        public virtual string[] CFlags(ArgumentList<string> flags) => (Language == CFamily.C) ? CXFlags(flags) : new string[0];
+
+        [TargetProperty(InheritBehavior = true)] 
+        public virtual string[] CXFlags(ArgumentList<string> flags) => flags.Select(flag => flag).ToArray();
 
         [TargetProperty(InheritBehavior = true)]
         public string[] Defines(ArgumentList<string> defines) => defines.Select(define => $"-D{define}").ToArray();
@@ -81,7 +87,7 @@ namespace SB.Core
         public virtual string DebugSymbols(bool Enable) => Enable ? "-g" : "";
 
         [TargetProperty]
-        public string Source(string path) => BS.CheckFile(path, true) ? GetLanguageArgString() + $" \"{path}\"" : throw new TaskFatalError($"Source value {path} is not an existed absolute path!");
+        public string[] Source(string path) => BS.CheckFile(path, true) ? GetLanguageArgString($" \"{path}\"") : throw new TaskFatalError($"Source value {path} is not an existed absolute path!");
 
         public string Arch(Architecture arch) => archMap.TryGetValue(arch, out var r) ? r : throw new TaskFatalError($"Invalid architecture \"{arch}\" for Apple clang!");
         static readonly Dictionary<Architecture, string> archMap = new Dictionary<Architecture, string> { { Architecture.X86, "" }, { Architecture.X64, "" }, { Architecture.ARM64, "" } };
@@ -96,16 +102,48 @@ namespace SB.Core
 
         public string UsePCHAST(string path) => BS.CheckFile(path, false) ? $"-include-pch \"{path}\"" : throw new TaskFatalError($"PCHObject value {path} is not a valid absolute path!");
 
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] AppleClang_CppFlags(ArgumentList<string> flags) => CppFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] AppleClang_CFlags(ArgumentList<string> flags) => CFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] AppleClang_CXFlags(ArgumentList<string> flags) => CXFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] Clang_CppFlags(ArgumentList<string> flags) => CppFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] Clang_CFlags(ArgumentList<string> flags) => CFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] Clang_CXFlags(ArgumentList<string> flags) => CXFlags(flags);
+
         protected CFamily Language { get; }
         protected bool isPCH = false;
-        protected string GetLanguageArgString() => Language switch
+        protected string[] GetLanguageArgString(string p)
         {
-            CFamily.C => isPCH ? "-xc-header" : "",
-            CFamily.Cpp => isPCH ? "-xc++-header" : "-xc++",
-            CFamily.ObjC => isPCH ? "-xobjective-c-header" : "-xobjective-c",
-            CFamily.ObjCpp => isPCH ? "-xobjective-c++-header" : "-xobjective-c++",
-            _ => throw new TaskFatalError($"Invalid language \"{Language}\" for Apple clang!")
-        };
+            string lang;
+            switch (Language)
+            {
+                case CFamily.C:
+                    lang = isPCH ? "c-header" : "";
+                    break;
+                case CFamily.Cpp:
+                    lang = isPCH ? "c++-header" : "c++";
+                    break;
+                case CFamily.ObjC:
+                    lang = isPCH ? "objectivec-header" : "objective-c";
+                    break;
+                case CFamily.ObjCpp:
+                    lang = isPCH ? "objectivec++-header" : "objective-c++";
+                    break;
+                default:
+                    throw new TaskFatalError($"Invalid language \"{Language}\" for Apple clang!");
+            }
+            return string.IsNullOrEmpty(lang) ? new string[] { p } : new string[] { $"-x", lang, p };
+        }
         public ArgumentDictionary Arguments { get; } = new ArgumentDictionary();
         public HashSet<string> RawArguments { get; } = new HashSet<string> { "-c" };
     }

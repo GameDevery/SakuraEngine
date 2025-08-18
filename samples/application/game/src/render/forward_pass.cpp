@@ -180,7 +180,7 @@ void RenderPassForward::execute(const skr_primitive_pass_context_t* context, skr
         builder.set_name(SKR_UTF8("forward_cbuffer"))
         .size(sizeof(skr_float4x4_t))
         .memory_usage(CGPU_MEM_USAGE_CPU_TO_GPU)
-        .with_flags(CGPU_BCF_PERSISTENT_MAP_BIT)
+        .with_flags(CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT)
         .with_tags(kRenderGraphDynamicResourceTag)
         .prefer_on_device()
         .as_uniform_buffer();
@@ -225,7 +225,6 @@ void RenderPassForward::execute(const skr_primitive_pass_context_t* context, skr
                 cgpu_cmd_resource_barrier(context.cmd, &barrier_desc);
             }
         };
-        sugoiQ_sync(*anim_query);
         sugoiQ_get_views(*anim_query, SUGOI_LAMBDA(barrierVertices));
     });
 

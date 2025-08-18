@@ -1,15 +1,9 @@
-#include "SkrTask/fib_task.hpp"
-#include "SkrContainers/stl_string.hpp"
+#include "SkrContainersDef/stl_string.hpp"
 #include "SkrMeshCore/mesh_processing.hpp"
-#include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrGraphics/api.h"
 
-#include "SkrProfile/profile.h"
-
-namespace skd
-{
-namespace asset
+namespace skd::asset
 {
 skr::span<const uint8_t> GetRawPrimitiveIndicesView(const SRawPrimitive* primitve, uint32_t& index_stride)
 {
@@ -29,7 +23,7 @@ skr::span<const uint8_t> GetRawPrimitiveAttributeView(const SRawPrimitive* primi
         if (attribute.type == type && attribute.index == idx)
         {
             stride = (uint32_t)attribute.stride;
-            
+
             const auto buffer_data = attribute.buffer_view.data();
             return skr::span<const uint8_t>(buffer_data + attribute.offset, attribute.stride * attribute.count);
         }
@@ -59,7 +53,7 @@ void EmplaceRawPrimitiveIndexBuffer(const SRawPrimitive* primitve, skr::Vector<u
     const auto ib_view = GetRawPrimitiveIndicesView(primitve, index_stride);
 
     index_buffer.buffer_index = 0;
-    index_buffer.first_index = 0; //TODO: ?
+    index_buffer.first_index = 0; // TODO: ?
     index_buffer.index_offset = (uint32_t)buffer.size();
     index_buffer.index_count = (uint32_t)ib_view.size() / index_stride;
     index_buffer.stride = index_stride;
@@ -108,46 +102,45 @@ void EmplaceAllRawMeshIndices(const SRawMesh* mesh, skr::Vector<uint8_t>& buffer
     }
 }
 
-void EmplaceRawMeshVerticesWithRange(skr::span<const ESkrVertexAttribute> range, uint32_t buffer_idx,  const SRawMesh* mesh, 
-    const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer, skr::Vector<skr_mesh_primitive_t>& out_primitives)
+void EmplaceRawMeshVerticesWithRange(skr::span<const ESkrVertexAttribute> range, uint32_t buffer_idx, const SRawMesh* mesh, const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer, skr::Vector<skr_mesh_primitive_t>& out_primitives)
 {
     if (layout != nullptr)
     {
-    const auto& shuffle_layout = *layout;
-    for (uint32_t i = 0; i < shuffle_layout.attribute_count; i++)
-    {
-        // geometry cache friendly layout
-        // | prim0-pos | prim1-pos | prim0-tangent | prim1-tangent | ...
-        for (uint32_t j = 0; j < mesh->primitives.size(); j++)
+        const auto& shuffle_layout = *layout;
+        for (uint32_t i = 0; i < shuffle_layout.attribute_count; i++)
         {
-            auto& prim = out_primitives[j];
-            prim.vertex_buffers.resize_default(shuffle_layout.attribute_count);
-
-            const auto& raw_primitive = mesh->primitives[j];
-            prim.vertex_count = (uint32_t)raw_primitive.vertex_streams[0].count;
-            const auto& shuffle_attrib = shuffle_layout.attributes[i];
-            for (uint32_t k = 0u; k < shuffle_attrib.array_size; k++)
+            // geometry cache friendly layout
+            // | prim0-pos | prim1-pos | prim0-tangent | prim1-tangent | ...
+            for (uint32_t j = 0; j < mesh->primitives.size(); j++)
             {
-                bool within = false;
-                for (auto type : range)
+                auto& prim = out_primitives[j];
+                prim.vertex_buffers.resize_default(shuffle_layout.attribute_count);
+
+                const auto& raw_primitive = mesh->primitives[j];
+                prim.vertex_count = (uint32_t)raw_primitive.vertex_streams[0].count;
+                const auto& shuffle_attrib = shuffle_layout.attributes[i];
+                for (uint32_t k = 0u; k < shuffle_attrib.array_size; k++)
                 {
-                    const skr::stl_string semantic = kRawAttributeTypeNameLUT[type];
-                    if (semantic == (const char*)shuffle_attrib.semantic_name)
+                    bool within = false;
+                    for (auto type : range)
                     {
-                        within = true;
-                        break;
+                        const skr::stl_string semantic = kRawAttributeTypeNameLUT[type];
+                        if (semantic == (const char*)shuffle_attrib.semantic_name)
+                        {
+                            within = true;
+                            break;
+                        }
                     }
-                }
-                if (within) 
-                {
-                    EmplaceRawPrimitiveVertexBufferAttribute(&raw_primitive, (const char*)shuffle_attrib.semantic_name, k, buffer, prim.vertex_buffers[i]);
-                    prim.vertex_buffers[i].buffer_index = buffer_idx;
+                    if (within)
+                    {
+                        EmplaceRawPrimitiveVertexBufferAttribute(&raw_primitive, (const char*)shuffle_attrib.semantic_name, k, buffer, prim.vertex_buffers[i]);
+                        prim.vertex_buffers[i].buffer_index = buffer_idx;
+                    }
                 }
             }
         }
     }
-    }
-    else 
+    else
     {
         SKR_UNREACHABLE_CODE();
     }
@@ -168,5 +161,4 @@ void EmplaceStaticRawMeshVertices(const SRawMesh* mesh, const CGPUVertexLayout* 
     EmplaceRawMeshVerticesWithRange(kRawStaticAttributes, buffer_idx, mesh, layout, buffer, out_primitives);
 }
 
-} // namespace asset
-} // namespace skd
+} // namespace skd::asset

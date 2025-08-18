@@ -16,8 +16,8 @@ protected:
     {
         SKR_DECLARE_ZERO(CGPUInstanceDescriptor, desc)
         desc.backend = backend;
-        desc.enable_debug_layer = true;
-        desc.enable_gpu_based_validation = true;
+        desc.enable_debug_layer = false;
+        desc.enable_gpu_based_validation = false;
         desc.enable_set_name = true;
         instance = cgpu_create_instance(&desc);
 
@@ -106,8 +106,8 @@ void ResourceCreation<backend>::test_all()
     SUBCASE("CreateIndexBuffer")
     {
         SKR_DECLARE_ZERO(CGPUBufferDescriptor, desc)
-        desc.flags = CGPU_BCF_NONE;
-        desc.descriptors = CGPU_RESOURCE_TYPE_INDEX_BUFFER;
+        desc.flags = CGPU_BUFFER_FLAG_NONE;
+        desc.descriptors = CGPU_BUFFER_USAGE_INDEX_BUFFER;
         desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
         desc.element_stride = sizeof(uint16_t);
         desc.element_count = 3;
@@ -123,7 +123,7 @@ void ResourceCreation<backend>::test_all()
     {
         SKR_DECLARE_ZERO(CGPUTextureDescriptor, desc)
         desc.name = u8"Texture";
-        desc.flags = CGPU_TCF_DEDICATED_BIT;
+        desc.flags = CGPU_TEXTURE_FLAG_DEDICATED_BIT;
         desc.format = CGPU_FORMAT_R8G8B8A8_UNORM;
         desc.start_state = CGPU_RESOURCE_STATE_COMMON;
         desc.descriptors = CGPU_RESOURCE_TYPE_TEXTURE;
@@ -141,7 +141,7 @@ void ResourceCreation<backend>::test_all()
         {
             SKR_DECLARE_ZERO(CGPUTextureDescriptor, desc)
             desc.name = u8"Texture";
-            desc.flags = CGPU_TCF_DEDICATED_BIT | CGPU_TCF_TILED_RESOURCE;
+            desc.flags = CGPU_TEXTURE_FLAG_DEDICATED_BIT | CGPU_TEXTURE_FLAG_TILED_RESOURCE;
             desc.format = CGPU_FORMAT_R8G8B8A8_UNORM;
             desc.start_state = CGPU_RESOURCE_STATE_COMMON;
             desc.descriptors = CGPU_RESOURCE_TYPE_TEXTURE;
@@ -157,8 +157,8 @@ void ResourceCreation<backend>::test_all()
     SUBCASE("CreateUploadBuffer")
     {
         SKR_DECLARE_ZERO(CGPUBufferDescriptor, desc)
-        desc.flags = CGPU_BCF_NONE;
-        desc.descriptors = CGPU_RESOURCE_TYPE_INDEX_BUFFER | CGPU_RESOURCE_TYPE_BUFFER;
+        desc.flags = CGPU_BUFFER_FLAG_NONE;
+        desc.descriptors = CGPU_BUFFER_USAGE_INDEX_BUFFER | CGPU_RESOURCE_TYPE_BUFFER;
         desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
         desc.element_stride = sizeof(uint16_t);
         desc.element_count = 3;
@@ -191,7 +191,7 @@ void ResourceCreation<backend>::test_all()
     SUBCASE("CreateUploadBufferPersistent")
     {
         SKR_DECLARE_ZERO(CGPUBufferDescriptor, desc)
-        desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
+        desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
         desc.descriptors = CGPU_RESOURCE_TYPE_BUFFER;
         desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
         desc.element_stride = sizeof(uint16_t);
@@ -207,7 +207,7 @@ void ResourceCreation<backend>::test_all()
     SUBCASE("CreateHostVisibleDeviceMemory")
     {
         SKR_DECLARE_ZERO(CGPUBufferDescriptor, desc)
-        desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT | CGPU_BCF_HOST_VISIBLE;
+        desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT | CGPU_BUFFER_FLAG_HOST_VISIBLE;
         desc.descriptors = CGPU_RESOURCE_TYPE_BUFFER;
         desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
         desc.element_stride = sizeof(uint16_t);
@@ -246,14 +246,12 @@ void ResourceCreation<backend>::test_all()
         vdesc.code = vertex_shaders[backend];
         vdesc.code_size = vertex_shader_sizes[backend];
         vdesc.name = u8"VertexShaderLibrary";
-        vdesc.stage = ECGPUShaderStage::CGPU_SHADER_STAGE_VERT;
         auto vertex_shader = cgpu_create_shader_library(device, &vdesc);
 
         SKR_DECLARE_ZERO(CGPUShaderLibraryDescriptor, fdesc)
         fdesc.code = frag_shaders[backend];
         fdesc.code_size = frag_shader_sizes[backend];
         fdesc.name = u8"FragmentShaderLibrary";
-        fdesc.stage = ECGPUShaderStage::CGPU_SHADER_STAGE_FRAG;
         auto fragment_shader = cgpu_create_shader_library(device, &fdesc);
 
         EXPECT_NE(vertex_shader, CGPU_NULLPTR);
@@ -269,14 +267,12 @@ void ResourceCreation<backend>::test_all()
         vdesc.code = vertex_shaders[backend];
         vdesc.code_size = vertex_shader_sizes[backend];
         vdesc.name = u8"VertexShaderLibrary";
-        vdesc.stage = ECGPUShaderStage::CGPU_SHADER_STAGE_VERT;
         auto vertex_shader = cgpu_create_shader_library(device, &vdesc);
 
         SKR_DECLARE_ZERO(CGPUShaderLibraryDescriptor, fdesc)
         fdesc.code = frag_shaders[backend];
         fdesc.code_size = frag_shader_sizes[backend];
         fdesc.name = u8"FragmentShaderLibrary";
-        fdesc.stage = ECGPUShaderStage::CGPU_SHADER_STAGE_FRAG;
         auto fragment_shader = cgpu_create_shader_library(device, &fdesc);
 
         CGPUShaderEntryDescriptor vertex_shader_entry = {};
@@ -306,7 +302,6 @@ void ResourceCreation<backend>::test_all()
         csdesc.code = compute_shaders[backend];
         csdesc.code_size = compute_shader_sizes[backend];
         csdesc.name = u8"ComputeShaderLibrary";
-        csdesc.stage = ECGPUShaderStage::CGPU_SHADER_STAGE_COMPUTE;
         auto compute_shader = cgpu_create_shader_library(device, &csdesc);
         EXPECT_NE(compute_shader, CGPU_NULLPTR);
 

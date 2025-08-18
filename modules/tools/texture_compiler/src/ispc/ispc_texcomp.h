@@ -22,23 +22,21 @@
 #pragma once
 #include <stdint.h>
 
-struct rgba_surface
-{
+struct rgba_surface {
     uint8_t* ptr;
-    int32_t width;
-    int32_t height;
-    int32_t stride; // in bytes
+    int32_t  width;
+    int32_t  height;
+    int32_t  stride; // in bytes
 };
 
-struct bc7_enc_settings
-{
+struct bc7_enc_settings {
     bool mode_selection[4];
-    int refineIterations[8];
+    int  refineIterations[8];
 
     bool skip_mode2;
-    int fastSkipTreshold_mode1;
-    int fastSkipTreshold_mode3;
-    int fastSkipTreshold_mode7;
+    int  fastSkipTreshold_mode1;
+    int  fastSkipTreshold_mode3;
+    int  fastSkipTreshold_mode7;
 
     int mode45_channel0;
     int refineIterations_channel;
@@ -46,22 +44,19 @@ struct bc7_enc_settings
     int channels;
 };
 
-struct bc6h_enc_settings
-{
+struct bc6h_enc_settings {
     bool slow_mode;
     bool fast_mode;
-    int refineIterations_1p;
-    int refineIterations_2p;
+    int  refineIterations_1p;
+    int  refineIterations_2p;
+    int  fastSkipTreshold;
+};
+
+struct etc_enc_settings {
     int fastSkipTreshold;
 };
 
-struct etc_enc_settings
-{
-    int fastSkipTreshold;
-};
-
-struct astc_enc_settings
-{
+struct astc_enc_settings {
     int block_width;
     int block_height;
     int channels;

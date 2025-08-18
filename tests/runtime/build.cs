@@ -6,10 +6,6 @@ public static class RuntimeTests
 {
     static RuntimeTests()
     {
-        Engine.UnitTest("MathTest")
-            .Depend(Visibility.Public, "SkrRT")
-            .AddCppFiles("math/math.cpp");
-
         Engine.UnitTest("GoapTest")
             .Depend(Visibility.Public, "SkrRT")
             .AddCppFiles("goap/test_goap.cpp");
@@ -24,11 +20,11 @@ public static class RuntimeTests
 
         Engine.UnitTest("IOServiceTest")
             .Depend(Visibility.Public, "SkrRT")
-            .AddCppFiles("io_service/main.cpp");
+            .AddCppFiles("io_service/*.cpp");
 
         Engine.UnitTest("SceneTest")
             .Depend(Visibility.Public, "SkrScene")
-            .AddCppFiles("scene/main.cpp");
+            .AddCppFiles("scene/*.cpp");
 
         Engine.UnitTest("ECSTest_CStyle")
             .Depend(Visibility.Public, "SkrRT")
@@ -56,11 +52,18 @@ public static class RuntimeTests
             .AddCppFiles("proxy/**.cpp");
 
         Engine.Program("V8Test")
-            .Tags(TargetTags.V8)
             .EnableCodegen("v8")
             .AddMetaHeaders("v8/**.hpp")
             .Depend(Visibility.Private, "SkrTestFramework")
             .Depend(Visibility.Public, "SkrV8")
             .AddCppFiles("v8/**.cpp");
+
+        Engine.Program("V8TestNew")
+            .EnableCodegen("v8_new")
+            .AddMetaHeaders("v8_new/**.hpp")
+            .Depend(Visibility.Private, "SkrTestFramework")
+            .Depend(Visibility.Public, "SkrV8New")
+            .AddCppFiles("v8_new/**.cpp");
+
     }
 }

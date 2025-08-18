@@ -26,7 +26,7 @@ struct CombinePointerId {
     {
         return pointer_id != other.pointer_id || button_id != other.button_id;
     }
-    inline static size_t _skr_hash(const CombinePointerId& id) SKR_NOEXCEPT
+    inline static skr_hash _skr_hash(const CombinePointerId& id) SKR_NOEXCEPT
     {
         return skr::hash_combine(id.pointer_id, id.button_id);
     }
@@ -40,7 +40,7 @@ struct CombinePointerId {
 // 但是，出于某些手势的复用性考虑，这里不进行继承结构上的区分
 sreflect_struct(guid = "8fb085fd-9412-4a1b-bc95-a518e32746f2")
 SKR_GUI_API GestureRecognizer : virtual public skr::IObject {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(GestureRecognizer)
 
     GestureRecognizer(NotNull<InputManager*> manager);
 

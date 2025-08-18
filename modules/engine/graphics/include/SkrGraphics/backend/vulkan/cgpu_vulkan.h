@@ -66,6 +66,8 @@ CGPU_API CGPURenderPipelineId cgpu_create_render_pipeline_vulkan(CGPUDeviceId de
 CGPU_API void cgpu_free_render_pipeline_vulkan(CGPURenderPipelineId pipeline);
 CGPU_API CGPUQueryPoolId cgpu_create_query_pool_vulkan(CGPUDeviceId device, const struct CGPUQueryPoolDescriptor* desc);
 CGPU_API void cgpu_free_query_pool_vulkan(CGPUQueryPoolId pool);
+CGPU_API CGPUMemoryPoolId cgpu_create_memory_pool_vulkan(CGPUDeviceId device, const struct CGPUMemoryPoolDescriptor* desc);
+CGPU_API void cgpu_free_memory_pool_vulkan(CGPUMemoryPoolId pool);
 
 // Queue APIs
 CGPU_API CGPUQueueId cgpu_get_queue_vulkan(CGPUDeviceId device, ECGPUQueueType type, uint32_t index);
@@ -95,6 +97,8 @@ CGPU_API CGPUBufferId cgpu_create_buffer_vulkan(CGPUDeviceId device, const struc
 CGPU_API void cgpu_map_buffer_vulkan(CGPUBufferId buffer, const struct CGPUBufferRange* range);
 CGPU_API void cgpu_unmap_buffer_vulkan(CGPUBufferId buffer);
 CGPU_API void cgpu_free_buffer_vulkan(CGPUBufferId buffer);
+CGPU_API CGPUBufferViewId cgpu_create_buffer_view_vulkan(CGPUDeviceId device, const struct CGPUBufferViewDescriptor* desc);
+CGPU_API void cgpu_free_buffer_view_vulkan(CGPUBufferViewId view);
 
 // Sampler APIs
 CGPU_API CGPUSamplerId cgpu_create_sampler_vulkan(CGPUDeviceId device, const struct CGPUSamplerDescriptor* desc);
@@ -219,7 +223,7 @@ typedef struct CGPUAdapter_Vulkan {
     VkPhysicalDeviceShaderObjectPropertiesEXT mPhysicalDeviceShaderObjectProperties;
 #endif
 #if VK_KHR_buffer_device_address
-    VkPhysicalDeviceBufferDeviceAddressFeaturesKHR mPhysicalDeviceBufferDeviceAddressFeatures;
+    VkPhysicalDeviceBufferDeviceAddressFeatures mPhysicalDeviceBufferDeviceAddressFeatures;
 #endif
 #if VK_EXT_descriptor_buffer
     VkPhysicalDeviceDescriptorBufferFeaturesEXT mPhysicalDeviceDescriptorBufferFeatures;
@@ -227,6 +231,10 @@ typedef struct CGPUAdapter_Vulkan {
 #endif
 #if VK_KHR_acceleration_structure
     VkPhysicalDeviceAccelerationStructureFeaturesKHR mPhysicalDeviceAccelerationStructureFeatures;
+#endif
+#if VK_KHR_ray_tracing_pipeline
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR mPhysicalDeviceRayPipelineProperties;
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR mPhysicalDeviceRayPipelineFeatures;
 #endif
 #if VK_KHR_ray_query
     VkPhysicalDeviceRayQueryFeaturesKHR mPhysicalDeviceRayQueryFeatures;
@@ -322,6 +330,11 @@ typedef struct CGPUQueryPool_Vulkan {
     VkQueryType mType;
 } CGPUQueryPool_Vulkan;
 
+typedef struct CGPUMemoryPool_Vulkan {
+    CGPUMemoryPool super;
+    struct VmaPool_T* pVmaPool;
+} CGPUMemoryPool_Vulkan;
+
 typedef struct CGPUCommandBuffer_Vulkan {
     CGPUCommandBuffer super;
     VkCommandBuffer pVkCmdBuf;
@@ -334,11 +347,15 @@ typedef struct CGPUCommandBuffer_Vulkan {
 typedef struct CGPUBuffer_Vulkan {
     CGPUBuffer super;
     VkBuffer pVkBuffer;
+    struct VmaAllocation_T* pVkAllocation;
+} CGPUBuffer_Vulkan;
+
+typedef struct CGPUBufferView_Vulkan {
+    CGPUBufferView super;
+    VkBuffer pVkBuffer;
     VkBufferView pVkStorageTexelView;
     VkBufferView pVkUniformTexelView;
-    struct VmaAllocation_T* pVkAllocation;
-    uint64_t mOffset;
-} CGPUBuffer_Vulkan;
+} CGPUBufferView_Vulkan;
 
 typedef struct CGPUTileMapping_Vulkan
 {
@@ -434,7 +451,7 @@ typedef union VkDescriptorUpdateData
 {
     VkDescriptorImageInfo mImageInfo;
     VkDescriptorBufferInfo mBufferInfo;
-    VkBufferView mBuferView;
+    VkAccelerationStructureKHR mAccelerationStructure;
 } VkDescriptorUpdateData;
 
 typedef struct CGPUDescriptorSet_Vulkan {

@@ -2,19 +2,18 @@
 #include "SkrBase/config.h"
 #include "SkrGraphics/backend/d3d12/cgpu_d3d12.h"
 #ifdef CGPU_THREAD_SAFETY
-#include "SkrOS/thread.h"
-#include "SkrBase/atomic/atomic.h"
+    #include "SkrOS/thread.h"
+    #include "SkrBase/atomic/atomic.h"
 #endif
 #include "./../common/common_utils.h"
 
 #define CALC_SUBRESOURCE_INDEX(MipSlice, ArraySlice, PlaneSlice, MipLevels, ArraySize) ((MipSlice) + ((ArraySlice) * (MipLevels)) + ((PlaneSlice) * (MipLevels) * (ArraySize)))
 
 // DXC Shader Binary Helpers
-typedef HRESULT (__stdcall *DxcCreateInstanceProc)(
-    _In_ REFCLSID   rclsid,
-    _In_ REFIID     riid,
-    _Out_ LPVOID*   ppv
-);
+typedef HRESULT(__stdcall* DxcCreateInstanceProc)(
+    _In_ REFCLSID rclsid,
+    _In_ REFIID riid,
+    _Out_ LPVOID* ppv);
 CGPU_EXTERN_C void D3D12Util_LoadDxcDLL();
 CGPU_EXTERN_C void D3D12Util_UnloadDxcDLL();
 CGPU_EXTERN_C DxcCreateInstanceProc D3D12Util_GetDxcCreateInstanceProc();
@@ -50,30 +49,36 @@ void D3D12Util_RecordAdapterDetail(struct CGPUAdapter_D3D12* D3D12Adapter);
 // Descriptor Heap Helpers
 
 /// CPU Visible Heap to store all the resources needing CPU read / write operations - Textures/Buffers/RTV
-typedef struct D3D12Util_DescriptorHandle {
-    D3D12_CPU_DESCRIPTOR_HANDLE mCpu;
-    D3D12_GPU_DESCRIPTOR_HANDLE mGpu;
-} D3D12Util_DescriptorHandle;
 
 typedef struct D3D12Util_DescriptorHeap D3D12Util_DescriptorHeap;
 CGPU_EXTERN_C void D3D12Util_CreateDescriptorHeap(ID3D12Device* pDevice, const D3D12_DESCRIPTOR_HEAP_DESC* pDesc, D3D12Util_DescriptorHeap** ppDescHeap);
 CGPU_EXTERN_C void D3D12Util_ResetDescriptorHeap(D3D12Util_DescriptorHeap* pHeap);
 CGPU_EXTERN_C void D3D12Util_FreeDescriptorHeap(D3D12Util_DescriptorHeap* pHeap);
 
-CGPU_EXTERN_C D3D12Util_DescriptorHandle D3D12Util_ConsumeDescriptorHandles(D3D12Util_DescriptorHeap* pHeap, uint32_t count);
-CGPU_EXTERN_C void D3D12Util_ReturnDescriptorHandles(D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE handle, uint32_t count);
-CGPU_EXTERN_C void D3D12Util_CopyDescriptorHandle(D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE srcHandle, uint64_t dstHandle, uint32_t index);
-CGPU_EXTERN_C D3D12Util_DescriptorHandle D3D12Util_GetStartHandle(const D3D12Util_DescriptorHeap* pHeap);
+CGPU_EXTERN_C DxDescriptorId D3D12Util_ConsumeDescriptorHandles(D3D12Util_DescriptorHeap* pHeap, uint32_t count);
+CGPU_EXTERN_C void D3D12Util_ReturnDescriptorHandles(D3D12Util_DescriptorHeap* pHeap, DxDescriptorId handle, uint32_t count);
+CGPU_EXTERN_C void D3D12Util_CopyDescriptorHandle(D3D12Util_DescriptorHeap* pSrcHeap, DxDescriptorId srcId, D3D12Util_DescriptorHeap* pDstHeap, uint32_t dstId);
+CGPU_EXTERN_C D3D12_CPU_DESCRIPTOR_HANDLE D3D12Util_DescriptorIdToCpuHandle(D3D12Util_DescriptorHeap* pHeap, DxDescriptorId index);
+CGPU_EXTERN_C D3D12_GPU_DESCRIPTOR_HANDLE D3D12Util_DescriptorIdToGpuHandle(D3D12Util_DescriptorHeap* pHeap, DxDescriptorId index);
+
 CGPU_EXTERN_C ID3D12DescriptorHeap* D3D12Util_GetUnderlyingHeap(const D3D12Util_DescriptorHeap* pHeap);
 CGPU_EXTERN_C size_t D3D12Util_GetDescriptorSize(const D3D12Util_DescriptorHeap* pHeap);
 
-CGPU_EXTERN_C void D3D12Util_CreateSRV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
-CGPU_EXTERN_C void D3D12Util_CreateUAV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, ID3D12Resource* pCounterResource, const D3D12_UNORDERED_ACCESS_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
-CGPU_EXTERN_C void D3D12Util_CreateCBV(CGPUDevice_D3D12* D, const D3D12_CONSTANT_BUFFER_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
-CGPU_EXTERN_C void D3D12Util_CreateRTV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, const D3D12_RENDER_TARGET_VIEW_DESC* pRtvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
-CGPU_EXTERN_C void D3D12Util_CreateDSV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, const D3D12_DEPTH_STENCIL_VIEW_DESC* pDsvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
+CGPU_EXTERN_C void D3D12Util_ConsumeSRV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC* pSrvDesc, DxDescriptorId* pId);
+CGPU_EXTERN_C void D3D12Util_ConsumeUAV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, ID3D12Resource* pCounterResource, const D3D12_UNORDERED_ACCESS_VIEW_DESC* pSrvDesc, DxDescriptorId* pId);
+CGPU_EXTERN_C void D3D12Util_ConsumeCBV(CGPUDevice_D3D12* D, const D3D12_CONSTANT_BUFFER_VIEW_DESC* pSrvDesc, DxDescriptorId* pId);
+CGPU_EXTERN_C void D3D12Util_ConsumeRTV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, const D3D12_RENDER_TARGET_VIEW_DESC* pRtvDesc, DxDescriptorId* pId);
+CGPU_EXTERN_C void D3D12Util_ConsumeDSV(CGPUDevice_D3D12* D, ID3D12Resource* pResource, const D3D12_DEPTH_STENCIL_VIEW_DESC* pDsvDesc, DxDescriptorId* pId);
+CGPU_EXTERN_C void D3D12Util_CreateCBVForBufferView(DxDescriptorId cbv, const CGPUBufferViewDescriptor* desc);
+CGPU_EXTERN_C void D3D12Util_CreateSRVForBufferView(DxDescriptorId srv, ECGPUViewUsage view_usage, const CGPUBufferViewDescriptor* desc);
+CGPU_EXTERN_C void D3D12Util_CreateUAVForBufferView(DxDescriptorId uav, ECGPUViewUsage view_usage, const CGPUBufferViewDescriptor* desc);
+CGPU_EXTERN_C void D3D12Util_CreateSRVForTextureView(DxDescriptorId srv, const CGPUTextureViewDescriptor* desc);
+CGPU_EXTERN_C void D3D12Util_CreateUAVForTextureView(DxDescriptorId uav, const CGPUTextureViewDescriptor* desc);
 
-typedef struct DescriptorHeapProperties {
+CGPU_EXTERN_C void D3D12Util_SyncDescriptorBuffer(CGPUDescriptorBufferId buffer);
+
+typedef struct DescriptorHeapProperties
+{
     uint32_t mMaxDescriptors;
     D3D12_DESCRIPTOR_HEAP_FLAGS mFlags;
 } DescriptorHeapProperties;
@@ -185,24 +190,61 @@ inline static D3D12_SHADING_RATE D3D12Util_TranslateShadingRate(ECGPUShadingRate
 }
 #endif
 
-SKR_FORCEINLINE static D3D12_DESCRIPTOR_RANGE_TYPE D3D12Util_ResourceTypeToDescriptorRangeType(ECGPUResourceType type) {
-  switch (type) {
-  case CGPU_RESOURCE_TYPE_UNIFORM_BUFFER:
-  case CGPU_RESOURCE_TYPE_PUSH_CONSTANT:
-    return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-  case CGPU_RESOURCE_TYPE_RW_BUFFER:
-  case CGPU_RESOURCE_TYPE_RW_TEXTURE:
-    return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-  case CGPU_RESOURCE_TYPE_SAMPLER:
-    return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-  case CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE:
-  case CGPU_RESOURCE_TYPE_TEXTURE:
-  case CGPU_RESOURCE_TYPE_BUFFER:
-    return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-  default:
-    cgpu_assert(false && "Invalid DescriptorInfo Type");
-    return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-  }
+SKR_FORCEINLINE static D3D12_DESCRIPTOR_RANGE_TYPE D3D12Util_ResourceTypeToDescriptorRangeType(ECGPUResourceType type, CGPUViewUsages view_usages) 
+{
+	switch (type) 
+	{
+		case CGPU_RESOURCE_TYPE2_BUFFER:
+		{
+			if (view_usages & CGPU_BUFFER_VIEW_USAGE_CBV)
+				return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+
+			else if (view_usages & CGPU_BUFFER_VIEW_USAGE_SRV_STRUCTURED)
+				return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+			else if (view_usages & CGPU_BUFFER_VIEW_USAGE_SRV_RAW)
+				return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+			else if (view_usages & CGPU_BUFFER_VIEW_USAGE_SRV_TEXEL)
+				return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+
+			else if (view_usages & CGPU_BUFFER_VIEW_USAGE_UAV_STRUCTURED)
+				return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+			else if (view_usages & CGPU_BUFFER_VIEW_USAGE_UAV_RAW)
+				return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+			else if (view_usages & CGPU_BUFFER_VIEW_USAGE_UAV_TEXEL)
+				return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+
+			else
+				cgpu_assert(0 && "CGPU ASSERT: UNEXPECTED RESOURCE SLOT!");
+		}
+		break;
+		case CGPU_RESOURCE_TYPE2_TEXTURE:
+		{
+			if (view_usages & CGPU_TEXTURE_VIEW_USAGE_SRV)
+				return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+			else if (view_usages & CGPU_TEXTURE_VIEW_USAGE_UAV)
+				return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+			else
+				cgpu_assert(0 && "CGPU ASSERT: UNEXPECTED RESOURCE SLOT!");
+		}
+		break;
+		case CGPU_RESOURCE_TYPE2_SAMPLER:
+		{
+			return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+		}	
+		break;
+		case CGPU_RESOURCE_TYPE2_ACCELERATION_STRUCTURE:
+		{
+			return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		}
+		break;
+		default:
+		{
+			cgpu_assert(false && "Invalid DescriptorInfo Type");
+			return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		}
+		break;
+	}
+	return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 }
 
 SKR_FORCEINLINE static D3D12_BLEND_DESC D3D12Util_TranslateBlendState(const CGPUBlendStateDescriptor* pDesc)
@@ -390,7 +432,11 @@ inline static D3D12_RESOURCE_STATES D3D12Util_TranslateResourceState(CGPUResourc
     if (state & CGPU_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
         ret |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
     if (state & CGPU_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
+	{
+		// TODO：根据 BindStage 自动判断是否需要 PS|NonPS 访问
+        ret |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
         ret |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	}
     if (state & CGPU_RESOURCE_STATE_SHADING_RATE_SOURCE)
         ret |= D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE;
     

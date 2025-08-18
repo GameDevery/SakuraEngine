@@ -9,7 +9,7 @@ bool CGPUUtil_ShaderResourceIsStaticSampler(CGPUShaderResource* resource, const 
     {
         if (strcmp((const char*)resource->name, (const char*)desc->static_sampler_names[i]) == 0)
         {
-            return resource->type == CGPU_RESOURCE_TYPE_SAMPLER;
+            return resource->type == CGPU_RESOURCE_TYPE2_SAMPLER;
         }
     }
     return false;
@@ -17,7 +17,9 @@ bool CGPUUtil_ShaderResourceIsStaticSampler(CGPUShaderResource* resource, const 
 
 bool CGPUUtil_ShaderResourceIsRootConst(CGPUShaderResource* resource, const struct CGPURootSignatureDescriptor* desc)
 {
-    if (resource->type == CGPU_RESOURCE_TYPE_PUSH_CONSTANT) return true;
+    if (resource->view_usages & CGPU_BUFFER_VIEW_USAGE_PUSH_CONSTANT) 
+        return true;
+
     for (uint32_t i = 0; i < desc->push_constant_count; i++)
     {
         if (strcmp((const char*)resource->name, (const char*)desc->push_constant_names[i]) == 0)
@@ -143,7 +145,8 @@ void CGPUUtil_InitRSParamTables(CGPURootSignature* RS, const struct CGPURootSign
         {
             if (RST_resource.set == shader_resource.set &&
                 RST_resource.binding == shader_resource.binding &&
-                RST_resource.type == shader_resource.type)
+                RST_resource.type == shader_resource.type &&
+                RST_resource.view_usages == shader_resource.view_usages)
             {
                 RST_resource.stages |= shader_resource.stages;
                 coincided = true;

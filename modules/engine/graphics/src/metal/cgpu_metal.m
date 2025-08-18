@@ -42,10 +42,12 @@ const CGPUProcTable tbl_metal = {
     .get_queue = &cgpu_get_queue_metal,
     .submit_queue = &cgpu_submit_queue_metal,
     .wait_queue_idle = &cgpu_wait_queue_idle_metal,
+    .queue_present = &cgpu_queue_present_metal,
     .free_queue = &cgpu_free_queue_metal,
 
     // Command APIs
     .create_command_pool = &cgpu_create_command_pool_metal,
+    .reset_command_pool = &cgpu_reset_command_pool_metal,
     .create_command_buffer = &cgpu_create_command_buffer_metal,
     .free_command_buffer = &cgpu_free_command_buffer_metal,
     .free_command_pool = &cgpu_free_command_pool_metal,
@@ -60,14 +62,34 @@ const CGPUProcTable tbl_metal = {
     .unmap_buffer = &cgpu_unmap_buffer_metal,
     .free_buffer = &cgpu_free_buffer_metal,
 
+    // Sampler APIs
+    .create_sampler = &cgpu_create_sampler_metal,
+    .free_sampler = &cgpu_free_sampler_metal,
+
+    // Texture APIs
+    .create_texture = &cgpu_create_texture_metal,
+    .free_texture = &cgpu_free_texture_metal,
+    .create_texture_view = &cgpu_create_texture_view_metal,
+    .free_texture_view = &cgpu_free_texture_view_metal,
+
+    // Swapchain APIs
+    .create_swapchain = &cgpu_create_swapchain_metal,
+    .acquire_next_image = &cgpu_acquire_next_image_metal,
+    .free_swapchain = &cgpu_free_swapchain_metal,
+
     // CMDs
     .cmd_begin = &cgpu_cmd_begin_metal,
     .cmd_transfer_buffer_to_buffer = &cgpu_cmd_transfer_buffer_to_buffer_metal,
+    .cmd_transfer_texture_to_texture = &cgpu_cmd_transfer_texture_to_texture_metal,
+    .cmd_fill_buffer = &cgpu_cmd_fill_buffer_metal,
+    .cmd_fill_buffer_n = &cgpu_cmd_fill_buffer_n_metal,
     .cmd_resource_barrier = &cgpu_cmd_resource_barrier_metal,
     .cmd_begin_query = &cgpu_cmd_begin_query_metal,
     .cmd_end_query = &cgpu_cmd_end_query_metal,
     .cmd_reset_query_pool = &cgpu_cmd_reset_query_pool_metal,
     .cmd_resolve_query = &cgpu_cmd_resolve_query_metal,
+    .cmd_begin_event = &cgpu_cmd_begin_event_metal,
+    .cmd_end_event = &cgpu_cmd_end_event_metal,
     .cmd_end = &cgpu_cmd_end_metal,
 
     // Compute CMDs
@@ -209,22 +231,27 @@ void cgpu_free_device_metal(CGPUDeviceId device)
 // API Objects APIs
 CGPUFenceId cgpu_create_fence_metal(CGPUDeviceId device)
 {
+    CGPUDevice_Metal* D = (CGPUDevice_Metal*)device;
     CGPUFence_Metal* F = (CGPUFence_Metal*)cgpu_calloc(1, sizeof(CGPUFence_Metal));
-    F->sysSemaphore = dispatch_semaphore_create(0);
+    F->pMTLEvent = [D->pDevice newSharedEvent];
+    F->mFenceValue = 1;  // Start at 1 like D3D12
     return &F->super;
 }
 
 ECGPUFenceStatus cgpu_query_fence_status_metal(CGPUFenceId fence)
 {
     CGPUFence_Metal* F = (CGPUFence_Metal*)fence;
-    long status = dispatch_semaphore_wait(F->sysSemaphore, DISPATCH_TIME_NOW);
-    return (status == 0) ? CGPU_FENCE_STATUS_COMPLETE : CGPU_FENCE_STATUS_INCOMPLETE;
+    const uint64_t completedValue = F->pMTLEvent.signaledValue;
+    if (completedValue < F->mFenceValue - 1)
+        return CGPU_FENCE_STATUS_INCOMPLETE;
+    else
+        return CGPU_FENCE_STATUS_COMPLETE;
 }
 
 void cgpu_free_fence_metal(CGPUFenceId fence)
 {
     CGPUFence_Metal* F = (CGPUFence_Metal*)fence;
-    F->sysSemaphore = nil;
+    F->pMTLEvent = nil;
     cgpu_free(F);
 }
 
@@ -233,23 +260,25 @@ void cgpu_wait_fences_metal(const CGPUFenceId* fences, uint32_t fence_count)
     for (uint32_t i = 0; i < fence_count; ++i)
     {
         CGPUFence_Metal* F = (CGPUFence_Metal*)fences[i];
-        dispatch_semaphore_wait(F->sysSemaphore, DISPATCH_TIME_FOREVER);
+        ECGPUFenceStatus fenceStatus = cgpu_query_fence_status(fences[i]);
+        uint64_t fenceValue = F->mFenceValue - 1;
+        if (fenceStatus == CGPU_FENCE_STATUS_INCOMPLETE)
+        {
+            // Use built-in wait functionality - wait indefinitely (UINT64_MAX timeout)
+            [F->pMTLEvent waitUntilSignaledValue:fenceValue timeoutMS:UINT64_MAX];
+        }
     }
 }
 
 CGPUSemaphoreId cgpu_create_semaphore_metal(CGPUDeviceId device)
 {
-    CGPUDevice_Metal* D = (CGPUDevice_Metal*)device;
-    CGPUSemaphore_Metal* MS = (CGPUSemaphore_Metal*)cgpu_calloc(1, sizeof(CGPUSemaphore_Metal));
-    MS->mtlSemaphore = [D->pDevice newEvent];
-    return &MS->super;
+    // Like D3D12, semaphores are just fences
+    return (CGPUSemaphoreId)cgpu_create_fence_metal(device);
 }
 
 void cgpu_free_semaphore_metal(CGPUSemaphoreId semaphore)
 {
-    CGPUSemaphore_Metal* MS = (CGPUSemaphore_Metal*)semaphore;
-    MS->mtlSemaphore = nil;
-    cgpu_free(MS);
+    cgpu_free_fence_metal((CGPUFenceId)semaphore);
 }
 
 CGPURootSignaturePoolId cgpu_create_root_signature_pool_metal(CGPUDeviceId device, const struct CGPURootSignaturePoolDescriptor* desc)
@@ -293,23 +322,46 @@ CGPURootSignatureId cgpu_create_root_signature_metal(CGPUDeviceId device, const 
         return CGPU_NULLPTR;
     }
     // REFLECTION
-    RS->super.table_count = reflection.bindings.count;
-    RS->super.tables = cgpu_calloc(RS->super.table_count, sizeof(CGPUParameterTable));
+    RS->super.push_constants = cgpu_calloc(desc->push_constant_count, sizeof(CGPUShaderResource));
+    NSMutableArray<id<MTLBinding>>* unique_bindings = [[NSMutableArray<id<MTLBinding>> alloc] init];
     for (uint32_t i = 0; i < reflection.bindings.count; i++)
+    {
+        id<MTLBinding> pending = reflection.bindings[i];
+        for (id<MTLBinding> exist in unique_bindings)
+        {
+            if (exist.index == pending.index)
+                pending = nil;
+        }
+        if (pending != nil)
+            [unique_bindings addObject:pending];
+    }
+    RS->super.table_count = unique_bindings.count;
+    RS->super.tables = cgpu_calloc(RS->super.table_count, sizeof(CGPUParameterTable));
+    for (uint32_t i = 0; i < unique_bindings.count; i++)
     {
         CGPUParameterTable* table = RS->super.tables + i;
         table->metal.arg_buf_size = 0;
-        if (reflection.bindings[i].type == MTLBindingTypeBuffer)
+        if (unique_bindings[i].type == MTLBindingTypeBuffer)
         {
-            id<MTLBufferBinding> SRT = (id<MTLBufferBinding>)reflection.bindings[i];
+            id<MTLBufferBinding> SRT = (id<MTLBufferBinding>)unique_bindings[i];
             MTLStructType* SRTLayout = SRT.bufferStructType;
             table->metal.arg_buf_size = SRT.bufferDataSize;
             table->set_index = SRT.index;
-            table->resources_count = SRTLayout.members.count;
-            table->resources = cgpu_calloc(table->resources_count, sizeof(CGPUShaderResource));
+            table->resources = cgpu_calloc(SRTLayout.members.count, sizeof(CGPUShaderResource));
             for (uint32_t j = 0; j < SRTLayout.members.count; j++)
             {
-                MetalUtil_GetShaderResourceType(SRT.index, SRTLayout.members[j], table->resources + j);
+                CGPUShaderResource resource;
+                MetalUtil_GetShaderResourceType(SRT, SRT.index, SRTLayout.members[j], &resource);
+                if (resource.type == CGPU_RESOURCE_TYPE_PUSH_CONSTANT)
+                {
+                    RS->super.push_constants[0] = resource;
+                    RS->super.push_constant_count = 1;
+                }
+                else
+                {
+                    *(table->resources + table->resources_count) = resource;
+                    table->resources_count += 1;
+                }
             }
         }
         else
@@ -335,6 +387,13 @@ void cgpu_free_root_signature_metal(CGPURootSignatureId root_signature)
         cgpu_free(table->resources);
     }
     cgpu_free(RS->super.tables);
+
+    for (uint32_t j = 0; j < RS->super.push_constant_count; j++)
+    {
+        CGPUShaderResource* resource = RS->super.push_constants + j;
+        cgpu_free((void*)resource->name);
+    }
+    cgpu_free(RS->super.push_constants);
 
     for (uint32_t i = 0; i < CGPU_SHADER_STAGE_COUNT; i++)
     {
@@ -389,7 +448,7 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
     if (DS->mtlArgumentBuffer)
     {
         CGPUBuffer_Metal* ArgumentBuffer = (CGPUBuffer_Metal*)DS->mtlArgumentBuffer;
-        uint8_t* pArg = ArgumentBuffer->mtlBuffer.contents + ArgumentBuffer->mOffset;
+        uint8_t* pBuf = ArgumentBuffer->mtlBuffer.contents + ArgumentBuffer->mOffset;
         for (uint32_t i = 0; i < count; i++)
         {
             const CGPUDescriptorData* data = datas + i;
@@ -399,7 +458,7 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
             CGPUShaderResource* resource = CGPU_NULLPTR;
             if (data->name != CGPU_NULLPTR)
             {
-                size_t name_hash = cgpu_name_hash(data->name, strlen((const char*)data->name));
+                skr_hash name_hash = skr_hash_of(data->name, strlen((const char*)data->name), SKR_DEFAULT_HASH_SEED);
                 for (uint32_t j = 0; j < set_table->resources_count; j++)
                 {
                     CGPUShaderResource* temp_resource = set_table->resources + j;
@@ -424,14 +483,14 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
                     }
                 }
             }
-            pArg += resource->offset;
 
             // fill argument
             typedef struct BUFFER { uint64_t ptr; uint64_t size; } BUFFER;
             typedef struct CBUFFER { uint64_t ptr; } CBUFFER;
-            // typedef struct TEXTURE { MTLResourceID id; } TEXTURE;
+            typedef struct TEXTURE { MTLResourceID id; } TEXTURE;
             // typedef struct SAMPLER { MTLResourceID id; } SAMPLER;
             typedef struct TLAS { MTLResourceID id; } TLAS;
+            uint8_t* pArg = pBuf + resource->offset;
             switch (data->binding_type)
             {
                 case CGPU_RESOURCE_TYPE_BUFFER:
@@ -471,9 +530,27 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
                     memcpy(pBufferArg, &ARG, sizeof(ARG));
                 }
                 break;
+                case CGPU_RESOURCE_TYPE_RW_TEXTURE:
                 case CGPU_RESOURCE_TYPE_TEXTURE:
                 {
-                    SKR_UNIMPLEMENTED_FUNCTION();
+                    if (resource->size != UINT32_MAX)
+                    {
+                        const bool writable = (data->binding_type == CGPU_RESOURCE_TYPE_RW_TEXTURE);
+                        for (uint32_t j = 0; j < data->count; j++)
+                        {
+                            TEXTURE* pTextureArg = ((TEXTURE*)pArg) + j;
+                            const CGPUTextureView_Metal* T = (const CGPUTextureView_Metal*)data->textures[j];
+                            struct TEXTURE ARG = { T->pTextureView.gpuResourceID };
+                            MetalUtil_DSBindResourceAtIndex(DS, binding_index, T->pTextureView, 
+                                writable ? MTLResourceUsageRead | MTLResourceUsageWrite : MTLResourceUsageRead);
+                            memcpy(pTextureArg, &ARG, sizeof(ARG));
+                        }
+                    }
+                    // bindless case, in this case bindpoint is a device/constant pointer
+                    else 
+                    {
+                        SKR_UNIMPLEMENTED_FUNCTION();
+                    }
                 }
                 break;
                 case CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE:
@@ -485,6 +562,7 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
                         AS->mtlAS.gpuResourceID
                     };
                     MetalUtil_DSBindResourceAtIndex(DS, binding_index, AS->mtlAS, MTLResourceUsageRead);
+                    DS->pBoundAS = AS;
                     memcpy(pTLAS, &ARG, sizeof(ARG));
                 }
                 break;
@@ -533,71 +611,76 @@ CGPUQueueId cgpu_get_queue_metal(CGPUDeviceId device, ECGPUQueueType type, uint3
 {
     CGPUQueue_Metal* MQ = (CGPUQueue_Metal*)cgpu_calloc(1, sizeof(CGPUQueue_Metal));
     CGPUDevice_Metal* MD = (CGPUDevice_Metal*)device;
+    MQ->super.device = device;  // Set device reference
+    MQ->super.type = type;      // Set queue type
     MQ->mtlCommandQueue = MD->ppMtlQueues[type][index];
-#if defined(ENABLE_FENCES)
-    if (@available(macOS 10.13, iOS 10.0, *))
-    {
-        MQ->mtlQueueFence = [MD->pDevice newFence];
-    }
-#endif
-    MQ->mBarrierFlags = 0;
+    // Don't create fence here - it's causing issues
+    MQ->pFence = NULL;
     return &MQ->super;
 }
 
 void cgpu_submit_queue_metal(CGPUQueueId queue, const struct CGPUQueueSubmitDescriptor* desc)
 {
+    uint32_t CmdCount = desc->cmds_count;
+    CGPUCommandBuffer_Metal** Cmds = (CGPUCommandBuffer_Metal**)desc->cmds;
     CGPUQueue_Metal* Q = (CGPUQueue_Metal*)queue;
-    SKR_ASSERT(desc->signal_semaphores == CGPU_NULLPTR && "IMPLEMENT THIS PLEASE!");
-    SKR_ASSERT(desc->wait_semaphores == CGPU_NULLPTR && "IMPLEMENT THIS PLEASE!");
-    SKR_ASSERT(desc->signal_fence == CGPU_NULLPTR && "IMPLEMENT THIS PLEASE!");
+    CGPUFence_Metal* F = (CGPUFence_Metal*)desc->signal_fence;
+    
+    // Assert that given cmd list and given params are valid
+    cgpu_assert(CmdCount > 0);
+    cgpu_assert(Cmds);
+    cgpu_assert(Q->mtlCommandQueue);
 
     @autoreleasepool
     {
-        // signal semaphores
-        for (uint32_t i = 0; i < desc->signal_semaphore_count; i++)
+        // Flush all command encoders
+        for (uint32_t i = 0; i < CmdCount; ++i)
         {
-            CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)desc->cmds[desc->cmds_count - 1];
-            CGPUSemaphore_Metal* Semaphore = (CGPUSemaphore_Metal*)desc->signal_semaphores[i];
-            [CMD->mtlCommandBuffer encodeSignalEvent:Semaphore->mtlSemaphore value:++Semaphore->value];
+            MetalUtil_FlushUtilEncoders(Cmds[i], MTLUtilEncoderTypeAS | MTLUtilEncoderTypeBlit);
         }
 
-        // signal fence
-        __block SAtomicU32 commandsFinished = 0;
-        __block const CGPUFence_Metal* signalFence = (const CGPUFence_Metal*)desc->signal_fence;
-        for (uint32_t i = 0; i < desc->cmds_count; i++)
+        // Wait semaphores - encode wait on first command buffer
+        if (desc->wait_semaphore_count > 0)
         {
-            CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)desc->cmds[i];
-            [CMD->mtlCommandBuffer addCompletedHandler:^(id<MTLCommandBuffer> buffer) {
-                uint32_t handlersCalled = 1u + skr_atomic_fetch_add(&commandsFinished, 1);
-                if (signalFence && (handlersCalled == desc->cmds_count))
-                {
-                    dispatch_semaphore_signal(signalFence->sysSemaphore);
-                }
+            CGPUFence_Metal** WaitSemaphores = (CGPUFence_Metal**)desc->wait_semaphores;
+            for (uint32_t i = 0; i < desc->wait_semaphore_count; ++i)
+            {
+                [Cmds[0]->mtlCommandBuffer encodeWaitForEvent:WaitSemaphores[i]->pMTLEvent 
+                                                         value:WaitSemaphores[i]->mFenceValue - 1];
+            }
+        }
+
+        // Signal fence on last command buffer
+        if (F)
+        {
+            [Cmds[CmdCount - 1]->mtlCommandBuffer encodeSignalEvent:F->pMTLEvent 
+                                                               value:F->mFenceValue++];
+        }
+
+        // Signal Semaphores on last command buffer
+        if (desc->signal_semaphore_count > 0)
+        {
+            CGPUFence_Metal** SignalSemaphores = (CGPUFence_Metal**)desc->signal_semaphores;
+            for (uint32_t i = 0; i < desc->signal_semaphore_count; i++)
+            {
+                [Cmds[CmdCount - 1]->mtlCommandBuffer encodeSignalEvent:SignalSemaphores[i]->pMTLEvent 
+                                                                   value:SignalSemaphores[i]->mFenceValue++];
+            }
+        }
+        
+        // Add error handlers (optional, but useful for debugging)
+        for (uint32_t i = 0; i < CmdCount; ++i)
+        {
+            [Cmds[i]->mtlCommandBuffer addCompletedHandler:^(id<MTLCommandBuffer> buffer) {
                 if (buffer.error != nil)
                     cgpu_error("Failed to execute commands with error (%s)", [buffer.error.description UTF8String]);
             }];
         }
 
-        // wait semaphores
-        if (desc->wait_semaphore_count)
+        // Execute - commit all command buffers
+        for (uint32_t i = 0; i < CmdCount; ++i)
         {
-            id<MTLCommandBuffer> waitCommandBuffer = [Q->mtlCommandQueue commandBufferWithUnretainedReferences];
-            waitCommandBuffer.label = @"WAIT_COMMAND_BUFFER";
-            for (uint32_t i = 0; i < desc->wait_semaphore_count; i++)
-            {
-                CGPUSemaphore_Metal* Semaphore = (CGPUSemaphore_Metal*)desc->wait_semaphores[i];
-                // Wait for the semaphore to be signaled
-                [waitCommandBuffer encodeWaitForEvent:Semaphore->mtlSemaphore value:Semaphore->value];
-            }
-            [waitCommandBuffer commit];
-        }
-
-        // commit
-        for (uint32_t i = 0; i < desc->cmds_count; i++)
-        {
-            CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)desc->cmds[desc->cmds_count - 1];
-            MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeAS | MTLUtilEncoderTypeBlit);
-            [CMD->mtlCommandBuffer commit];
+            [Cmds[i]->mtlCommandBuffer commit];
         }
     }
 }
@@ -605,22 +688,22 @@ void cgpu_submit_queue_metal(CGPUQueueId queue, const struct CGPUQueueSubmitDesc
 void cgpu_wait_queue_idle_metal(CGPUQueueId queue)
 {
     CGPUQueue_Metal* Q = (CGPUQueue_Metal*)queue;
-    id<MTLCommandBuffer> waitCmdBuf = [Q->mtlCommandQueue commandBufferWithUnretainedReferences];
-    [waitCmdBuf commit];
-    [waitCmdBuf waitUntilCompleted];
-    waitCmdBuf = nil;
+    
+    // Simple approach: create a command buffer and wait for it to complete
+    id<MTLCommandBuffer> waitCmd = [Q->mtlCommandQueue commandBufferWithUnretainedReferences];
+    [waitCmd commit];
+    [waitCmd waitUntilCompleted];
 }
 
 void cgpu_free_queue_metal(CGPUQueueId queue)
 {
     CGPUQueue_Metal* Q = (CGPUQueue_Metal*)queue;
     Q->mtlCommandQueue = nil;
-#if defined(ENABLE_FENCES)
-    if (@available(macOS 10.13, iOS 10.0, *))
+    if (Q->pFence)
     {
-        Q->mtlQueueFence = nil;
+        cgpu_free_fence_metal(&Q->pFence->super);
     }
-#endif
+    cgpu_free(Q);
 }
 
 // Command APIs
@@ -630,11 +713,14 @@ CGPUCommandPoolId cgpu_create_command_pool_metal(CGPUQueueId queue, const CGPUCo
     return &PQ->super;
 }
 
+void cgpu_reset_command_pool_metal(CGPUCommandPoolId pool)
+{
+    (void)pool;
+}
+
 CGPUCommandBufferId cgpu_create_command_buffer_metal(CGPUCommandPoolId pool, const struct CGPUCommandBufferDescriptor* desc)
 {
     CGPUCommandBuffer_Metal* MB = (CGPUCommandBuffer_Metal*)cgpu_calloc(1, sizeof(CGPUCommandBuffer_Metal));
-    CGPUQueue_Metal* MQ = (CGPUQueue_Metal*)pool->queue;
-    MB->mtlCommandBuffer = [MQ->mtlCommandQueue commandBuffer];
     return &MB->super;
 }
 
@@ -696,7 +782,7 @@ CGPUBufferId cgpu_create_buffer_metal(CGPUDeviceId device, const CGPUBufferDescr
     B->mtlBuffer = [D->pDevice newBufferWithLength:pInfo->size options:options];
     B->mOffset = 0;
 
-    if (desc->flags & CGPU_BCF_PERSISTENT_MAP_BIT)
+    if (desc->flags & CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT)
         pInfo->cpu_mapped_address = B->mtlBuffer.contents + B->mOffset;
 
     pInfo->descriptors = desc->descriptors;
@@ -731,8 +817,96 @@ void cgpu_free_buffer_metal(CGPUBufferId buffer)
     cgpu_free(B);
 }
 
+// Sampler APIs
+static inline MTLSamplerAddressMode MetalUtil_TranslateAddressMode(ECGPUAddressMode mode) 
+{
+    switch (mode) {
+        case CGPU_ADDRESS_MODE_MIRROR:
+            return MTLSamplerAddressModeMirrorRepeat;
+        case CGPU_ADDRESS_MODE_REPEAT:
+            return MTLSamplerAddressModeRepeat;
+        case CGPU_ADDRESS_MODE_CLAMP_TO_EDGE:
+            return MTLSamplerAddressModeClampToEdge;
+        case CGPU_ADDRESS_MODE_CLAMP_TO_BORDER:
+            return MTLSamplerAddressModeClampToBorderColor;
+        default:
+            return MTLSamplerAddressModeClampToEdge;
+    }
+}
+
+CGPUSamplerId cgpu_create_sampler_metal(CGPUDeviceId device, const struct CGPUSamplerDescriptor* desc)
+{
+    CGPUDevice_Metal* D = (CGPUDevice_Metal*)device;
+    CGPUSampler_Metal* pSampler = cgpu_calloc(1, sizeof(CGPUSampler_Metal));
+    pSampler->super.device = device;
+    
+    MTLSamplerDescriptor* samplerDesc = [[MTLSamplerDescriptor alloc] init];
+    
+    // Set filter modes
+    samplerDesc.minFilter = (desc->min_filter == CGPU_FILTER_TYPE_LINEAR) ? 
+        MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
+    samplerDesc.magFilter = (desc->mag_filter == CGPU_FILTER_TYPE_LINEAR) ? 
+        MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
+    samplerDesc.mipFilter = (desc->mipmap_mode == CGPU_MIPMAP_MODE_LINEAR) ? 
+        MTLSamplerMipFilterLinear : MTLSamplerMipFilterNearest;
+    
+    // Set address modes
+    samplerDesc.sAddressMode = MetalUtil_TranslateAddressMode(desc->address_u);
+    samplerDesc.tAddressMode = MetalUtil_TranslateAddressMode(desc->address_v);
+    samplerDesc.rAddressMode = MetalUtil_TranslateAddressMode(desc->address_w);
+    
+    // Set LOD parameters
+    samplerDesc.lodMinClamp = 0.0f;
+    samplerDesc.lodMaxClamp = (desc->mipmap_mode == CGPU_MIPMAP_MODE_LINEAR) ? FLT_MAX : 0.0f;
+    
+    // Set anisotropy
+    if (desc->max_anisotropy > 0.0f) {
+        samplerDesc.maxAnisotropy = (NSUInteger)cgpu_max(desc->max_anisotropy, 1.0f);
+    } else {
+        samplerDesc.maxAnisotropy = 1;
+    }
+    
+    // Set compare function if needed
+    if (desc->compare_func != CGPU_CMP_NEVER) {
+        samplerDesc.compareFunction = (MTLCompareFunction)desc->compare_func;
+    } else {
+        samplerDesc.compareFunction = MTLCompareFunctionNever;
+    }
+    
+    // Set border color (Metal only supports a limited set of border colors)
+    samplerDesc.borderColor = MTLSamplerBorderColorTransparentBlack;
+    
+    // Create the sampler state
+    pSampler->mtlSamplerState = [D->pDevice newSamplerStateWithDescriptor:samplerDesc];
+    
+    return &pSampler->super;
+}
+
+void cgpu_free_sampler_metal(CGPUSamplerId sampler)
+{
+    CGPUSampler_Metal* pSampler = (CGPUSampler_Metal*)sampler;
+    pSampler->mtlSamplerState = nil;
+    cgpu_free(pSampler);
+}
+
 // CMDs
-void cgpu_cmd_begin_metal(CGPUCommandBufferId cmd) {  }
+void cgpu_cmd_begin_metal(CGPUCommandBufferId cmd) 
+{
+    CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)cmd;
+    CGPUCommandPool_Metal* Pool = (CGPUCommandPool_Metal*)cmd->pool;
+    
+    if (CMD->mtlCommandBuffer)
+        CMD->mtlCommandBuffer = nil;
+    
+    CMD->UtilEncoders.mtlBlitEncoder = nil;
+    CMD->UtilEncoders.mtlASCommandEncoder = nil;
+    CMD->renderEncoder.mtlRenderEncoder = nil;
+    CMD->cmptEncoder.mtlComputeEncoder = nil;
+    
+    CGPUQueue_Metal* Queue = (CGPUQueue_Metal*)Pool->super.queue;
+    CMD->mtlCommandBuffer = [Queue->mtlCommandQueue commandBuffer];
+    CMD->mtlCommandBuffer.label = @"CommandBuffer";
+}
 
 void cgpu_cmd_transfer_buffer_to_buffer_metal(CGPUCommandBufferId cmd, const struct CGPUBufferToBufferTransfer* desc)
 {
@@ -750,9 +924,174 @@ void cgpu_cmd_transfer_buffer_to_buffer_metal(CGPUCommandBufferId cmd, const str
         size: desc->size];
 }
 
+void cgpu_cmd_transfer_texture_to_texture_metal(CGPUCommandBufferId cmd, const struct CGPUTextureToTextureTransfer* desc)
+{
+    CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)cmd;
+    CGPUTexture_Metal* srcTexture = (CGPUTexture_Metal*)desc->src;
+    CGPUTexture_Metal* dstTexture = (CGPUTexture_Metal*)desc->dst;
+    
+    // Check if destination texture is framebufferOnly
+    if (dstTexture->pTexture.framebufferOnly)
+    {
+        // For framebufferOnly textures, we need to use a render pass
+        MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeAS | MTLUtilEncoderTypeBlit);
+        
+        // Create render pass descriptor
+        MTLRenderPassDescriptor* renderPassDesc = [MTLRenderPassDescriptor renderPassDescriptor];
+        renderPassDesc.colorAttachments[0].texture = dstTexture->pTexture;
+        renderPassDesc.colorAttachments[0].loadAction = MTLLoadActionDontCare;
+        renderPassDesc.colorAttachments[0].storeAction = MTLStoreActionStore;
+        
+        // Create render encoder
+        id<MTLRenderCommandEncoder> renderEncoder = [CMD->mtlCommandBuffer renderCommandEncoderWithDescriptor:renderPassDesc];
+        renderEncoder.label = @"Blit Texture";
+        
+        // Set viewport to cover the entire texture
+        MTLViewport viewport = {
+            .originX = 0,
+            .originY = 0,
+            .width = (double)dstTexture->super.info->width,
+            .height = (double)dstTexture->super.info->height,
+            .znear = 0.0,
+            .zfar = 1.0
+        };
+        [renderEncoder setViewport:viewport];
+        
+        // Get the blit pipeline from device
+        CGPUDevice_Metal* device = (CGPUDevice_Metal*)CMD->super.device;
+        id<MTLRenderPipelineState> blitPipeline = MetalUtil_GetBlitPipeline(device, dstTexture->pTexture.pixelFormat);
+        if (!blitPipeline) {
+            cgpu_error("Failed to get blit pipeline for texture copy");
+            [renderEncoder endEncoding];
+            return;
+        }
+        [renderEncoder setRenderPipelineState:blitPipeline];
+        
+        // Set source texture at fragment texture binding 0
+        [renderEncoder setFragmentTexture:srcTexture->pTexture atIndex:0];
+        
+        // Get sampler and set at fragment sampler binding 0
+        id<MTLSamplerState> sampler = MetalUtil_GetLinearSampler(device);
+        [renderEncoder setFragmentSamplerState:sampler atIndex:0];
+        
+        // Draw fullscreen triangle (3 vertices, no vertex buffer needed)
+        [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+        
+        // End encoding
+        [renderEncoder endEncoding];
+        return;
+    }
+    
+    // For non-framebufferOnly textures, use normal blit encoder
+    MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeAS);
+    
+    // Ensure we have a blit encoder
+    CMD->UtilEncoders.mtlBlitEncoder = CMD->UtilEncoders.mtlBlitEncoder ? CMD->UtilEncoders.mtlBlitEncoder : [CMD->mtlCommandBuffer blitCommandEncoder];
+    
+    // Calculate texture dimensions for the copy
+    const CGPUTextureInfo* srcInfo = desc->src->info;
+    const CGPUTextureInfo* dstInfo = desc->dst->info;
+    
+    // Get the mip level dimensions
+    uint32_t mipWidth = srcInfo->width >> desc->src_subresource.mip_level;
+    uint32_t mipHeight = srcInfo->height >> desc->src_subresource.mip_level;
+    uint32_t mipDepth = srcInfo->depth >> desc->src_subresource.mip_level;
+    
+    // Ensure minimum size of 1
+    mipWidth = mipWidth ? mipWidth : 1;
+    mipHeight = mipHeight ? mipHeight : 1;
+    mipDepth = mipDepth ? mipDepth : 1;
+    
+    // For 2D textures, depth should be 1
+    if (srcInfo->depth == 1)
+        mipDepth = 1;
+    
+    // Copy texture to texture
+    for (uint32_t layer = 0; layer < desc->src_subresource.layer_count; layer++)
+    {
+        MTLOrigin srcOrigin = MTLOriginMake(0, 0, 0);
+        MTLSize srcSize = MTLSizeMake(mipWidth, mipHeight, mipDepth);
+        MTLOrigin dstOrigin = MTLOriginMake(0, 0, 0);
+        
+        uint32_t srcSlice = desc->src_subresource.base_array_layer + layer;
+        uint32_t dstSlice = desc->dst_subresource.base_array_layer + layer;
+        
+        [CMD->UtilEncoders.mtlBlitEncoder copyFromTexture:srcTexture->pTexture
+                                              sourceSlice:srcSlice
+                                              sourceLevel:desc->src_subresource.mip_level
+                                             sourceOrigin:srcOrigin
+                                               sourceSize:srcSize
+                                                toTexture:dstTexture->pTexture
+                                         destinationSlice:dstSlice
+                                         destinationLevel:desc->dst_subresource.mip_level
+                                        destinationOrigin:dstOrigin];
+    }
+}
+
+void cgpu_cmd_fill_buffer_metal(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc)
+{
+    CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)cmd;
+    CGPUBuffer_Metal* B = (CGPUBuffer_Metal*)buffer;
+    
+    MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeAS);
+    
+    // Ensure we have a blit encoder
+    CMD->UtilEncoders.mtlBlitEncoder = CMD->UtilEncoders.mtlBlitEncoder ? CMD->UtilEncoders.mtlBlitEncoder : [CMD->mtlCommandBuffer blitCommandEncoder];
+    
+    // Fill buffer with pattern (4 bytes)
+    [CMD->UtilEncoders.mtlBlitEncoder fillBuffer:B->mtlBuffer
+                                           range:NSMakeRange(B->mOffset + desc->offset, sizeof(uint32_t))
+                                           value:desc->value];
+}
+
+void cgpu_cmd_fill_buffer_n_metal(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc, uint32_t count)
+{
+    CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)cmd;
+    CGPUBuffer_Metal* B = (CGPUBuffer_Metal*)buffer;
+    
+    MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeAS);
+    
+    // Ensure we have a blit encoder
+    CMD->UtilEncoders.mtlBlitEncoder = CMD->UtilEncoders.mtlBlitEncoder ? CMD->UtilEncoders.mtlBlitEncoder : [CMD->mtlCommandBuffer blitCommandEncoder];
+    
+    // Fill buffer with pattern (4 bytes * count)
+    [CMD->UtilEncoders.mtlBlitEncoder fillBuffer:B->mtlBuffer
+                                           range:NSMakeRange(B->mOffset + desc->offset, sizeof(uint32_t) * count)
+                                           value:desc->value];
+}
+
 void cgpu_cmd_resource_barrier_metal(CGPUCommandBufferId cmd, const struct CGPUResourceBarrierDescriptor* desc)
 {
     // TODO: Implement resource barrier with updateFence
+}
+
+void cgpu_cmd_begin_event_metal(CGPUCommandBufferId cmd, const CGPUEventInfo* event)
+{
+    if (!event || !event->name) return;
+    
+    CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)cmd;
+    NSString* label = [NSString stringWithUTF8String:(const char*)event->name];
+    
+    // Push debug group for all active encoders
+    if (CMD->renderEncoder.mtlRenderEncoder)
+        [CMD->renderEncoder.mtlRenderEncoder pushDebugGroup:label];
+    else if (CMD->cmptEncoder.mtlComputeEncoder)
+        [CMD->cmptEncoder.mtlComputeEncoder pushDebugGroup:label];
+    else if (CMD->UtilEncoders.mtlBlitEncoder)
+        [CMD->UtilEncoders.mtlBlitEncoder pushDebugGroup:label];
+}
+
+void cgpu_cmd_end_event_metal(CGPUCommandBufferId cmd)
+{
+    CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)cmd;
+    
+    // Pop debug group for all active encoders
+    if (CMD->renderEncoder.mtlRenderEncoder)
+        [CMD->renderEncoder.mtlRenderEncoder popDebugGroup];
+    else if (CMD->cmptEncoder.mtlComputeEncoder)
+        [CMD->cmptEncoder.mtlComputeEncoder popDebugGroup];
+    else if (CMD->UtilEncoders.mtlBlitEncoder)
+        [CMD->UtilEncoders.mtlBlitEncoder popDebugGroup];
 }
 
 void cgpu_cmd_end_metal(CGPUCommandBufferId cmd) {  }
@@ -792,7 +1131,7 @@ CGPUComputePassEncoderId cgpu_cmd_begin_compute_pass_metal(CGPUCommandBufferId c
     MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeAS | MTLUtilEncoderTypeBlit);
 
     CGPUComputePassEncoder_Metal* CE = &CMD->cmptEncoder;
-    memset(CE, 0, sizeof(CGPUComputePassEncoder_Metal));
+    CE->mtlComputeEncoder = nil;
     CE->super.device = CMD->super.device;
     CE->mtlComputeEncoder = [CMD->mtlCommandBuffer computeCommandEncoder];
     CMD->cmptEncoder = *CE;
@@ -804,10 +1143,10 @@ void cgpu_compute_encoder_bind_descriptor_set_metal(CGPUComputePassEncoderId enc
     CGPUComputePassEncoder_Metal* CE = (CGPUComputePassEncoder_Metal*)encoder;
     CGPUDescriptorSet_Metal* DS = (CGPUDescriptorSet_Metal*)set;
     if (DS->mtlArgumentBuffer)
-    {
+    {      
         CGPUBuffer_Metal* B = (CGPUBuffer_Metal*)DS->mtlArgumentBuffer;
         [CE->mtlComputeEncoder setBuffer:B->mtlBuffer offset:B->mOffset atIndex:DS->super.index];
-         
+
         // USE RESOURCE
         uint32_t ReadCount = 0, ReadWriteCount = 0;
         for (uint32_t i = 0; i < DS->mtlBindSlotCount; i++)
@@ -820,7 +1159,7 @@ void cgpu_compute_encoder_bind_descriptor_set_metal(CGPUComputePassEncoderId enc
             }
             else if (slot->mtlUsage == (MTLResourceUsageRead | MTLResourceUsageWrite))
             {
-                DS->mtlReadWriteArgsCache[ReadCount] = slot->mtlResource;
+                DS->mtlReadWriteArgsCache[ReadWriteCount] = slot->mtlResource;
                 ReadWriteCount++;
             }
             else if (slot->mtlUsage == MTLResourceUsageWrite)
@@ -828,6 +1167,8 @@ void cgpu_compute_encoder_bind_descriptor_set_metal(CGPUComputePassEncoderId enc
                 cgpu_assert(0 && "Unexpected MTLResourceUsageWrite!");
             }
         }
+        if (DS->pBoundAS != nil)
+            [CE->mtlComputeEncoder useResources:DS->pBoundAS->asTop.mtlBottomASRefs count: DS->pBoundAS->asTop.mtlBottomASRefsCount usage:MTLResourceUsageRead];
         if (ReadCount > 0)
             [CE->mtlComputeEncoder useResources:DS->mtlReadArgsCache count: ReadCount usage:MTLResourceUsageRead];
         if (ReadWriteCount > 0)
@@ -837,7 +1178,26 @@ void cgpu_compute_encoder_bind_descriptor_set_metal(CGPUComputePassEncoderId enc
 
 void cgpu_compute_encoder_push_constants_metal(CGPUComputePassEncoderId encoder, CGPURootSignatureId rs, const char8_t* name, const void* data)
 {
-    SKR_UNIMPLEMENTED_FUNCTION();
+    CGPUComputePassEncoder_Metal* CE = (CGPUComputePassEncoder_Metal*)encoder;
+    CGPURootSignature_Metal* RS = (CGPURootSignature_Metal*)rs;
+    
+    // Find the push constant by name
+    skr_hash name_hash = name ? skr_hash_of(name, strlen((const char*)name), SKR_DEFAULT_HASH_SEED) : 0;
+    for (uint32_t i = 0; i < RS->super.push_constant_count; i++)
+    {
+        CGPUShaderResource* push_const = &RS->super.push_constants[0];
+        
+        // Match by name hash if name is provided, otherwise use the first push constant
+        if (!name || (push_const->name_hash == name_hash && 
+            strcmp((const char*)push_const->name, (const char*)name) == 0))
+        {
+            // In Metal, push constants are set using setBytes at a specific buffer index
+            // The buffer index should be stored in the binding field during root signature creation
+            [CE->mtlComputeEncoder setBytes:data 
+                                     length:push_const->size 
+                                    atIndex:push_const->set];
+        }
+    }
 }
 
 void cgpu_compute_encoder_bind_pipeline_metal(CGPUComputePassEncoderId encoder, CGPUComputePipelineId pipeline)
@@ -863,4 +1223,32 @@ void cgpu_cmd_end_compute_pass_metal(CGPUCommandBufferId cmd, CGPUComputePassEnc
     [CE->mtlComputeEncoder endEncoding];
     CE->mtlComputeEncoder = nil;
     MB->cmptEncoder.mtlComputeEncoder = nil;
+}
+
+void cgpu_render_encoder_push_constants_metal(CGPURenderPassEncoderId encoder, CGPURootSignatureId rs, const char8_t* name, const void* data)
+{
+    CGPURenderPassEncoder_Metal* RE = (CGPURenderPassEncoder_Metal*)encoder;
+    CGPURootSignature_Metal* RS = (CGPURootSignature_Metal*)rs;
+    
+    // Find the push constant by name
+    skr_hash name_hash = name ? skr_hash_of(name, strlen((const char*)name), SKR_DEFAULT_HASH_SEED) : 0;
+    for (uint32_t i = 0; i < RS->super.push_constant_count; i++)
+    {
+        CGPUShaderResource* push_const = &RS->super.push_constants[i];
+        
+        // Match by name hash if name is provided, otherwise use the first push constant
+        if (!name || (push_const->name_hash == name_hash && 
+            strcmp((const char*)push_const->name, (const char*)name) == 0))
+        {
+            // In Metal, push constants are set using setBytes at a specific buffer index
+            // The buffer index should be stored in the set field during root signature creation
+            [RE->mtlRenderEncoder setVertexBytes:data 
+                                          length:push_const->size 
+                                         atIndex:push_const->set];
+            [RE->mtlRenderEncoder setFragmentBytes:data 
+                                            length:push_const->size 
+                                           atIndex:push_const->set];
+            break;
+        }
+    }
 }

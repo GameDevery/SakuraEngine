@@ -1,7 +1,8 @@
-#include "SkrBase/misc/debug.h" 
+#include "SkrBase/misc/debug.h"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/node_and_edge_factory.hpp"
+#include "SkrContainers/string.hpp"
 
 namespace skr
 {
@@ -29,6 +30,18 @@ RenderGraph::RenderGraphBuilder& RenderGraph::RenderGraphBuilder::enable_memory_
 RenderGraph::RenderGraphBuilder& RenderGraph::RenderGraphBuilder::with_gfx_queue(CGPUQueueId queue) SKR_NOEXCEPT
 {
     gfx_queue = queue;
+    return *this;
+}
+
+RenderGraph::RenderGraphBuilder& RenderGraph::RenderGraphBuilder::with_cmpt_queues(const skr::Vector<CGPUQueueId>& queues) SKR_NOEXCEPT
+{
+    cmpt_queues = queues;
+    return *this;
+}
+
+RenderGraph::RenderGraphBuilder& RenderGraph::RenderGraphBuilder::with_cpy_queues(const skr::Vector<CGPUQueueId>& queues) SKR_NOEXCEPT
+{
+    cpy_queues = queues;
     return *this;
 }
 
@@ -72,15 +85,14 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::set_name(const c
 
 RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::read(const char8_t* name, TextureSRVHandle handle) SKR_NOEXCEPT
 {
-    auto allocated = graph.node_factory->Allocate<TextureReadEdge>(name, handle);
+    auto allocated = graph.node_factory->Allocate<TextureReadEdge>(name, handle, CGPU_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     auto&& edge = node.in_texture_edges.emplace(allocated).ref();
     graph.graph->link(graph.graph->access_node(handle._this), &node, edge);
     return *this;
 }
 
 RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::write(
-    uint32_t mrt_index, TextureRTVHandle handle, ECGPULoadAction load_action, CGPUClearValue clear_color,
-    ECGPUStoreAction store_action) SKR_NOEXCEPT
+    uint32_t mrt_index, TextureRTVHandle handle, ECGPULoadAction load_action, CGPUClearValue clear_color, ECGPUStoreAction store_action) SKR_NOEXCEPT
 {
     auto allocated = graph.node_factory->Allocate<TextureRenderEdge>(mrt_index, handle._this, clear_color);
     auto&& edge = node.out_texture_edges.emplace(allocated).ref();
@@ -103,8 +115,10 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::resolve_msaa(uin
 }
 
 RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::set_depth_stencil(TextureDSVHandle handle,
-    ECGPULoadAction dload_action, ECGPUStoreAction dstore_action,
-    ECGPULoadAction sload_action, ECGPUStoreAction sstore_action) SKR_NOEXCEPT
+    ECGPULoadAction dload_action,
+    ECGPUStoreAction dstore_action,
+    ECGPULoadAction sload_action,
+    ECGPUStoreAction sstore_action) SKR_NOEXCEPT
 {
     auto allocated = graph.node_factory->Allocate<TextureRenderEdge>(
         CGPU_MAX_MRT_COUNT, handle._this, fastclear_0000, CGPU_RESOURCE_STATE_DEPTH_WRITE);
@@ -126,7 +140,7 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::read(const char8
     return *this;
 }
 
-RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::write(const char8_t* name, BufferHandle handle) SKR_NOEXCEPT
+RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::write(const char8_t* name, BufferRangeHandle handle) SKR_NOEXCEPT
 {
     SKR_UNIMPLEMENTED_FUNCTION();
     return *this;
@@ -153,9 +167,16 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::set_root_signatu
     return *this;
 }
 
+RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::with_flags(EPassFlags flags) SKR_NOEXCEPT
+{
+    node.add_flags(flags);
+    return *this;
+}
+
 // compute pass builder
 RenderGraph::ComputePassBuilder::ComputePassBuilder(RenderGraph& graph, ComputePassNode& pass) SKR_NOEXCEPT
-    : graph(graph), node(pass)
+    : graph(graph),
+      node(pass)
 {
 }
 
@@ -171,7 +192,7 @@ RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::set_name(const
 
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::read(const char8_t* name, TextureSRVHandle handle) SKR_NOEXCEPT
 {
-    auto allocated = graph.node_factory->Allocate<TextureReadEdge>(name, handle);
+    auto allocated = graph.node_factory->Allocate<TextureReadEdge>(name, handle, CGPU_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     auto&& edge = node.in_texture_edges.emplace(allocated).ref();
     graph.graph->link(graph.graph->access_node(handle._this), &node, edge);
     return *this;
@@ -185,15 +206,43 @@ RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::readwrite(cons
     return *this;
 }
 
+RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::read(const char8_t* name, BufferRangeHandle handle) SKR_NOEXCEPT
+{
+    auto allocated = graph.node_factory->Allocate<BufferReadEdge>(name, handle, CGPU_RESOURCE_STATE_SHADER_RESOURCE);
+    auto&& edge = node.in_buffer_edges.emplace(allocated).ref();
+    graph.graph->link(graph.graph->access_node(handle._this), &node, edge);
+    return *this;
+}
+
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::read(const char8_t* name, BufferHandle handle) SKR_NOEXCEPT
 {
-    SKR_UNIMPLEMENTED_FUNCTION();
+    auto allocated = graph.node_factory->Allocate<BufferReadEdge>(name, handle.range(0, ~0), CGPU_RESOURCE_STATE_SHADER_RESOURCE);
+    auto&& edge = node.in_buffer_edges.emplace(allocated).ref();
+    graph.graph->link(graph.graph->access_node(handle), &node, edge);
     return *this;
 }
 
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::readwrite(const char8_t* name, BufferHandle handle) SKR_NOEXCEPT
 {
-    SKR_UNIMPLEMENTED_FUNCTION();
+    auto allocated = graph.node_factory->Allocate<BufferReadWriteEdge>(name, handle.range(0, ~0), CGPU_RESOURCE_STATE_UNORDERED_ACCESS);
+    auto&& edge = node.out_buffer_edges.emplace(allocated).ref();
+    graph.graph->link(&node, graph.graph->access_node(handle), edge);
+    return *this;
+}
+
+RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::readwrite(const char8_t* name, BufferRangeHandle handle) SKR_NOEXCEPT
+{
+    auto allocated = graph.node_factory->Allocate<BufferReadWriteEdge>(name, handle, CGPU_RESOURCE_STATE_UNORDERED_ACCESS);
+    auto&& edge = node.out_buffer_edges.emplace(allocated).ref();
+    graph.graph->link(&node, graph.graph->access_node(handle._this), edge);
+    return *this;
+}
+
+RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::read(const char8_t* name, AccelerationStructureSRVHandle handle) SKR_NOEXCEPT
+{
+    auto allocated = graph.node_factory->Allocate<AccelerationStructureReadEdge>(name, handle);
+    auto&& edge = node.in_acceleration_structure_edges.emplace(allocated).ref();
+    graph.graph->link(graph.graph->access_node(handle._this), &node, edge);
     return *this;
 }
 
@@ -207,6 +256,12 @@ RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::set_pipeline(C
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::set_root_signature(CGPURootSignatureId signature) SKR_NOEXCEPT
 {
     node.root_signature = signature;
+    return *this;
+}
+
+RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::with_flags(EPassFlags flags) SKR_NOEXCEPT
+{
+    node.add_flags(flags);
     return *this;
 }
 
@@ -251,7 +306,7 @@ RenderGraph::CopyPassBuilder& RenderGraph::CopyPassBuilder::buffer_to_buffer(Buf
     SkrZoneScopedN("CopyPassBuilder::buffer_to_buffer");
 
     auto allocated_in = graph.node_factory->Allocate<BufferReadEdge>(u8"CopySrc", src, CGPU_RESOURCE_STATE_COPY_SOURCE);
-    auto allocated_out = graph.node_factory->Allocate<BufferReadWriteEdge>(dst, CGPU_RESOURCE_STATE_COPY_DEST);
+    auto allocated_out = graph.node_factory->Allocate<BufferReadWriteEdge>(u8"CopyDst", dst, CGPU_RESOURCE_STATE_COPY_DEST);
     auto&& in_edge = node.in_buffer_edges.emplace(allocated_in).ref();
     auto&& out_edge = node.out_buffer_edges.emplace(allocated_out).ref();
     graph.graph->link(graph.graph->access_node(src._this), &node, in_edge);
@@ -307,6 +362,12 @@ RenderGraph::CopyPassBuilder& RenderGraph::CopyPassBuilder::from_buffer(BufferRa
     auto allocated_in = graph.node_factory->Allocate<BufferReadEdge>(u8"CopySrc", src, CGPU_RESOURCE_STATE_COPY_SOURCE);
     auto&& in_edge = node.in_buffer_edges.emplace(allocated_in).ref();
     graph.graph->link(graph.graph->access_node(src._this), &node, in_edge);
+    return *this;
+}
+
+RenderGraph::CopyPassBuilder& RenderGraph::CopyPassBuilder::with_flags(EPassFlags flags) SKR_NOEXCEPT
+{
+    node.add_flags(flags);
     return *this;
 }
 
@@ -373,8 +434,8 @@ RenderGraph::BufferBuilder::BufferBuilder(RenderGraph& graph, BufferNode& node) 
     : graph(graph),
       node(node)
 {
-    node.descriptor.descriptors = CGPU_RESOURCE_TYPE_NONE;
-    node.descriptor.flags = CGPU_BCF_NONE;
+    node.descriptor.usages = CGPU_BUFFER_USAGE_NONE;
+    node.descriptor.flags = CGPU_BUFFER_FLAG_NONE;
     node.descriptor.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
 }
 
@@ -396,25 +457,26 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::with_tags(uint32_t tags)
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::import(CGPUBufferId buffer, ECGPUResourceState init_state) SKR_NOEXCEPT
 {
     node.imported = buffer;
-    node.frame_buffer = buffer;
+    node.imported_buffer = buffer;
     node.init_state = init_state;
-    node.descriptor.descriptors = buffer->info->descriptors;
+    node.descriptor.usages = buffer->info->usages;
     node.descriptor.size = buffer->info->size;
     node.descriptor.memory_usage = (ECGPUMemoryUsage)buffer->info->memory_usage;
+    graph.imported_buffers[buffer] = node.get_handle();
     return *this;
 }
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allocate_dedicated() SKR_NOEXCEPT
 {
-    node.descriptor.flags |= CGPU_BCF_DEDICATED_BIT;
+    node.descriptor.flags |= CGPU_BUFFER_FLAG_DEDICATED_BIT;
     return *this;
 }
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::structured(uint64_t first_element, uint64_t element_count, uint64_t element_stride) SKR_NOEXCEPT
 {
-    node.descriptor.first_element = first_element;
-    node.descriptor.element_count = element_count;
-    node.descriptor.element_stride = element_stride;
+    node.view_desc.offset = first_element * element_stride;
+    node.view_desc.size = element_count * element_stride;
+    node.view_desc.structure.element_stride = element_stride;
     return *this;
 }
 
@@ -424,7 +486,7 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::size(uint64_t size) SKR_
     return *this;
 }
 
-RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::with_flags(CGPUBufferCreationFlags flags) SKR_NOEXCEPT
+RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::with_flags(CGPUBufferFlags flags) SKR_NOEXCEPT
 {
     node.descriptor.flags |= flags;
     return *this;
@@ -438,43 +500,41 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::memory_usage(ECGPUMemory
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_shader_readwrite() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_RW_BUFFER;
+    node.descriptor.usages |= CGPU_BUFFER_USAGE_SHADER_READWRITE;
     return *this;
 }
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_shader_read() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_BUFFER;
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_UNIFORM_BUFFER;
+    node.descriptor.usages |= CGPU_BUFFER_USAGE_SHADER_READ;
     return *this;
 }
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::as_upload_buffer() SKR_NOEXCEPT
 {
-    node.descriptor.flags |= CGPU_BCF_PERSISTENT_MAP_BIT;
-    node.descriptor.start_state = CGPU_RESOURCE_STATE_COPY_SOURCE;
-    node.descriptor.memory_usage = CGPU_MEM_USAGE_CPU_ONLY;
+    node.descriptor.flags |= CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
+    node.descriptor.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
     node.tags |= kRenderGraphDynamicResourceTag;
     return *this;
 }
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::as_vertex_buffer() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
+    node.descriptor.usages |= CGPU_BUFFER_USAGE_VERTEX_BUFFER;
     node.descriptor.start_state = CGPU_RESOURCE_STATE_COPY_DEST;
     return *this;
 }
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::as_index_buffer() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_INDEX_BUFFER;
+    node.descriptor.usages |= CGPU_BUFFER_USAGE_INDEX_BUFFER;
     node.descriptor.start_state = CGPU_RESOURCE_STATE_COPY_DEST;
     return *this;
 }
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::as_uniform_buffer() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_UNIFORM_BUFFER;
+    node.descriptor.usages |= CGPU_BUFFER_USAGE_CONSTANT_BUFFER;
     node.descriptor.start_state = CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
     return *this;
 }
@@ -514,13 +574,22 @@ BufferHandle RenderGraph::get_buffer(const char8_t* name) SKR_NOEXCEPT
     return UINT64_MAX;
 }
 
+BufferHandle RenderGraph::get_imported(CGPUBufferId buffer) SKR_NOEXCEPT
+{
+    if (auto it = imported_buffers.find(buffer); it != imported_buffers.end())
+    {
+        return it->second;
+    }
+    return UINT64_MAX;
+}
+
 // texture builder
 RenderGraph::TextureBuilder::TextureBuilder(RenderGraph& graph, TextureNode& node) SKR_NOEXCEPT
     : graph(graph),
       node(node)
 {
     node.descriptor.sample_count = CGPU_SAMPLE_COUNT_1;
-    node.descriptor.descriptors = CGPU_RESOURCE_TYPE_TEXTURE;
+    node.descriptor.usages = CGPU_TEXTURE_USAGE_SHADER_READ;
     node.descriptor.is_restrict_dedicated = false;
 }
 
@@ -533,7 +602,7 @@ RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::set_name(const char8_t
     return *this;
 }
 
-RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::with_flags(CGPUTextureCreationFlags flags) SKR_NOEXCEPT
+RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::with_flags(CGPUTextureFlags flags) SKR_NOEXCEPT
 {
     node.descriptor.flags |= flags;
     return *this;
@@ -547,16 +616,20 @@ RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::with_tags(uint32_t tag
 
 RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::import(CGPUTextureId texture, ECGPUResourceState init_state) SKR_NOEXCEPT
 {
-    const auto texInfo = texture->info;
-    node.imported = texture;
-    node.frame_texture = texture;
+    if (texture)
+    {
+        const auto texInfo = texture->info;
+        node.descriptor.width = texInfo->width;
+        node.descriptor.height = texInfo->height;
+        node.descriptor.depth = texInfo->depth;
+        node.descriptor.format = (ECGPUFormat)texInfo->format;
+        node.descriptor.array_size = texInfo->array_size_minus_one + 1;
+        node.descriptor.sample_count = texInfo->sample_count;
+    }
     node.init_state = init_state;
-    node.descriptor.width = texInfo->width;
-    node.descriptor.height = texInfo->height;
-    node.descriptor.depth = texInfo->depth;
-    node.descriptor.format = (ECGPUFormat)texInfo->format;
-    node.descriptor.array_size = texInfo->array_size_minus_one + 1;
-    node.descriptor.sample_count = texInfo->sample_count;
+    node.imported = true;
+    node.imported_texture = texture;
+    graph.imported_textures[texture] = node.get_handle();
     return *this;
 }
 
@@ -588,28 +661,28 @@ RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::sample_count(ECGPUSamp
 
 RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::allow_readwrite() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_RW_TEXTURE;
+    node.descriptor.usages |= CGPU_TEXTURE_USAGE_SHADER_READWRITE;
     node.descriptor.start_state = CGPU_RESOURCE_STATE_UNDEFINED;
     return *this;
 }
 
 RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::allow_render_target() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_RENDER_TARGET;
+    node.descriptor.usages |= CGPU_TEXTURE_USAGE_RENDER_TARGET;
     node.descriptor.start_state = CGPU_RESOURCE_STATE_UNDEFINED;
     return *this;
 }
 
 RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::allow_depth_stencil() SKR_NOEXCEPT
 {
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_DEPTH_STENCIL;
+    node.descriptor.usages |= CGPU_TEXTURE_USAGE_DEPTH_STENCIL;
     node.descriptor.start_state = CGPU_RESOURCE_STATE_UNDEFINED;
     return *this;
 }
 
 RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::allocate_dedicated() SKR_NOEXCEPT
 {
-    node.descriptor.flags |= CGPU_TCF_DEDICATED_BIT;
+    node.descriptor.flags |= CGPU_TEXTURE_FLAG_DEDICATED_BIT;
     return *this;
 }
 
@@ -634,12 +707,79 @@ TextureHandle RenderGraph::create_texture(const TextureSetupFunction& setup) SKR
 }
 
 TextureHandle RenderGraph::get_texture(const char8_t* name) SKR_NOEXCEPT
-{    
+{
     if (auto texture = blackboard->texture(name))
     {
         return texture->get_handle();
     }
     return UINT64_MAX;
 }
+
+TextureHandle RenderGraph::get_imported(CGPUTextureId texture) SKR_NOEXCEPT
+{
+    if (auto it = imported_textures.find(texture); it != imported_textures.end())
+    {
+        return it->second;
+    }
+    return UINT64_MAX;
+}
+
+// acceleration structure builder
+RenderGraph::AccelerationStructureBuilder::AccelerationStructureBuilder(RenderGraph& graph, AccelerationStructureNode& node) SKR_NOEXCEPT
+    : graph(graph),
+      node(node)
+{
+}
+
+RenderGraph::AccelerationStructureBuilder& RenderGraph::AccelerationStructureBuilder::set_name(const char8_t* name) SKR_NOEXCEPT
+{
+    // blackboard
+    node.set_name(name);
+    // node.descriptor.name = node.get_name();
+    graph.blackboard->add_acceleration_structure(name, &node);
+    return *this;
+}
+
+RenderGraph::AccelerationStructureBuilder& RenderGraph::AccelerationStructureBuilder::import(CGPUAccelerationStructureId acceleration_structure) SKR_NOEXCEPT
+{
+    node.imported = true;
+    node.imported_as = acceleration_structure;
+    node.init_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_READ;
+    graph.imported_acceleration_structures[acceleration_structure] = node.get_handle();
+    return *this;
+}
+
+AccelerationStructureHandle RenderGraph::create_acceleration_structure(const AccelerationStructureSetupFunction& setup) SKR_NOEXCEPT
+{
+    SkrZoneScopedN("RenderGraph::create_acceleration_structure(handle)");
+
+    auto newAS = node_factory->Allocate<AccelerationStructureNode>();
+    resources.add(newAS);
+    graph->insert(newAS);
+    AccelerationStructureBuilder builder(*this, *newAS);
+    setup(*this, builder);
+    // set default gc tag
+    if (newAS->tags == kRenderGraphInvalidResourceTag) newAS->tags |= kRenderGraphDefaultResourceTag;
+    return newAS->get_handle();
+}
+
+AccelerationStructureHandle RenderGraph::get_acceleration_structure(const char8_t* name) SKR_NOEXCEPT
+{
+    if (auto acceleration_structure = blackboard->acceleration_structure(name))
+    {
+        return acceleration_structure->get_handle();
+    }
+    return UINT64_MAX;
+}
+
+AccelerationStructureHandle RenderGraph::get_imported(CGPUAccelerationStructureId acceleration_structure) SKR_NOEXCEPT
+{
+    if (auto it = imported_acceleration_structures.find(acceleration_structure); it != imported_acceleration_structures.end())
+    {
+        return it->second;
+    }
+    return UINT64_MAX;
+}
+
 } // namespace render_graph
 } // namespace skr

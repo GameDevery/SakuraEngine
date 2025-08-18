@@ -32,29 +32,34 @@
 #include "SkrAnim/ozz/base/maths/transform.h"
 #include "SkrAnim/ozz/base/memory/unique_ptr.h"
 
-namespace ozz {
-namespace animation {
+namespace ozz
+{
+namespace animation
+{
 
 // Forward declares the runtime skeleton type.
 class Skeleton;
 
-namespace offline {
+namespace offline
+{
 
 // Forward declares the offline skeleton type.
 struct RawSkeleton;
 
 // Defines the class responsible of building Skeleton instances.
-class OZZ_ANIMOFFLINE_DLL SkeletonBuilder {
- public:
-  // Creates a Skeleton based on _raw_skeleton and *this builder parameters.
-  // Returns a Skeleton instance on success, an empty unique_ptr on failure. See
-  // RawSkeleton::Validate() for more details about failure reasons.
-  // The skeleton is returned as an unique_ptr as ownership is given back to the
-  // caller.
-  ozz::unique_ptr<ozz::animation::Skeleton> operator()(
-      const RawSkeleton& _raw_skeleton) const;
+class OZZ_ANIMOFFLINE_DLL SkeletonBuilder
+{
+public:
+    // Creates a Skeleton based on _raw_skeleton and *this builder parameters.
+    // Returns a Skeleton instance on success, an empty unique_ptr on failure. See
+    // RawSkeleton::Validate() for more details about failure reasons.
+    // The skeleton is returned as an unique_ptr as ownership is given back to the
+    // caller.
+    ozz::unique_ptr<ozz::animation::Skeleton> operator()(
+        const RawSkeleton& _raw_skeleton
+    ) const;
 };
-}  // namespace offline
-}  // namespace animation
-}  // namespace ozz
-#endif  // OZZ_OZZ_ANIMATION_OFFLINE_SKELETON_BUILDER_H_
+} // namespace offline
+} // namespace animation
+} // namespace ozz
+#endif // OZZ_OZZ_ANIMATION_OFFLINE_SKELETON_BUILDER_H_

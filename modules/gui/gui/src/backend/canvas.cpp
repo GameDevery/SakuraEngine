@@ -1,7 +1,6 @@
 #include "SkrGui/backend/canvas/canvas.hpp"
-#include <nanovg.h>
+#include <nanovg/nanovg.h>
 #include "SkrBase/misc/make_zeroed.hpp"
-#include "rtm/camera_utilsf.h"
 #include "SkrGui/backend/resource/resource.hpp"
 
 // nvg integration

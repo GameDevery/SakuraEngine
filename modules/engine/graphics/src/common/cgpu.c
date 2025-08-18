@@ -6,6 +6,7 @@
 
 #ifdef CGPU_USE_VULKAN
     #include "SkrGraphics/backend/vulkan/cgpu_vulkan.h"
+    #include "SkrGraphics/backend/vulkan/cgpu_vulkan_raytracing.h"
 #endif
 
 #ifdef CGPU_USE_D3D12
@@ -53,6 +54,7 @@ CGPU_API CGPUInstanceId cgpu_create_instance(const CGPUInstanceDescriptor* desc)
     {
         tbl = CGPU_VulkanProcTable();
         s_tbl = CGPU_VulkanSurfacesProcTable();
+        rt_tbl = CGPU_VulkanRayTracingProcTable();
     }
 #endif
 #ifdef CGPU_USE_METAL
@@ -345,6 +347,63 @@ void cgpu_free_descriptor_set(CGPUDescriptorSetId set)
     SkrCZoneEnd(zz);
 }
 
+// Descriptor Buffer APIs
+CGPUDescriptorBufferId cgpu_create_descriptor_buffer(CGPUDeviceId device, const struct CGPUDescriptorBufferDescriptor* desc)
+{
+    SkrCZoneN(zz, "CGPUCreateDescriptorBuffer", 1);
+    
+    cgpu_assert(device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    cgpu_assert(device->proc_table_cache->create_descriptor_buffer && "create_descriptor_buffer Proc Missing!");
+    CGPUDescriptorBuffer* buffer = (CGPUDescriptorBuffer*)device->proc_table_cache->create_descriptor_buffer(device, desc);
+    buffer->device = device;
+    
+    SkrCZoneEnd(zz);
+    
+    return buffer;
+}
+
+void cgpu_update_descriptor_buffer(CGPUDescriptorBufferId buffer, const struct CGPUDescriptorBufferElement* elements, uint32_t count)
+{
+    SkrCZoneN(zz, "CGPUUpdateDescriptorBuffer", 1);
+    
+    cgpu_assert(buffer != CGPU_NULLPTR && "fatal: call on NULL descriptor buffer!");
+    const CGPUDeviceId device = buffer->device;
+    cgpu_assert(device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    cgpu_assert(device->proc_table_cache->update_descriptor_buffer && "update_descriptor_buffer Proc Missing!");
+    
+    device->proc_table_cache->update_descriptor_buffer(buffer, elements, count);
+    
+    SkrCZoneEnd(zz);
+}
+
+void cgpu_copy_descriptor_buffer(CGPUDescriptorBufferId src, CGPUDescriptorBufferId dest, CGPUBufferRange src_range, CGPUBufferRange dst_range)
+{
+    SkrCZoneN(zz, "CGPUCopyDescriptorBuffer", 1);
+    
+    cgpu_assert(src != CGPU_NULLPTR && "fatal: call on NULL src descriptor buffer!");
+    cgpu_assert(dest != CGPU_NULLPTR && "fatal: call on NULL dest descriptor buffer!");
+    const CGPUDeviceId device = src->device;
+    cgpu_assert(device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    cgpu_assert(device->proc_table_cache->copy_descriptor_buffer && "copy_descriptor_buffer Proc Missing!");
+    
+    device->proc_table_cache->copy_descriptor_buffer(src, dest, src_range, dst_range);
+    
+    SkrCZoneEnd(zz);
+}
+
+void cgpu_free_descriptor_buffer(CGPUDescriptorBufferId buffer)
+{
+    SkrCZoneN(zz, "CGPUFreeDescriptorBuffer", 1);
+    
+    cgpu_assert(buffer != CGPU_NULLPTR && "fatal: call on NULL descriptor buffer!");
+    const CGPUDeviceId device = buffer->device;
+    cgpu_assert(device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    cgpu_assert(device->proc_table_cache->free_descriptor_buffer && "free_descriptor_buffer Proc Missing!");
+    device->proc_table_cache->free_descriptor_buffer(buffer);
+    
+    SkrCZoneEnd(zz);
+}
+
 CGPUComputePipelineId cgpu_create_compute_pipeline(CGPUDeviceId device, const struct CGPUComputePipelineDescriptor* desc)
 {
     SkrCZoneN(zz, "CGPUCreatePSO(C)", 1);
@@ -453,6 +512,25 @@ void cgpu_free_query_pool(CGPUQueryPoolId pool)
     CGPUProcFreeQueryPool fn_free_query_pool = pool->device->proc_table_cache->free_query_pool;
     cgpu_assert(fn_free_query_pool && "free_query_pool Proc Missing!");
     fn_free_query_pool(pool);
+}
+
+CGPUMemoryPoolId cgpu_create_memory_pool(CGPUDeviceId device, const struct CGPUMemoryPoolDescriptor* desc)
+{
+    cgpu_assert(device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    cgpu_assert(device->proc_table_cache->create_memory_pool && "create_memory_pool Proc Missing!");
+    CGPUProcCreateMemoryPool fn_create_memory_pool = device->proc_table_cache->create_memory_pool;
+    CGPUMemoryPool* memory_pool = (CGPUMemoryPool*)fn_create_memory_pool(device, desc);
+    memory_pool->device = device;
+    return memory_pool;
+}
+
+void cgpu_free_memory_pool(CGPUMemoryPoolId pool)
+{
+    cgpu_assert(pool != CGPU_NULLPTR && "fatal: call on NULL pool!");
+    cgpu_assert(pool->device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    CGPUProcFreeMemoryPool fn_free_memory_pool = pool->device->proc_table_cache->free_memory_pool;
+    cgpu_assert(fn_free_memory_pool && "free_memory_pool Proc Missing!");
+    fn_free_memory_pool(pool);
 }
 
 void cgpu_free_device(CGPUDeviceId device)
@@ -1062,7 +1140,7 @@ CGPUBufferId cgpu_create_buffer(CGPUDeviceId device, const struct CGPUBufferDesc
     memcpy(&new_desc, desc, sizeof(CGPUBufferDescriptor));
     if (desc->flags == 0)
     {
-        new_desc.flags |= CGPU_BCF_NONE;
+        new_desc.flags |= CGPU_BUFFER_FLAG_NONE;
     }
     CGPUProcCreateBuffer fn_create_buffer = device->proc_table_cache->create_buffer;
     CGPUBuffer* buffer = (CGPUBuffer*)fn_create_buffer(device, &new_desc);
@@ -1106,6 +1184,42 @@ void cgpu_free_buffer(CGPUBufferId buffer)
     CGPUProcFreeBuffer fn_free_buffer = device->proc_table_cache->free_buffer;
     cgpu_assert(fn_free_buffer && "free_buffer Proc Missing!");
     fn_free_buffer(buffer);
+
+    SkrCZoneEnd(zz);
+}
+
+CGPUBufferViewId cgpu_create_buffer_view(CGPUDeviceId device, const struct CGPUBufferViewDescriptor* desc)
+{
+    SkrCZoneN(zz, "CGPUCreateBufferView", 1);
+
+    cgpu_assert(device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    cgpu_assert(desc != CGPU_NULLPTR && "fatal: call with NULL descriptor!");
+    cgpu_assert(desc->buffer != CGPU_NULLPTR && "fatal: call with NULL buffer!");
+
+    CGPUProcCreateBufferView fn_create_buffer_view = device->proc_table_cache->create_buffer_view;
+    cgpu_assert(fn_create_buffer_view && "create_buffer_view Proc Missing!");
+    
+    CGPUBufferView* view = (CGPUBufferView*)fn_create_buffer_view(device, desc);
+    view->device = device;
+
+    SkrCZoneEnd(zz);
+
+    return view;
+}
+
+void cgpu_free_buffer_view(CGPUBufferViewId view)
+{
+    SkrCZoneN(zz, "CGPUFreeBufferView", 1);
+
+    cgpu_assert(view != CGPU_NULLPTR && "fatal: call on NULL buffer view!");
+    
+    CGPUDeviceId device = view->device;
+    cgpu_assert(device != CGPU_NULLPTR && "fatal: NULL device!");
+    
+    CGPUProcFreeBufferView fn_free_buffer_view = device->proc_table_cache->free_buffer_view;
+    cgpu_assert(fn_free_buffer_view && "free_buffer_view Proc Missing!");
+    
+    fn_free_buffer_view(view);
 
     SkrCZoneEnd(zz);
 }
@@ -1192,7 +1306,6 @@ CGPUTextureViewId cgpu_create_texture_view(CGPUDeviceId device, const struct CGP
     CGPUProcCreateTextureView fn_create_texture_view = device->proc_table_cache->create_texture_view;
     CGPUTextureView* texture_view = (CGPUTextureView*)fn_create_texture_view(device, &new_desc);
     texture_view->device = device;
-    texture_view->info = *desc;
 
     SkrCZoneEnd(zz);
 
@@ -1319,12 +1432,12 @@ CGPUBufferId cgpux_create_mapped_constant_buffer(CGPUDeviceId device,
 uint64_t size, const char8_t* name, bool device_local_preferred)
 {
     SKR_DECLARE_ZERO(CGPUBufferDescriptor, buf_desc)
-    buf_desc.descriptors = CGPU_RESOURCE_TYPE_BUFFER;
+    buf_desc.usages = CGPU_BUFFER_USAGE_SHADER_READ;
     buf_desc.size = size;
     buf_desc.name = name;
     const CGPUAdapterDetail* detail = cgpu_query_adapter_detail(device->adapter);
     buf_desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
-    buf_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT | CGPU_BCF_HOST_VISIBLE;
+    buf_desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT | CGPU_BUFFER_FLAG_HOST_VISIBLE;
     buf_desc.start_state = CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
     if (device_local_preferred && detail->support_host_visible_vram)
     {
@@ -1337,11 +1450,11 @@ CGPU_API CGPUBufferId cgpux_create_mapped_upload_buffer(CGPUDeviceId device,
 uint64_t size, const char8_t* name)
 {
     SKR_DECLARE_ZERO(CGPUBufferDescriptor, buf_desc)
-    buf_desc.descriptors = CGPU_RESOURCE_TYPE_NONE;
+    buf_desc.usages = CGPU_BUFFER_USAGE_NONE;
     buf_desc.size = size;
     buf_desc.name = name;
     buf_desc.memory_usage = CGPU_MEM_USAGE_CPU_ONLY;
-    buf_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
+    buf_desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
     buf_desc.start_state = CGPU_RESOURCE_STATE_COPY_DEST;
     return cgpu_create_buffer(device, &buf_desc);
 }

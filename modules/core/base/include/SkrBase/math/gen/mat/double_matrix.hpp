@@ -196,10 +196,10 @@ struct alignas(16) double4x4 {
     // factory for utility usage
     static double4x4 from_scale(const double3& scale);
     static double4x4 from_translation(const double3& translation);
-    static double4x4 look_to(const double4& from, const double4& dir, const double4& up);
-    static double4x4 look_at(const double4& from, const double4& to, const double4& up);
-    static double4x4 view_to(const double4& from, const double4& dir, const double4& up);
-    static double4x4 view_at(const double4& from, const double4& to, const double4& up);
+    static double4x4 look_to(const double3& from, const double3& dir, const double3& up);
+    static double4x4 look_at(const double3& from, const double3& to, const double3& up);
+    static double4x4 view_to(const double3& from, const double3& dir, const double3& up);
+    static double4x4 view_at(const double3& from, const double3& to, const double3& up);
     static double4x4 perspective(double view_width, double view_height, double near_distance, double far_distance);
     static double4x4 perspective_fov(double fov_y, double aspect_ratio, double near_distance, double far_distance);
     static double4x4 orthographic(double width, double height, double near_distance, double far_distance);

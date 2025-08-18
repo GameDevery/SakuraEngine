@@ -15,7 +15,7 @@ namespace skr::attr::test_rttr
 {
 sreflect_struct(guid = "37aad92c-09f5-4e18-96ab-eea67094ea42")
 AttrA {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(AttrA)
     inline AttrA() = default;
     inline AttrA(String content)
         : content(std::move(content))
@@ -50,7 +50,7 @@ sreflect_struct(
     rttr.attrs = [`test_rttr::AttrA{u8"fuck_u"}`];
 )
 BasicRecord : public BasicBaseAB {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(BasicRecord)
 
     // ctors
     inline BasicRecord() {}
@@ -201,7 +201,7 @@ sreflect_struct(
     guid = "dc14be19-8a13-4ca3-841d-9f41bd784185"
 )
 ITestInterfaceA : virtual skr::IObject {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(ITestInterfaceA)
     virtual ~ITestInterfaceA() = default;
 };
 
@@ -209,7 +209,7 @@ sreflect_struct(
     guid = "25188c1c-fd6f-41af-b11a-7c4260118746"
 )
 ITestInterfaceB : virtual skr::IObject {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(ITestInterfaceB)
     virtual ~ITestInterfaceB() = default;
 };
 
@@ -217,7 +217,7 @@ sreflect_struct(
     guid = "8ff501cb-2d54-4cb0-aae5-6a339805f1a6"
 )
 TestDerivedA : public ITestInterfaceA {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(TestDerivedA)
     TestDerivedA() = default;
     TestDerivedA(int32_t a, int32_t b)
         : a(a)
@@ -233,7 +233,7 @@ sreflect_struct(
     guid = "03e02960-b997-491d-89a3-10c718c9e7c8"
 )
 TestDerivedB : public ITestInterfaceB {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(TestDerivedB)
     TestDerivedB() = default;
     TestDerivedB(int32_t a, int32_t b)
         : a(a)
@@ -250,7 +250,7 @@ sreflect_struct(
 )
 TestDerivedC : public TestDerivedA,
                public TestDerivedB {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(TestDerivedC)
     TestDerivedC() = default;
     TestDerivedC(int32_t a, int32_t b, int32_t c)
         : TestDerivedA(a, b)

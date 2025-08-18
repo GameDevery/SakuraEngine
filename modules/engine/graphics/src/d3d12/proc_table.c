@@ -29,15 +29,23 @@ const CGPUProcTable tbl_d3d12 = {
     .free_root_signature_pool = &cgpu_free_root_signature_pool_d3d12,
     .create_root_signature = &cgpu_create_root_signature_d3d12,
     .free_root_signature = &cgpu_free_root_signature_d3d12,
-    .create_descriptor_set = &cgpu_create_descriptor_set_d3d12,
-    .update_descriptor_set = &cgpu_update_descriptor_set_d3d12,
-    .free_descriptor_set = &cgpu_free_descriptor_set_d3d12,
     .create_compute_pipeline = &cgpu_create_compute_pipeline_d3d12,
     .free_compute_pipeline = &cgpu_free_compute_pipeline_d3d12,
     .create_render_pipeline = &cgpu_create_render_pipeline_d3d12,
     .free_render_pipeline = &cgpu_free_render_pipeline_d3d12,
     .create_query_pool = &cgpu_create_query_pool_d3d12,
     .free_query_pool = &cgpu_free_query_pool_d3d12,
+    .create_memory_pool = &cgpu_create_memory_pool_d3d12,
+    .free_memory_pool = &cgpu_free_memory_pool_d3d12,
+
+    // Descriptor Set/Buffer
+    .create_descriptor_set = &cgpu_create_descriptor_set_d3d12,
+    .update_descriptor_set = &cgpu_update_descriptor_set_d3d12,
+    .free_descriptor_set = &cgpu_free_descriptor_set_d3d12,
+    .create_descriptor_buffer = &cgpu_create_descriptor_buffer_d3d12,
+    .update_descriptor_buffer = &cgpu_update_descriptor_buffer_d3d12,
+    .copy_descriptor_buffer = &cgpu_copy_descriptor_buffer_d3d12,
+    .free_descriptor_buffer = &cgpu_free_descriptor_buffer_d3d12,
 
     // Queue APIs
     .get_queue = &cgpu_get_queue_d3d12,
@@ -83,6 +91,8 @@ const CGPUProcTable tbl_d3d12 = {
     .map_buffer = &cgpu_map_buffer_d3d12,
     .unmap_buffer = &cgpu_unmap_buffer_d3d12,
     .free_buffer = &cgpu_free_buffer_d3d12,
+    .create_buffer_view = &cgpu_create_buffer_view_d3d12,
+    .free_buffer_view = &cgpu_free_buffer_view_d3d12,
 
     // Sampler APIs
     .create_sampler = &cgpu_create_sampler_d3d12,

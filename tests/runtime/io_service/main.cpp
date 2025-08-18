@@ -1,5 +1,4 @@
 #include "SkrCore/platform/vfs.h"
-#include "SkrCore/crash.h"
 #include "SkrOS/thread.h"
 #include "SkrGraphics/dstorage.h"
 #include <SkrOS/filesystem.hpp>
@@ -19,7 +18,6 @@ static struct ProcInitializer
 {
     ProcInitializer()
     {
-        ::skr_log_set_level(SKR_LOG_LEVEL_WARN);
         ::skr_log_set_level(SKR_LOG_LEVEL_WARN);
         // ::skr_initialize_crash_handler();
         ::skr_log_initialize_async_worker();
@@ -49,8 +47,8 @@ struct IOServiceTest
         REQUIRE(abs_fs != nullptr);
 
         std::error_code ec = {};
-        const auto current_path = skr::filesystem::current_path(ec).string();
-        REQUIRE(std::string((const char*)abs_fs->mount_dir) == current_path);
+        const auto current_path = skr::fs::current_directory().string();
+        REQUIRE(skr::String(abs_fs->mount_dir) == current_path);
         SKR_TEST_INFO(u8"Current path: {}", (const char8_t*)current_path.c_str());
     }
 

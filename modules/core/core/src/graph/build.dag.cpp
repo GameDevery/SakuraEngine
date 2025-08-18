@@ -119,9 +119,9 @@ public:
     {
         const auto node = graph.nodeFromId((int)id);
         uint32_t count = 0;
-        for (ListDigraph::InArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
+        for (ListDigraph::OutArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
         {
-            auto nid = graph.source(arcIt);
+            auto nid = graph.target(arcIt);
             auto node = vert_map[nid];
             f(node);
             count++;
@@ -133,9 +133,9 @@ public:
     {
         const auto node = graph.nodeFromId((int)id);
         uint32_t count = 0;
-        for (ListDigraph::InArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
+        for (ListDigraph::OutArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
         {
-            auto nid = graph.source(arcIt);
+            auto nid = graph.target(arcIt);
             auto node = vert_map[nid];
             f(node);
             count++;
@@ -157,9 +157,9 @@ public:
     {
         const auto node = graph.nodeFromId((int)id);
         uint32_t count = 0;
-        for (ListDigraph::OutArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
+        for (ListDigraph::InArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
         {
-            auto nid = graph.target(arcIt);
+            auto nid = graph.source(arcIt);
             auto node = vert_map[nid];
             f(node);
             count++;
@@ -171,9 +171,9 @@ public:
     {
         const auto node = graph.nodeFromId((int)id);
         uint32_t count = 0;
-        for (ListDigraph::OutArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
+        for (ListDigraph::InArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
         {
-            auto nid = graph.target(arcIt);
+            auto nid = graph.source(arcIt);
             auto node = vert_map[nid];
             f(node);
             count++;
@@ -281,6 +281,16 @@ uint32_t DependencyGraphNode::outgoing_edges() SKR_NOEXCEPT
 uint32_t DependencyGraphNode::incoming_edges() SKR_NOEXCEPT
 {
     return graph->incoming_edges(this);
+}
+
+uint32_t DependencyGraphNode::foreach_incoming_edges(skr::stl_function<void(DependencyGraphNode* from, DependencyGraphNode* to, DependencyGraphEdge* edge)> f) SKR_NOEXCEPT
+{
+    return graph->foreach_incoming_edges(this, f);
+}
+
+uint32_t DependencyGraphNode::foreach_outgoing_edges(skr::stl_function<void(DependencyGraphNode* from, DependencyGraphNode* another, DependencyGraphEdge* edge)> f) SKR_NOEXCEPT
+{   
+    return graph->foreach_outgoing_edges(this, f);
 }
 
 uint32_t DependencyGraphNode::foreach_neighbors(skr::stl_function<void(DependencyGraphNode* neig)> f) SKR_NOEXCEPT

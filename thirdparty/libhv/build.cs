@@ -3,30 +3,26 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-[LibHVDoctor]
 public static class LibHV
 {
     static LibHV()
     {
+        Engine.AddSetup<LibHVSetup>();
+
         Engine.Target("libhv")
             .TargetType(TargetType.HeaderOnly)
             .Defines(Visibility.Public, "HV_STATICLIB")
             .IncludeDirs(Visibility.Public, "include")
             .Link(Visibility.Public, "hv_static")
-            .AppleFramework(Visibility.Public, "Security");
+            .AppleFramework(Visibility.Public, "Security")
+            .Clang_CXFlags(Visibility.Public, "-Wno-deprecated-literal-operator");
     }
 }
 
-public class LibHVDoctor : DoctorAttribute
+public class LibHVSetup : ISetup
 {
-    public override bool Check()
+    public void Setup()
     {
         Install.SDK("libhv_1.3.3a").Wait();
-        return true;
-    }
-    public override bool Fix() 
-    { 
-        Log.Fatal("core sdks install failed!");
-        return true; 
     }
 }

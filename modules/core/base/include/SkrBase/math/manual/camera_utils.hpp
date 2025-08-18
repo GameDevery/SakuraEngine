@@ -62,6 +62,12 @@ inline double camera_fov_y_from_x(double fov_x, double aspect_ratio)
     return 2.0 * atan(tan(fov_x * 0.5) / aspect_ratio);
 }
 
+// aspect ratio syntax
+inline float camera_aspect_ratio(float width, float height)
+{
+    return width / height;
+}
+
 // rotation to shift
 inline float camera_rotation_to_shift(float rotation, float fov)
 {

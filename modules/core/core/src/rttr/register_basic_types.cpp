@@ -125,6 +125,7 @@ SKR_EXEC_STATIC_CTOR
         // optional
         register_generic_processor(
             kOptionalGenericId,
+            u8"skr::Optional",
             +[](TypeSignatureView sig) -> RC<IGenericBase> {
                 return RC<GenericOptional>::New(
                     build_generic(sig)
@@ -135,6 +136,7 @@ SKR_EXEC_STATIC_CTOR
         // vector
         register_generic_processor(
             kVectorGenericId,
+            u8"skr::Vector",
             +[](TypeSignatureView sig) -> RC<IGenericBase> {
                 return RC<GenericVector>::New(
                     build_generic(sig)
@@ -145,6 +147,7 @@ SKR_EXEC_STATIC_CTOR
         // sparse vector
         register_generic_processor(
             kSparseVectorGenericId,
+            u8"skr::SparseVector",
             +[](TypeSignatureView sig) -> RC<IGenericBase> {
                 return RC<GenericSparseVector>::New(
                     build_generic(sig)
@@ -155,6 +158,7 @@ SKR_EXEC_STATIC_CTOR
         // sparse hash set
         register_generic_processor(
             kSetGenericId,
+            u8"skr::Set",
             +[](TypeSignatureView sig) -> RC<IGenericBase> {
                 return RC<GenericSparseHashSet>::New(
                     build_generic(sig)
@@ -165,6 +169,7 @@ SKR_EXEC_STATIC_CTOR
         // sparse hash map
         register_generic_processor(
             kMapGenericId,
+            u8"skr::Map",
             +[](TypeSignatureView sig) -> RC<IGenericBase> {
                 auto key   = sig.jump_next_type_or_data();
                 auto value = sig.jump_next_type_or_data();

@@ -15,8 +15,8 @@ EScriptbleObjectOwnership
 // clang-format on
 {
     None   = 0,
-    Native = 1 >> 0,
-    Script = 1 >> 1,
+    Native = 1 << 0,
+    Script = 1 << 1,
 };
 
 // clang-format off
@@ -24,12 +24,18 @@ sreflect_struct(guid = "66181cbc-69a0-41a5-899c-51c1c6d4ea3e")
 SKR_CORE_API IScriptMixinCore : virtual public skr::IObject
 // clang-format on
 {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(IScriptMixinCore)
     virtual ~IScriptMixinCore() = default;
 
-    virtual void on_object_destroyed(ScriptbleObject* obj)                                                                     = 0;
-    // TODO. 可以不传递 signature 信息，用缓存的 mixin 签名来做，以加速调用
-    virtual bool try_invoke_mixin(ScriptbleObject* obj, StringView name, const span<const StackProxy> args, StackProxy result) = 0;
+    virtual void on_object_destroyed(
+        ScriptbleObject* obj
+    ) = 0;
+    virtual bool try_invoke_mixin(
+        ScriptbleObject*             obj,
+        StringView                   name,
+        const span<const StackProxy> args,
+        StackProxy                   result
+    ) = 0;
 };
 
 // clang-format off
@@ -37,7 +43,7 @@ sreflect_struct(guid = "ecb7851e-f6c5-4814-8fba-a35668a2f277")
 SKR_CORE_API ScriptbleObject : virtual public skr::IObject
 // clang-format on
 {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(ScriptbleObject)
     virtual ~ScriptbleObject();
 
     inline EScriptbleObjectOwnership ownership() const { return _ownership_flag; }
@@ -73,7 +79,7 @@ SKR_CORE_API ScriptbleObject : virtual public skr::IObject
             return _mixin_core->try_invoke_mixin(
                 this,
                 name,
-                { StackProxyMaker<Args>::Make(args, /*mixin data must exist*/false)... },
+                { StackProxyMaker<Args>::Make(args, /*mixin data must exist*/ false)... },
                 {}
             );
         }
@@ -88,7 +94,7 @@ SKR_CORE_API ScriptbleObject : virtual public skr::IObject
             bool             invoke_success = _mixin_core->try_invoke_mixin(
                 this,
                 name,
-                { StackProxyMaker<Args>::Make(args, /*mixin data must exist*/false)... },
+                { StackProxyMaker<Args>::Make(args, /*mixin data must exist*/ false)... },
                 { .data = ret.data(), .signature = type_signature_of<Ret>() }
             );
 

@@ -17,9 +17,8 @@ public:
 TEST_CASE_METHOD(ModuleTest, "single")
 {
     auto moduleManager = skr_get_module_manager();
-    std::error_code ec = {};
-    auto path = skr::filesystem::current_path(ec);
-    moduleManager->mount(path.u8string().c_str());
+    auto path = skr::fs::current_directory();
+    moduleManager->mount(path.string().c_str());
     EXPECT_NE(moduleManager->make_module_graph(u8"SkrRT", true), nullptr);
     REQUIRE(moduleManager->init_module_graph(0, (char8_t**)nullptr));
     REQUIRE(moduleManager->destroy_module_graph());
@@ -31,9 +30,8 @@ TEST_CASE_METHOD(ModuleTest, "single")
 TEST_CASE_METHOD(ModuleTest, "dependency")
 {
     auto moduleManager = skr_get_module_manager();
-    std::error_code ec = {};
-    auto path = skr::filesystem::current_path(ec);
-    moduleManager->mount(path.u8string().c_str());
+    auto path = skr::fs::current_directory();
+    moduleManager->mount(path.string().c_str());
     EXPECT_NE(moduleManager->make_module_graph(u8"dynamic1", true), nullptr);
     REQUIRE(moduleManager->init_module_graph(0, (char8_t**)nullptr));
     REQUIRE(moduleManager->destroy_module_graph());
@@ -43,9 +41,8 @@ TEST_CASE_METHOD(ModuleTest, "dependency")
 TEST_CASE_METHOD(ModuleTest, "dynamic_patch")
 {
     auto moduleManager = skr_get_module_manager();
-    std::error_code ec = {};
-    auto path = skr::filesystem::current_path(ec);
-    moduleManager->mount(path.u8string().c_str());
+    auto path = skr::fs::current_directory();
+    moduleManager->mount(path.string().c_str());
     EXPECT_NE(moduleManager->make_module_graph(u8"dynamic1", true), nullptr);
     REQUIRE(moduleManager->init_module_graph(0, (char8_t**)nullptr));
     SKR_LOG_INFO(u8"----begins dynamic patch----");

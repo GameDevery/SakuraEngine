@@ -10,7 +10,7 @@ namespace skr::gui
 
 sreflect_struct(guid = "57df4e45-aefa-49e8-9d5b-0f03b468d0b1")
 SKR_GUI_API SingleChildRenderObjectWidget : public RenderObjectWidget {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(SingleChildRenderObjectWidget)
 
     NotNull<Element*> create_element() SKR_NOEXCEPT override;
 

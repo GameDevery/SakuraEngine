@@ -119,9 +119,9 @@ namespace SB.Core
             return this;
         }
         
-        public IArgumentDriver MergeArguments(ArgumentDictionary? Args)
+        public IArgumentDriver MergeArguments(ArgumentDictionary? Args, bool AllowOverride)
         {
-            Arguments.Merge(Args);
+            Arguments.Merge(Args, AllowOverride);
             return this;
         }
 

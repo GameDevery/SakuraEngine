@@ -12,10 +12,9 @@
 #include "CubismDefaultParameterId.hpp"         // IWYU pragma: export
 #include "Utils/CubismString.hpp"               // IWYU pragma: export
 
-#include "SkrContainers/string.hpp"
-#include "SkrContainers/stl_vector.hpp"
-#include "SkrContainers/map.hpp"
-#include <float.h>
+#include "SkrContainersDef/string.hpp"
+#include "SkrContainersDef/stl_vector.hpp"
+#include "SkrContainersDef/map.hpp"
 
 namespace L2DF = Live2D::Cubism::Framework;
 
@@ -150,4 +149,4 @@ struct live2d_render_view_t {
 };
 
 const ECGPUFormat live2d_depth_format = CGPU_FORMAT_D32_SFLOAT;
-const ECGPUFormat live2d_mask_format  = CGPU_FORMAT_B8G8R8A8_UNORM;
+const ECGPUFormat live2d_mask_format  = CGPU_FORMAT_R8G8B8A8_UNORM;

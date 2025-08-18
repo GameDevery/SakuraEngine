@@ -24,6 +24,12 @@
     #include <intrin.h> // __nop()
 #endif
 
+#ifdef SKR_PROFILE_ENABLE
+#define USE_FIBER_EVENTS 0
+#else
+#define USE_FIBER_EVENTS 0
+#endif
+
 // Enable to trace scheduler events.
 #define ENABLE_TRACE_EVENTS 0
 
@@ -31,7 +37,7 @@
 #define ENABLE_DEBUG_LOGGING 0
 
 #if ENABLE_TRACE_EVENTS
-    #define TRACE(...) MARL_SCOPED_EVENT(__VA_ARGS__)
+    #define TRACE(...) SkrZoneScopedN(__VA_ARGS__)
 #else
     #define TRACE(...)
 #endif
@@ -280,7 +286,7 @@ Scheduler::Fiber::Fiber(Allocator::unique_ptr<OSFiber>&& impl, uint32_t id)
     , worker(Worker::getCurrent())
 {
     MARL_ASSERT(worker != nullptr, "No Scheduler::Worker bound");
-#ifdef SKR_PROFILE_ENABLE
+#if USE_FIBER_EVENTS
     name = skr::format(u8"fiber", (uint64_t)this->impl.get());
 #endif
 }
@@ -311,12 +317,12 @@ void Scheduler::Fiber::switchTo(Fiber* to)
                 "currently executing fiber");
     if (to != this)
     {
-#ifdef SKR_PROFILE_ENABLE
+#if USE_FIBER_EVENTS
         // Leave current fiber
         if (id) SkrFiberLeave;
 #endif
         impl->switchTo(to->impl.get());
-#ifdef SKR_PROFILE_ENABLE
+#if USE_FIBER_EVENTS
         // We are back
         if (to->id) SkrFiberEnter(name.c_str_raw());
 #endif
@@ -685,7 +691,7 @@ bool Scheduler::Worker::steal(Task& out)
 void Scheduler::Worker::run()
 {
     // Enter worker fiber
-#ifdef SKR_PROFILE_ENABLE
+#if USE_FIBER_EVENTS
     if (Fiber::current()->id) SkrFiberEnter(Fiber::current()->name.c_str_raw());
 #endif
     if (mode == Mode::MultiThreaded)

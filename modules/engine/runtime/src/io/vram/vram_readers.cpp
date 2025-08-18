@@ -277,7 +277,7 @@ struct StackCmdMapKey
     {
         return queue == rhs.queue && batch == rhs.batch;
     }
-    inline static size_t _skr_hash(const StackCmdMapKey& k) SKR_NOEXCEPT
+    inline static skr_hash _skr_hash(const StackCmdMapKey& k) SKR_NOEXCEPT
     {
         return skr::hash_combine(Hash<CGPUQueueId>()(k.queue), Hash<IIOBatch*>()(k.batch));
     }
@@ -398,7 +398,7 @@ void CommonVRAMReader::addUploadRequests(SkrAsyncServicePriority priority) SKR_N
                 {
                     CGPUBufferToTextureTransfer tex_cpy = {};
                     tex_cpy.dst = pTexture->texture;
-                    tex_cpy.dst_subresource.aspects = CGPU_TVA_COLOR;
+                    tex_cpy.dst_subresource.aspects = CGPU_TEXTURE_VIEW_ASPECTS_COLOR;
                     // TODO: texture array & mips
                     tex_cpy.dst_subresource.base_array_layer = 0;
                     tex_cpy.dst_subresource.layer_count = 1;

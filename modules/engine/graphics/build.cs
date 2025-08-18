@@ -4,15 +4,17 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-[SkrGraphicsDoctor]
 public static class SkrGraphics
 {
     static SkrGraphics()
     {
+        Engine.AddSetup<SkrGraphicsSetup>();
+
         var SkrGraphics = Engine
             .Module("SkrGraphics")
             .Depend(Visibility.Public, "SkrCore")
-            .Depend(Visibility.Private, "VulkanHeaders")
+            .Require("VulkanHeaders", new PackageConfig { Version = new Version(1, 4, 324) })
+            .Depend(Visibility.Public, "VulkanHeaders@VulkanHeaders")
             .IncludeDirs(Visibility.Public, "include")
             .AddCFiles("src/build.*.c")
             .AddCppFiles("src/build.*.cpp");
@@ -34,7 +36,7 @@ public static class SkrGraphics
             SkrGraphics
                 .AddObjCFiles(OCOptions, "src/build.*.m") 
                 .AddObjCppFiles(OCOptions, "src/build.*.mm") 
-                .AppleFramework(Visibility.Public, "CoreFoundation", "Cocoa", "Metal", "IOKit")
+                .AppleFramework(Visibility.Public, "CoreFoundation", "Cocoa", "Metal", "IOKit", "QuartzCore")
                 .Defines(Visibility.Private, "VK_USE_PLATFORM_MACOS_MVK");
         }
 
@@ -48,9 +50,9 @@ public static class SkrGraphics
     }
 }
 
-public class SkrGraphicsDoctor : DoctorAttribute
+public class SkrGraphicsSetup : ISetup
 {
-    public override bool Check()
+    public void Setup()
     {
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
@@ -58,15 +60,9 @@ public class SkrGraphicsDoctor : DoctorAttribute
                 Install.SDK("dxc-2025_02_21"),
                 Install.SDK("amdags"),
                 Install.SDK("nvapi"),
-                Install.SDK("nsight"),
+                Install.SDK("nsight-2025.1.0.25009"),
                 Install.SDK("WinPixEventRuntime")
             );
         }
-        return true;
-    }
-    public override bool Fix() 
-    { 
-        Log.Fatal("graphics sdks install failed!");
-        return true; 
     }
 }

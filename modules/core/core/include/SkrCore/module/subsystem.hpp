@@ -5,7 +5,7 @@
 namespace skr
 {
 struct SKR_CORE_API ModuleSubsystem : public ModuleSubsystemBase {
-    virtual ~ModuleSubsystem() SKR_NOEXCEPT = default;
+    virtual ~ModuleSubsystem() SKR_NOEXCEPT;
 
     template <typename this_type>
     struct Registerer {

@@ -10,20 +10,21 @@ struct skr_vfile_cfile_t : public skr_vfile_t {
 skr_vfile_t* skr_unix_fopen(skr_vfs_t* fs, const char8_t* path,
 ESkrFileMode mode, const char8_t* password, skr_vfile_t* out_file)
 {
-    skr::filesystem::path filePath(fs->mount_dir ? fs->mount_dir : u8"");
+    skr::Path filePath{skr::String(fs->mount_dir ? fs->mount_dir : u8"")};
+    filePath /= skr::String(path);
     auto filePathStr = filePath.string();
-    filePath /= path;
     const char8_t* modeStr = skr_vfs_filemode_to_string(mode);
-    FILE* cfile = fopen(filePathStr.c_str(), (const char*)modeStr);
+    FILE* cfile = fopen(reinterpret_cast<const char*>(filePathStr.data()), (const char*)modeStr);
     std::error_code ec = {};
-    SKR_LOG_TRACE(u8"CurrentPath: %s", skr::filesystem::current_path(ec).c_str());
+    auto current_dir = skr::fs::current_directory();
+    SKR_LOG_TRACE(u8"CurrentPath: %s", current_dir.string().data());
     // Might fail to open the file for read+write if file doesn't exist
     if (!cfile)
     {
         if ((mode & SKR_FM_READ_WRITE) == SKR_FM_READ_WRITE)
         {
             modeStr = skr_vfs_overwirte_filemode_to_string(mode);
-            cfile = fopen(filePathStr.c_str(), (const char*)modeStr);
+            cfile = fopen(filePathStr.c_str_raw(), (const char*)modeStr);
         }
     }
     if (!cfile)

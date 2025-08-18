@@ -431,7 +431,7 @@ function _gen_class_body(opt: GenVectorOption) {
 
       // hash
       b.$line(`// hash`);
-      b.$line(`inline static size_t _skr_hash(const ${vec_name}& v) {`);
+      b.$line(`inline static skr_hash _skr_hash(const ${vec_name}& v) {`);
       b.$indent(b => {
         b.$line(`auto hasher = ::skr::Hash<${comp_name}>{};`)
         b.$line(`auto result = hasher(v.${_comp_lut[0]});`);

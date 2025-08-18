@@ -10,7 +10,7 @@ namespace skr::gui
 
 sreflect_struct(guid = "5b6fca8a-7558-4301-a00a-749b63be5aab")
 SKR_GUI_API ProxyElement : public ComponentElement {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(ProxyElement)
     using Super = ComponentElement;
     using Super::Super;
 

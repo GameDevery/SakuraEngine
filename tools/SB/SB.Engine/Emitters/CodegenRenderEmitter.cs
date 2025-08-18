@@ -10,7 +10,7 @@ namespace SB
         public List<string> Scripts { get; } = new();
     }
 
-    [CodegenDoctor]
+    [Setup<CodegenSetup>]
     public class CodegenRenderEmitter : TaskEmitter
     {
         public CodegenRenderEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
@@ -58,13 +58,16 @@ namespace SB
             if (MetaAttribute.AllGeneratedMetaFiles is not null)
                 DependFiles.AddRange(MetaAttribute.AllGeneratedMetaFiles);
             // Execute
-            bool Changed = Depend.OnChanged(Target.Name, "", this.Name, (Depend depend) => {
+            bool Changed = Engine.CodegenDepend.OnChanged(Target.Name, "", this.Name, (Depend depend) => {
+                Directory.Delete(CodegenDirectory, true);
+                Directory.CreateDirectory(CodegenDirectory);
+
                 var ParamFile = Path.Combine(CodegenDirectory, $"{Target.Name}_codegen_config.json");
                 File.WriteAllText(ParamFile, Json.Serialize(Config));
 
-                var EXE = Path.Combine(CodegenDoctor.Installation!.Result, BS.HostOS == OSPlatform.Windows ? "bun.exe" : "bun");
+                var EXE = Path.Combine(CodegenSetup.Installation!.Result, BS.HostOS == OSPlatform.Windows ? "bun.exe" : "bun");
                 
-                var ExitCode = BS.RunProcess(EXE, $"{GenerateScript} {ParamFile}", out var OutputInfo, out var ErrorInfo, null);
+                var ExitCode = BS.RunProcess(EXE, $"{GenerateScript} {ParamFile}", out var OutputInfo, out var ErrorInfo);
                 if (ExitCode != 0)
                 {
                     throw new TaskFatalError($"Codegen render {Target.Name} failed with fatal error!", $"bun.exe: {ErrorInfo}");
@@ -115,19 +118,33 @@ namespace SB
         public static string GetCodegenDirectory(this Target @this) => Path.Combine(@this.GetStorePath(BuildSystem.GeneratedSourceStore), $"codegen/{@this.Name}");
     }
 
-    public class CodegenDoctor : DoctorAttribute
+    public class CodegenSetup : ISetup
     {
-        public override bool Check()
+        public void Setup()
         {
             Installation = Install.Tool("bun_1.2.5");
             Installation.Wait();
-            return true;
+            var EXE = Path.Combine(Installation!.Result, BS.HostOS == OSPlatform.Windows ? "bun.exe" : "bun");
+
+            ProcessOptions Options = new ProcessOptions
+            {
+                WorkingDirectory = Path.Combine(Engine.EngineDirectory, "tools/meta_codegen_ts"),
+                EnableTimeout = true,
+                TimeoutMilliseconds = 30 * 60 * 1000 // 30 minutes
+            };
+            if (BuildSystem.RunProcess(EXE, $"install", out var Output, out var Error, Options) != 0)
+            {
+                Log.Fatal("bun install failed!\n{Output}\n{Error}", Output, Error);
+                throw new Exception($"bun install failed in meta_codegen_ts: {Error}");
+            }
+
+            Options.WorkingDirectory = Path.Combine(Engine.EngineDirectory, "tools/merge_natvis_ts");
+            if (BuildSystem.RunProcess(EXE, $"install", out var Output2, out var Error2, Options) != 0)
+            {
+                Log.Fatal("bun install failed!\n{Output2}\n{Error2}", Output2, Error2);
+                throw new Exception($"bun install failed in merge_natvis_ts: {Error2}");
+            } 
         }
-        public override bool Fix() 
-        { 
-            Log.Fatal("bun install failed!");
-            return true; 
-        }
-        public static Task<string>? Installation;
+        public static Task<string>? Installation { get; set; }
     }
 }

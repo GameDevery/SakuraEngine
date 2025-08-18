@@ -8,6 +8,9 @@
 #include "pool.hpp"
 #include "SkrProfile/profile.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winconsistent-missing-override"
+
 namespace skr
 {
 namespace io
@@ -30,7 +33,8 @@ template <typename T>
 }
 
 template <typename Interface, typename... Components>
-struct IORequestMixin : public Interface {
+struct IORequestMixin : public Interface 
+{
     SKR_RC_IMPL(override);
 
 public:
@@ -42,7 +46,7 @@ public:
     }
     virtual ~IORequestMixin() SKR_NOEXCEPT = default;
 
-    [[nodiscard]] virtual const IORequestComponent* get_component(skr_guid_t tid) const SKR_NOEXCEPT
+    [[nodiscard]] virtual const IORequestComponent* get_component(skr_guid_t tid) const SKR_NOEXCEPT override
     {
         SkrZoneScopedN("IORequestMixin::get_component");
         auto&  map  = acquire_cmap();
@@ -54,10 +58,10 @@ public:
         return nullptr;
     }
 
-    [[nodiscard]] virtual IORequestComponent* get_component(skr_guid_t tid) SKR_NOEXCEPT
+    [[nodiscard]] virtual IORequestComponent* get_component(skr_guid_t tid) SKR_NOEXCEPT override
     {
         SkrZoneScopedN("IORequestMixin::get_component");
-        auto&  map  = acquire_cmap();
+        auto& map = acquire_cmap();
         auto&& iter = map.find(tid);
         if (iter != map.end())
         {
@@ -66,7 +70,7 @@ public:
         return nullptr;
     }
 
-    IIOService* get_service() const SKR_NOEXCEPT
+    IIOService* get_service() const SKR_NOEXCEPT override
     {
         SKR_ASSERT(service && "service is null!");
         return service;
@@ -100,42 +104,42 @@ public:
         return c;
     }
 
-    void set_vfs(skr_vfs_t* _vfs) SKR_NOEXCEPT
+    void set_vfs(skr_vfs_t* _vfs) SKR_NOEXCEPT final
     {
         safe_comp<PathSrcComponent>()->set_vfs(_vfs);
     }
 
-    void set_path(const char8_t* p) SKR_NOEXCEPT
+    void set_path(const char8_t* p) SKR_NOEXCEPT final
     {
         safe_comp<PathSrcComponent>()->set_path(p);
     }
 
-    [[nodiscard]] const char8_t* get_path() const SKR_NOEXCEPT
+    [[nodiscard]] const char8_t* get_path() const SKR_NOEXCEPT final
     {
         return safe_comp<PathSrcComponent>()->get_path();
     }
 
-    void use_async_complete() SKR_NOEXCEPT
+    void use_async_complete() SKR_NOEXCEPT final
     {
         safe_comp<IOStatusComponent>()->use_async_complete();
     }
 
-    void use_async_cancel() SKR_NOEXCEPT
+    void use_async_cancel() SKR_NOEXCEPT final
     {
         safe_comp<IOStatusComponent>()->use_async_cancel();
     }
 
-    const skr_io_future_t* get_future() const SKR_NOEXCEPT
+    const skr_io_future_t* get_future() const SKR_NOEXCEPT final
     {
         return safe_comp<IOStatusComponent>()->get_future();
     }
 
-    void add_callback(ESkrIOStage stage, IOCallback callback, void* data) SKR_NOEXCEPT
+    void add_callback(ESkrIOStage stage, IOCallback callback, void* data) SKR_NOEXCEPT final
     {
         safe_comp<IOStatusComponent>()->add_callback(stage, callback, data);
     }
 
-    void add_finish_callback(ESkrIOFinishPoint point, IOCallback callback, void* data) SKR_NOEXCEPT
+    void add_finish_callback(ESkrIOFinishPoint point, IOCallback callback, void* data) SKR_NOEXCEPT final
     {
         safe_comp<IOStatusComponent>()->add_finish_callback(point, callback, data);
     }
@@ -162,19 +166,19 @@ public:
 
     void add_compressed_block(const skr_io_block_t& block) SKR_NOEXCEPT
     {
-        safe_comp<CompressedBlocksComponent>()->add_compressed_block(block);
+        safe_comp<CompressedBlocksComponent>()->_add_compressed_block(block);
     }
 
     void reset_compressed_blocks() SKR_NOEXCEPT
     {
-        safe_comp<CompressedBlocksComponent>()->reset_compressed_blocks();
+        safe_comp<CompressedBlocksComponent>()->_reset_compressed_blocks();
     }
 
 private:
     auto& acquire_cmap() const SKR_NOEXCEPT
     {
-        static bool                                                                  initialized = false;
-        static skr::ParallelFlatHashMap<skr_guid_t, uint32_t, skr::Hash<skr_guid_t>> map         = {};
+        static bool initialized = false;
+        static skr::ParallelFlatHashMap<skr_guid_t, uint32_t, skr::Hash<skr_guid_t>> map = {};
         if (!initialized)
         {
             std::apply([&](const auto&... args) {
@@ -233,3 +237,5 @@ using IORequestArray = skr::Vector<IORequestId>;
 
 } // namespace io
 } // namespace skr
+
+#pragma clang diagnostic pop

@@ -13,9 +13,9 @@ ServiceThread::ServiceThread(const ServiceThreadDesc& desc) SKR_NOEXCEPT
     f._service = this;
 
     NamedThreadDesc tDesc = {};
-    tDesc.name            = desc.name;
-    tDesc.priority        = desc.priority;
-    tDesc.stack_size      = 16 * 1024;
+    tDesc.name = desc.name;
+    tDesc.priority = desc.priority;
+    tDesc.stack_size = 16 * 1024;
     t.initialize(tDesc);
 }
 
@@ -54,7 +54,7 @@ void ServiceThread::wait(uint64_t event, uint32_t fatal_timeout) SKR_NOEXCEPT
 {
     auto now = skr_atomic_load_acquire(&event_);
     if (now == event)
-        wait_timeout<u8"WaitLastEvent">([&]{ return get_action() == kActionNone; }, fatal_timeout);
+        wait_timeout<u8"WaitLastEvent">([&] { return get_action() == kActionNone; }, fatal_timeout);
     else if (now > event)
         return;
     else if (now < event)
@@ -156,7 +156,7 @@ ServiceThread::Status ServiceThread::takeAction() SKR_NOEXCEPT
     if (act != kActionNone)
     {
         const Status lut[] = { kStatusRunning, kStatusStopped, kStatusExitted };
-        const auto   out   = lut[act - 1];
+        const auto out = lut[act - 1];
         setStatus(out);
         setAction(kActionNone);
         return out;
@@ -167,6 +167,8 @@ ServiceThread::Status ServiceThread::takeAction() SKR_NOEXCEPT
 AsyncResult ServiceThread::ServiceFunc::run() SKR_NOEXCEPT
 {
     SkrZoneScopedN("THREAD_SERVICE_BODY");
+    _service->on_run();
+    SKR_DEFER({ _service->on_exit(); });
     for (;;)
     {
         auto S = _service->takeAction();

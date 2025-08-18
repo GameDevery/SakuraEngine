@@ -1,7 +1,9 @@
 #pragma once
+#include "SkrRTTR/generic/generic_base.hpp"
 #include "SkrRTTR/script/stack_proxy.hpp"
 #include <SkrRTTR/type.hpp>
 #include <SkrCore/log.hpp>
+#include <SkrCore/error_collector.hpp>
 
 // script export concept
 //   - primitive: primitive type, always include [number, boolean, string, real]
@@ -122,28 +124,19 @@
 
 namespace skr
 {
-// StringView export helper
-struct StringViewStackProxy {
-    StringView view;
-    String     holder;
-
-    static void* custom_mapping(void* obj)
-    {
-        return &reinterpret_cast<StringViewStackProxy*>(obj)->view;
-    }
-};
-
 // root binder, means script visible types
 //   - primitive
 //   - enum
 //   - value
 //   - mapping
 //   - object
+//   - generic
 struct ScriptBinderPrimitive;
 struct ScriptBinderMapping;
 struct ScriptBinderObject;
 struct ScriptBinderEnum;
 struct ScriptBinderValue;
+struct ScriptBinderGeneric;
 struct ScriptBinderRoot {
     enum class EKind
     {
@@ -153,6 +146,7 @@ struct ScriptBinderRoot {
         Mapping,
         Object,
         Enum,
+        Generic,
     };
 
     // ctor
@@ -182,6 +176,11 @@ struct ScriptBinderRoot {
         , _binder(value)
     {
     }
+    inline ScriptBinderRoot(ScriptBinderGeneric* generic)
+        : _kind(EKind::Generic)
+        , _binder(generic)
+    {
+    }
 
     // copy & move
     inline ScriptBinderRoot(const ScriptBinderRoot& other) = default;
@@ -202,7 +201,7 @@ struct ScriptBinderRoot {
     }
 
     // hash
-    inline static size_t _skr_hash(const ScriptBinderRoot& self)
+    inline static skr_hash _skr_hash(const ScriptBinderRoot& self)
     {
         return hash_combine(
             Hash<EKind>()(self._kind),
@@ -218,6 +217,7 @@ struct ScriptBinderRoot {
     inline bool  is_object() const { return _kind == EKind::Object; }
     inline bool  is_enum() const { return _kind == EKind::Enum; }
     inline bool  is_value() const { return _kind == EKind::Value; }
+    inline bool  is_generic() const { return _kind == EKind::Generic; }
 
     // binder getter
     inline ScriptBinderPrimitive* primitive() const
@@ -245,6 +245,11 @@ struct ScriptBinderRoot {
         SKR_ASSERT(_kind == EKind::Value);
         return static_cast<ScriptBinderValue*>(_binder);
     }
+    inline ScriptBinderGeneric* generic() const
+    {
+        SKR_ASSERT(_kind == EKind::Generic);
+        return static_cast<ScriptBinderGeneric*>(_binder);
+    }
 
     // ops
     inline void reset()
@@ -252,6 +257,8 @@ struct ScriptBinderRoot {
         _kind   = EKind::None;
         _binder = nullptr;
     }
+
+    inline GUID type_id() const;
 
 private:
     EKind _kind   = EKind::None;
@@ -277,7 +284,6 @@ struct ScriptBinderProperty;
 struct ScriptBinderStaticProperty;
 struct ScriptBinderParam;
 struct ScriptBinderReturn;
-// TODO. ScriptBinderNested，用于在实际类型转换时传递全量的信息
 
 //==================nested binders==================
 // nested binder, field & static field
@@ -394,7 +400,34 @@ struct ScriptBinderEnum {
 
     bool is_signed = false;
 };
+struct ScriptBinderGeneric {
+    RC<IGenericBase> generic = nullptr;
+    bool             failed  = false;
+};
 //==================root binders==================
+
+inline GUID ScriptBinderRoot::type_id() const
+{
+    switch (_kind)
+    {
+    case EKind::Primitive:
+        return primitive()->type_id;
+    case EKind::Mapping:
+        return mapping()->type->type_id();
+    case EKind::Object:
+        return object()->type->type_id();
+    case EKind::Enum:
+        return enum_()->type->type_id();
+    case EKind::Value:
+        return value()->type->type_id();
+    case EKind::Generic:
+        SKR_UNREACHABLE_CODE();
+        return {};
+    default:
+        SKR_UNREACHABLE_CODE();
+        return {};
+    }
+}
 
 // function binder, used for call script function
 struct ScriptBinderCallScript {
@@ -414,6 +447,7 @@ enum class EScriptExportCase : uint8_t
     StaticField, // static field value
     Param,       // param value
     Return,      // return value
+    Iterator,    // generic iterator
 };
 
 // TODO. Generic type support
@@ -428,7 +462,8 @@ struct SKR_CORE_API ScriptBinderManager {
     ~ScriptBinderManager();
 
     // get binder
-    ScriptBinderRoot       get_or_build(GUID type_id); // TODO. 直接传入 TypeSignatureView，若带有 Modifier 则抛出 warning，并提醒在外部清除 Modifier 以进行抑制
+    ScriptBinderRoot       get_or_build(GUID type_id);
+    ScriptBinderRoot       get_or_build(TypeSignatureView signature);
     ScriptBinderCallScript build_call_script_binder(span<const StackProxy> params, StackProxy ret);
 
     // each
@@ -444,7 +479,11 @@ private:
     ScriptBinderObject*    _make_object(const RTTRType* type);
     ScriptBinderValue*     _make_value(const RTTRType* type);
     ScriptBinderEnum*      _make_enum(const RTTRType* type);
+    ScriptBinderGeneric*   _make_generic(TypeSignatureView signature);
     void                   _fill_record_info(ScriptBinderRecordBase& out, const RTTRType* type);
+
+    // generic checker
+    void _check_optional(TypeSignatureView inner);
 
     // make nested binder
     void _make_ctor(ScriptBinderCtor& out, const RTTRCtorData* ctor, const RTTRType* owner);
@@ -467,75 +506,10 @@ private:
 
 private:
     // cache
-    Map<GUID, ScriptBinderRoot> _cached_root_binders;
+    Map<GUID, ScriptBinderRoot>              _cached_root_binders;
+    Map<TypeSignature, ScriptBinderGeneric*> _cached_generic_binders;
 
     // logger
-    struct Logger {
-        struct StackScope {
-            StackScope(Logger* logger, String name)
-                : _logger(logger)
-            {
-                _logger->_stack.push_back({ name, false });
-            }
-            ~StackScope()
-            {
-                bool err = _logger->any_error();
-                _logger->_stack.pop_back();
-                if (!_logger->_stack.is_empty())
-                {
-                    _logger->_stack.back().any_error |= err;
-                }
-            }
-
-        private:
-            Logger* _logger;
-        };
-
-        template <typename... Args>
-        inline StackScope stack(StringView fmt, Args&&... args)
-        {
-            return StackScope{
-                this,
-                format(fmt, std::forward<Args>(args)...)
-            };
-        }
-
-        template <typename... Args>
-        inline void error(StringView fmt, Args&&... args)
-        {
-            // record error
-            if (!_stack.is_empty())
-            {
-                _stack.back().any_error = true;
-            }
-
-            // combine error str
-            String error;
-            format_to(error, fmt, std::forward<Args>(args)...);
-            error.append(u8"\n");
-            for (const auto& stack : _stack.range_inv())
-            {
-                format_to(error, u8"    at: {}\n", stack.name);
-            }
-            error.first(error.length_buffer() - 1);
-
-            // log error
-            SKR_LOG_FMT_ERROR(u8"{}", error.c_str());
-        }
-
-        inline bool any_error() const
-        {
-            if (_stack.is_empty()) { return false; }
-            return _stack.back().any_error;
-        }
-
-    private:
-        struct ErrorStack {
-            String name      = {};
-            bool   any_error = false;
-        };
-        Vector<ErrorStack> _stack;
-    };
-    Logger _logger;
+    ErrorCollector _logger;
 };
 } // namespace skr

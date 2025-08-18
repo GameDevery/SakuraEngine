@@ -618,8 +618,8 @@ void skr_live2d_model_create_from_json(skr_io_ram_service_t* ioService, const ch
     skr::String l2dHomePathStr;
     {
         SkrZoneScopedN("ioRAM Live2D Path Calc");
-        auto l2dPath = skr::filesystem::path(path);
-        l2dHomePathStr = l2dPath.parent_path().u8string().c_str();
+        const skr::Path l2dPath{path};
+        l2dHomePathStr = l2dPath.parent_directory().string().c_str();
         callbackData->u8HomePath = l2dHomePathStr.c_str();
     }
     rq->use_async_complete();

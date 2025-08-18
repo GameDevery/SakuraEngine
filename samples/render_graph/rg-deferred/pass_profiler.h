@@ -13,7 +13,7 @@ public:
         query_pool = cgpu_create_query_pool(device, &desc);
         CGPUBufferDescriptor buf_desc = {};
         buf_desc.name = u8"RenderGraphQueryBuffer";
-        buf_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
+        buf_desc.flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT;
         buf_desc.memory_usage = CGPU_MEM_USAGE_GPU_TO_CPU;
         buf_desc.size = sizeof(uint64_t) * 512;
         query_buffer = cgpu_create_buffer(device, &buf_desc);

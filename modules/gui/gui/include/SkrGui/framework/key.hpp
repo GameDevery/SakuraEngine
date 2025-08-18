@@ -77,7 +77,7 @@ struct SKR_GUI_API Key final {
     void set_storage(float v) SKR_NOEXCEPT;
     void set_storage(const String& v) SKR_NOEXCEPT;
 
-    static size_t _skr_hash(const Key& k) SKR_NOEXCEPT;
+    static skr_hash _skr_hash(const Key& k) SKR_NOEXCEPT;
 
 private:
     EKeyType _type = EKeyType::None;
@@ -266,7 +266,7 @@ inline void Key::set_storage(float v) SKR_NOEXCEPT
 }
 
 // hash
-inline size_t Key::_skr_hash(const Key& k) SKR_NOEXCEPT
+inline skr_hash Key::_skr_hash(const Key& k) SKR_NOEXCEPT
 {
     using namespace ::skr::gui;
     switch (k.type())
@@ -285,7 +285,7 @@ inline size_t Key::_skr_hash(const Key& k) SKR_NOEXCEPT
         case EKeyType::Name:
         case EKeyType::NameStorage: {
             const auto& x = k.get_name();
-            return skr_hash(x.c_str(), x.size(), 0);
+            return skr_hash_of(x.c_str(), x.size(), 0);
         }
         default: {
             SKR_UNREACHABLE_CODE();

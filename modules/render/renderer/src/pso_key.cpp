@@ -1,7 +1,6 @@
 #include "SkrRenderer/pso_key.hpp"
 
-namespace skr {
-namespace renderer {
+namespace skr::renderer {
 
 PSOMapKey::PSOMapKey(const CGPURenderPipelineDescriptor& desc, uint64_t frame) SKR_NOEXCEPT
     : root_signature(desc.root_signature->pool_sig ? desc.root_signature->pool_sig : desc.root_signature), 
@@ -73,5 +72,4 @@ PSOMapKey::~PSOMapKey() SKR_NOEXCEPT
     root_signature = nullptr;
 }
 
-} // namespace renderer
-} // namespace skr
+} // namespace skr::renderer

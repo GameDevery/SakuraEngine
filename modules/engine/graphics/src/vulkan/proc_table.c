@@ -39,6 +39,8 @@ const CGPUProcTable tbl_vk = {
     .free_render_pipeline = &cgpu_free_render_pipeline_vulkan,
     .create_query_pool = &cgpu_create_query_pool_vulkan,
     .free_query_pool = &cgpu_free_query_pool_vulkan,
+    .create_memory_pool = &cgpu_create_memory_pool_vulkan,
+    .free_memory_pool = &cgpu_free_memory_pool_vulkan,
 
     // Queue APIs
     .get_queue = &cgpu_get_queue_vulkan,
@@ -68,6 +70,8 @@ const CGPUProcTable tbl_vk = {
     .map_buffer = &cgpu_map_buffer_vulkan,
     .unmap_buffer = &cgpu_unmap_buffer_vulkan,
     .free_buffer = &cgpu_free_buffer_vulkan,
+    .create_buffer_view = &cgpu_create_buffer_view_vulkan,
+    .free_buffer_view = &cgpu_free_buffer_view_vulkan,
 
     // Texture/TextureView APIs
     .create_texture = &cgpu_create_texture_vulkan,

@@ -84,6 +84,8 @@ function _gen_class_body(opt: GenMatrixOption) {
   for (const dim of matrix_dims) {
     const mat_name = `${base_name}${dim}x${dim}`;
     const vec_name = `${base_name}${dim}`;
+    const vec3_name = `${base_name}3`;
+    const vec4_name = `${base_name}4`;
 
     b.$line(`//! row major matrix`)
     b.$line(`struct ${get_alignas_matrix(opt, dim)}${mat_name} {`)
@@ -308,10 +310,10 @@ function _gen_class_body(opt: GenMatrixOption) {
       }
       if (dim === 4) {
         b.$line(`static ${mat_name} from_translation(const ${base_name}3& translation);`)
-        b.$line(`static ${mat_name} look_to(const ${vec_name}& from, const ${vec_name}& dir, const ${vec_name}& up);`)
-        b.$line(`static ${mat_name} look_at(const ${vec_name}& from, const ${vec_name}& to, const ${vec_name}& up);`)
-        b.$line(`static ${mat_name} view_to(const ${vec_name}& from, const ${vec_name}& dir, const ${vec_name}& up);`)
-        b.$line(`static ${mat_name} view_at(const ${vec_name}& from, const ${vec_name}& to, const ${vec_name}& up);`)
+        b.$line(`static ${mat_name} look_to(const ${vec3_name}& from, const ${vec3_name}& dir, const ${vec3_name}& up);`)
+        b.$line(`static ${mat_name} look_at(const ${vec3_name}& from, const ${vec3_name}& to, const ${vec3_name}& up);`)
+        b.$line(`static ${mat_name} view_to(const ${vec3_name}& from, const ${vec3_name}& dir, const ${vec3_name}& up);`)
+        b.$line(`static ${mat_name} view_at(const ${vec3_name}& from, const ${vec3_name}& to, const ${vec3_name}& up);`)
         b.$line(`static ${mat_name} perspective(${comp_name} view_width, ${comp_name} view_height, ${comp_name} near_distance, ${comp_name} far_distance);`)
         b.$line(`static ${mat_name} perspective_fov(${comp_name} fov_y, ${comp_name} aspect_ratio, ${comp_name} near_distance, ${comp_name} far_distance);`)
         b.$line(`static ${mat_name} orthographic(${comp_name} width, ${comp_name} height, ${comp_name} near_distance, ${comp_name} far_distance);`)

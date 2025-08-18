@@ -10,7 +10,7 @@ namespace test_v8
 sreflect_struct(guid = "9099f452-beab-482b-a9c8-0f582bd7f5b4" rttr = @full)
 sscript_visible sscript_newable
 BasicObject : public ::skr::ScriptbleObject {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(BasicObject)
 
     sscript_visible
     BasicObject() { test_ctor_value = 114514; }
@@ -58,7 +58,7 @@ BasicObject : public ::skr::ScriptbleObject {
 sreflect_struct(guid = "549b208d-ca2b-44e1-a705-ef95e0c607b5" rttr = @full)
 sscript_visible sscript_newable
 InheritObject : public BasicObject {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(InheritObject)
 
     sscript_visible
     InheritObject() { test_ctor_value = 1919810; }
@@ -277,7 +277,7 @@ TestMixinValue {
 sreflect_struct(guid = "f67c4345-e723-4597-9e88-1e48564b130d" rttr = @full)
 sscript_visible sscript_newable
 RttrMixin : skr::ScriptbleObject {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(RttrMixin)
 
     sscript_visible
     RttrMixin() = default;

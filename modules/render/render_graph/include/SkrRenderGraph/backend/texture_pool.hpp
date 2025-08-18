@@ -28,16 +28,16 @@ public:
     };
     struct Key {
         const CGPUDeviceId device;
-        const CGPUTextureCreationFlags flags;
+        const CGPUTextureFlags flags;
         uint64_t width;
         uint64_t height;
-        uint64_t depth;
+        uint32_t depth;
         uint32_t array_size;
         ECGPUFormat format;
         uint32_t mip_levels;
         ECGPUSampleCount sample_count;
         uint32_t sample_quality;
-        CGPUResourceTypes descriptors;
+        CGPUTextureViewUsages usages;
         bool is_restrict_dedicated = 0;
         operator size_t() const;
         friend class TexturePool;
@@ -46,6 +46,7 @@ public:
 
         Key(CGPUDeviceId device, const CGPUTextureDescriptor& desc);
     };
+    static_assert(sizeof(Key) == 64);
     friend class RenderGraphBackend;
     void initialize(CGPUDeviceId device);
     void finalize();

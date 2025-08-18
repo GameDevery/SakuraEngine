@@ -2,7 +2,7 @@
 #include "SkrRT/config.h"
 #include "SkrCore/crash.h"
 #include "SkrRT/runtime_module.h"
-#include "SkrRT/ecs/sugoi.h"
+#include "SkrRT/sugoi/sugoi.h"
 
 #include "SkrProfile/profile.h"
 

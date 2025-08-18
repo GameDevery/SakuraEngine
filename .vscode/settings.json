@@ -8,4 +8,8 @@
         "need-check-nil"
     ],
     "cmake.ignoreCMakeListsMissing": true,
+    "files.associations": {
+        "*.mm": "objective-cpp",
+        "*.m": "objective-c"
+    }
 }

@@ -9,7 +9,7 @@ namespace skr::gui
 {
 sreflect_struct(guid = "a40f7782-8b8f-4059-ab2a-3d8e4ac2fdd5")
 SKR_GUI_API Layer : virtual public skr::IObject {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(Layer)
     using VisitFuncRef = FunctionRef<void(NotNull<Layer*>)>;
 
     // lifecycle & tree

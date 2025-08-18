@@ -1030,7 +1030,7 @@ SKR_INLINE bool Vector<Memory>::remove_if(Pred&& pred)
 {
     if (DataRef ref = find_if(std::forward<Pred>(pred)))
     {
-        remove_at(ref.index);
+        remove_at(ref.index());
         return true;
     }
     return false;
@@ -1042,7 +1042,7 @@ SKR_INLINE bool Vector<Memory>::remove_if_swap(Pred&& pred)
 {
     if (DataRef ref = find_if(std::forward<Pred>(pred)))
     {
-        remove_at_swap(ref.index);
+        remove_at_swap(ref.index());
         return true;
     }
     return false;
@@ -1054,7 +1054,7 @@ SKR_INLINE bool Vector<Memory>::remove_last_if(Pred&& pred)
 {
     if (DataRef ref = find_last_if(std::forward<Pred>(pred)))
     {
-        remove_at(ref.index);
+        remove_at(ref.index());
         return true;
     }
     return false;
@@ -1066,7 +1066,7 @@ SKR_INLINE bool Vector<Memory>::remove_last_if_swap(Pred&& pred)
 {
     if (DataRef ref = find_last_if(std::forward<Pred>(pred)))
     {
-        remove_at_swap(ref.index);
+        remove_at_swap(ref.index());
         return true;
     }
     return false;

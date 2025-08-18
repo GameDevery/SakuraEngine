@@ -9,7 +9,7 @@ namespace skr::gui
 {
 sreflect_struct(guid = "05699161-383d-481e-abfa-ce0a7110dc2c")
 SKR_GUI_API StatelessElement : public ComponentElement {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(StatelessElement)
     using Super = ComponentElement;
     using Super::Super;
 

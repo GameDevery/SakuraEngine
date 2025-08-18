@@ -3,11 +3,12 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-[SkecthUpDoctor]
 public static class SkrSketchUp
 {
     static SkrSketchUp()
     {
+        Engine.AddSetup<SketchUpSetup>();
+        
         SketchUpAPI();
         SketchUpLive();
     }
@@ -63,18 +64,12 @@ public static class SkrSketchUp
     }
 }
 
-public class SkecthUpDoctor : DoctorAttribute
+public class SketchUpSetup : ISetup
 {
-    public override bool Check()
+    public void Setup()
     {
         Task.WaitAll(
             Install.SDK("sketchup-sdk-v2023.1.315")
         );
-        return true;
-    }
-    public override bool Fix() 
-    { 
-        Log.Fatal("sketchup sdks install failed!");
-        return true; 
     }
 }

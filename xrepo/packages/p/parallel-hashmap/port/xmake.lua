@@ -1,5 +1,0 @@
-target("parallel-hashmap")
-    set_kind("headeronly")
-    add_includedirs("parallel_hashmap", {public=true})
-    add_headerfiles("parallel_hashmap/(**.hpp)", {prefixdir = "parallel_hashmap"})
-    add_headerfiles("parallel_hashmap/(**.h)", {prefixdir = "parallel_hashmap"})

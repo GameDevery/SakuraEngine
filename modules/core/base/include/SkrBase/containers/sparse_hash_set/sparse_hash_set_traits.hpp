@@ -6,7 +6,7 @@ namespace skr::container
 {
 template <typename T>
 struct HashTraits {
-    using HashType   = size_t;
+    using HashType   = skr_hash;
     using HasherType = Hash<T>;
 };
 } // namespace skr::container

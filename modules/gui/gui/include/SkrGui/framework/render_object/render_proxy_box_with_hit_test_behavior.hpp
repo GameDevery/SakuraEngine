@@ -8,7 +8,7 @@ namespace skr::gui
 {
 sreflect_struct(guid = "56dbbcf9-bfca-47c3-a75b-94c9a884255e")
 SKR_GUI_API RenderProxyBoxWithHitTestBehavior : public RenderProxyBox {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(RenderProxyBoxWithHitTestBehavior)
     using Super = RenderProxyBox;
 
     // hit test

@@ -1,0 +1,95 @@
+#include <std/std.hpp>
+#include <std2/constant_buffer.hpp>
+#include <std2/attributes.hpp>
+
+using namespace skr::shader;
+
+// Upload operation descriptor (must match C++ side)
+struct Upload
+{
+    uint32 src_offset; // Offset in upload_buffer (bytes)
+    uint32 dst_offset; // Offset in target buffer (bytes)
+    uint32 data_size;  // Data size (bytes)
+};
+
+// External resource bindings
+ByteAddressBuffer upload_buffer;   // Source data buffer
+ByteAddressBuffer upload_operations; // Copy operations list
+RWByteAddressBuffer target_buffer;   // Target buffer (Core Data)
+
+// Push constants
+struct SparseUploadConstants
+{
+    uint num_operations;     // Number of operations
+    uint max_threads_per_op; // Max threads per operation
+    uint alignment;          // Memory alignment requirement (16 bytes)
+    uint padding0;           // Struct alignment
+};
+
+[[push_constant]]
+ConstantBuffer<SparseUploadConstants> constants;
+
+// Multi-threaded sparse upload - simplified but maintains parallelism
+[[compute_shader("sparse_upload"), kernel_1d(256), dump]]
+void sparse_upload_main([[sv_thread_id]] uint3 thread_id)
+{
+    uint global_thread_id = thread_id.x;
+
+    // Calculate operation index and local thread ID
+    uint operation_index = global_thread_id / constants.max_threads_per_op;
+    uint local_thread_id = global_thread_id % constants.max_threads_per_op;
+
+    // Boundary check
+    if (operation_index >= constants.num_operations)
+    {
+        return;
+    }
+
+    // Load the operation
+    Upload op = upload_operations.Load<Upload>(operation_index * sizeof(Upload));
+
+    // Calculate 16-byte chunks for this operation
+    uint total_chunks = (op.data_size + 15) / 16;
+
+    // Each thread processes one 16-byte chunk
+    if (local_thread_id >= total_chunks)
+    {
+        return; // Thread has no work
+    }
+
+    // Calculate offsets for this thread's chunk
+    uint chunk_offset = local_thread_id * 16;
+    uint src_offset = op.src_offset + chunk_offset;
+    uint dst_offset = op.dst_offset + chunk_offset;
+    uint remaining_bytes = min(16u, op.data_size - chunk_offset);
+
+    // Copy data in one optimized block per thread
+    if (remaining_bytes >= 16)
+    {
+        // Full 16-byte chunk
+        uint4 data = upload_buffer.Load4(src_offset);
+        target_buffer.Store4(dst_offset, data);
+    }
+    else if (remaining_bytes >= 8)
+    {
+        // 8-12 byte chunk
+        uint2 data = upload_buffer.Load2(src_offset);
+        target_buffer.Store2(dst_offset, data);
+        if (remaining_bytes >= 12)
+        {
+            uint extra = upload_buffer.Load(src_offset + 8);
+            target_buffer.Store(dst_offset + 8, extra);
+        }
+    }
+    else if (remaining_bytes >= 4)
+    {
+        // 4-7 byte chunk
+        uint data = upload_buffer.Load(src_offset);
+        target_buffer.Store(dst_offset, data);
+        if (remaining_bytes >= 8)
+        {
+            uint extra = upload_buffer.Load(src_offset + 4);
+            target_buffer.Store(dst_offset + 4, extra);
+        }
+    }
+}

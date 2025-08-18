@@ -3,11 +3,12 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-[V8Doctor]
 public static class V8
 {
     static V8()
     {
+        Engine.AddSetup<V8Setup>();
+
         var V8 = BuildSystem.Target("v8")
             .TargetType(TargetType.HeaderOnly)
             .Depend(Visibility.Public, "SkrRT")
@@ -21,17 +22,10 @@ public static class V8
     }
 }
 
-public class V8Doctor : DoctorAttribute
+public class V8Setup : ISetup
 {
-    public override bool Check()
+    public void Setup()
     {
         Install.SDK("v8_11.8.172").Wait();
-        return true;
     }
-
-    public override bool Fix()
-    {
-        Log.Fatal("Cef SDK install failed!");
-        return true;
-    }   
 }

@@ -16,13 +16,16 @@ public:
         uint32_t to;
     };
     inline const bool is_imported() const SKR_NOEXCEPT { return imported; }
+    inline ECGPUResourceState get_init_state() const SKR_NOEXCEPT { return init_state; }
     inline const bool allow_lone() const SKR_NOEXCEPT { return canbe_lone; }
-    SKR_RENDER_GRAPH_API const LifeSpan lifespan() const SKR_NOEXCEPT;
+    virtual EObjectType get_type() const SKR_NOEXCEPT = 0;
+    uint32_t get_tags() const SKR_NOEXCEPT { return tags; }
+
 protected:
     bool imported = false;
     bool canbe_lone = false;
     uint32_t tags = kRenderGraphInvalidResourceTag;
-    mutable LifeSpan frame_lifespan = { UINT32_MAX, UINT32_MAX };
+    mutable ECGPUResourceState init_state = CGPU_RESOURCE_STATE_UNDEFINED;
 };
 
 class TextureNode : public ResourceNode
@@ -35,7 +38,7 @@ public:
     inline bool reimport(CGPUTextureId texture)
     {
         if (!imported) return false;
-        frame_texture = texture;
+        imported_texture = texture;
         return true;
     }
     inline const TextureHandle get_handle() const SKR_NOEXCEPT { return TextureHandle(get_id()); }
@@ -50,15 +53,19 @@ public:
         return asize * mips * width * height * depth * FormatUtil_BitSizeOfBlock(descriptor.format);
     }
     inline const ECGPUSampleCount get_sample_count() const SKR_NOEXCEPT { return descriptor.sample_count; }
-    inline const TextureNode* get_aliasing_parent() const SKR_NOEXCEPT { return frame_aliasing_source; }
+    EObjectType get_type() const SKR_NOEXCEPT override;
+    CGPUTextureId get_imported() const SKR_NOEXCEPT
+    {
+        if (imported)
+        {
+            return imported_texture;
+        }
+        return nullptr;
+    }
 
 protected:
     CGPUTextureDescriptor descriptor = {};
-    // temporal handle with a lifespan of only one frame
-    TextureNode* frame_aliasing_source = nullptr;
-    mutable CGPUTextureId frame_texture = nullptr;
-    mutable ECGPUResourceState init_state = CGPU_RESOURCE_STATE_UNDEFINED;
-    mutable bool frame_aliasing = false;
+    mutable CGPUTextureId imported_texture = nullptr;
 };
 
 class BufferNode : public ResourceNode
@@ -72,17 +79,57 @@ public:
     inline bool reimport(CGPUBufferId buffer)
     {
         if (!imported) return false;
-        frame_buffer = buffer;
+        imported_buffer = buffer;
         return true;
     }
     inline const BufferHandle get_handle() const SKR_NOEXCEPT { return BufferHandle(get_id()); }
     inline const CGPUBufferDescriptor& get_desc() const SKR_NOEXCEPT { return descriptor; }
+    inline const CGPUBufferViewDescriptor& get_view_desc() const SKR_NOEXCEPT { return view_desc; }
+    EObjectType get_type() const SKR_NOEXCEPT override;
+    CGPUBufferId get_imported() const SKR_NOEXCEPT
+    {
+        if (imported)
+        {
+            return imported_buffer;
+        }
+        return nullptr;
+    }
 
 protected:
     CGPUBufferDescriptor descriptor = {};
+    CGPUBufferViewDescriptor view_desc = {};
     // temporal handle with a lifespan of only one frame
-    mutable CGPUBufferId frame_buffer = nullptr;
-    mutable ECGPUResourceState init_state = CGPU_RESOURCE_STATE_UNDEFINED;
+    mutable CGPUBufferId imported_buffer = nullptr;
+};
+
+class AccelerationStructureNode : public ResourceNode
+{
+public:
+    friend class RenderGraph;
+    friend class RenderGraphBackend;
+
+    AccelerationStructureNode() SKR_NOEXCEPT;
+
+    inline bool reimport(CGPUAccelerationStructureId acceleration_structure)
+    {
+        if (!imported) return false;
+        imported_as = acceleration_structure;
+        return true;
+    }
+    inline const AccelerationStructureHandle get_handle() const SKR_NOEXCEPT { return AccelerationStructureHandle(get_id()); }
+    EObjectType get_type() const SKR_NOEXCEPT override;
+    CGPUAccelerationStructureId get_imported() const SKR_NOEXCEPT
+    {
+        if (imported)
+        {
+            return imported_as;
+        }
+        return nullptr;
+    }
+
+protected:
+    // temporal handle with a lifespan of only one frame
+    mutable CGPUAccelerationStructureId imported_as = nullptr;
 };
 } // namespace render_graph
 } // namespace skr

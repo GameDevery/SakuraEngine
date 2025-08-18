@@ -80,7 +80,7 @@ struct CGPUVkPassTable //
     struct rpdesc_hash {
         size_t operator()(const VkUtil_RenderPassDesc& a) const
         {
-            return cgpu_hash(&a, sizeof(VkUtil_RenderPassDesc), CGPU_NAME_HASH_SEED);
+            return skr_hash_of(&a, sizeof(VkUtil_RenderPassDesc), SKR_DEFAULT_HASH_SEED);
         }  
     };
     struct rpdesc_eq
@@ -95,7 +95,7 @@ struct CGPUVkPassTable //
     struct fbdesc_hash {
         size_t operator()(const VkUtil_FramebufferDesc& a) const
         {
-            return cgpu_hash(&a, sizeof(VkUtil_FramebufferDesc), CGPU_NAME_HASH_SEED);
+            return skr_hash_of(&a, sizeof(VkUtil_FramebufferDesc), SKR_DEFAULT_HASH_SEED);
         }
     };
     struct fbdesc_eq
@@ -104,7 +104,7 @@ struct CGPUVkPassTable //
         {
             if (a.pRenderPass != b.pRenderPass) return false;
             if (a.mAttachmentCount != b.mAttachmentCount) return false;
-            return std::memcmp(&a, &b, sizeof(VkUtil_RenderPassDesc)) == 0;
+            return std::memcmp(&a, &b, sizeof(VkUtil_FramebufferDesc)) == 0;
         }
     };
 

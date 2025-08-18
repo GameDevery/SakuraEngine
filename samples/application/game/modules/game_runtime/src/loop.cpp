@@ -1,8 +1,8 @@
 
-#include "SkrRT/ecs/sugoi.h"
+#include "SkrRT/sugoi/sugoi.h"
 #include "GameRuntime/gamert.h"
 #include "SkrImGui/skr_imgui.h"
-#include "SkrScene/scene.h"
+#include "SkrSceneCore/transform_system.h"
 #include "string.h"
 
 namespace skg

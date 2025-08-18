@@ -44,12 +44,12 @@ struct CompressedBlocksComponent : public IORequestComponent
         return {}; 
     }
 
-    void add_compressed_block(const skr_io_block_t& block) SKR_NOEXCEPT 
+    void _add_compressed_block(const skr_io_block_t& block) SKR_NOEXCEPT 
     {  
         SKR_UNIMPLEMENTED_FUNCTION();
     }
 
-    void reset_compressed_blocks() SKR_NOEXCEPT 
+    void _reset_compressed_blocks() SKR_NOEXCEPT 
     {
         SKR_UNIMPLEMENTED_FUNCTION();
     }

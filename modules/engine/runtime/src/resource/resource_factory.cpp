@@ -11,7 +11,7 @@ namespace skr
 namespace resource
 {
 
-bool SResourceFactory::Deserialize(skr_resource_record_t* record, SBinaryReader* reader)
+bool ResourceFactory::Deserialize(SResourceRecord* record, SBinaryReader* reader)
 {
     if (auto type = skr::get_type_from_guid(record->header.type))
     {
@@ -25,8 +25,7 @@ bool SResourceFactory::Deserialize(skr_resource_record_t* record, SBinaryReader*
             using ReadBinProc = bool(void* o, void* r);
             auto read_bin_data = type->find_extern_method_t<ReadBinProc>(
                 skr::SkrCoreExternMethods::ReadBin,
-                ETypeSignatureCompareFlag::Strict
-            );
+                ETypeSignatureCompareFlag::Strict);
             if (!read_bin_data.invoke(p_obj, reader))
             {
                 // TODO: CALL DTOR IF FAILED
@@ -43,7 +42,7 @@ bool SResourceFactory::Deserialize(skr_resource_record_t* record, SBinaryReader*
     return false;
 }
 
-bool SResourceFactory::Unload(skr_resource_record_t* record)
+bool ResourceFactory::Unload(SResourceRecord* record)
 {
     record->header.dependencies.clear();
     if (record->destructor)
@@ -55,7 +54,7 @@ bool SResourceFactory::Unload(skr_resource_record_t* record)
     return true;
 }
 
-ESkrInstallStatus SResourceFactory::UpdateInstall(skr_resource_record_t* record)
+ESkrInstallStatus ResourceFactory::UpdateInstall(SResourceRecord* record)
 {
     SKR_UNREACHABLE_CODE();
     return SKR_INSTALL_STATUS_SUCCEED;

@@ -67,7 +67,7 @@ auto color_texture = graph.create_texture(
                .extent(1920, 1080)
                .format(CGPU_FORMAT_R8G8B8A8_UNORM)
                .allow_render_target()
-               .allow_shader_read()
+               .allow_structured_read()
                .mip_levels(5);
     }
 );
@@ -81,7 +81,7 @@ auto vertex_buffer = graph.create_buffer(
     [](BufferBuilder& builder) {
         builder.set_name(u8"vertex_buffer")
                .size(sizeof(Vertex) * vertex_count)
-               .with_flags(CGPU_BCF_PERSISTENT_MAP_BIT)
+               .with_flags(CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT)
                .as_vertex_buffer();
     }
 );
@@ -91,7 +91,7 @@ auto storage_buffer = graph.create_buffer(
     [](BufferBuilder& builder) {
         builder.set_name(u8"storage_buffer")
                .size(sizeof(ParticleData) * max_particles)
-               .with_flags(CGPU_BCF_PERSISTENT_MAP_BIT)
+               .with_flags(CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT)
                .allow_shader_readwrite();
     }
 );
@@ -234,7 +234,7 @@ auto history_texture = graph.create_texture(
                .extent(1920, 1080)
                .format(CGPU_FORMAT_R16G16B16A16_SFLOAT)
                .allow_render_target()
-               .allow_shader_read();
+               .allow_structured_read();
     }
 );
 

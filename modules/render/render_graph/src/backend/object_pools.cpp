@@ -4,6 +4,7 @@
 
 #include "SkrRenderGraph/backend/bind_table_pool.hpp"
 #include "SkrRenderGraph/backend/buffer_pool.hpp"
+#include "SkrRenderGraph/backend/buffer_view_pool.hpp"
 #include "SkrRenderGraph/backend/texture_pool.hpp"
 #include "SkrRenderGraph/backend/texture_view_pool.hpp"
 
@@ -17,13 +18,13 @@ namespace render_graph
 size_t MergedBindTablePool::Key::hasher::operator()(const MergedBindTablePool::Key& val) const
 {
     const auto size = val.tables.size() * sizeof(CGPUXBindTableId);
-    return skr_hash(val.tables.data(), size, CGPU_NAME_HASH_SEED);
+    return skr_hash_of(val.tables.data(), size);
 }
 
 size_t MergedBindTablePool::Key::hasher::operator()(const MergedBindTablePool::Key::View& val) const
 {
     const auto size = val.count * sizeof(CGPUXBindTableId);
-    return skr_hash(val.tables, size, CGPU_NAME_HASH_SEED);
+    return skr_hash_of(val.tables, size);
 }
 
 size_t MergedBindTablePool::Key::equal_to::operator()(const MergedBindTablePool::Key& lhs, const MergedBindTablePool::Key& rhs) const
@@ -50,14 +51,14 @@ size_t MergedBindTablePool::Key::equal_to::operator()(const MergedBindTablePool:
 
 CGPUXMergedBindTableId MergedBindTablePool::pop(const CGPUXBindTableId* tables, uint32_t count)
 {
-    const auto view  = Key::View{ tables, count };
-    auto       found = pool.find(view);
+    const auto view = Key::View{ tables, count };
+    auto found = pool.find(view);
     if (found == pool.end()) // allocate and do merge
     {
         CGPUXMergedBindTableDescriptor desc = {};
-        desc.root_signature                 = root_sig;
-        GuradedMergedBindTable guarded      = {};
-        guarded.table                       = cgpux_create_megred_bind_table(root_sig->device, &desc);
+        desc.root_signature = root_sig;
+        GuradedMergedBindTable guarded = {};
+        guarded.table = cgpux_create_megred_bind_table(root_sig->device, &desc);
         cgpux_merged_bind_table_merge(guarded.table, tables, count); // only merge once otherwise reset has triggered
         guarded.update_gurad = true;
         pool.emplace(Key(tables, count), guarded);
@@ -106,10 +107,10 @@ void BindTablePool::expand(const char8_t* keys, const CGPUXName* names, uint32_t
     for (size_t i = 0; i < set_count; ++i)
     {
         CGPUXBindTableDescriptor table_desc = {};
-        table_desc.root_signature           = root_sig;
-        table_desc.names                    = names;
-        table_desc.names_count              = names_count;
-        auto new_table                      = cgpux_create_bind_table(root_sig->device, &table_desc);
+        table_desc.root_signature = root_sig;
+        table_desc.names = names;
+        table_desc.names_count = names_count;
+        auto new_table = cgpux_create_bind_table(root_sig->device, &table_desc);
         block.bind_tables.add(new_table);
     }
 }
@@ -162,14 +163,14 @@ TexturePool::Key::Key(CGPUDeviceId device, const CGPUTextureDescriptor& desc)
     , mip_levels(desc.mip_levels ? desc.mip_levels : 1)
     , sample_count(desc.sample_count ? desc.sample_count : CGPU_SAMPLE_COUNT_1)
     , sample_quality(desc.sample_quality)
-    , descriptors(desc.descriptors)
+    , usages(desc.usages)
     , is_restrict_dedicated(desc.is_restrict_dedicated)
 {
 }
 
 TexturePool::Key::operator size_t() const
 {
-    return skr_hash(this, sizeof(*this), (size_t)device);
+    return skr_hash_of(this, sizeof(*this), (size_t)device);
 }
 
 void TexturePool::initialize(CGPUDeviceId device_)
@@ -222,7 +223,7 @@ TextureViewPool::Key::Key(CGPUDeviceId device, const CGPUTextureViewDescriptor& 
     : device(device)
     , texture(desc.texture)
     , format(desc.format)
-    , usages(desc.usages)
+    , usages(desc.view_usages)
     , aspects(desc.aspects)
     , dims(desc.dims)
     , base_array_layer(desc.base_array_layer)
@@ -254,9 +255,9 @@ uint32_t TextureViewPool::erase(CGPUTextureId texture)
     return prev_size - (uint32_t)views.size();
 }
 
-TextureViewPool::Key::operator size_t() const
+TextureViewPool::Key::operator skr_hash() const
 {
-    return skr_hash(this, sizeof(*this), (size_t)device);
+    return skr_hash_of(this, sizeof(*this), (skr_hash)device);
 }
 
 void TextureViewPool::initialize(CGPUDeviceId device_)
@@ -288,7 +289,7 @@ CGPUTextureViewId TextureViewPool::allocate(const CGPUTextureViewDescriptor& des
     {
         // SKR_LOG_TRACE(u8"Creating texture view for texture %p (tex %p)", desc.texture, key.texture);
         CGPUTextureViewId new_view = cgpu_create_texture_view(device, &desc);
-        AllocationMark    mark     = { frame_index, 0 };
+        AllocationMark mark = { frame_index, 0 };
         views.add(key, PooledTextureView(new_view, mark));
         return new_view;
     }
@@ -298,19 +299,15 @@ CGPUTextureViewId TextureViewPool::allocate(const CGPUTextureViewDescriptor& des
 
 BufferPool::Key::Key(CGPUDeviceId device, const CGPUBufferDescriptor& desc)
     : device(device)
-    , descriptors(desc.descriptors)
+    , descriptors(desc.usages)
     , memory_usage(desc.memory_usage)
-    , format(desc.format)
     , flags(desc.flags)
-    , first_element(desc.first_element)
-    , element_count(desc.element_count)
-    , element_stride(desc.element_stride)
 {
 }
 
 BufferPool::Key::operator size_t() const
 {
-    return skr_hash(this, sizeof(*this), (size_t)device);
+    return skr_hash_of(this, sizeof(*this), (size_t)device);
 }
 
 void BufferPool::initialize(CGPUDeviceId device_)
@@ -335,7 +332,7 @@ std::pair<CGPUBufferId, ECGPUResourceState> BufferPool::allocate(const CGPUBuffe
     std::pair<CGPUBufferId, ECGPUResourceState> allocated = {
         nullptr, CGPU_RESOURCE_STATE_UNDEFINED
     };
-    auto    key         = make_zeroed<BufferPool::Key>(device, desc);
+    auto key = make_zeroed<BufferPool::Key>(device, desc);
     int32_t found_index = -1;
     for (uint32_t i = 0; i < buffers[key].size(); ++i)
     {
@@ -371,6 +368,78 @@ void BufferPool::deallocate(const CGPUBufferDescriptor& desc, CGPUBufferId buffe
             return;
     }
     buffers[key].emplace_back(buffer, final_state, mark);
+}
+
+// Buffer View Pool
+
+BufferViewPool::Key::Key(CGPUDeviceId device, const CGPUBufferViewDescriptor& desc)
+    : device(device)
+    , buffer(desc.buffer)
+    , view_usages(desc.view_usages)
+    , offset(desc.offset)
+    , size(desc.size)
+    , texel_format(desc.texel.format)
+    , element_stride(desc.structure.element_stride)
+    , buffer_size(desc.buffer->info->size)
+{
+}
+
+uint32_t BufferViewPool::erase(CGPUBufferId buffer)
+{
+    auto prev_size = (uint32_t)views.size();
+    for (auto iter = views.iter(); iter.has_next();)
+    {
+        if (iter.key().buffer == buffer)
+        {
+            cgpu_free_buffer_view(iter.value().buffer_view);
+            iter.erase_and_move_next();
+        }
+        else
+        {
+            iter.move_next();
+        }
+    }
+    return prev_size - (uint32_t)views.size();
+}
+
+BufferViewPool::Key::operator skr_hash() const
+{
+    return skr_hash_of(this, sizeof(*this), (skr_hash)device);
+}
+
+void BufferViewPool::initialize(CGPUDeviceId device_)
+{
+    device = device_;
+}
+
+void BufferViewPool::finalize()
+{
+    for (auto&& view : views)
+    {
+        cgpu_free_buffer_view(view.value.buffer_view);
+    }
+    views.clear();
+}
+
+CGPUBufferViewId BufferViewPool::allocate(const CGPUBufferViewDescriptor& desc, uint64_t frame_index)
+{
+    const auto key = make_zeroed<BufferViewPool::Key>(device, desc);
+    if (auto found = views.find(key))
+    {
+        // SKR_LOG_TRACE(u8"Reallocating buffer view for buffer %p (id %lld, old %lld)", desc.buffer,
+        //    key.buffer->unique_id, found->second.buffer_view->info.buffer->unique_id);
+        found.value().mark.frame_index = frame_index;
+        SKR_ASSERT(found.key().buffer);
+        return found.value().buffer_view;
+    }
+    else
+    {
+        // SKR_LOG_TRACE(u8"Creating buffer view for buffer %p (buf %p)", desc.buffer, key.buffer);
+        CGPUBufferViewId new_view = cgpu_create_buffer_view(device, &desc);
+        AllocationMark mark = { frame_index, 0 };
+        views.add(key, PooledBufferView(new_view, mark));
+        return new_view;
+    }
 }
 
 } // namespace render_graph

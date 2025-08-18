@@ -25,7 +25,7 @@ public:
         return { requests.data(), requests.size() };
     }
 
-    void                    set_priority(SkrAsyncServicePriority pri) SKR_NOEXCEPT override { priority = pri; }
+    void set_priority(SkrAsyncServicePriority pri) SKR_NOEXCEPT override { priority = pri; }
     SkrAsyncServicePriority get_priority() const SKR_NOEXCEPT override { return priority; }
 
     const bool can_use_dstorage = true; // TODO: make it configurable

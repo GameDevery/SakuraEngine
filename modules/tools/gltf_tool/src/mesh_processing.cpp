@@ -1,19 +1,17 @@
+#include "SkrProfile/profile.h"
 #include "SkrGraphics/api.h"
-#include "cgltf/cgltf.h"
 #include "SkrCore/platform/vfs.h"
-#include "SkrOS/filesystem.hpp"
+#include "SkrContainersDef/path.hpp"
 #include "SkrTask/fib_task.hpp"
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrMeshCore/mesh_processing.hpp"
 #include "SkrGLTFTool/mesh_processing.hpp"
 
-#include "SkrProfile/profile.h"
+#include "cgltf/cgltf.h"
 
 #define MAGIC_SIZE_GLTF_PARSE_READY ~0
 
-namespace skd
-{
-namespace asset
+namespace skd::asset
 {
 static const ERawVertexStreamType kGLTFToRawAttributeTypeLUT[] = {
     ERawVertexStreamType::POSITION,
@@ -74,7 +72,7 @@ cgltf_data* ImportGLTFWithData(skr::StringView assetPath, skr_io_ram_service_t* 
     skr::String u8Path = assetPath;
     struct CallbackData
     {
-        skr::task::event_t* pCounter;   
+        skr::task::event_t* pCounter;
     } callbackData;
     callbackData.pCounter = &counter;
     // prepare io
@@ -82,11 +80,9 @@ cgltf_data* ImportGLTFWithData(skr::StringView assetPath, skr_io_ram_service_t* 
     request->set_vfs(vfs);
     request->set_path(u8Path.u8_str());
     request->add_block({}); // read all
-    request->add_callback(SKR_IO_STAGE_COMPLETED, 
-    +[](skr_io_future_t* future, skr_io_request_t* request, void* data) noexcept {
+    request->add_callback(SKR_IO_STAGE_COMPLETED, +[](skr_io_future_t* future, skr_io_request_t* request, void* data) noexcept {
         auto cbData = (CallbackData*)data;
-        cbData->pCounter->signal();
-    }, (void*)&callbackData);
+        cbData->pCounter->signal(); }, (void*)&callbackData);
     skr_io_future_t future = {};
     blob = ioService->request(request, &future);
     counter.wait(false);
@@ -104,8 +100,8 @@ cgltf_data* ImportGLTFWithData(skr::StringView assetPath, skr_io_ram_service_t* 
             else
             {
                 SkrZoneScopedN("LoadGLTFBuffer");
-                auto fullPath = skr::filesystem::path(vfs->mount_dir) / u8Path.u8_str();
-                result = cgltf_load_buffers(&options, gltf_data_, fullPath.string().c_str());
+                const skr::Path fullPath = skr::Path{vfs->mount_dir} / u8Path.u8_str();
+                result = cgltf_load_buffers(&options, gltf_data_, fullPath.string().c_str_raw());
                 result = cgltf_validate(gltf_data_);
                 if (result != cgltf_result_success)
                 {
@@ -128,19 +124,19 @@ void GetGLTFNodeTransform(const cgltf_node* node, skr_float3_t& translation, skr
         rotation = { node->rotation[0], node->rotation[1], node->rotation[2], node->rotation[3] };
 }
 
-void CookGLTFMeshData(const cgltf_data* gltf_data, SMeshCookConfig* cfg, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
+void CookGLTFMeshData(const cgltf_data* gltf_data, MeshAsset* cfg, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
 {
     skr::Vector<uint8_t> buffer0 = {};
-    
+    skr::Vector<uint8_t> buffer1 = {};
     skr_guid_t shuffle_layout_id = cfg->vertexType;
     CGPUVertexLayout shuffle_layout = {};
     const char* shuffle_layout_name = nullptr;
-    if (!shuffle_layout_id.is_zero()) 
+    if (!shuffle_layout_id.is_zero())
     {
         shuffle_layout_name = skr_mesh_resource_query_vertex_layout(shuffle_layout_id, &shuffle_layout);
     }
-    
-    //FIXME: select mesh to cook
+
+    // FIXME: select mesh to cook
     out_resource.name = gltf_data->meshes[0].name ? (const char8_t*)gltf_data->meshes[0].name : u8"";
     if (out_resource.name.is_empty()) out_resource.name = u8"gltfMesh";
     // record primitvies
@@ -181,20 +177,20 @@ void CookGLTFMeshData(const cgltf_data* gltf_data, SMeshCookConfig* cfg, skr_mes
     out_bins.add(buffer0);
 }
 
-void CookGLTFMeshData_SplitSkin(const cgltf_data* gltf_data, SMeshCookConfig* cfg, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
+void CookGLTFMeshData_SplitSkin(const cgltf_data* gltf_data, MeshAsset* cfg, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
 {
     skr::Vector<uint8_t> buffer0 = {};
     skr::Vector<uint8_t> buffer1 = {};
-    
+
     skr_guid_t shuffle_layout_id = cfg->vertexType;
     CGPUVertexLayout shuffle_layout = {};
     const char* shuffle_layout_name = nullptr;
-    if (!shuffle_layout_id.is_zero()) 
+    if (!shuffle_layout_id.is_zero())
     {
         shuffle_layout_name = skr_mesh_resource_query_vertex_layout(shuffle_layout_id, &shuffle_layout);
     }
 
-    //FIXME: select mesh to cook
+    // FIXME: select mesh to cook
     out_resource.name = (const char8_t*)gltf_data->meshes[0].name;
     if (out_resource.name.is_empty()) out_resource.name = u8"gltfMesh";
     // record primitvies
@@ -242,5 +238,4 @@ void CookGLTFMeshData_SplitSkin(const cgltf_data* gltf_data, SMeshCookConfig* cf
     out_bins.add(buffer1);
 }
 
-}
-}
+} // namespace skd::asset

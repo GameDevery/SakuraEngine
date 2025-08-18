@@ -3,11 +3,12 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-[SkrCoreDoctor]
 public static class SkrCore
 {
     static SkrCore()
     {
+        Engine.AddSetup<SkrCoreSetup>();
+        
         var DependencyGraph = Engine.StaticComponent("SkrDependencyGraph", "SkrCore")
             .Exception(true) // DAG uses lemon which uses exceptions
             .OptimizationLevel(OptimizationLevel.Fastest)
@@ -35,8 +36,6 @@ public static class SkrCore
             .AddCppFiles("src/archive/build.*.cpp");
 
         var SkrCore = Engine.Module("SkrCore")
-            .Require("phmap", new PackageConfig { Version = new Version(1, 3, 11) })
-            .Depend(Visibility.Public, "phmap@phmap")
             .Depend(Visibility.Private, "mimalloc")
             .Depend(Visibility.Public, "SkrProfile")
             // TODO: STATIC COMPONENTS, JUST WORKAROUND NOW, WE NEED TO DEPEND THEM AUTOMATICALLY LATTER
@@ -60,9 +59,7 @@ public static class SkrCore
             .AddCodegenScript("meta/rttr.ts")
             .AddCodegenScript("meta/serialize.ts")
             .AddCodegenScript("meta/proxy.ts")
-            .CreateSharedPCH("include/**.h", "include/**.hpp", "../profile/include/SkrProfile/profile.h")
-            // TODO: REMOVE THIS
-            .Depend(Visibility.Public, "SDL3");
+            .CreateSharedPCH("include/**.h", "include/**.hpp", "../profile/include/SkrProfile/profile.h");
 
         if (BuildSystem.TargetOS == OSPlatform.Windows)
             SkrCore.Link(Visibility.Private, "shell32", "Ole32", "Shlwapi");
@@ -76,16 +73,10 @@ public static class SkrCore
     }
 }
 
-public class SkrCoreDoctor : DoctorAttribute
+public class SkrCoreSetup : ISetup
 {
-    public override bool Check()
+    public void Setup()
     {
         Install.SDK("SDL_3.2.12").Wait();
-        return true;
-    }
-    public override bool Fix() 
-    { 
-        Log.Fatal("core sdks install failed!");
-        return true; 
     }
 }

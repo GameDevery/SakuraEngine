@@ -288,7 +288,7 @@ bool GenericSparseVector::equal(const void* lhs, const void* rhs, uint64_t count
     }
     return true;
 }
-size_t GenericSparseVector::hash(const void* src) const
+skr_hash GenericSparseVector::hash(const void* src) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(src);

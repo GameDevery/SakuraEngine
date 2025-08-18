@@ -37,7 +37,7 @@
 #endif
 
 #define MAX_GPU_VENDOR_STRING_LENGTH 64
-#define MAX_GPU_DEBUG_NAME_LENGTH 128
+#define MAX_GPU_DEBUG_NAME_LENGTH 256
 #define PSO_NAME_LENGTH 160
 
 #ifndef cgpu_max
@@ -53,14 +53,6 @@
 
 #define cgpu_assert(expr) SKR_ASSERT(expr);
 #define cgpu_static_assert static_assert
-
-#if UINTPTR_MAX == UINT32_MAX
-#define CGPU_NAME_HASH_SEED 1610612741
-#else
-#define CGPU_NAME_HASH_SEED 8053064571610612741
-#endif
-#define cgpu_hash(buffer, size, seed) skr_hash((buffer), (size), (seed))
-#define cgpu_name_hash(buffer, size) cgpu_hash((buffer), (size), (CGPU_NAME_HASH_SEED))
 
 #if !defined(ENABLE_NSIGHT_AFTERMATH) && defined(_WIN32)
     #define ENABLE_NSIGHT_AFTERMATH

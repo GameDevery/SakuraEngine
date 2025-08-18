@@ -14,6 +14,7 @@ CGPU_API void cgpu_cmd_build_acceleration_structures_d3d12(CGPUCommandBufferId c
 typedef struct CGPUAccelerationStructure_D3D12 {
     CGPUAccelerationStructure super;
     CGPUBufferId pASBuffer;
+    CGPUBufferViewId pASBufferView;
     CGPUBufferId pScratchBuffer;
     union
     {

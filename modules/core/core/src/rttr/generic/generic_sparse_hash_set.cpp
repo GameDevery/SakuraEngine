@@ -98,7 +98,7 @@ bool GenericSparseHashSet::equal(const void* lhs, const void* rhs, uint64_t coun
         return false;
     }
 }
-size_t GenericSparseHashSet::hash(const void* src) const
+skr_hash GenericSparseHashSet::hash(const void* src) const
 {
     return Super::hash(src);
 }

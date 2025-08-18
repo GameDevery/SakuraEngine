@@ -1,7 +1,9 @@
 #include "SkrGraphics/config.h"
 #ifdef CGPU_USE_METAL
     #include "metal/cgpu_metal.m"
-    #include "metal/cgpu_metal_rt.m"
+    #include "metal/cgpu_metal_swapchain.m"
+    #include "metal/cgpu_metal_texture.m"
+    #include "metal/cgpu_metal_raytracing.m"
     #include "metal/metal_format_support.m"
     #include "metal/metal_utils.m"
     #include "metal/cgpu_metal_surfaces.m"

@@ -31,100 +31,108 @@
 #include <cstddef>
 
 // Internal include file
-#define OZZ_INCLUDE_PRIVATE_HEADER  // Allows to include private headers.
+#define OZZ_INCLUDE_PRIVATE_HEADER // Allows to include private headers.
 #include "decimate.h"
-
-#include "SkrAnim/ozz/base/maths/math_ex.h"
-
 #include "SkrAnimTool/ozz/raw_track.h"
-
+#include "SkrAnim/ozz/base/maths/math_ex.h"
 // Needs runtime track to access TrackPolicy.
 #include "SkrAnim/ozz/track.h"
 
-namespace ozz {
-namespace animation {
-namespace offline {
+namespace ozz
+{
+namespace animation
+{
+namespace offline
+{
 
-// Setup default values (favoring quality).
-TrackOptimizer::TrackOptimizer() : tolerance(1e-3f) {  // 1 mm.
-}
-
-namespace {
+namespace
+{
 
 template <typename _KeyFrame>
 struct Adapter {
-  typedef typename _KeyFrame::ValueType ValueType;
-  typedef typename animation::internal::TrackPolicy<ValueType> Policy;
+    typedef typename _KeyFrame::ValueType                        ValueType;
+    typedef typename animation::internal::TrackPolicy<ValueType> Policy;
 
-  Adapter() {}
+    bool Decimable(const _KeyFrame& _key) const
+    {
+        // RawTrackInterpolation::kStep keyframes aren't optimized, as steps can't
+        // be interpolated.
+        return _key.interpolation != RawTrackInterpolation::kStep;
+    }
 
-  bool Decimable(const _KeyFrame& _key) const {
-    // RawTrackInterpolation::kStep keyframes aren't optimized, as steps can't
-    // be interpolated.
-    return _key.interpolation != RawTrackInterpolation::kStep;
-  }
+    _KeyFrame Lerp(const _KeyFrame& _left, const _KeyFrame& _right, const _KeyFrame& _ref) const
+    {
+        assert(Decimable(_ref));
+        const float alpha =
+            (_ref.ratio - _left.ratio) / (_right.ratio - _left.ratio);
+        assert(alpha >= 0.f && alpha <= 1.f);
+        const _KeyFrame key = { _ref.interpolation, _ref.ratio,
+                                Policy::Lerp(_left.value, _right.value, alpha) };
+        return key;
+    }
 
-  _KeyFrame Lerp(const _KeyFrame& _left, const _KeyFrame& _right,
-                 const _KeyFrame& _ref) const {
-    SKR_ASSERT(Decimable(_ref));
-    const float alpha =
-        (_ref.ratio - _left.ratio) / (_right.ratio - _left.ratio);
-    SKR_ASSERT(alpha >= 0.f && alpha <= 1.f);
-    const _KeyFrame key = {_ref.interpolation, _ref.ratio,
-                           Policy::Lerp(_left.value, _right.value, alpha)};
-    return key;
-  }
+    float Distance(const ValueType& _a, const ValueType& _b) const
+    {
+        return Policy::Distance(_a, _b);
+    }
 
-  float Distance(const _KeyFrame& _a, const _KeyFrame& _b) const {
-    return Policy::Distance(_a.value, _b.value);
-  }
+    inline static ValueType identity() { return Policy::identity(); }
 };
 
 template <typename _Track>
-inline bool Optimize(float _tolerance, const _Track& _input, _Track* _output) {
-  if (!_output) {
-    return false;
-  }
-  // Reset output animation to default.
-  *_output = _Track();
+inline bool Optimize(float _tolerance, const _Track& _input, _Track* _output)
+{
+    if (!_output)
+    {
+        return false;
+    }
 
-  // Validate animation.
-  if (!_input.Validate()) {
-    return false;
-  }
+    if (&_input == _output)
+    {
+        return false;
+    }
 
-  // Copy name
-  _output->name = _input.name;
+    // Reset output animation to default.
+    *_output = _Track();
 
-  // Optimizes.
-  const Adapter<typename _Track::Keyframe> adapter;
-  Decimate(_input.keyframes, adapter, _tolerance, &_output->keyframes);
+    // Validate animation.
+    if (!_input.Validate())
+    {
+        return false;
+    }
 
-  // Output animation is always valid though.
-  return _output->Validate();
-}
-}  // namespace
+    // Copy name
+    _output->name = _input.name;
 
-bool TrackOptimizer::operator()(const RawFloatTrack& _input,
-                                RawFloatTrack* _output) const {
-  return Optimize(tolerance, _input, _output);
+    // Optimizes.
+    const Adapter<typename _Track::Keyframe> adapter;
+    _output->keyframes = Decimate(_input.keyframes, adapter, _tolerance);
+
+    // Output animation is always valid though.
+    return _output->Validate();
 }
-bool TrackOptimizer::operator()(const RawFloat2Track& _input,
-                                RawFloat2Track* _output) const {
-  return Optimize(tolerance, _input, _output);
+} // namespace
+
+bool TrackOptimizer::operator()(const RawFloatTrack& _input, RawFloatTrack* _output) const
+{
+    return Optimize(tolerance, _input, _output);
 }
-bool TrackOptimizer::operator()(const RawFloat3Track& _input,
-                                RawFloat3Track* _output) const {
-  return Optimize(tolerance, _input, _output);
+bool TrackOptimizer::operator()(const RawFloat2Track& _input, RawFloat2Track* _output) const
+{
+    return Optimize(tolerance, _input, _output);
 }
-bool TrackOptimizer::operator()(const RawFloat4Track& _input,
-                                RawFloat4Track* _output) const {
-  return Optimize(tolerance, _input, _output);
+bool TrackOptimizer::operator()(const RawFloat3Track& _input, RawFloat3Track* _output) const
+{
+    return Optimize(tolerance, _input, _output);
 }
-bool TrackOptimizer::operator()(const RawQuaternionTrack& _input,
-                                RawQuaternionTrack* _output) const {
-  return Optimize(1.f - std::cos(.5f * tolerance), _input, _output);
+bool TrackOptimizer::operator()(const RawFloat4Track& _input, RawFloat4Track* _output) const
+{
+    return Optimize(tolerance, _input, _output);
 }
-}  // namespace offline
-}  // namespace animation
-}  // namespace ozz
+bool TrackOptimizer::operator()(const RawQuaternionTrack& _input, RawQuaternionTrack* _output) const
+{
+    return Optimize(1.f - std::cos(.5f * tolerance), _input, _output);
+}
+} // namespace offline
+} // namespace animation
+} // namespace ozz

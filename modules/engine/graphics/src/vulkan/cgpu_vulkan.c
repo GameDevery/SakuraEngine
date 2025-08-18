@@ -1,4 +1,5 @@
 #include "SkrGraphics/backend/vulkan/cgpu_vulkan.h"
+#include "SkrGraphics/backend/vulkan/cgpu_vulkan_raytracing.h"
 #include "SkrGraphics/config.h"
 #include "vulkan_utils.h"
 #include "SkrGraphics/shader-reflections/spirv/spirv_reflect.h"
@@ -179,22 +180,38 @@ uint32_t cgpu_query_queue_count_vulkan(const CGPUAdapterId adapter, const ECGPUQ
     uint32_t count = 0;
     switch (type)
     {
-        case CGPU_QUEUE_TYPE_GRAPHICS: {
-            for (uint32_t i = 0; i < A->mQueueFamiliesCount; i++)
+    case CGPU_QUEUE_TYPE_GRAPHICS: {
+        for (uint32_t i = 0; i < A->mQueueFamiliesCount; i++)
+        {
+            const VkQueueFamilyProperties* prop = &A->pQueueFamilyProperties[i];
+            if (prop->queueFlags & VK_QUEUE_GRAPHICS_BIT)
             {
-                const VkQueueFamilyProperties* prop = &A->pQueueFamilyProperties[i];
-                if (prop->queueFlags & VK_QUEUE_GRAPHICS_BIT)
+                return prop->queueCount;
+            }
+        }
+    }
+    break;
+    case CGPU_QUEUE_TYPE_COMPUTE: {
+        for (uint32_t i = 0; i < A->mQueueFamiliesCount; i++)
+        {
+            const VkQueueFamilyProperties* prop = &A->pQueueFamilyProperties[i];
+            if (prop->queueFlags & VK_QUEUE_COMPUTE_BIT)
+            {
+                if (!(prop->queueFlags & VK_QUEUE_GRAPHICS_BIT))
                 {
                     return prop->queueCount;
                 }
             }
         }
-        break;
-        case CGPU_QUEUE_TYPE_COMPUTE: {
-            for (uint32_t i = 0; i < A->mQueueFamiliesCount; i++)
+    }
+    break;
+    case CGPU_QUEUE_TYPE_TRANSFER: {
+        for (uint32_t i = 0; i < A->mQueueFamiliesCount; i++)
+        {
+            const VkQueueFamilyProperties* prop = &A->pQueueFamilyProperties[i];
+            if (prop->queueFlags & VK_QUEUE_TRANSFER_BIT)
             {
-                const VkQueueFamilyProperties* prop = &A->pQueueFamilyProperties[i];
-                if (prop->queueFlags & VK_QUEUE_COMPUTE_BIT)
+                if (!(prop->queueFlags & VK_QUEUE_COMPUTE_BIT))
                 {
                     if (!(prop->queueFlags & VK_QUEUE_GRAPHICS_BIT))
                     {
@@ -203,12 +220,15 @@ uint32_t cgpu_query_queue_count_vulkan(const CGPUAdapterId adapter, const ECGPUQ
                 }
             }
         }
-        break;
-        case CGPU_QUEUE_TYPE_TRANSFER: {
-            for (uint32_t i = 0; i < A->mQueueFamiliesCount; i++)
+    }
+    break;
+    case CGPU_QUEUE_TYPE_TILE_MAPPING: {
+        for (uint32_t i = 0; i < A->mQueueFamiliesCount; i++)
+        {
+            const VkQueueFamilyProperties* prop = &A->pQueueFamilyProperties[i];
+            if (prop->queueFlags & VK_QUEUE_SPARSE_BINDING_BIT)
             {
-                const VkQueueFamilyProperties* prop = &A->pQueueFamilyProperties[i];
-                if (prop->queueFlags & VK_QUEUE_TRANSFER_BIT)
+                if (!(prop->queueFlags & VK_QUEUE_TRANSFER_BIT))
                 {
                     if (!(prop->queueFlags & VK_QUEUE_COMPUTE_BIT))
                     {
@@ -220,29 +240,10 @@ uint32_t cgpu_query_queue_count_vulkan(const CGPUAdapterId adapter, const ECGPUQ
                 }
             }
         }
-        break;
-        case CGPU_QUEUE_TYPE_TILE_MAPPING: {
-            for (uint32_t i = 0; i < A->mQueueFamiliesCount; i++)
-            {
-                const VkQueueFamilyProperties* prop = &A->pQueueFamilyProperties[i];
-                if (prop->queueFlags & VK_QUEUE_SPARSE_BINDING_BIT)
-                {
-                    if (!(prop->queueFlags & VK_QUEUE_TRANSFER_BIT))
-                    {
-                        if (!(prop->queueFlags & VK_QUEUE_COMPUTE_BIT))
-                        {
-                            if (!(prop->queueFlags & VK_QUEUE_GRAPHICS_BIT))
-                            {
-                                return prop->queueCount;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        break;
-        default:
-            cgpu_assert(0 && "CGPU VULKAN: ERROR Queue Type!");
+    }
+    break;
+    default:
+        cgpu_assert(0 && "CGPU VULKAN: ERROR Queue Type!");
     }
     return count;
 }
@@ -256,11 +257,11 @@ CGPUFenceId cgpu_create_fence_vulkan(CGPUDeviceId device)
     VkFenceCreateInfo add_info = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
         .pNext = NULL,
-        .flags = 0,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT
     };
 
     CHECK_VKRESULT(D->mVkDeviceTable.vkCreateFence(
-    D->pVkDevice, &add_info, GLOBAL_VkAllocationCallbacks, &F->pVkFence));
+        D->pVkDevice, &add_info, GLOBAL_VkAllocationCallbacks, &F->pVkFence));
     F->mSubmitted = false;
     return &F->super;
 }
@@ -330,7 +331,9 @@ CGPUSemaphoreId cgpu_create_semaphore_vulkan(CGPUDeviceId device)
         .flags = 0
     };
     CHECK_VKRESULT(D->mVkDeviceTable.vkCreateSemaphore(D->pVkDevice,
-    &semaphore_info, GLOBAL_VkAllocationCallbacks, &(Semaphore->pVkSemaphore)));
+        &semaphore_info,
+        GLOBAL_VkAllocationCallbacks,
+        &(Semaphore->pVkSemaphore)));
     Semaphore->mSignaled = false;
     return &Semaphore->super;
 }
@@ -357,7 +360,7 @@ uint32_t get_set_count(uint32_t set_index_mask)
     return set_count;
 }
 
-CGPURootSignatureId cgpu_create_root_signature_vulkan(CGPUDeviceId device,const struct CGPURootSignatureDescriptor* desc)
+CGPURootSignatureId cgpu_create_root_signature_vulkan(CGPUDeviceId device, const struct CGPURootSignatureDescriptor* desc)
 {
     const CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)device;
     CGPURootSignature_Vulkan* RS = (CGPURootSignature_Vulkan*)cgpu_calloc(1, sizeof(CGPURootSignature_Vulkan));
@@ -366,7 +369,7 @@ CGPURootSignatureId cgpu_create_root_signature_vulkan(CGPUDeviceId device,const 
     if (desc->pool)
     {
         CGPURootSignature_Vulkan* poolSig =
-        (CGPURootSignature_Vulkan*)CGPUUtil_TryAllocateSignature(desc->pool, &RS->super, desc);
+            (CGPURootSignature_Vulkan*)CGPUUtil_TryAllocateSignature(desc->pool, &RS->super, desc);
         if (poolSig != CGPU_NULLPTR)
         {
             RS->pPipelineLayout = poolSig->pPipelineLayout;
@@ -410,18 +413,30 @@ CGPURootSignatureId cgpu_create_root_signature_vulkan(CGPUDeviceId device,const 
                 }
             }
             uint32_t bindings_count = param_table ? param_table->resources_count + desc->static_sampler_count : 0 + desc->static_sampler_count;
-            VkDescriptorSetLayoutBinding* vkbindings = (VkDescriptorSetLayoutBinding*)cgpu_calloc(
-            bindings_count, sizeof(VkDescriptorSetLayoutBinding));
+            VkDescriptorSetLayoutBinding* vkbindings = (VkDescriptorSetLayoutBinding*)cgpu_calloc(bindings_count, sizeof(VkDescriptorSetLayoutBinding));
+            VkDescriptorBindingFlags* vkbindingFlags = (VkDescriptorBindingFlags*)cgpu_calloc(bindings_count, sizeof(VkDescriptorBindingFlags));
+            const VkDescriptorBindingFlags default_flags = VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+            const VkDescriptorBindingFlags bindless_flags = default_flags | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
             uint32_t i_binding = 0;
             // bindings
             if (param_table)
             {
                 for (i_binding = 0; i_binding < param_table->resources_count; i_binding++)
                 {
-                    vkbindings[i_binding].binding = param_table->resources[i_binding].binding;
-                    vkbindings[i_binding].stageFlags = VkUtil_TranslateShaderUsages(param_table->resources[i_binding].stages);
-                    vkbindings[i_binding].descriptorType = VkUtil_TranslateResourceType(param_table->resources[i_binding].type);
-                    vkbindings[i_binding].descriptorCount = param_table->resources[i_binding].size;
+                    CGPUShaderResource* pResource = &param_table->resources[i_binding];
+                    vkbindings[i_binding].binding = pResource->binding;
+                    vkbindings[i_binding].stageFlags = VkUtil_TranslateShaderUsages(pResource->stages);
+                    vkbindings[i_binding].descriptorType = VkUtil_TranslateResourceType(pResource->type, pResource->view_usages);
+                    if (pResource->size == 0)
+                    {
+                        vkbindings[i_binding].descriptorCount = 4096;
+                        vkbindingFlags[i_binding] = bindless_flags;
+                    }
+                    else
+                    {
+                        vkbindings[i_binding].descriptorCount = pResource->size;
+                        vkbindingFlags[i_binding] = default_flags;
+                    }
                 }
             }
             // static samplers
@@ -433,24 +448,33 @@ CGPURootSignatureId cgpu_create_root_signature_vulkan(CGPUDeviceId device,const 
                     vkbindings[i_binding].pImmutableSamplers = &immutableSampler->pVkSampler;
                     vkbindings[i_binding].binding = RS->super.static_samplers[i_ss].binding;
                     vkbindings[i_binding].stageFlags = VkUtil_TranslateShaderUsages(RS->super.static_samplers[i_ss].stages);
-                    vkbindings[i_binding].descriptorType = VkUtil_TranslateResourceType(RS->super.static_samplers[i_ss].type);
+                    vkbindings[i_binding].descriptorType = VkUtil_TranslateResourceType(RS->super.static_samplers[i_ss].type, 0);
                     vkbindings[i_binding].descriptorCount = RS->super.static_samplers[i_ss].size;
                     i_binding++;
                 }
             }
+            // bindless
+            VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlags = {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+                .pNext = CGPU_NULLPTR,
+                .bindingCount = 0,
+                .pBindingFlags = 0
+            };
             VkDescriptorSetLayoutCreateInfo setLayoutInfo = {
                 .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-                .pNext = NULL,
+                .pNext = &bindingFlags,
                 .flags = 0,
                 .pBindings = vkbindings,
                 .bindingCount = i_binding
             };
             CHECK_VKRESULT(D->mVkDeviceTable.vkCreateDescriptorSetLayout(D->pVkDevice,
-                &setLayoutInfo, GLOBAL_VkAllocationCallbacks, &RS->pSetLayouts[set_index].layout));
-            VkUtil_ConsumeDescriptorSets(D->pDescriptorPool, &RS->pSetLayouts[set_index].layout,
-                &RS->pSetLayouts[set_index].pEmptyDescSet, 1);
+                &setLayoutInfo,
+                GLOBAL_VkAllocationCallbacks,
+                &RS->pSetLayouts[set_index].layout));
+            VkUtil_ConsumeDescriptorSets(D->pDescriptorPool, &RS->pSetLayouts[set_index].layout, &RS->pSetLayouts[set_index].pEmptyDescSet, 1);
 
             if (bindings_count) cgpu_free(vkbindings);
+            if (bindings_count) cgpu_free(vkbindingFlags);
         }
         set_index++;
         set_index_mask >>= 1;
@@ -464,7 +488,7 @@ CGPURootSignatureId cgpu_create_root_signature_vulkan(CGPUDeviceId device,const 
         for (uint32_t i_const = 0; i_const < RS->super.push_constant_count; i_const++)
         {
             RS->pPushConstRanges[i_const].stageFlags =
-            VkUtil_TranslateShaderUsages(RS->super.push_constants[i_const].stages);
+                VkUtil_TranslateShaderUsages(RS->super.push_constants[i_const].stages);
             RS->pPushConstRanges[i_const].size = RS->super.push_constants[i_const].size;
             RS->pPushConstRanges[i_const].offset = RS->super.push_constants[i_const].offset;
         }
@@ -497,10 +521,11 @@ CGPURootSignatureId cgpu_create_root_signature_vulkan(CGPUDeviceId device,const 
             param_table->resources_count, sizeof(VkDescriptorUpdateTemplateEntry));
         for (uint32_t i_iter = 0; i_iter < param_table->resources_count; i_iter++)
         {
-            uint32_t i_binding = param_table->resources[i_iter].binding;
+            CGPUShaderResource* pResource = &param_table->resources[i_iter];
+            uint32_t i_binding = pResource->binding;
             VkDescriptorUpdateTemplateEntry* this_entry = template_entries + i_iter;
-            this_entry->descriptorCount = param_table->resources[i_iter].size;
-            this_entry->descriptorType = VkUtil_TranslateResourceType(param_table->resources[i_iter].type);
+            this_entry->descriptorCount = pResource->size;
+            this_entry->descriptorType = VkUtil_TranslateResourceType(pResource->type, pResource->view_usages);
             this_entry->dstBinding = i_binding;
             this_entry->dstArrayElement = 0;
             this_entry->stride = sizeof(VkDescriptorUpdateData);
@@ -521,7 +546,9 @@ CGPURootSignatureId cgpu_create_root_signature_vulkan(CGPUDeviceId device,const 
             };
             set_to_record->mUpdateEntriesCount = update_entry_count;
             CHECK_VKRESULT(D->mVkDeviceTable.vkCreateDescriptorUpdateTemplate(D->pVkDevice,
-                &template_info, GLOBAL_VkAllocationCallbacks, &set_to_record->pUpdateTemplate));
+                &template_info,
+                GLOBAL_VkAllocationCallbacks,
+                &set_to_record->pUpdateTemplate));
         }
         cgpu_free(template_entries);
     }
@@ -589,7 +616,17 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_vulkan(CGPUDeviceId device, const
     }
     SetLayout_Vulkan* SetLayout = &RS->pSetLayouts[desc->set_index];
     const CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)device;
-    const size_t UpdateTemplateSize = RS->super.tables[table_index].resources_count * sizeof(VkDescriptorUpdateData);
+
+    // Calculate the maximum binding index to handle sparse bindings
+    uint32_t max_binding = 0;
+    const CGPUParameterTable* table = &RS->super.tables[table_index];
+    for (uint32_t i = 0; i < table->resources_count; i++)
+    {
+        uint32_t binding_end = table->resources[i].binding + cgpu_max(1U, table->resources[i].size);
+        max_binding = cgpu_max(max_binding, binding_end);
+    }
+
+    const size_t UpdateTemplateSize = max_binding * sizeof(VkDescriptorUpdateData);
     totalSize += UpdateTemplateSize;
     CGPUDescriptorSet_Vulkan* Set = cgpu_calloc_aligned(1, totalSize, _Alignof(CGPUDescriptorSet_Vulkan));
     char8_t* pMem = (char8_t*)(Set + 1);
@@ -617,19 +654,28 @@ void cgpu_update_descriptor_set_vulkan(CGPUDescriptorSetId set, const struct CGP
     SetLayout_Vulkan* SetLayout = &RS->pSetLayouts[set->index];
     const CGPUParameterTable* ParamTable = &RS->super.tables[table_index];
     VkDescriptorUpdateData* pUpdateData = Set->pUpdateData;
-    memset(pUpdateData, 0, count * sizeof(VkDescriptorUpdateData));
+
+    // Calculate the actual buffer size based on max binding
+    uint32_t max_binding = 0;
+    for (uint32_t i = 0; i < ParamTable->resources_count; i++)
+    {
+        uint32_t binding_end = ParamTable->resources[i].binding + cgpu_max(1U, ParamTable->resources[i].size);
+        max_binding = cgpu_max(max_binding, binding_end);
+    }
+    memset(pUpdateData, 0, max_binding * sizeof(VkDescriptorUpdateData));
     bool dirty = false;
     for (uint32_t i = 0; i < count; i++)
     {
         // Descriptor Info
         const CGPUDescriptorData* pParam = datas + i;
         const CGPUShaderResource* ResData = CGPU_NULLPTR;
-        if (pParam->name != CGPU_NULLPTR)
+        if (pParam->by_name.name != CGPU_NULLPTR)
         {
-            size_t argNameHash = cgpu_name_hash(pParam->name, strlen(pParam->name));
+            skr_hash argNameHash = skr_hash_of(pParam->by_name.name, strlen(pParam->by_name.name), SKR_DEFAULT_HASH_SEED);
             for (uint32_t p = 0; p < ParamTable->resources_count; p++)
             {
-                if (ParamTable->resources[p].name_hash == argNameHash)
+                if (ParamTable->resources[p].name_hash == argNameHash &&
+                    (strcmp(pParam->by_name.name, ParamTable->resources[p].name) == 0))
                 {
                     ResData = ParamTable->resources + p;
                 }
@@ -639,7 +685,7 @@ void cgpu_update_descriptor_set_vulkan(CGPUDescriptorSetId set, const struct CGP
         {
             for (uint32_t p = 0; p < ParamTable->resources_count; p++)
             {
-                if (ParamTable->resources[p].binding == pParam->binding)
+                if (ParamTable->resources[p].binding == pParam->by_index.binding)
                 {
                     ResData = ParamTable->resources + p;
                 }
@@ -650,66 +696,76 @@ void cgpu_update_descriptor_set_vulkan(CGPUDescriptorSetId set, const struct CGP
         const ECGPUResourceType resourceType = (ECGPUResourceType)ResData->type;
         switch (resourceType)
         {
-            case CGPU_RESOURCE_TYPE_RW_TEXTURE:
-            case CGPU_RESOURCE_TYPE_TEXTURE: {
-                cgpu_assert(pParam->textures && "cgpu_assert: Binding NULL texture(s)");
-                CGPUTextureView_Vulkan** TextureViews = (CGPUTextureView_Vulkan**)pParam->textures;
-                for (uint32_t arr = 0; arr < arrayCount; ++arr)
-                {
-                    // TODO: Stencil support
-                    cgpu_assert(pParam->textures[arr] && "cgpu_assert: Binding NULL texture!");
-                    VkDescriptorUpdateData* Data = &pUpdateData[ResData->binding + arr];
-                    Data->mImageInfo.imageView =
-                        ResData->type == CGPU_RESOURCE_TYPE_RW_TEXTURE ?
-                        TextureViews[arr]->pVkUAVDescriptor :
-                        TextureViews[arr]->pVkSRVDescriptor;
-                    Data->mImageInfo.imageLayout =
-                    ResData->type == CGPU_RESOURCE_TYPE_RW_TEXTURE ?
-                        VK_IMAGE_LAYOUT_GENERAL :
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                    Data->mImageInfo.sampler = VK_NULL_HANDLE;
-                    dirty = true;
-                }
-                break;
+        case CGPU_RESOURCE_TYPE2_TEXTURE: {
+            cgpu_assert(pParam->textures && "cgpu_assert: Binding NULL texture(s)");
+            CGPUTextureView_Vulkan** TextureViews = (CGPUTextureView_Vulkan**)pParam->textures;
+            for (uint32_t arr = 0; arr < arrayCount; ++arr)
+            {
+                // TODO: Stencil support
+                cgpu_assert(pParam->textures[arr] && "cgpu_assert: Binding NULL texture!");
+                uint32_t index = ResData->binding + arr;
+                cgpu_assert(index < max_binding && "cgpu_assert: Binding index out of bounds!");
+                VkDescriptorUpdateData* Data = &pUpdateData[index];
+                Data->mImageInfo.imageView =
+                    ResData->view_usages & CGPU_TEXTURE_VIEW_USAGE_UAV ?
+                    TextureViews[arr]->pVkUAVDescriptor :
+                    TextureViews[arr]->pVkSRVDescriptor;
+                Data->mImageInfo.imageLayout =
+                    ResData->view_usages & CGPU_TEXTURE_VIEW_USAGE_UAV ?
+                    VK_IMAGE_LAYOUT_GENERAL :
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                Data->mImageInfo.sampler = VK_NULL_HANDLE;
+                dirty = true;
             }
-            case CGPU_RESOURCE_TYPE_SAMPLER: {
-                cgpu_assert(pParam->samplers && "cgpu_assert: Binding NULL Sampler(s)");
-                CGPUSampler_Vulkan** Samplers = (CGPUSampler_Vulkan**)pParam->samplers;
-                for (uint32_t arr = 0; arr < arrayCount; ++arr)
-                {
-                    cgpu_assert(pParam->samplers[arr] && "cgpu_assert: Binding NULL Sampler!");
-                    VkDescriptorUpdateData* Data = &pUpdateData[ResData->binding + arr];
-                    Data->mImageInfo.sampler = Samplers[arr]->pVkSampler;
-                    dirty = true;
-                }
-                break;
+            break;
+        }
+        case CGPU_RESOURCE_TYPE2_SAMPLER: {
+            cgpu_assert(pParam->samplers && "cgpu_assert: Binding NULL Sampler(s)");
+            CGPUSampler_Vulkan** Samplers = (CGPUSampler_Vulkan**)pParam->samplers;
+            for (uint32_t arr = 0; arr < arrayCount; ++arr)
+            {
+                cgpu_assert(pParam->samplers[arr] && "cgpu_assert: Binding NULL Sampler!");
+                uint32_t index = ResData->binding + arr;
+                cgpu_assert(index < max_binding && "cgpu_assert: Binding index out of bounds!");
+                VkDescriptorUpdateData* Data = &pUpdateData[index];
+                Data->mImageInfo.sampler = Samplers[arr]->pVkSampler;
+                dirty = true;
             }
-            case CGPU_RESOURCE_TYPE_UNIFORM_BUFFER:
-            case CGPU_RESOURCE_TYPE_BUFFER:
-            case CGPU_RESOURCE_TYPE_BUFFER_RAW:
-            case CGPU_RESOURCE_TYPE_RW_BUFFER:
-            case CGPU_RESOURCE_TYPE_RW_BUFFER_RAW: {
-                cgpu_assert(pParam->buffers && "cgpu_assert: Binding NULL Buffer(s)!");
-                CGPUBuffer_Vulkan** Buffers = (CGPUBuffer_Vulkan**)pParam->buffers;
-                for (uint32_t arr = 0; arr < arrayCount; ++arr)
-                {
-                    cgpu_assert(pParam->buffers[arr] && "cgpu_assert: Binding NULL Buffer!");
-                    VkDescriptorUpdateData* Data = &pUpdateData[ResData->binding + arr];
-                    Data->mBufferInfo.buffer = Buffers[arr]->pVkBuffer;
-                    Data->mBufferInfo.offset = Buffers[arr]->mOffset;
-                    Data->mBufferInfo.range = VK_WHOLE_SIZE;
-                    if (pParam->buffers_params.offsets)
-                    {
-                        Data->mBufferInfo.offset = pParam->buffers_params.offsets[arr];
-                        Data->mBufferInfo.range = pParam->buffers_params.sizes[arr];
-                    }
-                    dirty = true;
-                }
-                break;
+            break;
+        }
+        case CGPU_RESOURCE_TYPE2_BUFFER: {
+            cgpu_assert(pParam->buffers && "cgpu_assert: Binding NULL Buffer(s)!");
+            CGPUBufferView_Vulkan** BufferViews = (CGPUBufferView_Vulkan**)pParam->buffers;
+            for (uint32_t arr = 0; arr < arrayCount; ++arr)
+            {
+                cgpu_assert(pParam->buffers[arr] && "cgpu_assert: Binding NULL Buffer!");
+                uint32_t index = ResData->binding + arr;
+                cgpu_assert(index < max_binding && "cgpu_assert: Binding index out of bounds!");
+                VkDescriptorUpdateData* Data = &pUpdateData[index];
+                Data->mBufferInfo.buffer = BufferViews[arr]->pVkBuffer;
+                Data->mBufferInfo.offset = BufferViews[arr]->super.info->offset;
+                Data->mBufferInfo.range = VK_WHOLE_SIZE;
+                dirty = true;
             }
-            default:
-                assert(0 && ResData->type && "Descriptor Type not supported!");
-                break;
+            break;
+        }
+        case CGPU_RESOURCE_TYPE2_ACCELERATION_STRUCTURE: {
+            cgpu_assert(pParam->acceleration_structures && "cgpu_assert: Binding NULL Acceleration Structure(s)!");
+            CGPUAccelerationStructure_Vulkan** AccelerationStructures = (CGPUAccelerationStructure_Vulkan**)pParam->acceleration_structures;
+            for (uint32_t arr = 0; arr < arrayCount; ++arr)
+            {
+                cgpu_assert(pParam->acceleration_structures[arr] && "cgpu_assert: Binding NULL Acceleration Structure!");
+                uint32_t index = ResData->binding + arr;
+                cgpu_assert(index < max_binding && "cgpu_assert: Binding index out of bounds!");
+                VkDescriptorUpdateData* Data = &pUpdateData[index];
+                Data->mAccelerationStructure = AccelerationStructures[arr]->mVkAccelerationStructure;
+                dirty = true;
+            }
+            break;
+        }
+        default:
+            assert(0 && ResData->type && "Descriptor Type not supported!");
+            break;
         }
     }
     if (dirty)
@@ -751,7 +807,11 @@ CGPUComputePipelineId cgpu_create_compute_pipeline_vulkan(CGPUDeviceId device, c
         .basePipelineIndex = 0
     };
     CHECK_VKRESULT(D->mVkDeviceTable.vkCreateComputePipelines(D->pVkDevice,
-    D->pPipelineCache, 1, &pipeline_info, GLOBAL_VkAllocationCallbacks, &PPL->pVkPipeline));
+        D->pPipelineCache,
+        1,
+        &pipeline_info,
+        GLOBAL_VkAllocationCallbacks,
+        &PPL->pVkPipeline));
     return &PPL->super;
 }
 
@@ -1093,15 +1153,15 @@ VkQueryType VkUtil_ToVkQueryType(ECGPUQueryType type)
 {
     switch (type)
     {
-        case CGPU_QUERY_TYPE_TIMESTAMP:
-            return VK_QUERY_TYPE_TIMESTAMP;
-        case CGPU_QUERY_TYPE_PIPELINE_STATISTICS:
-            return VK_QUERY_TYPE_PIPELINE_STATISTICS;
-        case CGPU_QUERY_TYPE_OCCLUSION:
-            return VK_QUERY_TYPE_OCCLUSION;
-        default:
-            cgpu_assert(false && "Invalid query heap type");
-            return VK_QUERY_TYPE_MAX_ENUM;
+    case CGPU_QUERY_TYPE_TIMESTAMP:
+        return VK_QUERY_TYPE_TIMESTAMP;
+    case CGPU_QUERY_TYPE_PIPELINE_STATISTICS:
+        return VK_QUERY_TYPE_PIPELINE_STATISTICS;
+    case CGPU_QUERY_TYPE_OCCLUSION:
+        return VK_QUERY_TYPE_OCCLUSION;
+    default:
+        cgpu_assert(false && "Invalid query heap type");
+        return VK_QUERY_TYPE_MAX_ENUM;
     }
 }
 CGPUQueryPoolId cgpu_create_query_pool_vulkan(CGPUDeviceId device, const struct CGPUQueryPoolDescriptor* desc)
@@ -1118,7 +1178,7 @@ CGPUQueryPoolId cgpu_create_query_pool_vulkan(CGPUDeviceId device, const struct 
     createInfo.flags = 0;
     createInfo.pipelineStatistics = 0;
     CHECK_VKRESULT(D->mVkDeviceTable.vkCreateQueryPool(
-    D->pVkDevice, &createInfo, GLOBAL_VkAllocationCallbacks, &P->pVkQueryPool));
+        D->pVkDevice, &createInfo, GLOBAL_VkAllocationCallbacks, &P->pVkQueryPool));
     return &P->super;
 }
 
@@ -1127,28 +1187,142 @@ void cgpu_free_query_pool_vulkan(CGPUQueryPoolId pool)
     CGPUQueryPool_Vulkan* P = (CGPUQueryPool_Vulkan*)pool;
     CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)pool->device;
     D->mVkDeviceTable.vkDestroyQueryPool(
-    D->pVkDevice, P->pVkQueryPool, GLOBAL_VkAllocationCallbacks);
+        D->pVkDevice, P->pVkQueryPool, GLOBAL_VkAllocationCallbacks);
     cgpu_free(P);
 }
 
 CGPUMemoryPoolId cgpu_create_memory_pool_vulkan(CGPUDeviceId device, const struct CGPUMemoryPoolDescriptor* desc)
 {
-    VmaPool vmaPool;
     CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)device;
+    CGPUAdapter_Vulkan* A = (CGPUAdapter_Vulkan*)device->adapter;
+
+    // Allocate memory pool structure
+    CGPUMemoryPool_Vulkan* pool = (CGPUMemoryPool_Vulkan*)cgpu_calloc(1, sizeof(CGPUMemoryPool_Vulkan));
+    pool->super.device = device;
+    pool->super.type = desc->type;
+
+    // Find appropriate memory type index
+    VkMemoryPropertyFlags required_flags = 0;
+    VkMemoryPropertyFlags preferred_flags = 0;
+
+    // Map CGPU memory usage to Vulkan memory property flags
+    switch (desc->memory_usage)
+    {
+    case CGPU_MEM_USAGE_GPU_ONLY:
+        required_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        break;
+    case CGPU_MEM_USAGE_CPU_ONLY:
+        required_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        preferred_flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        break;
+    case CGPU_MEM_USAGE_CPU_TO_GPU:
+        required_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        preferred_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        break;
+    case CGPU_MEM_USAGE_GPU_TO_CPU:
+        required_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        preferred_flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        break;
+    default:
+        break;
+    }
+
+    const bool allowRTDS = desc->flags & CGPU_MEM_POOL_FLAG_ALLOW_RT_DS;
+    const bool allowBuffers = desc->flags & CGPU_MEM_POOL_FLAG_ALLOW_BUFFERS;
+    const bool allowTextures = desc->flags & CGPU_MEM_POOL_FLAG_ALLOW_TEXTURES;
+    // 根据资源类型优化 memory flags
+    if (allowRTDS)
+    {
+        // 瞬态附件可以使用 LAZILY_ALLOCATED
+        preferred_flags |= VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
+    }
+
+    // Find memory type index
+    VkPhysicalDeviceMemoryProperties mem_props;
+    vkGetPhysicalDeviceMemoryProperties(A->pPhysicalDevice, &mem_props);
+
+    uint32_t memory_type_index = UINT32_MAX;
+    for (uint32_t i = 0; i < mem_props.memoryTypeCount; i++)
+    {
+        if ((mem_props.memoryTypes[i].propertyFlags & required_flags) == required_flags)
+        {
+            if (preferred_flags == 0 || (mem_props.memoryTypes[i].propertyFlags & preferred_flags) != 0)
+            {
+                memory_type_index = i;
+                break;
+            }
+        }
+    }
+
+    // Fallback if no memory type with preferred flags found
+    if (memory_type_index == UINT32_MAX)
+    {
+        for (uint32_t i = 0; i < mem_props.memoryTypeCount; i++)
+        {
+            if ((mem_props.memoryTypes[i].propertyFlags & required_flags) == required_flags)
+            {
+                memory_type_index = i;
+                break;
+            }
+        }
+    }
+
+    if (memory_type_index == UINT32_MAX)
+    {
+        cgpu_error("Failed to find suitable memory type for memory pool");
+        cgpu_free(pool);
+        return NULL;
+    }
+
+    // Create VMA pool
     VmaPoolCreateInfo poolInfo = {
+        .memoryTypeIndex = memory_type_index,
+        .blockSize = desc->block_size,
         .minBlockCount = desc->min_block_count,
         .maxBlockCount = desc->max_block_count,
         .minAllocationAlignment = desc->min_alloc_alignment,
-        .blockSize = desc->block_size,
-        .memoryTypeIndex = 0,
         .flags = 0
     };
-    vmaCreatePool(D->pVmaAllocator, &poolInfo, &vmaPool);
-    return NULL;
+
+    // Set flags based on pool type
+    if (desc->type == CGPU_MEM_POOL_TYPE_LINEAR)
+    {
+        poolInfo.flags |= VMA_POOL_CREATE_LINEAR_ALGORITHM_BIT;
+    }
+
+    // 根据资源类型优化 VMA pool
+    if (allowBuffers && !allowTextures && !allowRTDS)
+    {
+        // 纯 Buffer 池可以忽略 buffer/image granularity
+        poolInfo.flags |= VMA_POOL_CREATE_IGNORE_BUFFER_IMAGE_GRANULARITY_BIT;
+    }
+
+    // Create the VMA pool
+    VkResult result = vmaCreatePool(D->pVmaAllocator, &poolInfo, &pool->pVmaPool);
+    if (result != VK_SUCCESS)
+    {
+        cgpu_error("Failed to create VMA pool: %d", result);
+        cgpu_free(pool);
+        return NULL;
+    }
+
+    return &pool->super;
 }
 
 void cgpu_free_memory_pool_vulkan(CGPUMemoryPoolId pool)
 {
+    if (pool)
+    {
+        CGPUMemoryPool_Vulkan* vk_pool = (CGPUMemoryPool_Vulkan*)pool;
+        CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)pool->device;
+
+        if (vk_pool->pVmaPool)
+        {
+            vmaDestroyPool(D->pVmaAllocator, vk_pool->pVmaPool);
+        }
+
+        cgpu_free(vk_pool);
+    }
 }
 
 // Queue APIs
@@ -1160,9 +1334,9 @@ CGPUQueueId cgpu_get_queue_vulkan(CGPUDeviceId device, ECGPUQueueType type, uint
 
     CGPUQueue_Vulkan Q = {
         .super = {
-        .device = device,
-        .index = index,
-        .type = type }
+            .device = device,
+            .index = index,
+            .type = type }
     };
     D->mVkDeviceTable.vkGetDeviceQueue(D->pVkDevice, (uint32_t)A->mQueueFamilyIndices[type], index, &Q.pVkQueue);
     Q.mVkQueueFamilyIndex = (uint32_t)A->mQueueFamilyIndices[type];
@@ -1214,7 +1388,7 @@ void cgpu_submit_queue_vulkan(CGPUQueueId queue, const struct CGPUQueueSubmitDes
         if (WaitSemaphores[i]->mSignaled)
         {
             wait_semaphores[waitCount] = WaitSemaphores[i]->pVkSemaphore;
-            wait_stages[waitCount] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;            
+            wait_stages[waitCount] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
             WaitSemaphores[i]->mSignaled = false;
             ++waitCount;
         }
@@ -1248,7 +1422,7 @@ void cgpu_submit_queue_vulkan(CGPUQueueId queue, const struct CGPUQueueSubmitDes
     if (Q->pMutex) skr_mutex_acquire(Q->pMutex);
 #endif
     VkResult res = D->mVkDeviceTable.vkQueueSubmit(Q->pVkQueue, 1, &submit_info, F ? F->pVkFence : VK_NULL_HANDLE);
-    if(res != VK_SUCCESS)
+    if (res != VK_SUCCESS)
     {
         cgpu_fatal(u8"CGPU VULKAN: Failed to submit queue! Error code: %d", res);
         if (res == VK_ERROR_DEVICE_LOST)
@@ -1356,7 +1530,7 @@ VkCommandPool allocate_transient_command_pool(CGPUDevice_Vulkan* D, CGPUQueueId 
     };
     CHECK_VKRESULT(D->mVkDeviceTable.vkCreateCommandPool(
         D->pVkDevice, &create_info, GLOBAL_VkAllocationCallbacks, &P));
-        
+
     return P;
 }
 
@@ -1381,7 +1555,7 @@ CGPUCommandBufferId cgpu_create_command_buffer_vulkan(CGPUCommandPoolId pool, co
     CGPUQueue_Vulkan* Q = (CGPUQueue_Vulkan*)P->super.queue;
     CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)Q->super.device;
     CGPUCommandBuffer_Vulkan* Cmd = (CGPUCommandBuffer_Vulkan*)cgpu_calloc_aligned(
-    1, sizeof(CGPUCommandBuffer_Vulkan), _Alignof(CGPUCommandBuffer_Vulkan));
+        1, sizeof(CGPUCommandBuffer_Vulkan), _Alignof(CGPUCommandBuffer_Vulkan));
     cgpu_assert(Cmd);
 
     Cmd->mType = Q->super.type;
@@ -1548,7 +1722,7 @@ void cgpu_cmd_resource_barrier_vulkan(CGPUCommandBufferId cmd, const struct CGPU
                 pImageBarrier->srcQueueFamilyIndex = (uint32_t)A->mQueueFamilyIndices[texture_barrier->queue_type];
             }
             else if (texture_barrier->queue_release &&
-                     texture_barrier->src_state != CGPU_RESOURCE_STATE_UNDEFINED)
+                texture_barrier->src_state != CGPU_RESOURCE_STATE_UNDEFINED)
             {
                 pImageBarrier->srcQueueFamilyIndex = (uint32_t)A->mQueueFamilyIndices[Cmd->mType];
                 pImageBarrier->dstQueueFamilyIndex = (uint32_t)A->mQueueFamilyIndices[texture_barrier->queue_type];
@@ -1566,16 +1740,21 @@ void cgpu_cmd_resource_barrier_vulkan(CGPUCommandBufferId cmd, const struct CGPU
 
     // Commit barriers
     VkPipelineStageFlags srcStageMask =
-    VkUtil_DeterminePipelineStageFlags(A, srcAccessFlags, (ECGPUQueueType)Cmd->mType);
+        VkUtil_DeterminePipelineStageFlags(A, srcAccessFlags, (ECGPUQueueType)Cmd->mType);
     VkPipelineStageFlags dstStageMask =
-    VkUtil_DeterminePipelineStageFlags(A, dstAccessFlags, (ECGPUQueueType)Cmd->mType);
+        VkUtil_DeterminePipelineStageFlags(A, dstAccessFlags, (ECGPUQueueType)Cmd->mType);
     if (bufferBarrierCount || imageBarrierCount)
     {
         D->mVkDeviceTable.vkCmdPipelineBarrier(Cmd->pVkCmdBuf,
-            srcStageMask, dstStageMask, 0,
-            0, NULL,
-            bufferBarrierCount, BBs,
-            imageBarrierCount, TBs);
+            srcStageMask,
+            dstStageMask,
+            0,
+            0,
+            NULL,
+            bufferBarrierCount,
+            BBs,
+            imageBarrierCount,
+            TBs);
     }
 }
 
@@ -1600,18 +1779,19 @@ void cgpu_cmd_begin_query_vulkan(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, 
     CGPUQueryPool_Vulkan* P = (CGPUQueryPool_Vulkan*)pool;
     switch (P->mType)
     {
-        case VK_QUERY_TYPE_TIMESTAMP:
-            D->mVkDeviceTable.vkCmdWriteTimestamp(
+    case VK_QUERY_TYPE_TIMESTAMP:
+        D->mVkDeviceTable.vkCmdWriteTimestamp(
             Cmd->pVkCmdBuf,
             VkUtil_ShaderStagesToPipelineStage(desc->stage),
-            P->pVkQueryPool, desc->index);
-            break;
-        case VK_QUERY_TYPE_PIPELINE_STATISTICS:
-            break;
-        case VK_QUERY_TYPE_OCCLUSION:
-            break;
-        default:
-            break;
+            P->pVkQueryPool,
+            desc->index);
+        break;
+    case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+        break;
+    case VK_QUERY_TYPE_OCCLUSION:
+        break;
+    default:
+        break;
     }
 }
 
@@ -1641,9 +1821,7 @@ void cgpu_cmd_resolve_query_vulkan(CGPUCommandBufferId cmd, CGPUQueryPoolId pool
     flags |= VK_QUERY_RESULT_WAIT_BIT;
 #endif
     D->mVkDeviceTable.vkCmdCopyQueryPoolResults(
-    Cmd->pVkCmdBuf, P->pVkQueryPool,
-    start_query, query_count, B->pVkBuffer, 0,
-    sizeof(uint64_t), flags);
+        Cmd->pVkCmdBuf, P->pVkQueryPool, start_query, query_count, B->pVkBuffer, 0, sizeof(uint64_t), flags);
 }
 
 void cgpu_cmd_end_vulkan(CGPUCommandBufferId cmd)
@@ -1748,16 +1926,25 @@ void cgpu_compute_encoder_bind_descriptor_set_vulkan(CGPUComputePassEncoderId en
                 Set->super.index != i)
             {
                 D->mVkDeviceTable.vkCmdBindDescriptorSets(Cmd->pVkCmdBuf,
-                VK_PIPELINE_BIND_POINT_COMPUTE, RS->pPipelineLayout, i,
-                1, &RS->pSetLayouts[i].pEmptyDescSet, 0, NULL);
+                    VK_PIPELINE_BIND_POINT_COMPUTE,
+                    RS->pPipelineLayout,
+                    i,
+                    1,
+                    &RS->pSetLayouts[i].pEmptyDescSet,
+                    0,
+                    NULL);
             }
         }
     }
     D->mVkDeviceTable.vkCmdBindDescriptorSets(Cmd->pVkCmdBuf,
-    VK_PIPELINE_BIND_POINT_COMPUTE, RS->pPipelineLayout,
-    Set->super.index, 1, &Set->pVkDescriptorSet,
-    // TODO: Dynamic Offset
-    0, NULL);
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        RS->pPipelineLayout,
+        Set->super.index,
+        1,
+        &Set->pVkDescriptorSet,
+        // TODO: Dynamic Offset
+        0,
+        NULL);
 }
 
 void cgpu_render_encoder_bind_descriptor_set_vulkan(CGPURenderPassEncoderId encoder, CGPUDescriptorSetId set)
@@ -1778,16 +1965,25 @@ void cgpu_render_encoder_bind_descriptor_set_vulkan(CGPURenderPassEncoderId enco
                 Set->super.index != i)
             {
                 D->mVkDeviceTable.vkCmdBindDescriptorSets(Cmd->pVkCmdBuf,
-                VK_PIPELINE_BIND_POINT_GRAPHICS, RS->pPipelineLayout, i,
-                1, &RS->pSetLayouts[i].pEmptyDescSet, 0, NULL);
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    RS->pPipelineLayout,
+                    i,
+                    1,
+                    &RS->pSetLayouts[i].pEmptyDescSet,
+                    0,
+                    NULL);
             }
         }
     }
     D->mVkDeviceTable.vkCmdBindDescriptorSets(Cmd->pVkCmdBuf,
-    VK_PIPELINE_BIND_POINT_GRAPHICS, RS->pPipelineLayout,
-    Set->super.index, 1, &Set->pVkDescriptorSet,
-    // TODO: Dynamic Offset
-    0, NULL);
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        RS->pPipelineLayout,
+        Set->super.index,
+        1,
+        &Set->pVkDescriptorSet,
+        // TODO: Dynamic Offset
+        0,
+        NULL);
 }
 
 void cgpu_compute_encoder_push_constants_vulkan(CGPUComputePassEncoderId encoder, CGPURootSignatureId rs, const char8_t* name, const void* data)
@@ -1795,9 +1991,7 @@ void cgpu_compute_encoder_push_constants_vulkan(CGPUComputePassEncoderId encoder
     CGPUCommandBuffer_Vulkan* Cmd = (CGPUCommandBuffer_Vulkan*)encoder;
     CGPURootSignature_Vulkan* RS = (CGPURootSignature_Vulkan*)rs;
     const CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)rs->device;
-    D->mVkDeviceTable.vkCmdPushConstants(Cmd->pVkCmdBuf, RS->pPipelineLayout,
-    RS->pPushConstRanges[0].stageFlags, 0,
-    RS->pPushConstRanges[0].size, data);
+    D->mVkDeviceTable.vkCmdPushConstants(Cmd->pVkCmdBuf, RS->pPipelineLayout, RS->pPushConstRanges[0].stageFlags, 0, RS->pPushConstRanges[0].size, data);
 }
 
 void cgpu_compute_encoder_bind_pipeline_vulkan(CGPUComputePassEncoderId encoder, CGPUComputePipelineId pipeline)
@@ -1833,7 +2027,7 @@ CGPURenderPassEncoderId cgpu_cmd_begin_render_pass_vulkan(CGPUCommandBufferId cm
             .mColorAttachmentCount = desc->render_target_count,
             .mDepthStencilFormat =
                 desc->depth_stencil ?
-                (desc->depth_stencil->view ? desc->depth_stencil->view->info.format : CGPU_FORMAT_UNDEFINED) :
+                (desc->depth_stencil->view ? desc->depth_stencil->view->info->format : CGPU_FORMAT_UNDEFINED) :
                 CGPU_FORMAT_UNDEFINED,
             .mSampleCount = desc->sample_count,
             .mLoadActionDepth =
@@ -1847,12 +2041,12 @@ CGPURenderPassEncoderId cgpu_cmd_begin_render_pass_vulkan(CGPUCommandBufferId cm
         };
         for (uint32_t i = 0; i < desc->render_target_count; i++)
         {
-            CGPUTextureId tex = desc->color_attachments[i].view->info.texture;
+            CGPUTextureId tex = desc->color_attachments[i].view->info->texture;
             const CGPUTextureInfo* info = tex->info;
 
             rpdesc.pResolveMasks[i] = (desc->sample_count != CGPU_SAMPLE_COUNT_1) &&
-                                      (desc->color_attachments[i].resolve_view != NULL);
-            rpdesc.pColorFormats[i] = desc->color_attachments[i].view->info.format;
+                (desc->color_attachments[i].resolve_view != NULL);
+            rpdesc.pColorFormats[i] = desc->color_attachments[i].view->info->format;
             rpdesc.pLoadActionsColor[i] = desc->color_attachments[i].load_action;
             rpdesc.pStoreActionsColor[i] = desc->color_attachments[i].store_action;
             Width = (uint32_t)info->width;
@@ -1875,7 +2069,7 @@ CGPURenderPassEncoderId cgpu_cmd_begin_render_pass_vulkan(CGPUCommandBufferId cm
         {
             CGPUTextureView_Vulkan* TVV = (CGPUTextureView_Vulkan*)desc->color_attachments[i].view;
             fbDesc.pImageViews[idx] = TVV->pVkRTVDSVDescriptor;
-            fbDesc.mLayers = TVV->super.info.array_layer_count;
+            fbDesc.mLayers = TVV->super.info->array_layer_count;
             fbDesc.mAttachmentCount += 1;
             idx++;
         }
@@ -1893,7 +2087,7 @@ CGPURenderPassEncoderId cgpu_cmd_begin_render_pass_vulkan(CGPUCommandBufferId cm
         {
             CGPUTextureView_Vulkan* TVV = (CGPUTextureView_Vulkan*)desc->depth_stencil->view;
             fbDesc.pImageViews[idx] = TVV->pVkRTVDSVDescriptor;
-            fbDesc.mLayers = TVV->super.info.array_layer_count;
+            fbDesc.mLayers = TVV->super.info->array_layer_count;
             fbDesc.mAttachmentCount += 1;
             idx++;
         }
@@ -1991,8 +2185,7 @@ void cgpu_render_encoder_bind_pipeline_vulkan(CGPURenderPassEncoderId encoder, C
     D->mVkDeviceTable.vkCmdBindPipeline(Cmd->pVkCmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, PPL->pVkPipeline);
 }
 
-void cgpu_render_encoder_bind_vertex_buffers_vulkan(CGPURenderPassEncoderId encoder, uint32_t buffer_count,
-const CGPUBufferId* buffers, const uint32_t* strides, const uint32_t* offsets)
+void cgpu_render_encoder_bind_vertex_buffers_vulkan(CGPURenderPassEncoderId encoder, uint32_t buffer_count, const CGPUBufferId* buffers, const uint32_t* strides, const uint32_t* offsets)
 {
     CGPUCommandBuffer_Vulkan* Cmd = (CGPUCommandBuffer_Vulkan*)encoder;
     const CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)Cmd->super.device;
@@ -2012,8 +2205,7 @@ const CGPUBufferId* buffers, const uint32_t* strides, const uint32_t* offsets)
     D->mVkDeviceTable.vkCmdBindVertexBuffers(Cmd->pVkCmdBuf, 0, final_buffer_count, vkBuffers, vkOffsets);
 }
 
-void cgpu_render_encoder_bind_index_buffer_vulkan(CGPURenderPassEncoderId encoder, CGPUBufferId buffer,
-uint32_t index_stride, uint64_t offset)
+void cgpu_render_encoder_bind_index_buffer_vulkan(CGPURenderPassEncoderId encoder, CGPUBufferId buffer, uint32_t index_stride, uint64_t offset)
 {
     CGPUCommandBuffer_Vulkan* Cmd = (CGPUCommandBuffer_Vulkan*)encoder;
     const CGPUBuffer_Vulkan* Buffer = (const CGPUBuffer_Vulkan*)buffer;
@@ -2024,9 +2216,9 @@ uint32_t index_stride, uint64_t offset)
     cgpu_assert(VK_NULL_HANDLE != Buffer->pVkBuffer);
 
     VkIndexType vk_index_type =
-    (sizeof(uint16_t) == index_stride) ?
-    VK_INDEX_TYPE_UINT16 :
-    ((sizeof(uint8_t) == index_stride) ? VK_INDEX_TYPE_UINT8_EXT : VK_INDEX_TYPE_UINT32);
+        (sizeof(uint16_t) == index_stride) ?
+        VK_INDEX_TYPE_UINT16 :
+        ((sizeof(uint8_t) == index_stride) ? VK_INDEX_TYPE_UINT8_EXT : VK_INDEX_TYPE_UINT32);
     D->mVkDeviceTable.vkCmdBindIndexBuffer(Cmd->pVkCmdBuf, Buffer->pVkBuffer, offset, vk_index_type);
 }
 
@@ -2035,9 +2227,7 @@ void cgpu_render_encoder_push_constants_vulkan(CGPURenderPassEncoderId encoder, 
     CGPUCommandBuffer_Vulkan* Cmd = (CGPUCommandBuffer_Vulkan*)encoder;
     CGPURootSignature_Vulkan* RS = (CGPURootSignature_Vulkan*)rs;
     const CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)rs->device;
-    D->mVkDeviceTable.vkCmdPushConstants(Cmd->pVkCmdBuf, RS->pPipelineLayout,
-        RS->pPushConstRanges[0].stageFlags, 0,
-        RS->pPushConstRanges[0].size, data);
+    D->mVkDeviceTable.vkCmdPushConstants(Cmd->pVkCmdBuf, RS->pPipelineLayout, RS->pPushConstRanges[0].stageFlags, 0, RS->pPushConstRanges[0].size, data);
 }
 
 void cgpu_render_encoder_draw_vulkan(CGPURenderPassEncoderId encoder, uint32_t vertex_count, uint32_t first_vertex)
@@ -2103,11 +2293,11 @@ CGPUSwapChainId cgpu_create_swapchain_vulkan_impl(CGPUDeviceId device, const CGP
     surface_format.format = VK_FORMAT_UNDEFINED;
     uint32_t surfaceFormatCount = 0;
     CHECK_VKRESULT(vkGetPhysicalDeviceSurfaceFormatsKHR(
-    A->pPhysicalDevice, vkSurface, &surfaceFormatCount, CGPU_NULLPTR));
+        A->pPhysicalDevice, vkSurface, &surfaceFormatCount, CGPU_NULLPTR));
     // Allocate and get surface formats
     SKR_DECLARE_ZERO_VLA(VkSurfaceFormatKHR, formats, surfaceFormatCount)
     CHECK_VKRESULT(vkGetPhysicalDeviceSurfaceFormatsKHR(
-    A->pPhysicalDevice, vkSurface, &surfaceFormatCount, formats))
+        A->pPhysicalDevice, vkSurface, &surfaceFormatCount, formats))
 
     // Only undefined format support found, force use B8G8R8A8
     if ((1 == surfaceFormatCount) && (VK_FORMAT_UNDEFINED == formats[0].format))
@@ -2124,7 +2314,7 @@ CGPUSwapChainId cgpu_create_swapchain_vulkan_impl(CGPUDeviceId device, const CGP
             VK_COLOR_SPACE_HDR10_ST2084_EXT
         };
         VkColorSpaceKHR requested_color_space =
-        requested_format == hdrSurfaceFormat.format ? hdrSurfaceFormat.colorSpace : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+            requested_format == hdrSurfaceFormat.format ? hdrSurfaceFormat.colorSpace : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
         for (uint32_t i = 0; i < surfaceFormatCount; ++i)
         {
             if ((requested_format == formats[i].format) && (requested_color_space == formats[i].colorSpace))
@@ -2149,11 +2339,11 @@ CGPUSwapChainId cgpu_create_swapchain_vulkan_impl(CGPUDeviceId device, const CGP
     uint32_t swapChainImageCount = 0;
     // Get present mode count
     CHECK_VKRESULT(vkGetPhysicalDeviceSurfacePresentModesKHR(
-    A->pPhysicalDevice, vkSurface, &swapChainImageCount, NULL));
+        A->pPhysicalDevice, vkSurface, &swapChainImageCount, NULL));
     // Allocate and get present modes
     SKR_DECLARE_ZERO_VLA(VkPresentModeKHR, modes, swapChainImageCount)
     CHECK_VKRESULT(vkGetPhysicalDeviceSurfacePresentModesKHR(
-    A->pPhysicalDevice, vkSurface, &swapChainImageCount, modes));
+        A->pPhysicalDevice, vkSurface, &swapChainImageCount, modes));
     // Select Preferred Present Mode
     VkPresentModeKHR preferredModeList[] = {
         VK_PRESENT_MODE_IMMEDIATE_KHR,    // normal
@@ -2241,7 +2431,7 @@ CGPUSwapChainId cgpu_create_swapchain_vulkan_impl(CGPUDeviceId device, const CGP
         }
     }
     */
-    
+
     VkSurfaceTransformFlagBitsKHR pre_transform;
     // #TODO: Add more if necessary but identity should be enough for now
     if (caps.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
@@ -2300,15 +2490,16 @@ CGPUSwapChainId cgpu_create_swapchain_vulkan_impl(CGPUDeviceId device, const CGP
     if (!old)
     {
         S = (CGPUSwapChain_Vulkan*)cgpu_calloc_aligned(1,
-            sizeof(CGPUSwapChain_Vulkan) + 
-            (sizeof(CGPUTexture_Vulkan) + sizeof(CGPUTextureInfo)) * buffer_count + 
-            sizeof(CGPUTextureId) * buffer_count, _Alignof(CGPUSwapChain_Vulkan));
+            sizeof(CGPUSwapChain_Vulkan) +
+                (sizeof(CGPUTexture_Vulkan) + sizeof(CGPUTextureInfo)) * buffer_count +
+                sizeof(CGPUTextureId) * buffer_count,
+            _Alignof(CGPUSwapChain_Vulkan));
     }
     S->pVkSwapChain = new_chain;
     S->super.buffer_count = buffer_count;
     SKR_DECLARE_ZERO_VLA(VkImage, vimages, S->super.buffer_count)
     CHECK_VKRESULT(D->mVkDeviceTable.vkGetSwapchainImagesKHR(D->pVkDevice, S->pVkSwapChain, &S->super.buffer_count, vimages));
-    
+
     struct THeader
     {
         CGPUTexture_Vulkan T;
@@ -2369,8 +2560,7 @@ uint32_t cgpu_acquire_next_image_vulkan(CGPUSwapChainId swapchain, const struct 
     VkSemaphore vsemaphore = Semaphore ? Semaphore->pVkSemaphore : VK_NULL_HANDLE;
     VkFence vfence = Fence ? Fence->pVkFence : VK_NULL_HANDLE;
 
-    vk_res = vkAcquireNextImageKHR(D->pVkDevice, SC->pVkSwapChain,
-        UINT64_MAX,
+    vk_res = vkAcquireNextImageKHR(D->pVkDevice, SC->pVkSwapChain, UINT64_MAX,
         vsemaphore, // sem
         vfence,     // fence
         &idx);

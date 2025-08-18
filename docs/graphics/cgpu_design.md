@@ -122,9 +122,9 @@ CGPUQueueId compute_queue1 = cgpu_get_queue(device, CGPU_QUEUE_TYPE_COMPUTE, 1);
 CGPUBufferDescriptor vb_desc = {
     .name = u8"vertex_buffer",
     .size = sizeof(Vertex) * vertex_count,
-    .descriptors = CGPU_RESOURCE_TYPE_VERTEX_BUFFER,
+    .usages = CGPU_BUFFER_USAGE_VERTEX_BUFFER,
     .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
-    .flags = CGPU_BCF_PERSISTENT_MAP_BIT  // 持久映射
+    .flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT  // 持久映射
 };
 CGPUBufferId vertex_buffer = cgpu_create_buffer(device, &vb_desc);
 
@@ -132,9 +132,9 @@ CGPUBufferId vertex_buffer = cgpu_create_buffer(device, &vb_desc);
 CGPUBufferDescriptor cb_desc = {
     .name = u8"frame_constants",
     .size = sizeof(FrameConstants),
-    .descriptors = CGPU_RESOURCE_TYPE_UNIFORM_BUFFER,
+    .usages = CGPU_BUFFER_USAGE_CONSTANT_BUFFER,
     .memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU,
-    .flags = CGPU_BCF_PERSISTENT_MAP_BIT
+    .flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT
 };
 CGPUBufferId constant_buffer = cgpu_create_buffer(device, &cb_desc);
 
@@ -156,8 +156,8 @@ CGPUTextureDescriptor tex_desc = {
     .mip_levels = 1,
     .format = CGPU_FORMAT_R8G8B8A8_UNORM,
     .sample_count = CGPU_SAMPLE_COUNT_1,
-    .descriptors = CGPU_RESOURCE_TYPE_TEXTURE,
-    .flags = CGPU_TCF_USAGE_SAMPLED_IMAGE | CGPU_TCF_USAGE_UNORDERED_ACCESS,
+    .usages = CGPU_TEXTURE_USAGE_SHADER_READ,
+    .flags = CGPU_TEXTURE_FLAG_USAGE_SAMPLED_IMAGE | CGPU_TEXTURE_FLAG_USAGE_UNORDERED_ACCESS,
     .native_handle = nullptr  // 可以导入外部纹理
 };
 CGPUTextureId texture = cgpu_create_texture(device, &tex_desc);
@@ -170,7 +170,7 @@ CGPUTextureViewDescriptor view_desc = {
     .base_array_layer = 0,
     .mip_level_count = 1,
     .base_mip_level = 0,
-    .aspects = CGPU_TVA_COLOR
+    .aspects = CGPU_TEXTURE_VIEW_ASPECTS_COLOR
 };
 CGPUTextureViewId texture_view = cgpu_create_texture_view(device, &view_desc);
 ```
@@ -211,69 +211,6 @@ cgpu_update_tile_mappings(queue, &mapping, 1);
 ```
 
 ## 渲染管线
-
-### Root Signature (资源布局)
-
-```c
-// 定义着色器资源布局
-CGPUShaderResource resources[] = {
-    // 常量缓冲区
-    {
-        .name = u8"FrameData",
-        .type = CGPU_RESOURCE_TYPE_UNIFORM_BUFFER,
-        .set = 0,
-        .binding = 0,
-        .stages = CGPU_SHADER_STAGE_VERT | CGPU_SHADER_STAGE_FRAG
-    },
-    // 纹理
-    {
-        .name = u8"diffuseTexture",
-        .type = CGPU_RESOURCE_TYPE_TEXTURE,
-        .set = 0,
-        .binding = 1,
-        .stages = CGPU_SHADER_STAGE_FRAG
-    },
-    // 采样器
-    {
-        .name = u8"linearSampler",
-        .type = CGPU_RESOURCE_TYPE_SAMPLER,
-        .set = 0,
-        .binding = 2,
-        .stages = CGPU_SHADER_STAGE_FRAG
-    }
-};
-
-// 静态采样器
-CGPUStaticSamplerDescriptor static_samplers[] = {
-    {
-        .name = u8"linearSampler",
-        .binding = 2,
-        .filter = CGPU_FILTER_TYPE_LINEAR,
-        .address_u = CGPU_ADDRESS_MODE_REPEAT,
-        .address_v = CGPU_ADDRESS_MODE_REPEAT,
-        .address_w = CGPU_ADDRESS_MODE_REPEAT
-    }
-};
-
-// Push Constants
-CGPUPushConstantDescriptor push_constants = {
-    .name = u8"DrawData",
-    .shader_stages = CGPU_SHADER_STAGE_VERT,
-    .size = sizeof(DrawPushConstants)
-};
-
-// 创建 Root Signature
-CGPURootSignatureDescriptor rs_desc = {
-    .name = u8"main_root_sig",
-    .shaders = shader_ptrs,
-    .shader_count = 2,
-    .static_samplers = static_samplers,
-    .static_sampler_count = 1,
-    .push_constants = &push_constants,
-    .push_constant_count = 1
-};
-CGPURootSignatureId root_sig = cgpu_create_root_signature(device, &rs_desc);
-```
 
 ### 渲染管线状态
 
@@ -456,11 +393,11 @@ cgpu_cmd_end_compute_pass(cmd, compute_encoder);
 
 ```c
 // 创建描述符集
-CGPUDescriptorSetDescriptor set_desc = {
+CGPUusagesetDescriptor set_desc = {
     .root_signature = root_sig,
     .set_index = 0
 };
-CGPUDescriptorSetId descriptor_set = cgpu_create_descriptor_set(device, &set_desc);
+CGPUusagesetId descriptor_set = cgpu_create_descriptor_set(device, &set_desc);
 
 // 更新描述符
 CGPUDescriptorData updates[] = {
@@ -557,7 +494,7 @@ cgpu_wait_fences(&dstorage_fence, 1);
 2. **使用持久映射**
    ```c
    // 动态缓冲区使用持久映射
-   .flags = CGPU_BCF_PERSISTENT_MAP_BIT
+   .flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT
    ```
 
 3. **并行命令录制**
@@ -574,7 +511,7 @@ cgpu_wait_fences(&dstorage_fence, 1);
 1. **避免频繁的小更新**
    ```c
    // 不好：每帧创建描述符集
-   CGPUDescriptorSetId set = cgpu_create_descriptor_set(...);
+   CGPUusagesetId set = cgpu_create_descriptor_set(...);
    
    // 好：复用和更新
    cgpu_update_descriptor_set(existing_set, ...);

@@ -87,6 +87,5 @@ TEST_CASE_METHOD(GraphTest, "RenderGraphFrontEnd")
         .write(0, back_buffer);
     },
     render_graph::RenderPassExecuteFunction());
-    render_graph::RenderGraphViz::write_graphviz(*graph, "render_graph.gv");
     render_graph::RenderGraph::destroy(graph);
 }

@@ -77,7 +77,7 @@ struct MemberFuncDelegateCore<Ret(Args...)> {
 template <typename Ret, typename... Args>
 struct FunctorDelegateCore<Ret(Args...)> {
     using ThisType   = FunctorDelegateCore<Ret(Args...)>;
-    using SizeType   = size_t;
+    using SizeType   = uint64_t;
     using InvokeFunc = Ret (*)(ThisType*, Args...);
     using DeleteFunc = void (*)(ThisType*);
 

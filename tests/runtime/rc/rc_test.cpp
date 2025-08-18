@@ -1027,3 +1027,20 @@ TEST_CASE("Test Custom Deleter")
     }
     REQUIRE_EQ(rc_custom_deleter_count, 4);
 }
+
+TEST_CASE("Test const RC")
+{
+    using namespace skr;
+
+    RC<const TestRCBase>     base{ SkrNew<TestRCBase>() };
+    RCWeak<const TestRCBase> weak_base{ base };
+
+    RC<TestRCBase>     de_const_base      = base.cast_const<TestRCBase>();
+    RCWeak<TestRCBase> de_const_weak_base = weak_base.cast_const<TestRCBase>();
+
+    RC<const TestRCBase>     re_const_base      = de_const_base.cast_const<const TestRCBase>();
+    RCWeak<const TestRCBase> re_const_weak_base = de_const_weak_base.cast_const<const TestRCBase>();
+
+    RC<const TestRCBase>     auto_cast_const_base      = de_const_base;
+    RCWeak<const TestRCBase> auto_cast_const_weak_base = de_const_weak_base;
+}

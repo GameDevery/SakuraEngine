@@ -154,7 +154,7 @@ class _Gen {
         // from string
         b.$function(
           `bool EnumSerdeTraits<${enum_.name}>::from_string(skr::StringView str, ${enum_.name}& value)`, (_b) => {
-            b.$line(`const auto hash = skr_hash64(str.data(), str.size(), 0);`);
+            b.$line(`const auto hash = skr_hash64_of(str.data(), str.size(), 0);`);
             b.$switch(`hash`, (_b) => {
               _gen_enum_value_json.forEach((enum_value) => {
                 b.$line(`case skr::consteval_hash(u8"${enum_value.short_name}"): if(str == u8"${enum_value.short_name}") value = ${enum_value.name}; return true;`);
