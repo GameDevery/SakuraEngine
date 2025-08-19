@@ -28,7 +28,7 @@ struct SKR_RUNTIME_API BinSerde<skr_config_resource_t>
 };
 } // namespace skr
 
-namespace skr::resource
+namespace skr
 {
 struct SKR_RUNTIME_API ConfigFactory : public ResourceFactory
 {
@@ -37,5 +37,5 @@ struct SKR_RUNTIME_API ConfigFactory : public ResourceFactory
     bool AsyncIO() override { return false; }
 };
 
-} // namespace skr::resource
+} // namespace skr
 #endif

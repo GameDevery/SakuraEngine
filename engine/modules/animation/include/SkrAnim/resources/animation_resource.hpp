@@ -25,8 +25,6 @@ struct SKR_ANIM_API BinSerde<anim::AnimResource> {
     static bool write(SBinaryWriter* w, const anim::AnimResource& v);
 };
 
-namespace resource
-{
 class SKR_ANIM_API AnimFactory : public ResourceFactory
 {
 public:
@@ -34,5 +32,4 @@ public:
     skr_guid_t GetResourceType() override;
     bool       AsyncIO() override { return true; }
 };
-} // namespace resource
 } // namespace skr

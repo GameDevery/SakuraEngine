@@ -30,8 +30,6 @@ struct SKR_ANIM_API BinSerde<skr::anim::SkeletonResource>
     static bool write(SBinaryWriter* w, const skr::anim::SkeletonResource& v);
 };
 
-namespace resource
-{
 struct SKR_ANIM_API SkelFactory : public ResourceFactory
 {
 public:
@@ -39,6 +37,5 @@ public:
     skr_guid_t GetResourceType() override;
     bool AsyncIO() override { return true; }
 };
-} // namespace resource
 } // namespace skr
 #endif

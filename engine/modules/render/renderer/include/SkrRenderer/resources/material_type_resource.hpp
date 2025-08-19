@@ -98,7 +98,7 @@ MaterialTypeResource
     VertexLayoutId vertex_type;
 };
 
-struct SKR_RENDERER_API MaterialTypeFactory : public resource::ResourceFactory
+struct SKR_RENDERER_API MaterialTypeFactory : public ResourceFactory
 {
     struct Root
     {

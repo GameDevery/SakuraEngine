@@ -117,7 +117,7 @@ ShaderCollectionJSON
     skr::Vector<skr::Vector<skr::String>> option_values_sequence;
 };
 
-struct SKR_RENDERER_API ShaderResourceFactory : public resource::ResourceFactory
+struct SKR_RENDERER_API ShaderResourceFactory : public ResourceFactory
 {
     virtual ~ShaderResourceFactory() = default;
 

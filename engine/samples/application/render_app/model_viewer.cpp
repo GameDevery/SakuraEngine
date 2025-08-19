@@ -193,9 +193,9 @@ protected:
     skr::io::IRAMService* ram_service = nullptr;
     skr::io::IVRAMService* vram_service = nullptr;
 
-    skr::resource::LocalResourceRegistry* registry = nullptr;
-    skr::resource::TextureSamplerFactory* TextureSamplerFactory = nullptr;
-    skr::resource::TextureFactory* TextureFactory = nullptr;
+    skr::LocalResourceRegistry* registry = nullptr;
+    skr::TextureSamplerFactory* TextureSamplerFactory = nullptr;
+    skr::TextureFactory* TextureFactory = nullptr;
     skr::MeshFactory* MeshFactory = nullptr;
 
     skr::ecs::World world;
@@ -263,7 +263,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
 
     auto device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
-    auto resource_system = skr::resource::GetResourceSystem();
+    auto resource_system = skr::GetResourceSystem();
     std::atomic_bool resource_system_quit = false;
     auto resource_updater = std::thread([resource_system, &resource_system_quit]() {
         while (!resource_system_quit)
@@ -358,7 +358,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     GPUScene.Initialize(cfg_builder.build_config(), cfg_builder.get_soa_builder());
 
     // AsyncResource<> is a handle can be constructed by any resource type & ids
-    skr::resource::AsyncResource<MeshResource> mesh_resource;
+    skr::AsyncResource<MeshResource> mesh_resource;
     mesh_resource = MeshAssetID;
 
     uint64_t frame_index = 0;
@@ -659,8 +659,8 @@ void ModelViewerModule::DestroyAssetSystem()
 void ModelViewerModule::InitializeReosurceSystem()
 {
     using namespace skr::literals;
-    auto resource_system = skr::resource::GetResourceSystem();
-    registry = SkrNew<skr::resource::LocalResourceRegistry>(project.GetResourceVFS());
+    auto resource_system = skr::GetResourceSystem();
+    registry = SkrNew<skr::LocalResourceRegistry>(project.GetResourceVFS());
     resource_system->Initialize(registry, project.GetRamService());
     const auto resource_root = project.GetResourceVFS()->mount_dir;
     {
@@ -689,20 +689,20 @@ void ModelViewerModule::InitializeReosurceSystem()
     }
     // texture sampler factory
     {
-        skr::resource::TextureSamplerFactory::Root factoryRoot = {};
+        skr::TextureSamplerFactory::Root factoryRoot = {};
         factoryRoot.device = render_device->get_cgpu_device();
-        TextureSamplerFactory = skr::resource::TextureSamplerFactory::Create(factoryRoot);
+        TextureSamplerFactory = skr::TextureSamplerFactory::Create(factoryRoot);
         resource_system->RegisterFactory(TextureSamplerFactory);
     }
     // texture factory
     {
-        skr::resource::TextureFactory::Root factoryRoot = {};
+        skr::TextureFactory::Root factoryRoot = {};
         factoryRoot.dstorage_root = resource_root;
         factoryRoot.vfs = project.GetResourceVFS();
         factoryRoot.ram_service = ram_service;
         factoryRoot.vram_service = vram_service;
         factoryRoot.render_device = render_device;
-        TextureFactory = skr::resource::TextureFactory::Create(factoryRoot);
+        TextureFactory = skr::TextureFactory::Create(factoryRoot);
         resource_system->RegisterFactory(TextureFactory);
     }
     // mesh factory
@@ -720,11 +720,11 @@ void ModelViewerModule::InitializeReosurceSystem()
 
 void ModelViewerModule::DestroyResourceSystem()
 {
-    auto resource_system = skr::resource::GetResourceSystem();
+    auto resource_system = skr::GetResourceSystem();
     resource_system->Shutdown();
 
-    skr::resource::TextureSamplerFactory::Destroy(TextureSamplerFactory);
-    skr::resource::TextureFactory::Destroy(TextureFactory);
+    skr::TextureSamplerFactory::Destroy(TextureSamplerFactory);
+    skr::TextureFactory::Destroy(TextureFactory);
     skr::MeshFactory::Destroy(MeshFactory);
 
     skr_io_ram_service_t::destroy(ram_service);

@@ -44,7 +44,7 @@ sreflect_struct(
     guid = "fc9b4a8e-06c7-41e2-a159-f4cf6930ccfc" serde = @bin | @json)
 ShaderOptionsResource
 {
-    using shader_options_handle_t = skr::resource::AsyncResource<ShaderOptionsResource>;
+    using shader_options_handle_t = skr::AsyncResource<ShaderOptionsResource>;
 
     SKR_RENDERER_API
     static bool flatten_options(skr::Vector<ShaderOptionTemplate> & dst, skr::span<ShaderOptionsResource*> srcs) SKR_NOEXCEPT;
@@ -52,7 +52,7 @@ ShaderOptionsResource
     skr::Vector<ShaderOptionTemplate> options;
 };
 
-struct SKR_RENDERER_API ShaderOptionsFactory : public resource::ResourceFactory
+struct SKR_RENDERER_API ShaderOptionsFactory : public ResourceFactory
 {
     virtual ~ShaderOptionsFactory() = default;
 

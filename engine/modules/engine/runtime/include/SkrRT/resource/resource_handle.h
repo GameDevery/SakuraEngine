@@ -81,11 +81,11 @@ SKR_EXTERN_C SKR_RUNTIME_API void skr_get_resource(SResourceHandle* handle, void
 #include "SkrSerde/bin_serde.hpp"
 #include "SkrSerde/json_serde.hpp"
 
-#define SKR_RESOURCE_HANDLE(type) skr::resource::AsyncResource<type>
-#define SKR_RESOURCE_FIELD(type, name) skr::resource::AsyncResource<type> name
+#define SKR_RESOURCE_HANDLE(type) skr::AsyncResource<type>
+#define SKR_RESOURCE_FIELD(type, name) skr::AsyncResource<type> name
 
 SKR_RTTR_TYPE(SResourceHandle, "A9E0CE3D-5E9B-45F1-AC28-B882885C63AB");
-namespace skr::resource
+namespace skr
 {
 using ResourceHandle = SResourceHandle;
 template <class T>
@@ -125,15 +125,15 @@ inline AsyncResource<T>::AsyncResource(const skr::GUID& guid) SKR_NOEXCEPT
 {
 
 }
-} // namespace skr::resource
+} // namespace skr
 
 // bin serde
 namespace skr
 {
 template <>
-struct BinSerde<skr::resource::ResourceHandle>
+struct BinSerde<skr::ResourceHandle>
 {
-    inline static bool read(SBinaryReader* r, skr::resource::ResourceHandle& v)
+    inline static bool read(SBinaryReader* r, skr::ResourceHandle& v)
     {
         skr_guid_t guid;
         if (!bin_read(r, guid))
@@ -144,35 +144,35 @@ struct BinSerde<skr::resource::ResourceHandle>
         v.set_guid(guid);
         return true;
     }
-    inline static bool write(SBinaryWriter* w, const skr::resource::ResourceHandle& v)
+    inline static bool write(SBinaryWriter* w, const skr::ResourceHandle& v)
     {
         return bin_write(w, v.get_serialized());
     }
 };
 
 template <class T>
-struct BinSerde<skr::resource::AsyncResource<T>>
+struct BinSerde<skr::AsyncResource<T>>
 {
-    inline static bool read(SBinaryReader* archive, skr::resource::AsyncResource<T>& handle)
+    inline static bool read(SBinaryReader* archive, skr::AsyncResource<T>& handle)
     {
         skr_guid_t guid;
         if (!bin_read(archive, (guid))) return false;
         handle.set_guid(guid);
         return true;
     }
-    inline static bool write(SBinaryWriter* binary, const skr::resource::AsyncResource<T>& handle)
+    inline static bool write(SBinaryWriter* binary, const skr::AsyncResource<T>& handle)
     {
-        const auto& hdl = static_cast<const skr::resource::ResourceHandle&>(handle);
+        const auto& hdl = static_cast<const skr::ResourceHandle&>(handle);
         return bin_write(binary, hdl);
     }
 };
 
 template <>
-struct JsonSerde<skr::resource::ResourceHandle>
+struct JsonSerde<skr::ResourceHandle>
 {
-    inline static bool read(skr::archive::JsonReader* r, skr::resource::ResourceHandle& v)
+    inline static bool read(skr::archive::JsonReader* r, skr::ResourceHandle& v)
     {
-        SkrZoneScopedN("JsonSerde<skr::resource::ResourceHandle>::read");
+        SkrZoneScopedN("JsonSerde<skr::ResourceHandle>::read");
         skr::String view;
         SKR_EXPECTED_CHECK(r->String(view), false);
         {
@@ -183,21 +183,21 @@ struct JsonSerde<skr::resource::ResourceHandle>
         }
         return true;
     }
-    inline static bool write(skr::archive::JsonWriter* w, const skr::resource::ResourceHandle& v)
+    inline static bool write(skr::archive::JsonWriter* w, const skr::ResourceHandle& v)
     {
         return json_write<skr_guid_t>(w, v.get_serialized());
     }
 };
 template <class T>
-struct JsonSerde<skr::resource::AsyncResource<T>>
+struct JsonSerde<skr::AsyncResource<T>>
 {
-    inline static bool read(skr::archive::JsonReader* r, skr::resource::AsyncResource<T>& v)
+    inline static bool read(skr::archive::JsonReader* r, skr::AsyncResource<T>& v)
     {
-        return json_read<skr::resource::ResourceHandle>(r, (skr::resource::ResourceHandle&)v);
+        return json_read<skr::ResourceHandle>(r, (skr::ResourceHandle&)v);
     }
-    inline static bool write(skr::archive::JsonWriter* w, const skr::resource::AsyncResource<T>& v)
+    inline static bool write(skr::archive::JsonWriter* w, const skr::AsyncResource<T>& v)
     {
-        return json_write<skr::resource::ResourceHandle>(w, (const skr::resource::ResourceHandle&)v);
+        return json_write<skr::ResourceHandle>(w, (const skr::ResourceHandle&)v);
     }
 };
 } // namespace skr

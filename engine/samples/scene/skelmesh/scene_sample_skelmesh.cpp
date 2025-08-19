@@ -88,12 +88,12 @@ struct SceneSampleSkelMeshModule : public skr::IDynamicModule
     skr::SceneRenderer* scene_renderer = nullptr;
 
     skr::String gltf_path = u8"";
-    skr::resource::LocalResourceRegistry* registry = nullptr;
+    skr::LocalResourceRegistry* registry = nullptr;
 
     skr::MeshFactory* mesh_factory = nullptr;
-    skr::resource::SkelFactory* skelFactory = nullptr;
-    skr::resource::AnimFactory* animFactory = nullptr;
-    skr::resource::SkinFactory* skinFactory = nullptr;
+    skr::SkelFactory* skelFactory = nullptr;
+    skr::AnimFactory* animFactory = nullptr;
+    skr::SkinFactory* skinFactory = nullptr;
 
     skd::SProject project;
     skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
@@ -119,8 +119,8 @@ void SceneSampleSkelMeshModule::DestroyAssetSystem()
 void SceneSampleSkelMeshModule::InitializeResourceSystem()
 {
     using namespace skr::literals;
-    auto resource_system = skr::resource::GetResourceSystem();
-    registry = SkrNew<skr::resource::LocalResourceRegistry>(project.GetResourceVFS());
+    auto resource_system = skr::GetResourceSystem();
+    registry = SkrNew<skr::LocalResourceRegistry>(project.GetResourceVFS());
     resource_system->Initialize(registry, project.GetRamService());
     const auto resource_root = project.GetResourceVFS()->mount_dir;
     {
@@ -163,24 +163,24 @@ void SceneSampleSkelMeshModule::InitializeResourceSystem()
     }
     // skel factory
     {
-        skelFactory = SkrNew<skr::resource::SkelFactory>();
+        skelFactory = SkrNew<skr::SkelFactory>();
         resource_system->RegisterFactory(skelFactory);
     }
     // anim factory
     {
-        animFactory = SkrNew<skr::resource::AnimFactory>();
+        animFactory = SkrNew<skr::AnimFactory>();
         resource_system->RegisterFactory(animFactory);
     }
     // skin factory
     {
-        skinFactory = SkrNew<skr::resource::SkinFactory>();
+        skinFactory = SkrNew<skr::SkinFactory>();
         resource_system->RegisterFactory(skinFactory);
     }
 }
 
 void SceneSampleSkelMeshModule::DestroyResourceSystem()
 {
-    auto resource_system = skr::resource::GetResourceSystem();
+    auto resource_system = skr::GetResourceSystem();
     resource_system->Shutdown();
 
     skr::MeshFactory::Destroy(mesh_factory);
@@ -337,7 +337,7 @@ void SceneSampleSkelMeshModule::CookAndLoadGLTF()
             });
     }
 
-    auto resource_system = skr::resource::GetResourceSystem();
+    auto resource_system = skr::GetResourceSystem();
     skr::task::schedule([&] {
         cook_system.WaitForAll();
         // resource_system->Quit();
@@ -444,12 +444,12 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
 
     skr::input::Input::Initialize();
 
-    auto resource_system = skr::resource::GetResourceSystem();
+    auto resource_system = skr::GetResourceSystem();
 
     actor1.lock()->GetComponent<skr::anim::SkeletonComponent>()->skeleton_resource = SkelAssetID;
     actor1.lock()->GetComponent<skr::anim::SkinComponent>()->skin_resource = SkinAssetID;
 
-    skr::resource::AsyncResource<skr::anim::AnimResource> anim_resource_handle = AnimAssetID;
+    skr::AsyncResource<skr::anim::AnimResource> anim_resource_handle = AnimAssetID;
     // actor1.lock()->GetComponent<skr::anim::AnimComponent>()->use_dynamic_buffer = true; // use CPU/GPU dynamic buffer for simplicity
     ozz::animation::SamplingJob::Context context_;
 

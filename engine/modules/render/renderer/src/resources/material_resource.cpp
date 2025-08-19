@@ -12,7 +12,7 @@
 
 namespace skr
 {
-using namespace skr::resource;
+using namespace skr;
 using MaterialFutureLancher = skr::FutureLauncher<bool>;
 
 struct MaterialFactoryImpl : public MaterialFactory
@@ -229,7 +229,7 @@ struct MaterialFactoryImpl : public MaterialFactory
         skr::InlineVector<CGPUDescriptorData, 16> updates;
         for (const auto& override : material->overrides.samplers)
         {
-            auto hdl = skr::resource::AsyncResource<STextureSamplerResource>(override.value);
+            auto hdl = skr::AsyncResource<STextureSamplerResource>(override.value);
             hdl.resolve(true, nullptr);
 
             auto& update = updates.emplace().ref();
@@ -239,7 +239,7 @@ struct MaterialFactoryImpl : public MaterialFactory
         }
         for (const auto& override : material->overrides.textures)
         {
-            skr::resource::AsyncResource<STextureResource> hdl = override.value;
+            skr::AsyncResource<STextureResource> hdl = override.value;
             hdl.resolve(true, nullptr);
 
             auto& update = updates.emplace().ref();

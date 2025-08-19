@@ -15,7 +15,7 @@ MaterialAsset
     uint32_t material_type_version;
 
     // refers to a material type
-    resource::AsyncResource<MaterialTypeResource> material_type;
+    AsyncResource<MaterialTypeResource> material_type;
 
     // properties are mapped to shader parameter bindings (scalars, vectors, matrices, buffers, textures, etc.)
     Vector<MaterialValue> override_values;

@@ -95,7 +95,7 @@ using SamplerResource = ::STextureSamplerResource;
 using TextureResource = ::STextureResource;
 } // namespace skr
 
-namespace skr::resource
+namespace skr
 {
 // - dstorage & bc: dstorage
 // - dstorage & bc & zlib: dstorage with custom decompress queue
@@ -133,5 +133,5 @@ struct SKR_RENDERER_API TextureSamplerFactory : public ResourceFactory
     [[nodiscard]] static TextureSamplerFactory* Create(const Root& root);
     static void Destroy(TextureSamplerFactory* factory);
 };
-} // namespace skr::resource
+} // namespace skr
 #endif

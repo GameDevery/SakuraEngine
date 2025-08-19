@@ -23,8 +23,6 @@
 
 namespace skr
 {
-namespace resource
-{
 
 // - dstorage & bc: dstorage
 // - dstorage & bc & zlib: dstorage with custom decompress queue
@@ -244,6 +242,4 @@ ESkrInstallStatus TextureFactoryImpl::UpdateInstall(SResourceRecord* record)
 
     return ESkrInstallStatus::SKR_INSTALL_STATUS_INPROGRESS;
 }
-
-} // namespace resource
 } // namespace skr

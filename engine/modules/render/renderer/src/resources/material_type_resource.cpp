@@ -2,7 +2,7 @@
 
 namespace skr
 {
-using namespace skr::resource;
+using namespace skr;
 
 struct MaterialTypeFactoryImpl : public MaterialTypeFactory
 {

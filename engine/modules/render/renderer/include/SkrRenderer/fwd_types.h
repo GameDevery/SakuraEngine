@@ -12,7 +12,7 @@ enum class EShaderOptionType : uint32_t;
 struct RendererDevice;
 } // namespace skr
 
-namespace skr::resource
+namespace skr
 {
 template <class T>
 struct AsyncResource;
@@ -65,6 +65,6 @@ SKR_DECLARE_TYPE_ID_FWD(skr, PSOMapKey, skr_pso_map_key);
 typedef struct skr_pso_map_t* skr_pso_map_id;
 typedef struct skr_pso_map_root_t skr_pso_map_root_t;
 
-using skr_shader_resource_handle_t = skr::resource::AsyncResource<skr::MultiShaderResource>;
-using skr_material_type_handle_t = skr::resource::AsyncResource<skr::MaterialTypeResource>;
-using skr_shader_collection_handle_t = skr::resource::AsyncResource<skr::ShaderCollectionResource>;
+using skr_shader_resource_handle_t = skr::AsyncResource<skr::MultiShaderResource>;
+using skr_material_type_handle_t = skr::AsyncResource<skr::MaterialTypeResource>;
+using skr_shader_collection_handle_t = skr::AsyncResource<skr::ShaderCollectionResource>;

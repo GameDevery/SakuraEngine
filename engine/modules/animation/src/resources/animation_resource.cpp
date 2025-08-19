@@ -19,10 +19,10 @@ bool BinSerde<anim::AnimResource>::write(SBinaryWriter* w, const anim::AnimResou
 }
 } // namespace skr
 
-namespace skr::resource
+namespace skr
 {
 skr_guid_t AnimFactory::GetResourceType()
 {
     return skr::type_id_of<anim::AnimResource>();
 }
-} // namespace skr::resource
+} // namespace skr

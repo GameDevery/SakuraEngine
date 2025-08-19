@@ -15,7 +15,7 @@
 SResourceHandle handle;
 
 // 类型安全的资源句柄
-skr::resource::AsyncResource<TextureResource> texture_handle;
+skr::AsyncResource<TextureResource> texture_handle;
 
 // 句柄状态检查
 bool resolved = handle.is_resolved();

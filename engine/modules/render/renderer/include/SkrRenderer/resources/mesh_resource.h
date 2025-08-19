@@ -87,7 +87,7 @@ MeshResource
     skr::Vector<MeshPrimitive> primitives;
     skr::Vector<MeshBuffer> bins;
 
-    skr::Vector<skr::resource::AsyncResource<MaterialResource>> materials;
+    skr::Vector<skr::AsyncResource<MaterialResource>> materials;
 
     bool install_to_vram SKR_IF_CPP(= true);
     bool install_to_ram SKR_IF_CPP(= true); // TODO: configure this in asset
@@ -96,7 +96,7 @@ MeshResource
     RenderMesh* render_mesh SKR_IF_CPP(= nullptr);
 };
 
-struct SKR_RENDERER_API MeshFactory : public resource::ResourceFactory
+struct SKR_RENDERER_API MeshFactory : public ResourceFactory
 {
     virtual ~MeshFactory() = default;
 

@@ -145,7 +145,7 @@ MaterialResource
         installed_passes;
 };
 
-struct SKR_RENDERER_API MaterialFactory : public resource::ResourceFactory
+struct SKR_RENDERER_API MaterialFactory : public ResourceFactory
 {
     virtual ~MaterialFactory() = default;
 

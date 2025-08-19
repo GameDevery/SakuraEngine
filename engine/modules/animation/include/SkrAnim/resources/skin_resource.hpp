@@ -19,7 +19,7 @@ SkinResource {
 
 } // namespace skr::anim
 
-namespace skr::resource
+namespace skr
 {
 struct SKR_ANIM_API SkinFactory : public ResourceFactory {
     virtual ~SkinFactory() = default;
@@ -27,4 +27,4 @@ struct SKR_ANIM_API SkinFactory : public ResourceFactory {
     bool       AsyncIO() override { return true; }
     float      AsyncSerdeLoadFactor() override { return 1.0f; }
 };
-} // namespace skr::resource
+} // namespace skr

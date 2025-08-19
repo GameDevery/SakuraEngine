@@ -81,7 +81,7 @@ void RenderEffectForward::release_queries()
 void RenderEffectForward::on_unregister(SRendererId renderer, sugoi_storage_t* storage)
 {
     auto sweepFunction = [&](sugoi_chunk_view_t* r_cv) {
-        auto resource_system = skr::resource::GetResourceSystem();
+        auto resource_system = skr::GetResourceSystem();
         auto meshes = sugoi::get_owned_rw<skr::MeshComponent>(r_cv);
         for (uint32_t i = 0; i < r_cv->count; i++)
         {

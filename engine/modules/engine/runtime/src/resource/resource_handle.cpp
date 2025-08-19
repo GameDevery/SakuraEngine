@@ -69,7 +69,7 @@ SResourceHandle& SResourceHandle::operator=(SResourceHandle&& other)
 void SResourceHandle::set_ptr(void* ptr)
 {
     reset();
-    auto system = skr::resource::GetResourceSystem();
+    auto system = skr::GetResourceSystem();
     auto record = system->_GetRecord(ptr);
     if (!record)
         return;
@@ -139,7 +139,7 @@ void SResourceHandle::resolve(bool requireInstalled, uint64_t inRequester, ESkrR
     SKR_ASSERT(!is_null());
     if (padding != 0)
     {
-        auto system = skr::resource::GetResourceSystem();
+        auto system = skr::GetResourceSystem();
         system->LoadResource(*this, requireInstalled, inRequester, requesterType);
     }
 }
@@ -149,7 +149,7 @@ void SResourceHandle::unload()
     SKR_ASSERT(!is_null());
     if (padding != 0)
         return;
-    auto system = skr::resource::GetResourceSystem();
+    auto system = skr::GetResourceSystem();
     system->UnloadResource(*this);
 }
 
@@ -173,7 +173,7 @@ ESkrLoadingStatus SResourceHandle::get_status(bool resolve) const
     {
         if (resolve)
         {
-            auto system = skr::resource::GetResourceSystem();
+            auto system = skr::GetResourceSystem();
             return system->GetResourceStatus(get_guid());
         }
         return SKR_LOADING_STATUS_UNLOADED;

@@ -4,7 +4,7 @@
 #include "SkrSerde/bin_serde.hpp"
 #include "SkrRT/resource/resource_handle.h"
 
-namespace skr::resource { struct ResourceRequest; }
+namespace skr { struct ResourceRequest; }
 typedef struct SResourceRecord SResourceRecord;
 #define TRACK_RESOURCE_REQUESTS 1
 
@@ -80,7 +80,7 @@ struct SKR_RUNTIME_API SResourceRecord
     std::atomic<uint32_t> referenceCount = 0;
 #endif
     SResourceHeader header;
-    skr::resource::ResourceRequest* activeRequest;
+    skr::ResourceRequest* activeRequest;
 
     void SetStatus(ESkrLoadingStatus);
     void AddCallback(ESkrLoadingStatus, void (*callback)(void*), void* userData);

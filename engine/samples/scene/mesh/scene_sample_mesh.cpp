@@ -66,7 +66,7 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     skr::SceneRenderer* scene_renderer = nullptr;
 
     skr::String gltf_path = u8"";
-    skr::resource::LocalResourceRegistry* registry = nullptr;
+    skr::LocalResourceRegistry* registry = nullptr;
     skr::MeshFactory* mesh_factory = nullptr;
     bool use_gltf = false;
 
@@ -93,8 +93,8 @@ void SceneSampleMeshModule::DestroyAssetSystem()
 void SceneSampleMeshModule::InitializeResourceSystem()
 {
     using namespace skr::literals;
-    auto resource_system = skr::resource::GetResourceSystem();
-    registry = SkrNew<skr::resource::LocalResourceRegistry>(project.GetResourceVFS());
+    auto resource_system = skr::GetResourceSystem();
+    registry = SkrNew<skr::LocalResourceRegistry>(project.GetResourceVFS());
     resource_system->Initialize(registry, project.GetRamService());
 
     const auto resource_root = project.GetResourceVFS()->mount_dir;
@@ -137,7 +137,7 @@ void SceneSampleMeshModule::InitializeResourceSystem()
 
 void SceneSampleMeshModule::DestroyResourceSystem()
 {
-    auto resource_system = skr::resource::GetResourceSystem();
+    auto resource_system = skr::GetResourceSystem();
     resource_system->Shutdown();
 
     skr::MeshFactory::Destroy(mesh_factory);
@@ -372,7 +372,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
 
     skr::input::Input::Initialize();
 
-    auto resource_system = skr::resource::GetResourceSystem();
+    auto resource_system = skr::GetResourceSystem();
 
     while (!imgui_app->want_exit().comsume())
     {

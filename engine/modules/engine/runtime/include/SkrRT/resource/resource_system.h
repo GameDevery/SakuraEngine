@@ -37,8 +37,6 @@ typedef enum ESkrLoadingPhase
 
 namespace skr
 {
-namespace resource
-{
 struct ResourceRegistry;
 struct ResourceFactory;
 struct ResourceSystem;
@@ -119,6 +117,5 @@ protected:
     virtual void _DestroyRecord(SResourceRecord* record) = 0;
 };
 SKR_RUNTIME_API ResourceSystem* GetResourceSystem();
-} // namespace resource
 } // namespace skr
 #endif

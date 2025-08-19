@@ -145,7 +145,7 @@ const char* skr_mesh_resource_query_vertex_layout(VertexLayoutId id, struct CGPU
 
 namespace skr
 {
-using namespace skr::resource;
+using namespace skr;
 
 MeshResource::~MeshResource() SKR_NOEXCEPT
 {

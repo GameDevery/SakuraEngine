@@ -35,10 +35,10 @@ struct AnimSampleCookModule : public skr::IDynamicModule
     skr_vfs_t* resource_vfs = nullptr;
     skr::io::IRAMService* ram_service = nullptr;
     skr::SP<skr::JobQueue> job_queue = nullptr;
-    skr::resource::LocalResourceRegistry* registry = nullptr;
+    skr::LocalResourceRegistry* registry = nullptr;
 
-    skr::resource::SkelFactory* skelFactory = nullptr;
-    skr::resource::AnimFactory* animFactory = nullptr;
+    skr::SkelFactory* skelFactory = nullptr;
+    skr::AnimFactory* animFactory = nullptr;
     skd::SProject project;
 
     void InitializeResourceSystem();
@@ -103,8 +103,8 @@ void AnimSampleCookModule::on_unload()
 void AnimSampleCookModule::InitializeResourceSystem()
 {
     using namespace skr::literals;
-    auto resource_system = skr::resource::GetResourceSystem();
-    registry = SkrNew<skr::resource::LocalResourceRegistry>(project.GetResourceVFS());
+    auto resource_system = skr::GetResourceSystem();
+    registry = SkrNew<skr::LocalResourceRegistry>(project.GetResourceVFS());
     resource_system->Initialize(registry, project.GetRamService());
 
     const auto resource_root = project.GetResourceVFS()->mount_dir;
@@ -124,11 +124,11 @@ void AnimSampleCookModule::InitializeResourceSystem()
     }
     // skel factory
     {
-        skelFactory = SkrNew<skr::resource::SkelFactory>();
+        skelFactory = SkrNew<skr::SkelFactory>();
         resource_system->RegisterFactory(skelFactory);
     }
     {
-        animFactory = SkrNew<skr::resource::AnimFactory>();
+        animFactory = SkrNew<skr::AnimFactory>();
         resource_system->RegisterFactory(animFactory);
     }
 }
@@ -147,7 +147,7 @@ void AnimSampleCookModule::DestroyAssetSystem()
 
 void AnimSampleCookModule::DestroyResourceSystem()
 {
-    auto resource_system = skr::resource::GetResourceSystem();
+    auto resource_system = skr::GetResourceSystem();
     resource_system->Shutdown();
 
     SkrDelete(skelFactory);
@@ -200,7 +200,7 @@ int AnimSampleCookModule::main_module_exec(int argc, char8_t** argv)
             });
     }
 
-    auto resource_system = skr::resource::GetResourceSystem();
+    auto resource_system = skr::GetResourceSystem();
     skr::task::schedule([&] {
         system.WaitForAll();
         // resource_system->Quit();
@@ -208,8 +208,8 @@ int AnimSampleCookModule::main_module_exec(int argc, char8_t** argv)
         nullptr);
     resource_system->Update();
     //----- wait
-    skr::resource::AsyncResource<skr::anim::SkeletonResource> skel_resource = SkelAssetID;
-    skr::resource::AsyncResource<skr::anim::AnimResource> anim_resource = AnimAssetID;
+    skr::AsyncResource<skr::anim::SkeletonResource> skel_resource = SkelAssetID;
+    skr::AsyncResource<skr::anim::AnimResource> anim_resource = AnimAssetID;
 
     // while (!system.AllCompleted() && resource_system->WaitRequest())
     // {

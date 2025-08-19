@@ -7,8 +7,6 @@
 
 namespace skr
 {
-namespace resource
-{
 struct SResourceRequestImpl : public ResourceRequest
 {
     friend struct ResourceRegistry;
@@ -68,5 +66,4 @@ protected:
     SMutexObject updateMutex;
     bool dependenciesLoaded = false;
 };
-} // namespace resource
 } // namespace skr

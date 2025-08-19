@@ -74,7 +74,7 @@ AnimAsset : public skd::asset::AssetMetadata
             }
         ]
     */
-    skr::resource::AsyncResource<skr::anim::SkeletonResource> skeletonAsset;    // The skeleton asset should exist inside cook system before cooking this animation asset.
+    skr::AsyncResource<skr::anim::SkeletonResource> skeletonAsset;    // The skeleton asset should exist inside cook system before cooking this animation asset.
     bool additive = false;                                                      //  Creates a delta animation that can be used for additive blending.
     AnimAdditiveReference additiveReference = AnimAdditiveReference::animation; //  Select reference pose to use to build additive/delta animation. Can be "animation" to use the 1st animation keyframe as reference, or "skeleton" to use skeleton rest pose.
     float samplingRate = 0.f;                                                   //  Selects animation sampling rate in hertz. Set a value <= 0 to use imported scene default frame rate.

@@ -5,7 +5,7 @@
 
 namespace skr
 {
-using namespace skr::resource;
+using namespace skr;
 
 bool ShaderOptionsResource::flatten_options(skr::Vector<ShaderOptionTemplate>& dst, skr::span<ShaderOptionsResource*> srcs) SKR_NOEXCEPT
 {

@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrContainers/function_ref.hpp" // IWYU pragma: keep
 
-namespace skr::resource
+namespace skr
 {
     /**
     template<>
