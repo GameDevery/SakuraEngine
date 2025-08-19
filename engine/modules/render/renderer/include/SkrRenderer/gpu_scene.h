@@ -139,7 +139,7 @@ private:
     };
     void CreateSparseUploadPipeline(CGPUDeviceId device);
     void PrepareUploadBuffer(skr::render_graph::RenderGraph* graph);
-    void DispatchSparseUpload(skr::render_graph::RenderGraph* graph, skr::Vector<Upload>&& core_uploads);
+    void DispatchSparseUpload(skr::render_graph::RenderGraph* graph);
 
     friend struct GPUSceneInstanceTask;
     friend struct AddEntityToGPUScene;
@@ -151,6 +151,7 @@ private:
     skr::RenderDevice* render_device = nullptr;
 
     // TLAS
+    std::atomic_bool tlas_dirty = false;
     skr::ConcurrentQueue<CGPUAccelerationStructureId> dirty_blases;
     skr::Vector<CGPUAccelerationStructureInstanceDesc> tlas_instances;
     
@@ -202,7 +203,8 @@ private:
         CGPUBufferId upload_buffer = nullptr;
         skr::Vector<Upload> soa_segments_uploads; 
         skr::Vector<uint8_t> DRAMCache;
-        std::atomic<uint64_t> upload_cursor = 0; // upload_buffer 中的当前写入位置
+        std::atomic_uint32_t upload_counter = 0;
+        std::atomic<uint64_t> upload_cursor = 0;
     };
     skr::render_graph::FrameResource<UploadContext> upload_ctxs;
 

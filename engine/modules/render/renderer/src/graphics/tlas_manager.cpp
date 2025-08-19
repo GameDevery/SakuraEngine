@@ -111,10 +111,6 @@ public:
         {
             _build_ctx.build_fence = cgpu_create_fence(device->get_cgpu_device());
         }
-        else
-        {
-            cgpu_wait_fences(&_build_ctx.build_fence, 1);
-        }
 
         cgpu_cmd_begin(_build_ctx.cmd);
         if (!blases.is_empty())
