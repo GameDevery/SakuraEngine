@@ -13,6 +13,11 @@
 
 namespace skr::scene
 {
+struct TransformFromRootJob;
+} // namespace skr::scene
+
+namespace skr::scene
+{
 
 #define SCENE_PRECISION_FLOAT
 #ifdef SCENE_PRECISION_DOUBLE
@@ -25,7 +30,6 @@ using Position = float3;
 using Transform = skr_transform_f_t;
 #endif
 using Rotator = skr::RotatorF;
-struct TransformJob;
 
 sreflect_struct(
     guid = "01981176-1f33-777f-b448-10ddaf1d03e2";
@@ -72,7 +76,7 @@ public:
     inline bool get_dirty() const { return dirty; }
 
 private:
-    friend struct TransformJob;
+    friend struct TransformFromRootJob;
     Rotator euler;
     mutable bool dirty;
 };
@@ -113,7 +117,7 @@ public:
     inline bool get_dirty() const { return dirty; }
 
 private:
-    friend struct TransformJob;
+    friend struct TransformFromRootJob;
     Position value;
     mutable bool dirty;
 };
@@ -164,7 +168,7 @@ public:
     inline bool get_dirty() const { return dirty; }
 
 private:
-    friend struct TransformJob;
+    friend struct TransformFromRootJob;
     skr::float3 value;
     mutable bool dirty;
 };

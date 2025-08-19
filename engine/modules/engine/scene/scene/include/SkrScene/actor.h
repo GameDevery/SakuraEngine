@@ -4,12 +4,9 @@
 #include "SkrContainersDef/vector.hpp"
 #include "SkrContainersDef/map.hpp"
 #include "SkrRT/ecs/component.hpp"
-#include "SkrRT/resource/resource_handle.h"
 #include "SkrRT/ecs/world.hpp"
 #include "SkrRTTR/rttr_traits.hpp"
 #include "SkrRTTR/type.hpp"
-#include "SkrSceneCore/scene_components.h"
-#include "SkrRenderer/render_mesh.h"
 
 #if !defined(__meta__)
     #include "SkrScene/actor.generated.h"
@@ -99,11 +96,6 @@ public:
         return nullptr;
     }
 
-    // skr::scene::ScaleComponent* GetScaleComponent() const;
-    // skr::scene::PositionComponent* GetPositionComponent() const;
-    // skr::scene::RotationComponent* GetRotationComponent() const;
-    // skr::scene::TransformComponent* GetTransformComponent() const;
-
     skr::GUID GetGUID() const { return guid; }
 
     skr::String display_name;             // for editor, profiler, and runtime dump
@@ -138,8 +130,8 @@ public:
     skr::RC<Actor> CreateActorInstance()
     {
         RTTRType* ActorType = skr::type_of<T>();
-        void* actor_data = sakura_malloc_aligned(ActorType->size(), ActorType->alignment()); // TODO: leak?
-        ActorType->find_default_ctor().invoke(actor_data);                                   // TODO: pooling ?
+        void* actor_data = sakura_malloc_aligned(ActorType->size(), ActorType->alignment());
+        ActorType->find_default_ctor().invoke(actor_data); // TODO: pooling
         return skr::RC<Actor>(reinterpret_cast<Actor*>(actor_data));
     }
 

@@ -7,19 +7,21 @@
 
 namespace skr::scene
 {
-struct TransformJob
+
+struct TransformFromRootJob
 {
     void build(skr::ecs::AccessBuilder& builder)
     {
+        // filter out root actor
         builder.none<scene::ParentComponent>()
             .has<scene::PositionComponent>()
             .has<scene::TransformComponent>();
 
-        builder.access(&TransformJob::children_accessor)
-            .access(&TransformJob::postion_accessor)
-            .access(&TransformJob::scale_accessor)
-            .access(&TransformJob::rotation_accessor)
-            .access(&TransformJob::transform_accessor);
+        builder.access(&TransformFromRootJob::children_accessor)
+            .access(&TransformFromRootJob::postion_accessor)
+            .access(&TransformFromRootJob::scale_accessor)
+            .access(&TransformFromRootJob::rotation_accessor)
+            .access(&TransformFromRootJob::transform_accessor);
     }
 
     void calculate(skr::ecs::Entity entity, const skr::scene::Transform& prev_transform)
@@ -106,8 +108,19 @@ void TransformSystem::Destroy(TransformSystem* system) SKR_NOEXCEPT
 
 void TransformSystem::update() SKR_NOEXCEPT
 {
-    scene::TransformJob job;
+    CalculateFromRoot();
+}
+
+void TransformSystem::CalculateFromRoot() SKR_NOEXCEPT
+{
+    scene::TransformFromRootJob job;
     impl->rootJobQuery = impl->pWorld->dispatch_task(job, UINT32_MAX, impl->rootJobQuery);
+}
+
+void TransformSystem::CalculateTransform(sugoi_entity_t entity) SKR_NOEXCEPT
+{
+    SkrZoneScopedN("CalculateTransform");
+    // TODO: Implement the reverse dirty propagation logic
 }
 
 } // namespace skr
