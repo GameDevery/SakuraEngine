@@ -61,7 +61,7 @@ public:
     static LightingCSPushConstants lighting_cs_data;
 
 public:
-    Renderer(skr::RendererDevice* render_device);
+    Renderer(skr::RenderDevice* render_device);
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;
     Renderer(Renderer&&) = delete;

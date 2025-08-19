@@ -1,4 +1,4 @@
-#include "SkrRenderer/allocators/soa_segment.hpp"
+#include "SkrRenderer/graphics/soa_segment.hpp"
 #include <utility>
 
 namespace skr

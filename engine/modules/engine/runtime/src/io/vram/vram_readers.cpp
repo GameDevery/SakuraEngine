@@ -84,7 +84,10 @@ GPUUploadCmd::GPUUploadCmd(CGPUQueueId queue, IOBatchId batch) SKR_NOEXCEPT
 void GPUUploadCmd::start(SwapableCmdPool& swap_pool) SKR_NOEXCEPT
 {
     pool = swap_pool.get();
-    CGPUCommandBufferDescriptor bdesc = { /*.is_secondary = */false };
+    CGPUCommandBufferDescriptor bdesc = { 
+        .name = u8"CommandBuffer-VRAMService",
+        .is_secondary = false
+     };
     cmdbuf = cgpu_create_command_buffer(pool, &bdesc);
     cgpu_cmd_begin(cmdbuf);
     fence = cgpu_create_fence(queue->device);

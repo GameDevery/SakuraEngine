@@ -13,7 +13,7 @@ struct AnimViewRendererImpl : public animd::AnimViewRenderer
 
     AnimViewRendererImpl() {}
     ~AnimViewRendererImpl() override {}
-    void initialize(skr::RendererDevice* render_device, skr::ecs::World* storage, struct skr_vfs_t* resource_vfs) override
+    void initialize(skr::RenderDevice* render_device, skr::ecs::World* storage, struct skr_vfs_t* resource_vfs) override
     {
         this->resource_vfs = resource_vfs;
 
@@ -21,7 +21,7 @@ struct AnimViewRendererImpl : public animd::AnimViewRenderer
         // prepare pipeline
         // reset render view
     }
-    void finalize(skr::RendererDevice* renderer) override
+    void finalize(skr::RenderDevice* renderer) override
     {
         // free pipeline
     }

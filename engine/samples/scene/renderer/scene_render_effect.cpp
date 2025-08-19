@@ -31,14 +31,14 @@ struct SceneRendererImpl : public skr::SceneRenderer
         skr_float4x4_t view_proj = skr_float4x4_t::identity();
     } push_constants_data;
 
-    virtual void initialize(skr::RendererDevice* render_device, skr::ecs::World* world, struct skr_vfs_t* resource_vfs) override
+    virtual void initialize(skr::RenderDevice* render_device, skr::ecs::World* world, struct skr_vfs_t* resource_vfs) override
     {
         this->resource_vfs = resource_vfs;
         prepare_pipeline_settings();
         prepare_pipeline(render_device);
     }
 
-    virtual void finalize(skr::RendererDevice* renderer) override
+    virtual void finalize(skr::RenderDevice* renderer) override
     {
         free_pipeline(renderer);
     }
@@ -98,8 +98,8 @@ struct SceneRendererImpl : public skr::SceneRenderer
     }
 
     void prepare_pipeline_settings();
-    void prepare_pipeline(skr::RendererDevice* render_device);
-    void free_pipeline(skr::RendererDevice* renderer);
+    void prepare_pipeline(skr::RenderDevice* render_device);
+    void free_pipeline(skr::RenderDevice* renderer);
 };
 
 // SceneRendererImpl* scene_effect = SkrNew<SceneRendererImpl>();
@@ -134,7 +134,7 @@ void SceneRendererImpl::prepare_pipeline_settings()
     depth_state.depth_test = true;
 }
 
-void SceneRendererImpl::prepare_pipeline(skr::RendererDevice* render_device)
+void SceneRendererImpl::prepare_pipeline(skr::RenderDevice* render_device)
 {
     const auto cgpu_device = render_device->get_cgpu_device();
     CGPUShaderLibraryId vs = utils::create_shader_library(render_device, resource_vfs, u8"shaders/scene/debug.vs", CGPU_SHADER_STAGE_VERT);
@@ -174,7 +174,7 @@ void SceneRendererImpl::prepare_pipeline(skr::RendererDevice* render_device)
     cgpu_free_shader_library(vs);
 }
 
-void SceneRendererImpl::free_pipeline(skr::RendererDevice* renderer)
+void SceneRendererImpl::free_pipeline(skr::RenderDevice* renderer)
 {
     auto sig_to_free = pipeline->root_signature;
     cgpu_free_render_pipeline(pipeline);

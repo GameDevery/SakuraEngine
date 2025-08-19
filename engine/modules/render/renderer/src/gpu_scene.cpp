@@ -1,5 +1,6 @@
 #include "SkrCore/log.h"
 #include "SkrRT/ecs/world.hpp"
+#include "SkrRenderGraph/backend/graph_backend.hpp"
 #include "SkrRenderer/gpu_scene.h"
 #include "SkrRenderer/render_device.h"
 #include "SkrRenderer/render_mesh.h"
@@ -83,6 +84,7 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
                 };
                 memcpy(tlas_instance.transform, transform34, sizeof(transform34));
 
+                pScene->tlas_dirty = true;
                 pScene->instance_count += 1;
                 pScene->entity_ids[entity] = instance_data.instance_index;
             }
@@ -142,27 +144,29 @@ struct ScanGPUScene : public GPUSceneInstanceTask
 
                     const auto& component_info = pScene->component_types[gpu_type];
                     const uint64_t dst_offset = pScene->soa_segments.get_component_offset(gpu_type, instance_data.instance_index);
-                    const uint64_t src_offset = pScene->upload_ctx.get(graph).upload_cursor.fetch_add(component_info.element_size);
+                    const uint64_t src_offset = pScene->upload_ctxs.get(graph).upload_cursor.fetch_add(component_info.element_size);
 
-                    if (src_offset + component_info.element_size <= pScene->upload_ctx.get(graph).upload_buffer->info->size)
+                    if (src_offset + component_info.element_size <= pScene->upload_ctxs.get(graph).upload_buffer->info->size)
                     {
                         memcpy(DRAMCache->data() + src_offset, data, component_info.element_size);
 
                         auto upload_index = batch_start + local_index;
-                        if (upload_index < pScene->upload_ctx.get(graph).soa_segments_uploads.size())
+                        auto& uploads = pScene->upload_ctxs.get(graph).soa_segments_uploads;
+                        if (upload_index < uploads.size())
                         {
                             GPUScene::Upload upload;
                             upload.src_offset = src_offset;
                             upload.dst_offset = dst_offset;
                             upload.data_size = component_info.element_size;
-                            pScene->upload_ctx.get(graph).soa_segments_uploads[upload_index] = upload;
+                            uploads[upload_index] = upload;
                             local_index++;
                         }
                         else
                         {
                             SKR_LOG_ERROR(u8"GPUScene: data upload operations array overflow - index %u >= size %u",
                                 upload_index,
-                                (uint32_t)pScene->upload_ctx.get(graph).soa_segments_uploads.size());
+                                (uint32_t)uploads.size()
+                            );
                         }
                     }
                     else
@@ -197,7 +201,7 @@ void GPUScene::AdjustBuffer(skr::render_graph::RenderGraph* graph)
     const auto required_instances = tlas_instances.size();
     
     // Get current frame's buffer context for deferred destruction
-    auto& current_buffer_ctx = buffer_ctx.get(graph);
+    auto& current_buffer_ctx = frame_ctxs.get(graph);
     
     // First, clean up any buffer marked for discard from previous frame
     if (current_buffer_ctx.buffer_to_discard != nullptr)
@@ -253,7 +257,7 @@ void GPUScene::PrepareUploadBuffer(skr::render_graph::RenderGraph* graph)
     uint64_t required_size = (Lane.dirty_buffer_size + 255) & ~255; // Align to 256 bytes
 
     // Check if we need to recreate the upload buffer
-    auto& upload_buffer = upload_ctx.get(graph).upload_buffer;
+    auto& upload_buffer = upload_ctxs.get(graph).upload_buffer;
     if (!upload_buffer || upload_buffer->info->size < required_size)
     {
         // Release old buffer if exists
@@ -296,7 +300,7 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
 
     // Schedule remove & add & scan
     auto get_batchsize = +[](uint64_t ecount) { return std::max(ecount / 8ull, 1024ull); };
-    auto& current_ctx = upload_ctx.get(graph);
+    auto& upload_ctx = upload_ctxs.get(graph);
     {
         SkrZoneScopedN("GPUScene::Tasks");
         if (!Lane.remove_ents.is_empty())
@@ -314,146 +318,59 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
             add.pScene = this;
             ecs_world->dispatch_task(add, get_batchsize(Lane.add_ents.size()), Lane.add_ents);
         }
-        std::atomic_uint32_t UploadCounter;
         if (!Lane.dirty_ents.is_empty())
         {
             SkrZoneScopedN("GPUScene::ScanGPUScene");
-            current_ctx.DRAMCache.resize_unsafe(current_ctx.upload_buffer->info->size);
+            upload_ctx.DRAMCache.resize_unsafe(upload_ctx.upload_buffer->info->size);
 
             uint64_t total_dirty_count = Lane.dirty_comp_count.load();
-            current_ctx.soa_segments_uploads.resize_unsafe(total_dirty_count);
+            upload_ctx.soa_segments_uploads.resize_unsafe(total_dirty_count);
 
-            ScanGPUScene scan(graph, &current_ctx.DRAMCache, &UploadCounter);
+            ScanGPUScene scan(graph, &upload_ctx.DRAMCache, &upload_ctx.upload_counter);
             scan.pScene = this;
             ecs_world->dispatch_task(scan, get_batchsize(Lane.dirty_ents.size()), Lane.dirty_ents);
         }
-        // TODO: FULL ASYNC
-        skr::ecs::TaskScheduler::Get()->sync_all();
-        
-        // Get current frame's TLAS context
-        auto& current_tlas_ctx = tlas_ctx.get(graph);
-        
-        // First, clean up any TLAS marked for discard from previous frame
-        if (current_tlas_ctx.tlas_to_discard != nullptr)
-        {
-            cgpu_free_acceleration_structure(current_tlas_ctx.tlas_to_discard);
-            current_tlas_ctx.tlas_to_discard = nullptr;
-        }
-        
-        // Check if we need to rebuild TLAS
-        bool need_rebuild = !Lane.add_ents.is_empty();
-        if (need_rebuild && instance_count > 0)
-        {
-            // Mark old TLAS for discard (will be freed next time this frame slot comes around)
-            if (current_tlas_ctx.tlas != nullptr)
-            {
-                current_tlas_ctx.tlas_to_discard = current_tlas_ctx.tlas;
-                current_tlas_ctx.tlas = nullptr;
-            }
-            
-            CGPUAccelerationStructureDescriptor tlas_desc = {};
-            tlas_desc.type = CGPU_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-            tlas_desc.flags = CGPU_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-            tlas_desc.top.count = instance_count;
-            tlas_desc.top.instances = tlas_instances.data();
-            current_tlas_ctx.tlas = cgpu_create_acceleration_structure(render_device->get_cgpu_device(), &tlas_desc);
-            current_tlas_ctx.instance_count = instance_count;
 
-            graph->add_copy_pass(
-                [=](RenderGraph& g, CopyPassBuilder& builder) {
-                    builder.set_name(SKR_UTF8("BuildAccelerationStructures"))
-                        .can_be_lone();
-                },
-                [this, &current_tlas_ctx](class RenderGraph& graph, CopyPassContext& ctx) {
-                    // Build BLAS first
-                    skr::Vector<CGPUAccelerationStructureId> blases;
-                    blases.reserve(dirty_blases.size_approx());
-                    CGPUAccelerationStructureId blas = nullptr;
-                    while (dirty_blases.try_dequeue(blas) && blas)
-                    {
-                        blases.add_unique(blas);
-                    }
-                    if (blases.size())
-                    {
-                        CGPUAccelerationStructureBuildDescriptor blas_build = {
-                            .type = CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
-                            .as_count = (uint32_t)blases.size(),
-                            .as = blases.data()
-                        };
-                        cgpu_cmd_build_acceleration_structures(ctx.cmd, &blas_build);
-                    }
-                    if (current_tlas_ctx.tlas != nullptr)
-                    {
-                        // Build TLAS
-                        CGPUAccelerationStructureBuildDescriptor tlas_build = {
-                            .type = CGPU_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
-                            .as_count = 1,
-                            .as = &current_tlas_ctx.tlas
-                        };
-                        cgpu_cmd_build_acceleration_structures(ctx.cmd, &tlas_build);
-                    }
-                });
-        }
-        else
-        {
-            current_tlas_ctx.tlas = tlas_ctx.get_frame_offset(graph, 1).tlas;
-        }
-        
         // Import TLAS to RenderGraph if it exists
-        if (current_tlas_ctx.tlas != nullptr)
+        auto& frame_ctx = frame_ctxs.get(graph);
+        frame_ctx.frame_tlas = tlas_manager->GetLatestTLAS();
+        if (frame_ctx.frame_tlas)
         {
-            current_tlas_ctx.tlas_handle = graph->create_acceleration_structure([&current_tlas_ctx](RenderGraph& graph, class RenderGraph::AccelerationStructureBuilder& builder) {
+            frame_ctx.tlas_handle = graph->create_acceleration_structure([&frame_ctx](RenderGraph& graph, class RenderGraph::AccelerationStructureBuilder& builder) 
+            {
                 builder.set_name(u8"GPUScene-TLAS")
-                    .import(current_tlas_ctx.tlas);
+                    .import(frame_ctx.frame_tlas.get());
             });
         }
-
-        {
-            Lane.add_ents.clear();
-            Lane.remove_ents.clear();
-            Lane.dirty_ents.clear();
-            Lane.dirty_comp_count = 0;
-            Lane.dirties.clear();
-            Lane.dirty_buffer_size = 0;
-
-            ::memcpy(current_ctx.upload_buffer->info->cpu_mapped_address, current_ctx.DRAMCache.data(), current_ctx.DRAMCache.size());
-            uint32_t actual_core_uploads = UploadCounter.load();
-            current_ctx.soa_segments_uploads.resize_unsafe(actual_core_uploads);
-        }
     }
 
-    // Dispatch SparseUpload compute shaders for both Core Data and Additional Data
-    if (!current_ctx.soa_segments_uploads.is_empty())
-    {
-        DispatchSparseUpload(graph, std::move(current_ctx.soa_segments_uploads));
-        current_ctx.upload_cursor.store(0);
-    }
+    DispatchSparseUpload(graph);
 }
 
-void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph, skr::Vector<Upload>&& core_uploads)
+void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
 {
     SkrZoneScopedN("GPUScene::DispatchSparseUpload");
-    SKR_LOG_DEBUG(u8"GPUScene: Dispatching SparseUpload - Core: %u ops", (uint32_t)core_uploads.size());
+    const auto& Lane = GetLaneForUpload();
+    SKR_LOG_DEBUG(u8"GPUScene: Dispatching SparseUpload - GPUScene: %u ops", (uint32_t)Lane.dirty_comp_count);
 
     // Import upload buffer that will be used by both passes
     auto upload_buffer_handle = graph->create_buffer(
         [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
             builder.set_name(u8"upload_buffer")
-                .import(upload_ctx.get(&g).upload_buffer, CGPU_RESOURCE_STATE_GENERIC_READ)
+                .import(upload_ctxs.get(&g).upload_buffer, CGPU_RESOURCE_STATE_GENERIC_READ)
                 .allow_shader_read();
         });
 
-    // Pass 1: Core Data Upload
-    if (!core_uploads.is_empty())
+    // Pass 1: GPUScene Data Upload
     {
-        size_t core_ops_size = core_uploads.size() * sizeof(Upload);
+        const uint64_t ops_size = skr::max(1ull, Lane.dirty_comp_count) * sizeof(Upload);
         const uint32_t max_threads_per_op = 4;
-        const uint32_t core_dispatch_groups = (core_uploads.size() * max_threads_per_op + 255) / 256;
+        const uint32_t dispatch_groups = (Lane.dirty_comp_count * max_threads_per_op + 255) / 256;
 
-        auto core_operations_buffer_handle = graph->create_buffer(
+        auto ops_buffer = graph->create_buffer(
             [=](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
-                builder.set_name(u8"core_upload_operations")
-                    .size(core_ops_size)
+                builder.set_name(u8"GPUScene-upload_operations")
+                    .size(ops_size)
                     .memory_usage(CGPU_MEM_USAGE_CPU_TO_GPU)
                     .as_upload_buffer()
                     .allow_shader_read()
@@ -462,65 +379,92 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph, skr::
 
         graph->add_compute_pass(
             [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassBuilder& builder) {
-                builder.set_name(u8"CoreDataSparseUploadPass")
+                builder.set_name(u8"GPUScene-DataSparseUploadPass")
                     .set_pipeline(sparse_upload_pipeline)
                     .read(u8"upload_buffer", upload_buffer_handle)
-                    .read(u8"upload_operations", core_operations_buffer_handle)
+                    .read(u8"upload_operations", ops_buffer)
                     .readwrite(u8"target_buffer", scene_buffer);
             },
-            [=, this, core_uploads = std::move(core_uploads)](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
-                // Upload core data operations
-                if (auto mapped_ptr = static_cast<Upload*>(ctx.resolve(core_operations_buffer_handle)->info->cpu_mapped_address))
+            [this, dispatch_groups, ops_size, ops_buffer](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
+                SkrZoneScopedN("GPUScene::SparseUploadScene");
+                
+                // TODO: REMOVE THIS AND SYNC GPUSCENE TASKS ONLY
+                skr::ecs::TaskScheduler::Get()->sync_all();
+
+                // Send BLAS / TLAS requests
                 {
-                    memcpy(mapped_ptr, core_uploads.data(), core_ops_size);
+                    SkrZoneScopedN("GPUScene::UpdateAccelerationStructure");
+                    TLASUpdateRequest update_request;
+                    {
+                        CGPUAccelerationStructureId blas = nullptr;
+                        while (dirty_blases.try_dequeue(blas) && blas)
+                        {
+                            update_request.blases_to_build.add_unique(blas);
+                        }
+                    }
+                    if (tlas_dirty || !update_request.blases_to_build.is_empty())
+                    {
+                        if (instance_count != 0)
+                        {
+                            CGPUAccelerationStructureDescriptor tlas_desc = {};
+                            tlas_desc.type = CGPU_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+                            tlas_desc.flags = CGPU_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+                            tlas_desc.top.count = instance_count;
+                            tlas_desc.top.instances = tlas_instances.data();
+                            update_request.tlas_desc = tlas_desc;
+                        }
+                        tlas_manager->Request(update_request);
+                    }
                 }
 
-                struct SparseUploadConstants
+                auto& Lane = GetLaneForUpload();
+                auto& upload_ctx = upload_ctxs.get(ctx.graph);
+                uint32_t actual_uploads = upload_ctx.upload_counter.load();
+                if (actual_uploads)
                 {
-                    uint32_t num_operations;
-                    uint32_t max_threads_per_op;
-                    uint32_t alignment = 16;
-                    uint32_t padding0 = 0;
-                } constants;
-                constants.num_operations = static_cast<uint32_t>(core_uploads.size());
-                constants.max_threads_per_op = max_threads_per_op;
+                    SkrZoneScopedN("GPUScene::CollectAndDisptachCopyPass");
 
-                cgpu_compute_encoder_push_constants(ctx.encoder, sparse_upload_root_signature, u8"constants", &constants);
-                cgpu_compute_encoder_dispatch(ctx.encoder, core_dispatch_groups, 1, 1);
+                    // Fetch upload data
+                    const auto& uploads = upload_ctx.soa_segments_uploads;
+
+                    if (auto scene_data = upload_ctx.upload_buffer->info->cpu_mapped_address)
+                    {
+                        ::memcpy(scene_data, upload_ctx.DRAMCache.data(), upload_ctx.DRAMCache.size());
+                    }
+                    if (auto ops = ctx.resolve(ops_buffer)->info->cpu_mapped_address)
+                    {
+                        ::memcpy(ops, uploads.data(), ops_size);
+                    }
+
+                    struct SparseUploadConstants
+                    {
+                        uint32_t num_operations;
+                        uint32_t max_threads_per_op;
+                        uint32_t alignment = 16;
+                        uint32_t padding0 = 0;
+                    } constants;
+                    constants.num_operations = static_cast<uint32_t>(actual_uploads);
+                    constants.max_threads_per_op = max_threads_per_op;
+
+                    cgpu_compute_encoder_push_constants(ctx.encoder, sparse_upload_root_signature, u8"constants", &constants);
+                    cgpu_compute_encoder_dispatch(ctx.encoder, dispatch_groups, 1, 1);
+                }
+                {
+                    SkrZoneScopedN("GPUScene::CleanUpLane");
+
+                    Lane.add_ents.clear();
+                    Lane.remove_ents.clear();
+                    Lane.dirty_ents.clear();
+                    Lane.dirty_comp_count = 0;
+                    Lane.dirties.clear();
+                    Lane.dirty_buffer_size = 0;
+
+
+                    upload_ctx.upload_cursor.store(0);
+                    upload_ctx.upload_counter.store(0);
+                }
             });
     }
-}
-
-void GPUScene::Initialize(const GPUSceneConfig& cfg, const SOASegmentBuffer::Builder& soa_builder)
-{
-    SKR_LOG_INFO(u8"Initializing GPUScene...");
-
-    // Validate configuration
-    if (!cfg.world)
-    {
-        SKR_LOG_ERROR(u8"GPUScene: ECS World is null!");
-        return;
-    }
-
-    if (!cfg.render_device)
-    {
-        SKR_LOG_ERROR(u8"GPUScene: RendererDevice is null!");
-        return;
-    }
-
-    // Store configuration
-    config = cfg;
-    ecs_world = config.world;
-    render_device = config.render_device;
-
-    // 0. Create sparse upload compute pipeline
-    CreateSparseUploadPipeline(render_device->get_cgpu_device());
-    // 1. Initialize component type registry from config
-    InitializeComponentTypes(cfg);
-    // 2. Create core data buffer using provided SOA builder
-    soa_segments.initialize(soa_builder);
-
-    SKR_LOG_INFO(u8"GPUScene initialized successfully");
 }
 
 void GPUScene::AddEntity(skr::ecs::Entity entity)
@@ -556,6 +500,7 @@ void GPUScene::RemoveEntity(skr::ecs::Entity entity)
         auto& tlas_instance = tlas_instances[instance_data->instance_index];
         memset(tlas_instance.transform, 0, sizeof(tlas_instance.transform));
         instance_count -= 1;
+        tlas_dirty = true;
 
         entity_ids.erase(entity);
     }
@@ -748,6 +693,41 @@ void GPUScene::CreateSparseUploadPipeline(CGPUDeviceId device)
     SKR_LOG_INFO(u8"SparseUpload compute pipeline created successfully");
 }
 
+
+void GPUScene::Initialize(const GPUSceneConfig& cfg, const SOASegmentBuffer::Builder& soa_builder)
+{
+    SKR_LOG_INFO(u8"Initializing GPUScene...");
+
+    // Validate configuration
+    if (!cfg.world)
+    {
+        SKR_LOG_ERROR(u8"GPUScene: ECS World is null!");
+        return;
+    }
+
+    if (!cfg.render_device)
+    {
+        SKR_LOG_ERROR(u8"GPUScene: RenderDevice is null!");
+        return;
+    }
+
+    // Store configuration
+    config = cfg;
+    ecs_world = config.world;
+    render_device = config.render_device;
+
+    // 1. Create TLAS manager
+    tlas_manager = TLASManager::Create(1 + RG_MAX_FRAME_IN_FLIGHT, render_device);
+    // 2. Create sparse upload compute pipeline
+    CreateSparseUploadPipeline(render_device->get_cgpu_device());
+    // 3. Initialize component type registry
+    InitializeComponentTypes(cfg);
+    // 4. Create soa segment buffer
+    soa_segments.initialize(soa_builder);
+
+    SKR_LOG_INFO(u8"GPUScene initialized successfully");
+}
+
 void GPUScene::Shutdown()
 {
     SKR_LOG_INFO(u8"Shutting down GPUScene...");
@@ -756,9 +736,9 @@ void GPUScene::Shutdown()
     soa_segments.shutdown();
 
     // Release upload buffers for all frames
-    for (uint32_t i = 0; i < upload_ctx.max_frames_in_flight(); ++i)
+    for (uint32_t i = 0; i < upload_ctxs.max_frames_in_flight(); ++i)
     {
-        auto& ctx = upload_ctx[i];
+        auto& ctx = upload_ctxs[i];
         if (ctx.upload_buffer)
         {
             cgpu_free_buffer(ctx.upload_buffer);
@@ -766,7 +746,18 @@ void GPUScene::Shutdown()
         }
     }
 
-    // Release SparseUpload pipeline resources
+    for (uint32_t i = 0; i < frame_ctxs.max_frames_in_flight(); ++i)
+    {
+        auto& ctx = frame_ctxs[i];
+        ctx.frame_tlas = {};
+        if (ctx.buffer_to_discard)
+        {
+            cgpu_free_buffer(ctx.buffer_to_discard);
+            ctx.buffer_to_discard = nullptr;
+        }
+    }
+    TLASManager::Destroy(tlas_manager);
+
     if (sparse_upload_pipeline)
     {
         cgpu_free_compute_pipeline(sparse_upload_pipeline);

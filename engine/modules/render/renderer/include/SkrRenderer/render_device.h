@@ -5,7 +5,7 @@
 
 namespace skr
 {
-struct SKR_RENDERER_API RendererDevice
+struct SKR_RENDERER_API RenderDevice
 {
 public:
     struct Builder
@@ -15,8 +15,8 @@ public:
         bool enable_gpu_based_validation = false;
         bool enable_set_name = true;
     };
-    static RendererDevice* Create(const Builder& builder) SKR_NOEXCEPT;
-    static void Destroy(RendererDevice* device) SKR_NOEXCEPT;
+    static RenderDevice* Create(const Builder& builder) SKR_NOEXCEPT;
+    static void Destroy(RenderDevice* device) SKR_NOEXCEPT;
     
     virtual CGPUDeviceId get_cgpu_device() const = 0;
     virtual ECGPUBackend get_backend() const = 0;
@@ -27,7 +27,7 @@ public:
     virtual CGPUDStorageQueueId get_memory_dstorage_queue() const = 0;
     virtual CGPUSamplerId get_linear_sampler() const = 0;
     virtual CGPURootSignaturePoolId get_root_signature_pool() const = 0;
-    virtual ~RendererDevice() = default;
+    virtual ~RenderDevice() = default;
 
 protected:
     virtual void initialize(const Builder& builder) = 0;

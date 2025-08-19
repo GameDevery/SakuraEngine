@@ -1024,7 +1024,9 @@ void ImGuiApp::update_texture(ImTextureData* tex_data)
 
     // create command buffer
     CGPUCommandPoolDescriptor cmd_pool_desc = {};
-    CGPUCommandBufferDescriptor cmd_desc = {};
+    CGPUCommandBufferDescriptor cmd_desc = {
+        .name = u8"CommandBuffer-ImGuiUpdateTexture"
+    };
     auto cpy_cmd_pool = cgpu_create_command_pool(
         _gfx_queue,
         &cmd_pool_desc);

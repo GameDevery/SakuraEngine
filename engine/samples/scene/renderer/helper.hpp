@@ -11,7 +11,7 @@
 namespace utils
 {
 
-inline uint32_t* read_shader_bytes(skr::RendererDevice* render_device, skr_vfs_t* resource_vfs, const char8_t* name, uint32_t* out_length)
+inline uint32_t* read_shader_bytes(skr::RenderDevice* render_device, skr_vfs_t* resource_vfs, const char8_t* name, uint32_t* out_length)
 {
     const auto cgpu_device = render_device->get_cgpu_device();
     const auto backend = cgpu_device->adapter->instance->backend;
@@ -26,7 +26,7 @@ inline uint32_t* read_shader_bytes(skr::RendererDevice* render_device, skr_vfs_t
     return shader_bytes;
 }
 
-inline CGPUShaderLibraryId create_shader_library(skr::RendererDevice* render_device, skr_vfs_t* resource_vfs, const char8_t* name, ECGPUShaderStage stage)
+inline CGPUShaderLibraryId create_shader_library(skr::RenderDevice* render_device, skr_vfs_t* resource_vfs, const char8_t* name, ECGPUShaderStage stage)
 {
     const auto cgpu_device = render_device->get_cgpu_device();
     uint32_t shader_length = 0;
@@ -60,8 +60,8 @@ protected:
 public:
     virtual void init() SKR_NOEXCEPT = 0;    // init instance, allocate CPU resources
     virtual void destroy() SKR_NOEXCEPT = 0; // destroy all CPU and GPU resources
-    // void generate_mesh_resource(skr::RendererDevice* render_device, RenderMesh* render_mesh) SKR_NOEXCEPT; // generate render mesh, allocate GPU resources
-    void generate_render_mesh(skr::RendererDevice* render_device, skr::RenderMesh* render_mesh) SKR_NOEXCEPT; // generate render mesh, allocate GPU resources
+    // void generate_mesh_resource(skr::RenderDevice* render_device, RenderMesh* render_mesh) SKR_NOEXCEPT; // generate render mesh, allocate GPU resources
+    void generate_render_mesh(skr::RenderDevice* render_device, skr::RenderMesh* render_mesh) SKR_NOEXCEPT; // generate render mesh, allocate GPU resources
 };
 
 class SCENE_RENDERER_API TriangleMesh : public SimpleMesh

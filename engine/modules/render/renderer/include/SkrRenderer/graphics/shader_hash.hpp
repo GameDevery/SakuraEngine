@@ -3,10 +3,11 @@
 #include "SkrGraphics/flags.h"
 #include "SkrRTTR/enum_tools.hpp"
 #ifndef __meta__
-    #include "SkrRenderer/shader_hash.generated.h" // IWYU pragma: export
+    #include "SkrRenderer/graphics/shader_hash.generated.h" // IWYU pragma: export
 #endif
 
 namespace skr {
+    
 sreflect_struct(
     guid = "5a54720c-34b2-444c-8e3a-5977c94136c3";
     serde = @bin | @json;)
@@ -17,7 +18,6 @@ StableShaderHash
     uint32_t valuec = 0;
     uint32_t valued = 0;
 
-#ifdef __cplusplus
     inline constexpr StableShaderHash() = default;
 
     inline bool operator==(const StableShaderHash& other) const
@@ -36,7 +36,6 @@ StableShaderHash
 
     SKR_RENDERER_API StableShaderHash(uint32_t a, uint32_t b, uint32_t c, uint32_t d) SKR_NOEXCEPT;
     SKR_RENDERER_API explicit operator skr::String() const SKR_NOEXCEPT;
-#endif
 };
 static SKR_CONSTEXPR StableShaderHash kZeroStableShaderHash = StableShaderHash();
 
