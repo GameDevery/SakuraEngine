@@ -120,7 +120,8 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
                 .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
                 .flags = CGPU_BUFFER_FLAG_DEDICATED_BIT,
                 .size = info.ResultDataMaxSizeInBytes,
-                .start_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE
+                .start_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE,
+                .name = "BLAS-Buffer"
             };
             AS->pASBuffer = cgpu_create_buffer(device, &bufferDesc);
             AS->super.scratch_buffer_size = (uint32_t)info.ScratchDataSizeInBytes;
@@ -171,6 +172,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
             .memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU,
             .flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT,
             .size = desc->top.count * sizeof(instanceDescs[0]),
+            .name = "TLAS-InstancesBuffer"
         };
         AS->asTop.pInstanceDescBuffer = cgpu_create_buffer(device, &instanceDesc);
         if (desc->top.count)
@@ -186,7 +188,8 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
             .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
             .flags = CGPU_BUFFER_FLAG_DEDICATED_BIT,
             .size = info.ResultDataMaxSizeInBytes,
-            .start_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE
+            .start_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE,
+            .name = "TLAS-Buffer"
         };
         AS->pASBuffer = cgpu_create_buffer(device, &bufferDesc);
 
@@ -221,6 +224,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
         .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
         .start_state = CGPU_RESOURCE_STATE_COMMON,
         .size = AS->super.scratch_buffer_size,
+        .name = "BuildTLAS-ScratchBuffer"
     };
     AS->pScratchBuffer = cgpu_create_buffer(device, &scratchBufferDesc);
     return &AS->super;

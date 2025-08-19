@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrGraphics/api.h"
 #include "SkrRT/resource/resource_factory.h"
-#include "SkrRenderer/graphics/shader_hash.h"
+#include "SkrRenderer/graphics/shader_hash.hpp"
 #include <SkrContainers/string.hpp>
 #include <SkrContainers/hashmap.hpp>
 
@@ -23,7 +23,7 @@ MultiShaderResource
     {
         return GetDynamicVariants(kZeroStableShaderHash);
     }
-    
+
     inline skr::Vector<PlatformShaderIdentifier>& GetDynamicVariants(StableShaderHash hash) SKR_NOEXCEPT
     {
         auto found = option_variants.find(hash);

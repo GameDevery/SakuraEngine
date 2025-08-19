@@ -25,7 +25,7 @@
 #include "SkrTask/fib_task.hpp"
 
 #include "SkrRT/resource/local_resource_registry.hpp"
-#include "SkrRenderer/shader_map.h"
+#include "SkrRenderer/shader_map.hpp"
 #include "SkrRenderer/render_viewport.h"
 #include "SkrRenderer/resources/texture_resource.h"
 #include "SkrRenderer/resources/mesh_resource.h"

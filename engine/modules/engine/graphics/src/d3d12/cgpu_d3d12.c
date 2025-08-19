@@ -1710,6 +1710,13 @@ CGPUCommandBufferId cgpu_create_command_buffer_d3d12(CGPUCommandPoolId pool, con
     CHECK_HRESULT(COM_CALL(CreateCommandList, D->pDxDevice, 
         nodeMask, gDx12CmdTypeTranslator[Cmd->mType], P->pDxCmdAlloc, initialState, IID_ARGS(ID3D12CommandList, &Cmd->pDxCmdList)));
 
+    if (desc->name && D->super.adapter->instance->enable_set_name)
+    {
+        wchar_t debugName[MAX_GPU_DEBUG_NAME_LENGTH] = {};
+        mbstowcs(debugName, (const char*)desc->name, MAX_GPU_DEBUG_NAME_LENGTH);
+        COM_CALL(SetName, Cmd->pDxCmdList, debugName);
+    }
+
     // Command lists are addd in the recording state, but there is nothing
     // to record yet. The main loop expects it to be closed, so close it now.
     CHECK_HRESULT(COM_CALL(Close, Cmd->pDxCmdList));

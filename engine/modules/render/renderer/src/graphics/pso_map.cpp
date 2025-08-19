@@ -4,7 +4,7 @@
 #include "SkrGraphics/cgpux.hpp"
 #include "SkrContainers/hashmap.hpp"
 #include "SkrRenderer/graphics/pso_key.hpp"
-#include "SkrRenderer/graphics/pso_map.h"
+#include "SkrRenderer/graphics/pso_map.hpp"
 
 #include "SkrProfile/profile.h"
 

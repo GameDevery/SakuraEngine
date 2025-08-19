@@ -7,7 +7,7 @@ struct sugoi_storage_t;
 
 namespace skr
 {
-struct RendererDevice;
+struct RenderDevice;
 } // namespace skr
 
 namespace skr
@@ -35,8 +35,8 @@ struct ANIM_VIEW_API AnimViewRenderer
     static void Destory(AnimViewRenderer* renderer);
 
     virtual ~AnimViewRenderer();
-    virtual void initialize(skr::RendererDevice* render_device, skr::ecs::World* storage, struct skr_vfs_t* resource_vfs) = 0;
-    virtual void finalize(skr::RendererDevice* renderer) = 0;
+    virtual void initialize(skr::RenderDevice* render_device, skr::ecs::World* storage, struct skr_vfs_t* resource_vfs) = 0;
+    virtual void finalize(skr::RenderDevice* renderer) = 0;
     virtual void produce_drawcalls(sugoi_storage_t* storage, skr::render_graph::RenderGraph* render_graph) = 0;
     virtual void draw(skr::render_graph::RenderGraph* render_graph) = 0;
 };

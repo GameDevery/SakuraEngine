@@ -15,7 +15,7 @@ namespace animd
 LightingPushConstants Renderer::lighting_data = { 0, 0 };
 LightingCSPushConstants Renderer::lighting_cs_data = { { 0, 0 }, { 0, 0 } };
 
-Renderer::Renderer(skr::RendererDevice* render_device)
+Renderer::Renderer(skr::RenderDevice* render_device)
     : _render_device(render_device)
 {
     // Initialize lighting data

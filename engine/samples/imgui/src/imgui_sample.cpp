@@ -9,7 +9,7 @@ int main()
 
     // Create instance
     // initailize render device
-    skr::RendererDevice::Builder builder = {};
+    skr::RenderDevice::Builder builder = {};
     builder.enable_debug_layer = false;
     builder.enable_gpu_based_validation = false;
     builder.enable_set_name = true;
@@ -18,7 +18,7 @@ int main()
 #else
     builder.backend = CGPU_BACKEND_VULKAN;
 #endif
-    auto render_device = skr::RendererDevice::Create(builder);
+    auto render_device = skr::RenderDevice::Create(builder);
     auto device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
 
@@ -111,6 +111,6 @@ int main()
     imgui_app->shutdown();
 
     // shutdown cgpu
-    skr::RendererDevice::Destroy(render_device);
+    skr::RenderDevice::Destroy(render_device);
     return 0;
 }

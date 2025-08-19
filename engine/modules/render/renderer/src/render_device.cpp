@@ -1,15 +1,12 @@
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrCore/memory/memory.h"
-#include "SkrContainers/vector.hpp"
-#include "SkrContainers/map.hpp"
 #include "SkrGraphics/dstorage.h"
 #include "SkrGraphics/extensions/cgpu_nsight.h"
-#include "SkrRT/io/vram_io.hpp"
 #include "SkrRenderer/render_device.h"
 
 namespace skr
 {
-struct SKR_RENDERER_API RendererDeviceImpl : public RendererDevice
+struct SKR_RENDERER_API RendererDeviceImpl : public RenderDevice
 {
     friend class ::SkrRendererModule;
 
@@ -81,14 +78,14 @@ protected:
     CGPUNSightTrackerId nsight_tracker = nullptr;
 };
 
-RendererDevice* RendererDevice::Create(const Builder& builder) SKR_NOEXCEPT
+RenderDevice* RenderDevice::Create(const Builder& builder) SKR_NOEXCEPT
 {
     auto d = SkrNew<RendererDeviceImpl>();
     d->initialize(builder);
     return d;
 }
 
-void RendererDevice::Destroy(RendererDevice* device) SKR_NOEXCEPT
+void RenderDevice::Destroy(RenderDevice* device) SKR_NOEXCEPT
 {
     device->finalize();
     SkrDelete(device);

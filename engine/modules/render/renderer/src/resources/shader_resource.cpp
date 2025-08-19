@@ -1,4 +1,4 @@
-#include "SkrRenderer/graphics/shader_map.h"
+#include "SkrRenderer/graphics/shader_map.hpp"
 #include "SkrRenderer/resources/shader_resource.hpp"
 #include "SkrRenderer/render_device.h"
 #include "SkrBase/misc/hash.h"
