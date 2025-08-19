@@ -59,12 +59,6 @@ bool BinSerde<skr_config_resource_t>::write(SBinaryWriter* w, const skr_config_r
     SKR_UNIMPLEMENTED_FUNCTION();
     return {};
 }
-} // namespace skr
 
-namespace skr
-{
-namespace resource
-{
 skr_guid_t ConfigFactory::GetResourceType() { return skr::type_id_of<skr_config_resource_t>(); }
-} // namespace resource
 } // namespace skr

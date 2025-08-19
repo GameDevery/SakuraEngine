@@ -34,7 +34,7 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
         return false;
     }
 
-    skr_mesh_resource_t mesh;
+    MeshResource mesh;
     mesh.install_to_ram = mesh_asset.install_to_ram;
     mesh.install_to_vram = mesh_asset.install_to_vram;
     //----- write materials
@@ -115,7 +115,7 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
             // reorder indices for overdraw, balancing overdraw and vertex cache efficiency
             for (const auto& vb : prim.vertex_buffers)
             {
-                if (vb.attribute == ESkrVertexAttribute::SKR_VERT_ATTRIB_POSITION)
+                if (vb.attribute == EVertexAttribute::POSITION)
                 {
                     auto& vertices_blob = blobs[vb.buffer_index];
                     const auto vertex_stride = vb.stride;

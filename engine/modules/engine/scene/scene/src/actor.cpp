@@ -153,7 +153,7 @@ void ActorManager::initialize(skr::ecs::World* world)
     // rot_accessor = world->random_readwrite<skr::scene::RotationComponent>();
     // scale_accessor = world->random_readwrite<skr::scene::ScaleComponent>();
     // trans_accessor = world->random_readwrite<skr::scene::TransformComponent>();
-    // mesh_accessor = world->random_readwrite<skr::renderer::MeshComponent>();
+    // mesh_accessor = world->random_readwrite<skr::MeshComponent>();
 }
 
 bool ActorManager::DestroyActor(skr::GUID guid)

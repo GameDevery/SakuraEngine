@@ -8,8 +8,6 @@
 
 namespace skr
 {
-namespace resource
-{
 // resource request implementation
 skr_guid_t SResourceRequestImpl::GetGuid() const
 {
@@ -563,5 +561,4 @@ void ResourceRegistry::FillRequest(ResourceRequest* r, SResourceHeader header, s
     }
 }
 
-} // namespace resource
 } // namespace skr

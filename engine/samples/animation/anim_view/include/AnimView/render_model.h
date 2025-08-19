@@ -38,9 +38,9 @@ struct anim_debug_render_model_t
     // clipping
     skr::Vector<CGPUTextureId> textures;
     skr::Vector<CGPUTextureViewId> texture_views;
-    skr::Vector<skr::renderer::VertexBufferView> vertex_buffer_views;
-    skr::Vector<skr::renderer::IndexBufferView> index_buffer_views;
-    skr::Vector<skr::renderer::PrimitiveCommand> primitive_commands;
+    skr::Vector<skr::VertexBufferView> vertex_buffer_views;
+    skr::Vector<skr::IndexBufferView> index_buffer_views;
+    skr::Vector<skr::PrimitiveCommand> primitive_commands;
     // bind table cache
     skr::Map<CGPUTextureViewId, CGPUXBindTableId> bind_tables;
 };

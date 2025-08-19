@@ -10,9 +10,9 @@
 
 #include "SkrRenderer/pso_map.h"
 
-namespace skr::renderer
+namespace skr
 {
-using namespace skr::resource;
+using namespace skr;
 using MaterialFutureLancher = skr::FutureLauncher<bool>;
 
 struct MaterialFactoryImpl : public MaterialFactory
@@ -47,12 +47,12 @@ struct MaterialFactoryImpl : public MaterialFactory
 
     skr_guid_t GetResourceType() override
     {
-        return ::skr::type_id_of<skr_material_resource_t>();
+        return ::skr::type_id_of<MaterialResource>();
     }
 
     bool AsyncIO() override { return true; }
 
-    bool Unload_Pass(skr_material_resource_t::installed_pass& pass)
+    bool Unload_Pass(MaterialResource::installed_pass& pass)
     {
         // 1.free PSO & map key
         if (pass.key)
@@ -84,7 +84,7 @@ struct MaterialFactoryImpl : public MaterialFactory
 
     bool Unload(SResourceRecord* record) override
     {
-        auto material = static_cast<skr_material_resource_t*>(record->resource);
+        auto material = static_cast<MaterialResource*>(record->resource);
         bool unloaded = true;
         for (auto& pass : material->installed_passes)
         {
@@ -95,7 +95,7 @@ struct MaterialFactoryImpl : public MaterialFactory
 
     ESkrInstallStatus Install(SResourceRecord* record) override
     {
-        auto material = static_cast<skr_material_resource_t*>(record->resource);
+        auto material = static_cast<MaterialResource*>(record->resource);
         if (!material->material_type.is_resolved())
             material->material_type.resolve(true, nullptr);
         auto matType = material->material_type.get_resolved();
@@ -127,7 +127,7 @@ struct MaterialFactoryImpl : public MaterialFactory
                             if (bytecode_type == platform_id.bytecode_type)
                             {
                                 const auto status = shader_map->install_shader(platform_id);
-                                if (status != SKR_SHADER_MAP_SHADER_STATUS_FAILED)
+                                if (status != EShaderMapShaderStatus::FAILED)
                                 {
                                     auto& installed_shader = installed_pass.shaders.add_default().ref();
                                     installed_shader.identifier = platform_id;
@@ -157,7 +157,7 @@ struct MaterialFactoryImpl : public MaterialFactory
         return true;
     }
 
-    CGPURootSignatureId createMaterialRS(skr_material_resource_t::installed_pass& installed_pass, skr::span<CGPUShaderLibraryId> shaders) const
+    CGPURootSignatureId createMaterialRS(MaterialResource::installed_pass& installed_pass, skr::span<CGPUShaderLibraryId> shaders) const
     {
         CGPUShaderEntryDescriptor ppl_shaders[CGPU_SHADER_STAGE_COUNT];
         for (size_t i = 0; i < installed_pass.shaders.size(); i++)
@@ -182,7 +182,7 @@ struct MaterialFactoryImpl : public MaterialFactory
     }
 
     const char* sampler_name = "color_sampler";
-    CGPUXBindTableId createMaterialBindTable(const skr_material_resource_t* material, CGPURootSignatureId root_signature) const
+    CGPUXBindTableId createMaterialBindTable(const MaterialResource* material, CGPURootSignatureId root_signature) const
     {
         // 1.make bind table
         // TODO: multi bind table
@@ -229,7 +229,7 @@ struct MaterialFactoryImpl : public MaterialFactory
         skr::InlineVector<CGPUDescriptorData, 16> updates;
         for (const auto& override : material->overrides.samplers)
         {
-            auto hdl = skr::resource::AsyncResource<STextureSamplerResource>(override.value);
+            auto hdl = skr::AsyncResource<STextureSamplerResource>(override.value);
             hdl.resolve(true, nullptr);
 
             auto& update = updates.emplace().ref();
@@ -239,7 +239,7 @@ struct MaterialFactoryImpl : public MaterialFactory
         }
         for (const auto& override : material->overrides.textures)
         {
-            skr::resource::AsyncResource<STextureResource> hdl = override.value;
+            skr::AsyncResource<STextureResource> hdl = override.value;
             hdl.resolve(true, nullptr);
 
             auto& update = updates.emplace().ref();
@@ -251,9 +251,9 @@ struct MaterialFactoryImpl : public MaterialFactory
         return bind_table;
     }
 
-    CGPURootSignatureId requestRS(SResourceRecord* record, skr_material_resource_t::installed_pass& installed_pass, skr::span<CGPUShaderLibraryId> shaders)
+    CGPURootSignatureId requestRS(SResourceRecord* record, MaterialResource::installed_pass& installed_pass, skr::span<CGPUShaderLibraryId> shaders)
     {
-        auto material = static_cast<skr_material_resource_t*>(record->resource);
+        auto material = static_cast<MaterialResource*>(record->resource);
         // 0.return if ready
         if (installed_pass.root_signature) return installed_pass.root_signature; // already created
 
@@ -277,7 +277,7 @@ struct MaterialFactoryImpl : public MaterialFactory
         return nullptr;
     }
 
-    skr_pso_map_key_id makePsoMapKey(skr_material_resource_t* material, skr_material_resource_t::installed_pass& installed_pass, skr::span<CGPUShaderLibraryId> shaders) const SKR_NOEXCEPT
+    skr_pso_map_key_id makePsoMapKey(MaterialResource* material, MaterialResource::installed_pass& installed_pass, skr::span<CGPUShaderLibraryId> shaders) const SKR_NOEXCEPT
     {
         auto desc = make_zeroed<CGPURenderPipelineDescriptor>();
         desc.root_signature = installed_pass.root_signature;
@@ -401,9 +401,9 @@ struct MaterialFactoryImpl : public MaterialFactory
         return skr_pso_map_create_key(pso_map, &desc);
     }
 
-    CGPURenderPipelineId requestPSO(SResourceRecord* record, skr_material_resource_t::installed_pass& installed_pass, skr::span<CGPUShaderLibraryId> shaders, bool& fail)
+    CGPURenderPipelineId requestPSO(SResourceRecord* record, MaterialResource::installed_pass& installed_pass, skr::span<CGPUShaderLibraryId> shaders, bool& fail)
     {
-        auto material = static_cast<skr_material_resource_t*>(record->resource);
+        auto material = static_cast<MaterialResource*>(record->resource);
         if (!installed_pass.key)
         {
             installed_pass.key = makePsoMapKey(material, installed_pass, shaders);
@@ -413,7 +413,7 @@ struct MaterialFactoryImpl : public MaterialFactory
         return skr_pso_map_find_pso(pso_map, installed_pass.key);
     }
 
-    ESkrInstallStatus UpdateInstall_Pass(SResourceRecord* record, skr_material_resource_t::installed_pass& installed_pass)
+    ESkrInstallStatus UpdateInstall_Pass(SResourceRecord* record, MaterialResource::installed_pass& installed_pass)
     {
         // 1.all shaders are installed ?
         skr::InlineVector<CGPUShaderLibraryId, CGPU_SHADER_STAGE_COUNT> shaders;
@@ -443,7 +443,7 @@ struct MaterialFactoryImpl : public MaterialFactory
 
     ESkrInstallStatus UpdateInstall(SResourceRecord* record) override
     {
-        auto material = static_cast<skr_material_resource_t*>(record->resource);
+        auto material = static_cast<MaterialResource*>(record->resource);
         // foreach pass check if all shaders are installed.
         bool all_okay = true;
         for (auto& installed_pass : material->installed_passes)
@@ -457,7 +457,7 @@ struct MaterialFactoryImpl : public MaterialFactory
     struct RootSignatureRequest
         : public skr::AsyncProgress<MaterialFutureLancher, int, bool>
     {
-        RootSignatureRequest(const skr_material_resource_t* material, MaterialFactoryImpl* factory, skr_material_resource_t::installed_pass& installed_pass, skr::span<CGPUShaderLibraryId> shaders)
+        RootSignatureRequest(const MaterialResource* material, MaterialFactoryImpl* factory, MaterialResource::installed_pass& installed_pass, skr::span<CGPUShaderLibraryId> shaders)
             : material(material)
             , installed_pass(installed_pass)
             , factory(factory)
@@ -472,8 +472,8 @@ struct MaterialFactoryImpl : public MaterialFactory
             return root_signature;
         }
 
-        const skr_material_resource_t* material = nullptr;
-        skr_material_resource_t::installed_pass& installed_pass;
+        const MaterialResource* material = nullptr;
+        MaterialResource::installed_pass& installed_pass;
         MaterialFactoryImpl* factory = nullptr;
         CGPURootSignatureId root_signature = nullptr;
         CGPUXBindTableId bind_table = nullptr;
@@ -483,7 +483,7 @@ struct MaterialFactoryImpl : public MaterialFactory
     skr::FlatHashMap<skr_guid_t, SP<RootSignatureRequest>, skr::Hash<skr_guid_t>> mRootSignatureRequests;
     skr::SP<MaterialFutureLancher> launcher = nullptr;
 
-    skr_shader_map_id shader_map = nullptr;
+    ShaderMap* shader_map = nullptr;
     skr_pso_map_id pso_map = nullptr;
     CGPURootSignaturePoolId rs_pool = nullptr;
     Root root;
@@ -499,4 +499,4 @@ void MaterialFactory::Destroy(MaterialFactory* factory)
     SkrDelete(factory);
 }
 
-} // namespace skr::renderer
+} // namespace skr

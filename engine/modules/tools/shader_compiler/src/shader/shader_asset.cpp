@@ -38,15 +38,15 @@ void ShaderImporter::Destroy(void* resource)
 }
 
 // [x: "on", y: "a", z: "1"]
-using unique_option_variant_t = skr::Vector<skr_shader_option_instance_t>;
+using unique_option_variant_t = skr::Vector<ShaderOptionInstance>;
 // [ [z: "on", y: "a", z: "1"], [x: "on", y: "a", z: "2"] ...]
 using option_variant_seq_t = skr::Vector<unique_option_variant_t>;
-using variant_seq_hashe_seq_t = skr::Vector<SStableShaderHash>;
-void cartesian_variants(skr::span<skr_shader_options_resource_t*> options, skr::Vector<skr_shader_option_template_t>& out_flatten_options, option_variant_seq_t& out_variants, variant_seq_hashe_seq_t& out_stable_hahses)
+using variant_seq_hashe_seq_t = skr::Vector<StableShaderHash>;
+void cartesian_variants(skr::span<ShaderOptionsResource*> options, skr::Vector<ShaderOptionTemplate>& out_flatten_options, option_variant_seq_t& out_variants, variant_seq_hashe_seq_t& out_stable_hahses)
 {
     // flat and well sorted
     // [ x: ["on", "off"], y: ["a", "b", "c"], z: ["1", "2"] ]
-    skr_shader_options_resource_t::flatten_options(out_flatten_options, options);
+    ShaderOptionsResource::flatten_options(out_flatten_options, options);
 
     // [ ["on", "off"], ["a", "b", "c"], ["1", "2"] ]
     skr::Vector<skr::Vector<skr::String>> selection_seqs = {};
@@ -65,7 +65,7 @@ void cartesian_variants(skr::span<skr_shader_options_resource_t*> options, skr::
         skr::cartesian_product<skr::String> cartesian(selection_seqs);
         while (cartesian.has_next())
         {
-            skr::Vector<skr_shader_option_instance_t> option_seq = {};
+            skr::Vector<ShaderOptionInstance> option_seq = {};
             const auto sequence = cartesian.next();
             option_seq.resize_default(sequence.size());
             SKR_ASSERT(sequence.size() == out_flatten_options.size());
@@ -76,7 +76,7 @@ void cartesian_variants(skr::span<skr_shader_options_resource_t*> options, skr::
             }
             out_variants.add(option_seq);
             const auto stable_hash =
-                skr_shader_option_instance_t::calculate_stable_hash({ option_seq.data(), option_seq.size() });
+                ShaderOptionInstance::calculate_stable_hash({ option_seq.data(), option_seq.size() });
             out_stable_hahses.add(stable_hash);
         }
     }
@@ -87,7 +87,7 @@ void cartesian_variants(skr::span<skr_shader_options_resource_t*> options, skr::
     }
 }
 
-// skr_shader_options_resource_t:
+// ShaderOptionsResource:
 // LEVEL["level0", "level1", "level2"]:
 //    same as "key": ["level0", "level1", "level2"] but def(level2) includes def(level1) & def(level0))
 // SELECT["selection0", "selection1", "selection2"]:
@@ -102,30 +102,30 @@ bool ShaderCooker::Cook(CookContext* ctx)
     auto source_code = ctx->Import<ShaderSourceCode>();
     SKR_DEFER({ ctx->Destroy(source_code); });
     // Calculate all macro combines (shader variants)
-    skr::Vector<skr_shader_options_resource_t*> switch_assets = {};
-    skr::Vector<skr_shader_options_resource_t*> option_assets = {};
+    skr::Vector<ShaderOptionsResource*> switch_assets = {};
+    skr::Vector<ShaderOptionsResource*> option_assets = {};
     auto importer = static_cast<ShaderImporter*>(ctx->GetImporter());
     for (auto switch_asset : importer->switch_assets)
     {
         const auto guid = switch_asset.get_guid();
         auto idx = ctx->AddStaticDependency(guid, true);
-        auto opts_resource = static_cast<skr_shader_options_resource_t*>(ctx->GetStaticDependency(idx).get_ptr());
+        auto opts_resource = static_cast<ShaderOptionsResource*>(ctx->GetStaticDependency(idx).get_ptr());
         switch_assets.add(opts_resource);
     }
     for (auto option_asset : importer->option_assets)
     {
         const auto guid = option_asset.get_guid();
         auto idx = ctx->AddStaticDependency(guid, true);
-        auto opts_resource = static_cast<skr_shader_options_resource_t*>(ctx->GetStaticDependency(idx).get_ptr());
+        auto opts_resource = static_cast<ShaderOptionsResource*>(ctx->GetStaticDependency(idx).get_ptr());
         option_assets.add(opts_resource);
     }
 
-    skr::Vector<skr_shader_option_template_t> flat_static_options = {};
+    skr::Vector<ShaderOptionTemplate> flat_static_options = {};
     option_variant_seq_t static_variants = {};
     variant_seq_hashe_seq_t static_stable_hashes = {};
     cartesian_variants(switch_assets, flat_static_options, static_variants, static_stable_hashes);
 
-    skr::Vector<skr_shader_option_template_t> flat_dynamic_options = {};
+    skr::Vector<ShaderOptionTemplate> flat_dynamic_options = {};
     option_variant_seq_t dynamic_variants = {};
     variant_seq_hashe_seq_t dynamic_stable_hashes = {};
     cartesian_variants(option_assets, flat_dynamic_options, dynamic_variants, dynamic_stable_hashes);
@@ -138,7 +138,7 @@ bool ShaderCooker::Cook(CookContext* ctx)
     };
     // begin compile
     // auto system = skd::asset::GetCookSystem();
-    skr::Vector<skr_multi_shader_resource_t> allOutResources(static_variants.size());
+    skr::Vector<MultiShaderResource> allOutResources(static_variants.size());
     // foreach variants
     {
         SkrZoneScopedN("Permutations::Compile");
@@ -243,15 +243,15 @@ bool ShaderCooker::Cook(CookContext* ctx)
     }
 
     // make resource to write
-    skr_shader_collection_resource_t resource = {};
-    skr_shader_option_sequence_t& switches = resource.switch_sequence;
-    skr_shader_option_sequence_t& options = resource.option_sequence;
+    ShaderCollectionResource resource = {};
+    ShaderOptionSequence& switches = resource.switch_sequence;
+    ShaderOptionSequence& options = resource.option_sequence;
     // initialize & serialize
     {
         resource.root_guid = assetMetaFile->GetGUID();
         // add root variant, root variant has two entries: md5-stable-hash & 0
         {
-            const auto root_hash = make_zeroed<SStableShaderHash>();
+            const auto root_hash = make_zeroed<StableShaderHash>();
             for (auto&& staticVariant : allOutResources)
             {
                 auto& rootOptionVar = staticVariant.GetDynamicVariants(dynamic_stable_hashes[0]);
@@ -290,7 +290,7 @@ bool ShaderCooker::Cook(CookContext* ctx)
     }
     // serialize a json file for visual debugging
     {
-        skr_shader_collection_json_t json_resource = {};
+        ShaderCollectionJSON json_resource = {};
         json_resource.root_guid = resource.root_guid;
         json_resource.switch_variants = resource.switch_variants;
 

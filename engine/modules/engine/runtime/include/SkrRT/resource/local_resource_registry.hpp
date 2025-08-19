@@ -2,7 +2,7 @@
 #include "resource_system.h"
 
 struct skr_vfs_t;
-namespace skr::resource
+namespace skr
 {
 struct SKR_RUNTIME_API LocalResourceRegistry : ResourceRegistry
 {
@@ -12,4 +12,4 @@ struct SKR_RUNTIME_API LocalResourceRegistry : ResourceRegistry
     void CancelRequestFile(ResourceRequest* requst) override;
     skr_vfs_t* vfs;
 };
-} // namespace skr::resource
+} // namespace skr

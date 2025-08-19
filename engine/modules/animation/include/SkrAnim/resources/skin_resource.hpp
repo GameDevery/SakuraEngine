@@ -6,7 +6,7 @@
     #include "SkrAnim/resources/skin_resource.generated.h" // IWYU pragma: export
 #endif
 
-namespace skr::anim
+namespace skr
 {
 
 sreflect_struct(guid = "332C6133-7222-4B88-9B2F-E4336A46DF2C")
@@ -17,14 +17,10 @@ SkinResource {
     skr::SerializeConstVector<skr_float4x4_t>            inverse_bind_poses;
 };
 
-} // namespace skr::anim
-
-namespace skr::resource
-{
 struct SKR_ANIM_API SkinFactory : public ResourceFactory {
     virtual ~SkinFactory() = default;
     skr_guid_t GetResourceType() override;
     bool       AsyncIO() override { return true; }
     float      AsyncSerdeLoadFactor() override { return 1.0f; }
 };
-} // namespace skr::resource
+} // namespace skr

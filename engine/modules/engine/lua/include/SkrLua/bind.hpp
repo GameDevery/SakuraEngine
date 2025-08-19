@@ -280,21 +280,21 @@ struct BindTrait<SResourceHandle> {
 };
 
 template <class T>
-struct BindTrait<resource::AsyncResource<T>> {
-    static int push(lua_State* L, const resource::AsyncResource<T>& resource)
+struct BindTrait<AsyncResource<T>> {
+    static int push(lua_State* L, const AsyncResource<T>& resource)
     {
         return push_resource(L, (const SResourceHandle*)&resource);
     }
 
-    static const resource::AsyncResource<T>& check(lua_State* L, int index, int& used)
+    static const AsyncResource<T>& check(lua_State* L, int index, int& used)
     {
         used = 1;
-        return *(resource::AsyncResource<T>*)check_resource(L, index);
+        return *(AsyncResource<T>*)check_resource(L, index);
     }
 
-    static const resource::AsyncResource<T>& opt(lua_State* L, int index, const resource::AsyncResource<T>& def)
+    static const AsyncResource<T>& opt(lua_State* L, int index, const AsyncResource<T>& def)
     {
-        return *(resource::AsyncResource<T>*)opt_resource(L, index, &def);
+        return *(AsyncResource<T>*)opt_resource(L, index, &def);
     }
 };
 

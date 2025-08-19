@@ -15,18 +15,18 @@ MaterialAsset
     uint32_t material_type_version;
 
     // refers to a material type
-    resource::AsyncResource<renderer::MaterialTypeResource> material_type;
+    AsyncResource<MaterialTypeResource> material_type;
 
     // properties are mapped to shader parameter bindings (scalars, vectors, matrices, buffers, textures, etc.)
-    Vector<skr_material_value_t> override_values;
+    Vector<MaterialValue> override_values;
 
     // final values for options
     // options can be provided variantly by each material, if not provided, the default value will be used
-    Vector<skr_shader_option_instance_t> switch_values;
+    Vector<ShaderOptionInstance> switch_values;
 
     // default value for options
     // options can be provided variantly at runtime, if not provided, the default value will be used
-    Vector<skr_shader_option_instance_t> option_defaults;
+    Vector<ShaderOptionInstance> option_defaults;
 };
 
 sreflect_struct(

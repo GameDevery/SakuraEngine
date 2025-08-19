@@ -3,9 +3,9 @@
 namespace animdbg
 {
 
-void InitializeAnimState(anim_state_t* state, skr::anim::SkeletonResource* skeleton)
+void InitializeAnimState(anim_state_t* state, skr::SkeletonResource* skeleton)
 {
-    // skr::anim::InitializeAnimState(state, skeleton);
+    // skr::InitializeAnimState(state, skeleton);
 }
 
 } // namespace animdbg

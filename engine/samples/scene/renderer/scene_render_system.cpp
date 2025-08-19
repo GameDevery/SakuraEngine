@@ -19,7 +19,7 @@ namespace skr::scene
 {
 struct SceneRenderJob
 {
-    using RenderF = std::function<void(const skr::span<skr::renderer::PrimitiveCommand>, skr_float4x4_t)>;
+    using RenderF = std::function<void(const skr::span<skr::PrimitiveCommand>, skr_float4x4_t)>;
     SceneRenderJob(RenderF render_callback = nullptr)
         : render_callback(render_callback)
     {
@@ -27,7 +27,7 @@ struct SceneRenderJob
 
     void build(skr::ecs::AccessBuilder& builder)
     {
-        builder.has<renderer::MeshComponent>()
+        builder.has<MeshComponent>()
             .has<scene::TransformComponent>();
 
         builder.access(&SceneRenderJob::mesh_accessor)
@@ -68,7 +68,7 @@ struct SceneRenderJob
         }
     }
 
-    skr::ecs::RandomComponentReadWrite<skr::renderer::MeshComponent> mesh_accessor;
+    skr::ecs::RandomComponentReadWrite<skr::MeshComponent> mesh_accessor;
     skr::ecs::RandomComponentReader<const skr::scene::TransformComponent> transform_accessor;
     RenderF render_callback = nullptr;
 };
@@ -123,7 +123,7 @@ void SceneRenderSystem::update() SKR_NOEXCEPT
     impl->push_constants_list.clear();
 
     auto render_func = impl->mp_renderer != nullptr ?
-        scene::SceneRenderJob::RenderF([this](const skr::span<skr::renderer::PrimitiveCommand> cmds, skr_float4x4_t model) {
+        scene::SceneRenderJob::RenderF([this](const skr::span<skr::PrimitiveCommand> cmds, skr_float4x4_t model) {
             auto& push_constants_data = impl->push_constants_list.emplace().ref();
             push_constants_data.model = skr::transpose(model);
             utils::Camera* camera = impl->mp_renderer->get_camera();
@@ -152,7 +152,7 @@ void SceneRenderSystem::update() SKR_NOEXCEPT
                 drawcall.index_buffer = *cmd.ibv;
             }
         }) :
-        scene::SceneRenderJob::RenderF([](const skr::span<skr::renderer::PrimitiveCommand> cmds, skr_float4x4_t model) {
+        scene::SceneRenderJob::RenderF([](const skr::span<skr::PrimitiveCommand> cmds, skr_float4x4_t model) {
             // do nothing
         });
     scene::SceneRenderJob job{ render_func };

@@ -7,7 +7,7 @@
 #include "SkrContainersDef/path.hpp"
 #include "SkrSerde/bin_serde.hpp"
 
-namespace skr::resource
+namespace skr
 {
 LocalResourceRegistry::LocalResourceRegistry(skr_vfs_t* vfs)
     : vfs(vfs)
@@ -66,4 +66,4 @@ bool LocalResourceRegistry::RequestResourceFile(ResourceRequest* request)
 void LocalResourceRegistry::CancelRequestFile(ResourceRequest* requst)
 {
 }
-} // namespace skr::resource
+} // namespace skr

@@ -10,7 +10,7 @@
 
 SKR_DECLARE_TYPE_ID_FWD(skr, JobQueue, skr_job_queue)
 
-namespace skr::renderer
+namespace skr
 {
 using MaterialPropertyNameView = skr::SerializeConstString;
 
@@ -82,17 +82,17 @@ sreflect_struct(
     guid = "7cbbb808-20d9-4bff-b72d-3c23d5b00f2b" serde = @bin)
 MaterialShaderVariant
 {
-    // refers to a skr_shader_collection_resource_t
+    // refers to a ShaderCollectionResource
     skr_guid_t shader_collection;
 
-    // variant hash of static switches -> skr_multi_shader_resource_t
-    SStableShaderHash switch_hash;
+    // variant hash of static switches -> MultiShaderResource
+    StableShaderHash switch_hash;
 
     // static switch value selection indices, const during runtime
     skr::SerializeConstVector<uint32_t> switch_indices;
 
-    // variant hash of default options -> SPlatformShaderIdentifier
-    SStableShaderHash option_hash;
+    // variant hash of default options -> PlatformShaderIdentifier
+    StableShaderHash option_hash;
 
     // options value selection indices, immutable during runtime
     skr::SerializeConstVector<uint32_t> option_indices;
@@ -124,7 +124,7 @@ MaterialResource
 
     typedef struct installed_shader
     {
-        SPlatformShaderIdentifier identifier;
+        PlatformShaderIdentifier identifier;
         skr::StringView entry;
         ECGPUShaderStage stage;
     } installed_shader;
@@ -145,14 +145,14 @@ MaterialResource
         installed_passes;
 };
 
-struct SKR_RENDERER_API MaterialFactory : public resource::ResourceFactory
+struct SKR_RENDERER_API MaterialFactory : public ResourceFactory
 {
     virtual ~MaterialFactory() = default;
 
     struct Root
     {
         CGPUDeviceId device = nullptr;
-        skr_shader_map_id shader_map = nullptr;
+        ShaderMap* shader_map = nullptr;
         skr_vfs_t* bytecode_vfs = nullptr;
         skr_io_ram_service_t* ram_service = nullptr;
         skr_job_queue_id job_queue = nullptr;
@@ -160,4 +160,4 @@ struct SKR_RENDERER_API MaterialFactory : public resource::ResourceFactory
     [[nodiscard]] static MaterialFactory* Create(const Root& root);
     static void Destroy(MaterialFactory* factory);
 };
-} // namespace skr::renderer
+} // namespace skr

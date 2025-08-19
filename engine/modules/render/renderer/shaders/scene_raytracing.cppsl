@@ -62,10 +62,10 @@ Ray generate_camera_ray(uint2 pixel_coord, uint2 screen_size)
 // Colorful sphere shading based on instance ID
 float4 shade_hit(RayQuery<RayQueryFlags::AcceptFirstAndEndSearch>& query) 
 {
-    using Layout = skr::renderer::DefaultGPUSceneLayout;
+    using Layout = skr::DefaultGPUSceneLayout;
     uint instance_id = query.committed_instance_id();
-    const auto offset = Layout::component_location<skr::renderer::GPUSceneInstanceColor>(instance_id);
-    const auto color = gpu_scene.Load<skr::renderer::GPUSceneInstanceColor>(offset);
+    const auto offset = Layout::component_location<skr::GPUSceneInstanceColor>(instance_id);
+    const auto color = gpu_scene.Load<skr::GPUSceneInstanceColor>(offset);
     return color.color;
 }
 

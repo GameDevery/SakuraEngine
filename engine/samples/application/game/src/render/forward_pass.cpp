@@ -23,7 +23,7 @@ void RenderPassForward::on_update(const skr_primitive_pass_context_t* context)
 
     if (!anim_query)
     {
-        auto sig    = u8"[in]skr::renderer::MeshComponent, [in]skr::anim::AnimComponent";
+        auto sig    = u8"[in]skr::MeshComponent, [in]skr::AnimComponent";
         *anim_query = sugoiQ_from_literal(storage, sig);
     }
     // upload skin mesh data
@@ -33,7 +33,7 @@ void RenderPassForward::on_update(const skr_primitive_pass_context_t* context)
             SkrZoneScopedN("CalculateSkinMeshSize");
 
             auto calcUploadBufferSize = [&](sugoi_chunk_view_t* r_cv) {
-                const auto anims = sugoi::get_component_ro<skr::anim::AnimComponent>(r_cv);
+                const auto anims = sugoi::get_component_ro<skr::AnimComponent>(r_cv);
                 for (uint32_t i = 0; i < r_cv->count; i++)
                 {
                     auto*      anim               = anims + i;
@@ -67,12 +67,12 @@ void RenderPassForward::on_update(const skr_primitive_pass_context_t* context)
             SkrZoneScopedN("CopySkinMesh");
 
             auto uploadVertices = [&](sugoi_chunk_view_t* r_cv) {
-                const skr::anim::AnimComponent* anims = nullptr;
+                const skr::AnimComponent* anims = nullptr;
                 {
                     SkrZoneScopedN("FetchAnims");
 
                     // duel to dependency, anims fetch here may block a bit, waiting CPU skinning job done
-                    anims = sugoi::get_owned_ro<skr::anim::AnimComponent>(r_cv);
+                    anims = sugoi::get_owned_ro<skr::AnimComponent>(r_cv);
                 }
 
                 auto upload_buffer = context.resolve(upload_buffer_handle);
@@ -197,11 +197,11 @@ void RenderPassForward::execute(const skr_primitive_pass_context_t* context, skr
         CGPUResourceBarrierDescriptor      barrier_desc = {};
         skr::stl_vector<CGPUBufferBarrier> barriers;
         auto                               barrierVertices = [&](sugoi_chunk_view_t* r_cv) {
-            const skr::anim::AnimComponent* anims = nullptr;
+            const skr::AnimComponent* anims = nullptr;
             {
                 SkrZoneScopedN("FetchAnims");
                 // duel to dependency, anims fetch here may block a bit, waiting CPU skinning job done
-                anims = sugoi::get_owned_ro<skr::anim::AnimComponent>(r_cv);
+                anims = sugoi::get_owned_ro<skr::AnimComponent>(r_cv);
             }
             for (uint32_t i = 0; i < r_cv->count; i++)
             {

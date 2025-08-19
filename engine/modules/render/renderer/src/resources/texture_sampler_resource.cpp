@@ -2,8 +2,6 @@
 
 namespace skr
 {
-namespace resource
-{
 struct SKR_RENDERER_API TextureSamplerFactoryImpl : public TextureSamplerFactory
 {
     TextureSamplerFactoryImpl(const TextureSamplerFactory::Root& root)
@@ -144,5 +142,4 @@ ESkrInstallStatus TextureSamplerFactoryImpl::UpdateInstall(SResourceRecord* reco
     return sampler_resource->sampler ? SKR_INSTALL_STATUS_SUCCEED : SKR_INSTALL_STATUS_FAILED;
 }
 
-} // namespace resource
 } // namespace skr

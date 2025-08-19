@@ -124,7 +124,7 @@ void GetGLTFNodeTransform(const cgltf_node* node, skr_float3_t& translation, skr
         rotation = { node->rotation[0], node->rotation[1], node->rotation[2], node->rotation[3] };
 }
 
-void CookGLTFMeshData(const cgltf_data* gltf_data, MeshAsset* cfg, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
+void CookGLTFMeshData(const cgltf_data* gltf_data, MeshAsset* cfg, MeshResource& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
 {
     skr::Vector<uint8_t> buffer0 = {};
     skr::Vector<uint8_t> buffer1 = {};
@@ -149,7 +149,7 @@ void CookGLTFMeshData(const cgltf_data* gltf_data, MeshAsset* cfg, skr_mesh_reso
         if (node_->mesh != nullptr)
         {
             SRawMesh raw_mesh = GenerateRawMeshForGLTFMesh(node_->mesh);
-            skr::Vector<skr_mesh_primitive_t> new_primitives;
+            skr::Vector<MeshPrimitive> new_primitives;
             // record all indices
             EmplaceAllRawMeshIndices(&raw_mesh, buffer0, new_primitives);
             EmplaceAllRawMeshVertices(&raw_mesh, shuffle_layout_name ? &shuffle_layout : nullptr, buffer0, new_primitives);
@@ -157,7 +157,7 @@ void CookGLTFMeshData(const cgltf_data* gltf_data, MeshAsset* cfg, skr_mesh_reso
             {
                 const auto& gltf_prim = node_->mesh->primitives[j];
                 auto& prim = new_primitives[j];
-                prim.vertex_layout_id = shuffle_layout_id;
+                prim.vertex_layout = shuffle_layout_id;
                 prim.material_index = static_cast<uint32_t>(gltf_prim.material - gltf_data->materials);
                 mesh_section.primive_indices.add(out_resource.primitives.size() + j);
             }
@@ -177,7 +177,7 @@ void CookGLTFMeshData(const cgltf_data* gltf_data, MeshAsset* cfg, skr_mesh_reso
     out_bins.add(buffer0);
 }
 
-void CookGLTFMeshData_SplitSkin(const cgltf_data* gltf_data, MeshAsset* cfg, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
+void CookGLTFMeshData_SplitSkin(const cgltf_data* gltf_data, MeshAsset* cfg, MeshResource& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
 {
     skr::Vector<uint8_t> buffer0 = {};
     skr::Vector<uint8_t> buffer1 = {};
@@ -203,7 +203,7 @@ void CookGLTFMeshData_SplitSkin(const cgltf_data* gltf_data, MeshAsset* cfg, skr
         if (node_->mesh != nullptr)
         {
             SRawMesh raw_mesh = GenerateRawMeshForGLTFMesh(node_->mesh);
-            skr::Vector<skr_mesh_primitive_t> new_primitives;
+            skr::Vector<MeshPrimitive> new_primitives;
             // record all indices
             EmplaceAllRawMeshIndices(&raw_mesh, buffer0, new_primitives);
             EmplaceStaticRawMeshVertices(&raw_mesh, shuffle_layout_name ? &shuffle_layout : nullptr, buffer0, 0, new_primitives);
@@ -212,7 +212,7 @@ void CookGLTFMeshData_SplitSkin(const cgltf_data* gltf_data, MeshAsset* cfg, skr
             {
                 const auto& gltf_prim = node_->mesh->primitives[j];
                 auto& prim = new_primitives[j];
-                prim.vertex_layout_id = shuffle_layout_id;
+                prim.vertex_layout = shuffle_layout_id;
                 prim.material_index = static_cast<uint32_t>(gltf_prim.material - gltf_data->materials);
                 mesh_section.primive_indices.add(out_resource.primitives.size() + j);
             }

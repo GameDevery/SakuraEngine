@@ -221,17 +221,17 @@ inline static ECGPUShaderStage getShaderStageFromTargetString(const char* target
     return CGPU_SHADER_STAGE_NONE;
 }
 
-void SDXCCompiler::SetShaderOptions(skr::span<skr_shader_option_template_t> opt_defs, skr::span<skr_shader_option_instance_t> options_view, const SStableShaderHash& option_hash) SKR_NOEXCEPT
+void SDXCCompiler::SetShaderOptions(skr::span<ShaderOptionTemplate> opt_defs, skr::span<ShaderOptionInstance> options_view, const StableShaderHash& option_hash) SKR_NOEXCEPT
 {
-    option_defs = skr::Vector<skr_shader_option_template_t>(opt_defs.data(), opt_defs.size());
-    options = skr::Vector<skr_shader_option_instance_t>(options_view.data(), options_view.size());
+    option_defs = skr::Vector<ShaderOptionTemplate>(opt_defs.data(), opt_defs.size());
+    options = skr::Vector<ShaderOptionInstance>(options_view.data(), options_view.size());
     options_hash = option_hash;
 }
 
-void SDXCCompiler::SetShaderSwitches(skr::span<skr_shader_option_template_t> opt_defs, skr::span<skr_shader_option_instance_t> options_view, const SStableShaderHash& option_hash) SKR_NOEXCEPT
+void SDXCCompiler::SetShaderSwitches(skr::span<ShaderOptionTemplate> opt_defs, skr::span<ShaderOptionInstance> options_view, const StableShaderHash& option_hash) SKR_NOEXCEPT
 {
-    switch_defs = skr::Vector<skr_shader_option_template_t>(opt_defs.data(), opt_defs.size());
-    switches = skr::Vector<skr_shader_option_instance_t>(options_view.data(), options_view.size());
+    switch_defs = skr::Vector<ShaderOptionTemplate>(opt_defs.data(), opt_defs.size());
+    switches = skr::Vector<ShaderOptionInstance>(options_view.data(), options_view.size());
     switches_hash = option_hash;
 }
 
@@ -320,10 +320,10 @@ skr::stl_wstring utf8_to_utf16(const skr::String& utf8)
     return utf16;
 }
 
-void SDXCCompiler::createDefArgsFromOptions(skr::span<skr_shader_option_template_t> opt_defs, skr::span<skr_shader_option_instance_t> options, skr::Vector<skr::stl_wstring>& outArgs) SKR_NOEXCEPT
+void SDXCCompiler::createDefArgsFromOptions(skr::span<ShaderOptionTemplate> opt_defs, skr::span<ShaderOptionInstance> options, skr::Vector<skr::stl_wstring>& outArgs) SKR_NOEXCEPT
 {
-    using namespace skr::renderer;
-    skr_shader_option_template_t* optdef = nullptr;
+    using namespace skr;
+    ShaderOptionTemplate* optdef = nullptr;
     for (auto&& option : options)
     {
         for (auto& opt_def : opt_defs)

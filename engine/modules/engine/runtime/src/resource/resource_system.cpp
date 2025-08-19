@@ -9,7 +9,7 @@
 
 #include "SkrRT/sugoi/entity_registry.hpp"
 
-namespace skr::resource
+namespace skr
 {
 struct SKR_RUNTIME_API ResourceSystemImpl : public ResourceSystem
 {
@@ -428,4 +428,4 @@ ResourceSystem* GetResourceSystem()
     static ResourceSystemImpl system;
     return &system;
 }
-} // namespace skr::resource
+} // namespace skr

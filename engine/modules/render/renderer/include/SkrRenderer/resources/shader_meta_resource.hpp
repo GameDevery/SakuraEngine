@@ -7,11 +7,10 @@
     #include "SkrRenderer/resources/shader_meta_resource.generated.h" // IWYU pragma: export
 #endif
 
-namespace skr::renderer
+namespace skr
 {
 
-sreflect_enum_class(
-    guid = "c289eaaf-ace9-4a86-8072-b173377f7d19" serde = @bin | @json)
+sreflect_enum_class(guid = "c289eaaf-ace9-4a86-8072-b173377f7d19" serde = @bin | @json)
 EShaderOptionType : uint32_t{
     LEVEL = 0,  // [ "SM_5_0", "SM_6_3", "SM_6_6" ]
     VALUE = 1,  // "ATOMIC_BOOL": ["on", "off"]
@@ -19,8 +18,7 @@ EShaderOptionType : uint32_t{
     COUNT
 };
 
-sreflect_struct(
-    guid = "00d4c2b3-50e7-499b-9cf3-fb6b2ba70e79" serde = @bin | @json)
+sreflect_struct(guid = "00d4c2b3-50e7-499b-9cf3-fb6b2ba70e79" serde = @bin | @json)
 ShaderOptionInstance
 {
     skr::String key;
@@ -30,11 +28,10 @@ ShaderOptionInstance
     skr::String value;
 
     SKR_RENDERER_API
-    static SStableShaderHash calculate_stable_hash(skr::span<skr_shader_option_instance_t> ordered_options);
+    static StableShaderHash calculate_stable_hash(skr::span<ShaderOptionInstance> ordered_options);
 };
 
-sreflect_struct(
-    guid = "f497b62d-e63e-4ec3-b923-2a01a90f9966" serde = @bin | @json)
+sreflect_struct(guid = "f497b62d-e63e-4ec3-b923-2a01a90f9966" serde = @bin | @json)
 ShaderOptionTemplate
 {
     EShaderOptionType type;
@@ -47,7 +44,7 @@ sreflect_struct(
     guid = "fc9b4a8e-06c7-41e2-a159-f4cf6930ccfc" serde = @bin | @json)
 ShaderOptionsResource
 {
-    using shader_options_handle_t = skr::resource::AsyncResource<ShaderOptionsResource>;
+    using shader_options_handle_t = skr::AsyncResource<ShaderOptionsResource>;
 
     SKR_RENDERER_API
     static bool flatten_options(skr::Vector<ShaderOptionTemplate> & dst, skr::span<ShaderOptionsResource*> srcs) SKR_NOEXCEPT;
@@ -55,7 +52,7 @@ ShaderOptionsResource
     skr::Vector<ShaderOptionTemplate> options;
 };
 
-struct SKR_RENDERER_API ShaderOptionsFactory : public resource::ResourceFactory
+struct SKR_RENDERER_API ShaderOptionsFactory : public ResourceFactory
 {
     virtual ~ShaderOptionsFactory() = default;
 
@@ -68,4 +65,4 @@ struct SKR_RENDERER_API ShaderOptionsFactory : public resource::ResourceFactory
     [[nodiscard]] static ShaderOptionsFactory* Create(const Root& root);
     static void Destroy(ShaderOptionsFactory* factory);
 };
-} // namespace skr::renderer
+} // namespace skr

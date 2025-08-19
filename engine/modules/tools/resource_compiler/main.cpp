@@ -27,62 +27,62 @@ bool IsAsset(const skr::Path& path)
     return false;
 }
 
-skr::renderer::ShaderResourceFactory* shaderResourceFactory = nullptr;
-skr::renderer::ShaderOptionsFactory* shaderOptionsFactory = nullptr;
-skr::renderer::MaterialTypeFactory* matTypeFactory = nullptr;
-skr::resource::LocalResourceRegistry* registry = nullptr;
+skr::ShaderResourceFactory* shaderResourceFactory = nullptr;
+skr::ShaderOptionsFactory* shaderOptionsFactory = nullptr;
+skr::MaterialTypeFactory* matTypeFactory = nullptr;
+skr::LocalResourceRegistry* registry = nullptr;
 
 // Animation Factory
 
-skr::resource::SkelFactory* skelFactory = nullptr;
-skr::resource::AnimFactory* animFactory = nullptr;
+skr::SkelFactory* skelFactory = nullptr;
+skr::AnimFactory* animFactory = nullptr;
 
 void InitializeResourceSystem(skd::SProject& proj)
 {
     using namespace skr::literals;
-    auto resource_system = skr::resource::GetResourceSystem();
-    registry = SkrNew<skr::resource::LocalResourceRegistry>(proj.GetResourceVFS());
+    auto resource_system = skr::GetResourceSystem();
+    registry = SkrNew<skr::LocalResourceRegistry>(proj.GetResourceVFS());
     resource_system->Initialize(registry, proj.GetRamService());
 
     // shader options factory
     {
-        skr::renderer::ShaderOptionsFactory::Root factoryRoot = {};
-        shaderOptionsFactory = skr::renderer::ShaderOptionsFactory::Create(factoryRoot);
+        skr::ShaderOptionsFactory::Root factoryRoot = {};
+        shaderOptionsFactory = skr::ShaderOptionsFactory::Create(factoryRoot);
         resource_system->RegisterFactory(shaderOptionsFactory);
     }
     // shader resource factory
     {
-        skr::renderer::ShaderResourceFactory::Root factoryRoot = {};
+        skr::ShaderResourceFactory::Root factoryRoot = {};
         factoryRoot.dont_create_shader = true;
-        shaderResourceFactory = skr::renderer::ShaderResourceFactory::Create(factoryRoot);
+        shaderResourceFactory = skr::ShaderResourceFactory::Create(factoryRoot);
         resource_system->RegisterFactory(shaderResourceFactory);
     }
     // material type factory
     {
-        skr::renderer::MaterialTypeFactory::Root factoryRoot = {};
-        matTypeFactory = skr::renderer::MaterialTypeFactory::Create(factoryRoot);
+        skr::MaterialTypeFactory::Root factoryRoot = {};
+        matTypeFactory = skr::MaterialTypeFactory::Create(factoryRoot);
         resource_system->RegisterFactory(matTypeFactory);
     }
     {
-        skelFactory = SkrNew<skr::resource::SkelFactory>();
+        skelFactory = SkrNew<skr::SkelFactory>();
         resource_system->RegisterFactory(skelFactory);
     }
     {
-        animFactory = SkrNew<skr::resource::AnimFactory>();
+        animFactory = SkrNew<skr::AnimFactory>();
         resource_system->RegisterFactory(animFactory);
     }
 }
 
 void DestroyResourceSystem(skd::SProject& proj)
 {
-    skr::renderer::MaterialTypeFactory::Destroy(matTypeFactory);
-    skr::renderer::ShaderOptionsFactory::Destroy(shaderOptionsFactory);
-    skr::renderer::ShaderResourceFactory::Destroy(shaderResourceFactory);
+    skr::MaterialTypeFactory::Destroy(matTypeFactory);
+    skr::ShaderOptionsFactory::Destroy(shaderOptionsFactory);
+    skr::ShaderResourceFactory::Destroy(shaderResourceFactory);
 
     SkrDelete(skelFactory);
     SkrDelete(animFactory);
 
-    skr::resource::GetResourceSystem()->Shutdown();
+    skr::GetResourceSystem()->Shutdown();
     SkrDelete(registry);
 }
 
@@ -163,7 +163,7 @@ int compile_project(skd::SProject* project)
             });
     }
     SKR_LOG_INFO(u8"Project asset import finished.");
-    auto resource_system = skr::resource::GetResourceSystem();
+    auto resource_system = skr::GetResourceSystem();
     skr::task::schedule([&] {
         system.WaitForAll();
         resource_system->Quit();

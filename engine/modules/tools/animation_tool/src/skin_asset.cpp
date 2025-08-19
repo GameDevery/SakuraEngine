@@ -7,7 +7,7 @@ namespace skd::asset
 {
 bool SkinCooker::Cook(CookContext* ctx)
 {
-    using namespace skr::anim;
+    using namespace skr;
     SkrZoneScopedNS("SkinCooker::Cook", 4);
 
     cgltf_data* rawMesh = ctx->Import<cgltf_data>();

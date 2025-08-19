@@ -8,8 +8,6 @@
 
 namespace skr
 {
-namespace resource
-{
 
 bool ResourceFactory::Deserialize(SResourceRecord* record, SBinaryReader* reader)
 {
@@ -59,5 +57,4 @@ ESkrInstallStatus ResourceFactory::UpdateInstall(SResourceRecord* record)
     SKR_UNREACHABLE_CODE();
     return SKR_INSTALL_STATUS_SUCCEED;
 }
-} // namespace resource
 } // namespace skr

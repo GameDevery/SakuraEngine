@@ -17,20 +17,20 @@ MaterialTypeAsset
     uint32_t version;
 
     // shader assets
-    Vector<renderer::MaterialPass> passes;
+    Vector<MaterialPass> passes;
 
     // properties are mapped to shader parameter bindings (scalars, vectors, matrices, buffers, textures, etc.)
-    Vector<renderer::MaterialProperty> properties;
+    Vector<MaterialProperty> properties;
 
     // default value for options
     // options can be provided variantly by each material, if not provided, the default value will be used
-    Vector<renderer::ShaderOptionInstance> switch_defaults;
+    Vector<ShaderOptionInstance> switch_defaults;
 
     // default value for options
     // options can be provided variantly at runtime, if not provided, the default value will be used
-    Vector<renderer::ShaderOptionInstance> option_defaults;
+    Vector<ShaderOptionInstance> option_defaults;
 
-    skr_vertex_layout_id vertex_type;
+    VertexLayoutId vertex_type;
 };
 
 sreflect_struct(

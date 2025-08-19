@@ -30,7 +30,7 @@ MeshActor::MeshActor()
                 .add_component<skr::scene::RotationComponent>()
                 .add_component<skr::scene::ScaleComponent>()
                 .add_component<skr::scene::TransformComponent>()
-                .add_component<skr::renderer::MeshComponent>();
+                .add_component<skr::MeshComponent>();
         },
         [this](skr::ecs::TaskContext& Context) {
             SkrZoneScopedN("MeshActor::Spawner::run");

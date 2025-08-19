@@ -6,82 +6,65 @@
 
 SKR_DECLARE_TYPE_ID_FWD(skr::io, IRAMService, skr_io_ram_service);
 SKR_DECLARE_TYPE_ID_FWD(skr::io, IVRAMService, skr_io_vram_service);
-#ifdef __cplusplus
 namespace skr
 {
+enum class EShaderOptionType : uint32_t;
 struct RendererDevice;
-}
-typedef struct skr::RendererDevice SRenderDevice;
-namespace skr::resource
+} // namespace skr
+
+namespace skr
 {
 template <class T>
 struct AsyncResource;
 }
+
+namespace skr
+{
+struct ShaderOptionInstance;
+struct ShaderOptionTemplate;
+struct ShaderOptionsResource;
+struct MultiShaderResource;
+struct ShaderOptionSequence;
+struct ShaderCollectionResource;
+struct ShaderCollectionJSON;
+struct MaterialProperty;
+struct MaterialValue;
+struct MaterialPass;
+struct MaterialTypeResource;
+struct MaterialOverrides;
+struct MaterialShaderVariant;
+struct MaterialValueBool;
+struct MaterialValueFloat;
+struct MaterialValueDouble;
+struct MaterialValueFloat2;
+struct MaterialValueFloat3;
+struct MaterialValueFloat4;
+struct MaterialValueTexture;
+struct MaterialValueSampler;
+struct MaterialResource;
+struct MeshPrimitive;
+struct MeshResource;
+struct MeshSection;
+struct RenderMesh;
+struct PrimitiveCommand;
+
+struct StableShaderHash;
+struct PlatformShaderHash;
+struct PlatformShaderIdentifier;
+struct ShaderMap;
+typedef skr_guid_t VertexLayoutId;
+} // namespace skr
+
+typedef struct skr::RendererDevice SRenderDevice;
 class SkrRendererModule;
-#else
-typedef struct SRenderDevice SRenderDevice;
-#endif
 
 typedef SRenderDevice* SRenderDeviceId;
-typedef skr_guid_t skr_vertex_layout_id;
 
-typedef struct SStableShaderHash SStableShaderHash;
-typedef struct SPlatformShaderHash SPlatformShaderHash;
-typedef struct SPlatformShaderIdentifier SPlatformShaderIdentifier;
-
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, ShaderOptionInstance, skr_shader_option_instance);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, ShaderOptionTemplate, skr_shader_option_template);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, ShaderOptionsResource, skr_shader_options_resource);
-
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MultiShaderResource, skr_multi_shader_resource);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, ShaderOptionSequence, skr_shader_option_sequence);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, ShaderCollectionResource, skr_shader_collection_resource);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, ShaderCollectionJSON, skr_shader_collection_json);
-
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MaterialProperty, skr_material_property);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MaterialValue, skr_material_value);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MaterialPass, skr_material_pass);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MaterialTypeResource, skr_material_type_resource);
-
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MaterialOverrides, skr_material_overrides);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MaterialShaderVariant, skr_material_shader_variant);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MaterialValueBool, skr_material_value_bool);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MaterialValueFloat, skr_material_value_float);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MaterialValueDouble, skr_material_value_double);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MaterialValueFloat2, skr_material_value_float2);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MaterialValueFloat3, skr_material_value_float3);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MaterialValueFloat4, skr_material_value_float4);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MaterialValueTexture, skr_material_value_texture);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MaterialValueSampler, skr_material_value_sampler);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MaterialResource, skr_material_resource);
-
-typedef struct skr_mesh_buffer_t skr_mesh_buffer_t;
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MeshPrimitive, skr_mesh_primitive);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MeshResource, skr_mesh_resource);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MeshSection, skr_mesh_section);
-
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, RenderMesh, skr_render_mesh);
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, PrimitiveCommand, skr_render_primitive_command);
-
-typedef struct skr_shader_map_t skr_shader_map_t;
-typedef struct skr_shader_map_t* skr_shader_map_id;
-typedef struct skr_shader_map_root_t skr_shader_map_root_t;
-
-SKR_DECLARE_TYPE_ID_FWD(skr::renderer, PSOMapKey, skr_pso_map_key);
+SKR_DECLARE_TYPE_ID_FWD(skr, PSOMapKey, skr_pso_map_key);
 
 typedef struct skr_pso_map_t* skr_pso_map_id;
 typedef struct skr_pso_map_root_t skr_pso_map_root_t;
 
-#ifdef __cplusplus
-using skr_shader_resource_handle_t = skr::resource::AsyncResource<skr_multi_shader_resource_t>;
-using skr_material_type_handle_t = skr::resource::AsyncResource<skr_material_type_resource_t>;
-using skr_shader_collection_handle_t = skr::resource::AsyncResource<skr_shader_collection_resource_t>;
-namespace skr::renderer
-{
-enum class EShaderOptionType : uint32_t;
-} // namespace skr::renderer
-#else
-typedef struct SResourceHandle skr_shader_resource_handle_t;
-typedef struct SResourceHandle skr_material_type_handle_t;
-typedef struct SResourceHandle skr_shader_collection_handle_t;
-#endif
+using skr_shader_resource_handle_t = skr::AsyncResource<skr::MultiShaderResource>;
+using skr_material_type_handle_t = skr::AsyncResource<skr::MaterialTypeResource>;
+using skr_shader_collection_handle_t = skr::AsyncResource<skr::ShaderCollectionResource>;

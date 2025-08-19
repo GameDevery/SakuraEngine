@@ -10,23 +10,25 @@
 
 #include "SkrProfile/profile.h"
 
+using namespace skr;
+
 static struct SkrMeshResourceUtil
 {
     struct RegisteredVertexLayout : public CGPUVertexLayout
     {
-        RegisteredVertexLayout(const CGPUVertexLayout& layout, skr_vertex_layout_id id, const char8_t* name)
+        RegisteredVertexLayout(const CGPUVertexLayout& layout, VertexLayoutId id, const char8_t* name)
             : CGPUVertexLayout(layout)
             , id(id)
             , name(name)
         {
             hash = cgpux::hash<CGPUVertexLayout>()(layout);
         }
-        skr_vertex_layout_id id;
+        VertexLayoutId id;
         skr::String name;
         uint64_t hash;
     };
 
-    using VertexLayoutIdMap = skr::FlatHashMap<skr_vertex_layout_id, skr::SP<RegisteredVertexLayout>, skr::Hash<skr_guid_t>>;
+    using VertexLayoutIdMap = skr::FlatHashMap<VertexLayoutId, skr::SP<RegisteredVertexLayout>, skr::Hash<skr_guid_t>>;
     using VertexLayoutHashMap = skr::FlatHashMap<uint64_t, RegisteredVertexLayout*>;
 
     SkrMeshResourceUtil()
@@ -39,7 +41,7 @@ static struct SkrMeshResourceUtil
         skr_destroy_mutex(&vertex_layouts_mutex_);
     }
 
-    inline static skr_vertex_layout_id AddVertexLayout(skr_vertex_layout_id id, const char8_t* name, const CGPUVertexLayout& layout)
+    inline static VertexLayoutId AddVertexLayout(VertexLayoutId id, const char8_t* name, const CGPUVertexLayout& layout)
     {
         SMutexLock lock(vertex_layouts_mutex_);
 
@@ -57,7 +59,7 @@ static struct SkrMeshResourceUtil
         return id;
     }
 
-    inline static CGPUVertexLayout* HasVertexLayout(const CGPUVertexLayout& layout, skr_vertex_layout_id* outGuid = nullptr)
+    inline static CGPUVertexLayout* HasVertexLayout(const CGPUVertexLayout& layout, VertexLayoutId* outGuid = nullptr)
     {
         SMutexLock lock(vertex_layouts_mutex_);
 
@@ -84,7 +86,7 @@ static struct SkrMeshResourceUtil
         return iter->second->name.c_str_raw();
     }
 
-    inline static skr_vertex_layout_id GetVertexLayoutId(CGPUVertexLayout* pLayout)
+    inline static VertexLayoutId GetVertexLayoutId(CGPUVertexLayout* pLayout)
     {
         SMutexLock lock(vertex_layouts_mutex_);
 
@@ -97,7 +99,7 @@ static struct SkrMeshResourceUtil
         return iter->second->id;
     }
 
-    inline static const char* GetVertexLayout(skr_vertex_layout_id id, CGPUVertexLayout* layout = nullptr)
+    inline static const char* GetVertexLayout(VertexLayoutId id, CGPUVertexLayout* layout = nullptr)
     {
         SMutexLock lock(vertex_layouts_mutex_);
 
@@ -115,12 +117,12 @@ SkrMeshResourceUtil::VertexLayoutIdMap SkrMeshResourceUtil::id_map;
 SkrMeshResourceUtil::VertexLayoutHashMap SkrMeshResourceUtil::hash_map;
 SMutex SkrMeshResourceUtil::vertex_layouts_mutex_;
 
-void skr_mesh_resource_free(skr_mesh_resource_id mesh_resource)
+void skr_mesh_resource_free(MeshResource* mesh_resource)
 {
     SkrDelete(mesh_resource);
 }
 
-void skr_mesh_resource_register_vertex_layout(skr_vertex_layout_id id, const char8_t* name, const struct CGPUVertexLayout* in_vertex_layout)
+void skr_mesh_resource_register_vertex_layout(VertexLayoutId id, const char8_t* name, const struct CGPUVertexLayout* in_vertex_layout)
 {
     if (auto layout = mesh_resource_util.GetVertexLayout(id))
         return; // existed
@@ -133,7 +135,7 @@ void skr_mesh_resource_register_vertex_layout(skr_vertex_layout_id id, const cha
     }
 }
 
-const char* skr_mesh_resource_query_vertex_layout(skr_vertex_layout_id id, struct CGPUVertexLayout* out_vertex_layout)
+const char* skr_mesh_resource_query_vertex_layout(VertexLayoutId id, struct CGPUVertexLayout* out_vertex_layout)
 {
     if (auto name = mesh_resource_util.GetVertexLayout(id, out_vertex_layout))
         return name;
@@ -141,9 +143,9 @@ const char* skr_mesh_resource_query_vertex_layout(skr_vertex_layout_id id, struc
         return nullptr;
 }
 
-namespace skr::renderer
+namespace skr
 {
-using namespace skr::resource;
+using namespace skr;
 
 MeshResource::~MeshResource() SKR_NOEXCEPT
 {
@@ -194,7 +196,7 @@ struct SKR_RENDERER_API MeshFactoryImpl : public MeshFactory
     struct UploadRequest
     {
         UploadRequest() SKR_NOEXCEPT = default;
-        UploadRequest(MeshFactoryImpl* factory, skr_mesh_resource_id mesh_resource) SKR_NOEXCEPT
+        UploadRequest(MeshFactoryImpl* factory, MeshResource* mesh_resource) SKR_NOEXCEPT
             : factory(factory),
               mesh_resource(mesh_resource)
         {
@@ -202,7 +204,7 @@ struct SKR_RENDERER_API MeshFactoryImpl : public MeshFactory
         ~UploadRequest() SKR_NOEXCEPT = default;
 
         MeshFactoryImpl* factory = nullptr;
-        skr_mesh_resource_id mesh_resource = nullptr;
+        MeshResource* mesh_resource = nullptr;
         skr::Vector<std::string> resource_uris;
         skr::Vector<skr_io_future_t> ram_futures;
         skr::Vector<skr::BlobId> blobs;
@@ -214,8 +216,8 @@ struct SKR_RENDERER_API MeshFactoryImpl : public MeshFactory
 
     Root root;
     skr::String dstorage_root;
-    skr::FlatHashMap<skr_mesh_resource_id, InstallType> mInstallTypes;
-    skr::FlatHashMap<skr_mesh_resource_id, SP<BufferRequest>> mRequests;
+    skr::FlatHashMap<MeshResource*, InstallType> mInstallTypes;
+    skr::FlatHashMap<MeshResource*, SP<BufferRequest>> mRequests;
 };
 
 MeshFactory* MeshFactory::Create(const Root& root)
@@ -230,13 +232,13 @@ void MeshFactory::Destroy(MeshFactory* factory)
 
 skr_guid_t MeshFactoryImpl::GetResourceType()
 {
-    const auto resource_type = ::skr::type_id_of<skr_mesh_resource_t>();
+    const auto resource_type = ::skr::type_id_of<MeshResource>();
     return resource_type;
 }
 
 ESkrInstallStatus MeshFactoryImpl::Install(SResourceRecord* record)
 {
-    auto mesh_resource = (skr_mesh_resource_t*)record->resource;
+    auto mesh_resource = (MeshResource*)record->resource;
     if (!mesh_resource) return ESkrInstallStatus::SKR_INSTALL_STATUS_FAILED;
     if (auto render_device = root.render_device)
     {
@@ -261,7 +263,7 @@ ESkrInstallStatus MeshFactoryImpl::InstallImpl(SResourceRecord* record)
 {
     const auto noCompression = true;
     auto vram_service = root.vram_service;
-    auto mesh_resource = (skr_mesh_resource_t*)record->resource;
+    auto mesh_resource = (MeshResource*)record->resource;
     auto guid = record->activeRequest->GetGuid();
     if (auto render_device = root.render_device)
     {
@@ -325,7 +327,7 @@ ESkrInstallStatus MeshFactoryImpl::InstallImpl(SResourceRecord* record)
 
 ESkrInstallStatus MeshFactoryImpl::UpdateInstall(SResourceRecord* record)
 {
-    auto mesh_resource = (skr_mesh_resource_t*)record->resource;
+    auto mesh_resource = (MeshResource*)record->resource;
     auto dRequest = mRequests.find(mesh_resource);
     if (dRequest != mRequests.end())
     {
@@ -337,7 +339,7 @@ ESkrInstallStatus MeshFactoryImpl::UpdateInstall(SResourceRecord* record)
         auto status = okay ? ESkrInstallStatus::SKR_INSTALL_STATUS_SUCCEED : ESkrInstallStatus::SKR_INSTALL_STATUS_INPROGRESS;
         if (okay)
         {
-            auto render_mesh = mesh_resource->render_mesh = SkrNew<skr_render_mesh_t>();
+            auto render_mesh = mesh_resource->render_mesh = SkrNew<RenderMesh>();
             // TODO: remove these requests
             const auto N = dRequest->second->dBuffers.size();
             render_mesh->buffers.resize_default(N);
@@ -362,14 +364,14 @@ ESkrInstallStatus MeshFactoryImpl::UpdateInstall(SResourceRecord* record)
 
 bool MeshFactoryImpl::Unload(SResourceRecord* record)
 {
-    auto mesh_resource = (skr_mesh_resource_id)record->resource;
+    auto mesh_resource = (MeshResource*)record->resource;
     SkrDelete(mesh_resource);
     return true;
 }
 
 bool MeshFactoryImpl::Uninstall(SResourceRecord* record)
 {
-    auto mesh_resource = (skr_mesh_resource_id)record->resource;
+    auto mesh_resource = (MeshResource*)record->resource;
     if (mesh_resource->install_to_ram)
     {
         mesh_resource->bins.clear();
@@ -379,4 +381,4 @@ bool MeshFactoryImpl::Uninstall(SResourceRecord* record)
     return true;
 }
 
-} // namespace skr::renderer
+} // namespace skr

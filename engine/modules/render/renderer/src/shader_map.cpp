@@ -17,7 +17,7 @@ struct ShaderMapImpl;
 
 struct ShaderProgress : public skr::AsyncProgress<skr::FutureLauncher<bool>, int, bool>
 {
-    ShaderProgress(ShaderMapImpl* factory, const char8_t* uri, const SPlatformShaderIdentifier& identifier)
+    ShaderProgress(ShaderMapImpl* factory, const char8_t* uri, const PlatformShaderIdentifier& identifier)
         : factory(factory), bytes_uri(uri), identifier(identifier)
     {
 
@@ -29,12 +29,12 @@ struct ShaderProgress : public skr::AsyncProgress<skr::FutureLauncher<bool>, int
     skr::String bytes_uri;
     skr_io_future_t data_future;
     skr::BlobId blob = nullptr;
-    SPlatformShaderIdentifier identifier = {};
+    PlatformShaderIdentifier identifier = {};
 };
 
-struct ShaderMapImpl : public skr_shader_map_t
+struct ShaderMapImpl : public ShaderMap
 {
-    ShaderMapImpl(const skr_shader_map_root_t& root)
+    ShaderMapImpl(const ShaderMapRoot& root)
         : root(root)
     {
         future_launcher = SP<skr::FutureLauncher<bool>>::New(root.job_queue);
@@ -51,14 +51,14 @@ struct ShaderMapImpl : public skr_shader_map_t
         }
     }
 
-    CGPUShaderLibraryId find_shader(const SPlatformShaderIdentifier& id) SKR_NOEXCEPT override;
-    ESkrShaderMapShaderStatus install_shader(const SPlatformShaderIdentifier& id) SKR_NOEXCEPT override;
-    bool free_shader(const SPlatformShaderIdentifier& id) SKR_NOEXCEPT override;
+    CGPUShaderLibraryId find_shader(const PlatformShaderIdentifier& id) SKR_NOEXCEPT override;
+    EShaderMapShaderStatus install_shader(const PlatformShaderIdentifier& id) SKR_NOEXCEPT override;
+    bool free_shader(const PlatformShaderIdentifier& id) SKR_NOEXCEPT override;
 
     void new_frame(uint64_t frame_index) SKR_NOEXCEPT override;
     void garbage_collect(uint64_t critical_frame) SKR_NOEXCEPT override;
 
-    ESkrShaderMapShaderStatus install_shader_from_vfs(const SPlatformShaderIdentifier& id) SKR_NOEXCEPT;
+    EShaderMapShaderStatus install_shader_from_vfs(const PlatformShaderIdentifier& id) SKR_NOEXCEPT;
 
     struct MappedShader
     {
@@ -70,10 +70,10 @@ struct ShaderMapImpl : public skr_shader_map_t
 
     SP<skr::FutureLauncher<bool>> future_launcher;
     uint64_t frame_index = 0;
-    skr_shader_map_root_t root;
+    ShaderMapRoot root;
 
-    skr::ParallelFlatHashMap<SPlatformShaderIdentifier, SP<MappedShader>, SPlatformShaderIdentifier::hasher> mShaderMap;
-    skr::ParallelFlatHashMap<SPlatformShaderIdentifier, SP<ShaderProgress>, SPlatformShaderIdentifier::hasher> mShaderTasks;
+    skr::ParallelFlatHashMap<PlatformShaderIdentifier, SP<MappedShader>, PlatformShaderIdentifier::hasher> mShaderMap;
+    skr::ParallelFlatHashMap<PlatformShaderIdentifier, SP<ShaderProgress>, PlatformShaderIdentifier::hasher> mShaderTasks;
 };
 
 bool ShaderProgress::do_in_background()
@@ -83,7 +83,7 @@ bool ShaderProgress::do_in_background()
     auto device = factory->root.device;
     auto& shader = factory->mShaderMap[identifier];
 
-    skr_atomic_store_relaxed(&shader->shader_status, SKR_SHADER_MAP_SHADER_STATUS_LOADED);
+    skr_atomic_store_relaxed(&shader->shader_status, EShaderMapShaderStatus::LOADED);
 
     auto desc = make_zeroed<CGPUShaderLibraryDescriptor>();
     desc.code = (const uint32_t*)blob->get_data();
@@ -93,20 +93,20 @@ bool ShaderProgress::do_in_background()
     blob.reset();
     if (!created_shader)
     {
-        skr_atomic_store_relaxed(&shader->shader_status, SKR_SHADER_MAP_SHADER_STATUS_FAILED);
+        skr_atomic_store_relaxed(&shader->shader_status, EShaderMapShaderStatus::FAILED);
         skr_atomic_store_relaxed(&factory->mShaderMap[identifier]->frame, UINT64_MAX);
         return false;
     }
     else
     {
         shader->shader = created_shader;
-        skr_atomic_store_relaxed(&shader->shader_status, SKR_SHADER_MAP_SHADER_STATUS_INSTALLED);
+        skr_atomic_store_relaxed(&shader->shader_status, EShaderMapShaderStatus::INSTALLED);
         skr_atomic_store_relaxed(&factory->mShaderMap[identifier]->frame, factory->frame_index);
     }
     return true;
 }
 
-CGPUShaderLibraryId ShaderMapImpl::find_shader(const SPlatformShaderIdentifier& identifier) SKR_NOEXCEPT
+CGPUShaderLibraryId ShaderMapImpl::find_shader(const PlatformShaderIdentifier& identifier) SKR_NOEXCEPT
 {
     auto found = mShaderMap.find(identifier);
     if (found != mShaderMap.end())
@@ -119,7 +119,7 @@ CGPUShaderLibraryId ShaderMapImpl::find_shader(const SPlatformShaderIdentifier& 
     return nullptr;
 }
 
-bool ShaderMapImpl::free_shader(const SPlatformShaderIdentifier& identifier) SKR_NOEXCEPT
+bool ShaderMapImpl::free_shader(const PlatformShaderIdentifier& identifier) SKR_NOEXCEPT
 {
     auto found = mShaderMap.find(identifier);
     if (found != mShaderMap.end())
@@ -134,7 +134,7 @@ bool ShaderMapImpl::free_shader(const SPlatformShaderIdentifier& identifier) SKR
     return false;
 }
 
-ESkrShaderMapShaderStatus ShaderMapImpl::install_shader(const SPlatformShaderIdentifier& identifier) SKR_NOEXCEPT
+EShaderMapShaderStatus ShaderMapImpl::install_shader(const PlatformShaderIdentifier& identifier) SKR_NOEXCEPT
 {
     auto found = mShaderMap.find(identifier);
     // 1. found mapped shader
@@ -146,7 +146,7 @@ ESkrShaderMapShaderStatus ShaderMapImpl::install_shader(const SPlatformShaderIde
         // 1.2 request is done, add rc & record frame index
         skr_atomic_fetch_add_relaxed(&found->second->rc, 1);
         skr_atomic_store_relaxed(&found->second->frame, frame_index);
-        return (ESkrShaderMapShaderStatus)status;
+        return (EShaderMapShaderStatus)status;
     }
     // 2. not found mapped shader
     else
@@ -160,7 +160,7 @@ ESkrShaderMapShaderStatus ShaderMapImpl::install_shader(const SPlatformShaderIde
     }
 }
 
-ESkrShaderMapShaderStatus ShaderMapImpl::install_shader_from_vfs(const SPlatformShaderIdentifier& identifier) SKR_NOEXCEPT
+EShaderMapShaderStatus ShaderMapImpl::install_shader_from_vfs(const PlatformShaderIdentifier& identifier) SKR_NOEXCEPT
 {
     bool launch_success = false;
     auto bytes_vfs = root.bytecode_vfs;
@@ -194,7 +194,7 @@ ESkrShaderMapShaderStatus ShaderMapImpl::install_shader_from_vfs(const SPlatform
     }, (void*)sRequest.get());
     sRequest->blob = root.ram_service->request(request, &sRequest->data_future);
     launch_success = true;
-    return launch_success ? SKR_SHADER_MAP_SHADER_STATUS_REQUESTED : SKR_SHADER_MAP_SHADER_STATUS_FAILED;
+    return launch_success ? EShaderMapShaderStatus::REQUESTED : EShaderMapShaderStatus::FAILED;
 }
 
 void ShaderMapImpl::new_frame(uint64_t index) SKR_NOEXCEPT
@@ -211,7 +211,7 @@ void ShaderMapImpl::garbage_collect(uint64_t critical_frame) SKR_NOEXCEPT
     for (auto it = mShaderMap.begin(); it != mShaderMap.end();)
     {
         auto status = skr_atomic_load_relaxed(&it->second->shader_status);
-        if (status == SKR_SHADER_MAP_SHADER_STATUS_INSTALLED)
+        if (status == EShaderMapShaderStatus::INSTALLED)
         {
             mShaderTasks.erase(it->first);
         }
@@ -236,50 +236,53 @@ void ShaderMapImpl::garbage_collect(uint64_t critical_frame) SKR_NOEXCEPT
         }
     }
 }
-} // namespace skr
 
-skr_shader_map_id skr_shader_map_t::Create(const struct skr_shader_map_root_t* desc) SKR_NOEXCEPT
+ShaderMap* ShaderMap::Create(const struct ShaderMapRoot* desc) SKR_NOEXCEPT
 {
     return SkrNew<skr::ShaderMapImpl>(*desc);
 }
 
-bool skr_shader_map_t::Free(skr_shader_map_id shader_map) SKR_NOEXCEPT
+bool ShaderMap::Free(ShaderMap* shader_map) SKR_NOEXCEPT
 {
     SkrDelete(shader_map);
     return true;
 }
 
-skr_shader_map_id skr_shader_map_create(const struct skr_shader_map_root_t* desc)
+} // namespace skr
+
+using namespace skr;
+
+ShaderMap* skr_shader_map_create(const struct ShaderMapRoot* desc)
 {
-    return skr_shader_map_t::Create(desc);
+    return ShaderMap::Create(desc);
 }
 
-ESkrShaderMapShaderStatus skr_shader_map_install_shader(skr_shader_map_id shaderMap, const SPlatformShaderIdentifier* key)
+EShaderMapShaderStatus skr_shader_map_install_shader(ShaderMap* shaderMap, const PlatformShaderIdentifier* key)
 {
     return shaderMap->install_shader(*key);
 }
 
-CGPUShaderLibraryId skr_shader_map_find_shader(skr_shader_map_id shaderMap, const SPlatformShaderIdentifier* id)
+CGPUShaderLibraryId skr_shader_map_find_shader(ShaderMap* shaderMap, const PlatformShaderIdentifier* id)
 {
     return shaderMap->find_shader(*id);
 }
 
-void skr_shader_map_free_shader(skr_shader_map_id shaderMap, const SPlatformShaderIdentifier* id)
+void skr_shader_map_free_shader(ShaderMap* shaderMap, const PlatformShaderIdentifier* id)
 {
     shaderMap->free_shader(*id);
 }
 
-void skr_shader_map_new_frame(skr_shader_map_id shaderMap, uint64_t frame_index)
+void skr_shader_map_new_frame(ShaderMap* shaderMap, uint64_t frame_index)
 {
     shaderMap->new_frame(frame_index);
 }
 
-void skr_shader_map_garbage_collect(skr_shader_map_id shaderMap, uint64_t critical_frame)
+void skr_shader_map_garbage_collect(ShaderMap* shaderMap, uint64_t critical_frame)
 {
     shaderMap->garbage_collect(critical_frame);
 }
 
-void skr_shader_map_free(skr_shader_map_id id)
+void skr_shader_map_free(ShaderMap* id)
 {
-    skr_shader_map_t::Free(id);
+    ShaderMap::Free(id);
 }

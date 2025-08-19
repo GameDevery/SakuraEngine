@@ -43,7 +43,7 @@ typedef struct skr_primitive_draw_t
 #ifdef __cplusplus
 } // extern "C"
 
-namespace skr::renderer
+namespace skr
 {
 using VertexBufferView = skr_vertex_buffer_view_t;
 using IndexBufferView = skr_index_buffer_view_t;
@@ -55,5 +55,5 @@ struct PrimitiveCommand
     uint32_t primitive_index;
     uint32_t material_index;
 };
-} // namespace skr::renderer
+} // namespace skr
 #endif

@@ -11,7 +11,7 @@
 
 
 struct sugoi_storage_t;
-namespace skr::resource
+namespace skr
 {
 struct LocalResourceRegistry;
 struct TextureFactory;

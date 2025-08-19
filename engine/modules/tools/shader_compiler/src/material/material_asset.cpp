@@ -43,14 +43,14 @@ bool MaterialCooker::Cook(CookContext* ctx)
     SKR_DEFER({ ctx->Destroy(material); });
 
     // convert to runtime resource
-    skr_material_resource_t runtime_material;
+    MaterialResource runtime_material;
     runtime_material.material_type_version = material->material_type_version;
     runtime_material.material_type         = material->material_type.get_guid();
 
     auto idx = ctx->AddStaticDependency(runtime_material.material_type.get_guid(), true);
     ctx->AddRuntimeDependency(runtime_material.material_type.get_guid());
     const auto& rhandle = ctx->GetStaticDependency(idx);
-    auto        matType = static_cast<skr_material_type_resource_t*>(rhandle.get_ptr());
+    auto        matType = static_cast<MaterialTypeResource*>(rhandle.get_ptr());
     // calculate switch macros for material & place variants
     for (auto& pass : matType->passes)
         for (auto& shader_resource : pass.shader_resources)
@@ -85,8 +85,8 @@ bool MaterialCooker::Cook(CookContext* ctx)
             // calculate hashes and record
             auto       switch_indices_span = skr::span<uint32_t>(variant.switch_indices.data(), variant.switch_indices.size());
             auto       option_indices_span = skr::span<uint32_t>(variant.option_indices.data(), variant.option_indices.size());
-            const auto switch_hash         = skr_shader_option_sequence_t::calculate_stable_hash(shader_collection->switch_sequence, switch_indices_span);
-            const auto option_hash         = skr_shader_option_sequence_t::calculate_stable_hash(shader_collection->option_sequence, option_indices_span);
+            const auto switch_hash         = ShaderOptionSequence::calculate_stable_hash(shader_collection->switch_sequence, switch_indices_span);
+            const auto option_hash         = ShaderOptionSequence::calculate_stable_hash(shader_collection->option_sequence, option_indices_span);
 
             variant.shader_collection = shader_resource.get_record()->header.guid;
             variant.switch_hash       = switch_hash;
@@ -116,7 +116,7 @@ bool MaterialCooker::Cook(CookContext* ctx)
     // value overrides
     for (const auto& prop : material->override_values)
     {
-        using namespace skr::renderer;
+        using namespace skr;
 
         switch (prop.prop_type)
         {
