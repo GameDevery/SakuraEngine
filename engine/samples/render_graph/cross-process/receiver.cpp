@@ -72,12 +72,6 @@ void ReceiverRenderer::create_api_objects()
     cgpu_enum_adapters(instance, adapters, &adapters_count);
     adapter = adapters[0];
 
-    if (cgpux_adapter_is_nvidia(adapter))
-    {
-        CGPUNSightTrackerDescriptor desc = {};
-        nsight_tracker = cgpu_create_nsight_tracker(instance, &desc);
-    }
-
     auto adapter_detail = cgpu_query_adapter_detail(adapter);
     SKR_LOG_TRACE(u8"Adapter: %s", adapter_detail->vendor_preset.gpu_name);
 
@@ -91,6 +85,13 @@ void ReceiverRenderer::create_api_objects()
     device = cgpu_create_device(adapter, &device_desc);
     gfx_queue = cgpu_get_queue(device, CGPU_QUEUE_TYPE_GRAPHICS, 0);
     present_fence = cgpu_create_fence(device);
+
+    if (cgpux_adapter_is_nvidia(adapter))
+    {
+        CGPUNSightTrackerDescriptor desc = {};
+        nsight_tracker = cgpu_create_nsight_tracker(device, &desc);
+    }
+
     // Sampler
     CGPUSamplerDescriptor sampler_desc = {};
     sampler_desc.address_u = CGPU_ADDRESS_MODE_REPEAT;

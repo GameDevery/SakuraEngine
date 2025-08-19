@@ -4,12 +4,13 @@
 #include <fstream>
 #include "SkrGraphics/containers.hpp"
 #include "SkrGraphics/extensions/cgpu_nsight.h"
+#include "SkrGraphics/extensions/cgpu_d3d12_exts.h"
 #include "nsight-aftermath/GFSDK_Aftermath.h" // IWYU pragma: keep
 #include "nsight-aftermath/GFSDK_Aftermath_GpuCrashDump.h"
 #include "nsight-aftermath/GFSDK_Aftermath_GpuCrashDumpDecoding.h"
 #include "./../common/common_utils.h"
-#include "./../winheaders.h"
 #include "./cgpu_nsight_tracker.hpp"
+#include "./../winheaders.h"
 
 inline cgpu::String AftermathErrorMessage(GFSDK_Aftermath_Result result)
 {
@@ -318,9 +319,52 @@ CGPUNSightTrackerBase::~CGPUNSightTrackerBase() SKR_NOEXCEPT
     singleton->remove_tracker(this);
 }
 
-CGPUNSightTrackerId cgpu_create_nsight_tracker(CGPUInstanceId instance, const CGPUNSightTrackerDescriptor* descriptor)
+CGPUNSightTrackerId cgpu_create_nsight_tracker(CGPUDeviceId device, const CGPUNSightTrackerDescriptor* descriptor)
 {
-    return cgpu_new<CGPUNSightTrackerBase>(instance, descriptor);
+    CGPUInstanceId instance = device->adapter->instance;
+    // TODO: HOOK THIS TO DEVICE CREATION & SUPPORT VULKAN DEVICES
+    if (device->adapter->instance->backend == CGPU_BACKEND_D3D12)
+    {
+        auto d3d12_device = cgpu_d3d12_get_device(device);
+        cgpu_nsight_initialize_dx12_aftermath(instance, d3d12_device);
+    }
+    else if (instance->backend == CGPU_BACKEND_VULKAN)
+    {
+        /* vulkan setup example from sdk doc:
+        // Enable NV_device_diagnostic_checkpoints extension to be able to
+        // use Aftermath event markers.
+        extensionNames.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+
+        // Enable NV_device_diagnostics_config extension to configure Aftermath
+        // features.
+        extensionNames.push_back(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
+
+        // Set up device creation info for Aftermath feature flag configuration.
+        VkDeviceDiagnosticsConfigFlagsNV aftermathFlags =
+            VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_AUTOMATIC_CHECKPOINTS_BIT_NV |  // Enable automatic call stack checkpoints.
+            VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_RESOURCE_TRACKING_BIT_NV |      // Enable tracking of resources.
+            VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_SHADER_DEBUG_INFO_BIT_NV |      // Generate debug information for shaders.
+            VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_SHADER_ERROR_REPORTING_BIT_NV;  // Enable additional runtime shader error reporting.
+
+        VkDeviceDiagnosticsConfigCreateInfoNV aftermathInfo = {};
+        aftermathInfo.sType = VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV;
+        aftermathInfo.flags = aftermathFlags;
+
+        // Set up device creation info.
+        VkDeviceCreateInfo deviceInfo = {};
+        deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        deviceInfo.pNext = &aftermathInfo;
+        deviceInfo.queueCreateInfoCount = 1;
+        deviceInfo.pQueueCreateInfos = &queueInfo;
+        deviceInfo.enabledExtensionCount = extensionNames.size();
+        deviceInfo.ppEnabledExtensionNames = extensionNames.data();
+
+        // Create the logical device.
+        VkDevice device;
+        vkCreateDevice(physicalDevice, &deviceInfo, NULL, &device);
+        */
+    }
+    return cgpu_new<CGPUNSightTrackerBase>(device->adapter->instance, descriptor);
 }
 
 void cgpu_free_nsight_tracker(CGPUNSightTrackerId tracker)

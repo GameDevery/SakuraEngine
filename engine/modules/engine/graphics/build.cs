@@ -60,6 +60,9 @@ public static class SkrGraphics
                 .Require("AmdAgs", new PackageConfig { Version = new Version(6, 3, 0) })
                 .Depend(Visibility.Private, "AmdAgs@AmdAgs")
 
+                .Require("AmdGPUPerf", new PackageConfig { Version = new Version(4, 1, 0) })
+                .Depend(Visibility.Private, "AmdGPUPerf@AmdGPUPerf")
+
                 .Link(Visibility.Private, "WinPixEventRuntime");
         }
     }
