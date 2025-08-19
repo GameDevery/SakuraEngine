@@ -1,4 +1,5 @@
 #pragma once
+#include "SkrContainersDef/set.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderGraph/backend/buffer_pool.hpp"
 #include "SkrRenderGraph/backend/buffer_view_pool.hpp"
