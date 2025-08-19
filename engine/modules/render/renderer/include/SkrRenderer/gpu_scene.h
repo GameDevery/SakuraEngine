@@ -17,7 +17,7 @@ namespace sugoi
 {
 struct archetype_t;
 }
-namespace skr::renderer
+namespace skr
 {
 
 // 类型定义
@@ -275,4 +275,4 @@ inline GPUSceneBuilder& GPUSceneBuilder::from_layout(uint32_t initial_instances)
     return *this;
 }
 
-} // namespace skr::renderer
+} // namespace skr

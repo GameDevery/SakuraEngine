@@ -8,7 +8,7 @@
 #endif
 
 #ifdef __cplusplus
-namespace skr::renderer
+namespace skr
 {
 struct RenderMesh
 {
@@ -17,7 +17,7 @@ struct RenderMesh
         Index,
         Vertex
     };
-    skr_mesh_resource_id mesh_resource_id;
+    MeshResource* mesh_resource;
     skr::Vector<CGPUBufferId> buffers;
     skr::Vector<skr_vertex_buffer_view_t> vertex_buffer_views;
     skr::Vector<skr_index_buffer_view_t> index_buffer_views;
@@ -32,9 +32,9 @@ MeshComponent
     SKR_RESOURCE_FIELD(MeshResource, mesh_resource);
 };
 
-} // namespace skr::renderer
+} // namespace skr
 #endif
 
-SKR_EXTERN_C SKR_RENDERER_API void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resource_id mesh_resource);
+SKR_EXTERN_C SKR_RENDERER_API void skr_render_mesh_initialize(skr::RenderMesh* render_mesh, skr::MeshResource* mesh_resource);
 
-SKR_EXTERN_C SKR_RENDERER_API void skr_render_mesh_free(skr_render_mesh_id render_mesh);
+SKR_EXTERN_C SKR_RENDERER_API void skr_render_mesh_free(skr::RenderMesh* render_mesh);

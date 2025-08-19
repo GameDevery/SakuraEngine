@@ -55,13 +55,13 @@ protected:
     CGPUBufferId index_buffer = nullptr;
     skr::Vector<skr_vertex_buffer_view_t> vbvs;
     skr_index_buffer_view_t ibv;
-    skr::Vector<skr::renderer::PrimitiveCommand> primitive_commands;
+    skr::Vector<skr::PrimitiveCommand> primitive_commands;
 
 public:
     virtual void init() SKR_NOEXCEPT = 0;    // init instance, allocate CPU resources
     virtual void destroy() SKR_NOEXCEPT = 0; // destroy all CPU and GPU resources
-    // void generate_mesh_resource(skr::RendererDevice* render_device, skr_render_mesh_id render_mesh) SKR_NOEXCEPT; // generate render mesh, allocate GPU resources
-    void generate_render_mesh(skr::RendererDevice* render_device, skr_render_mesh_id render_mesh) SKR_NOEXCEPT; // generate render mesh, allocate GPU resources
+    // void generate_mesh_resource(skr::RendererDevice* render_device, RenderMesh* render_mesh) SKR_NOEXCEPT; // generate render mesh, allocate GPU resources
+    void generate_render_mesh(skr::RendererDevice* render_device, skr::RenderMesh* render_mesh) SKR_NOEXCEPT; // generate render mesh, allocate GPU resources
 };
 
 class SCENE_RENDERER_API TriangleMesh : public SimpleMesh

@@ -5,7 +5,7 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderer/shared/soa_layout.hpp"
 
-namespace skr::renderer
+namespace skr
 {
 
 // SOA 段式缓冲区分配器
@@ -182,4 +182,4 @@ inline SOASegmentBuffer::Builder& SOASegmentBuffer::Builder::from_layout(uint32_
     return *this;
 }
 
-} // namespace skr::renderer
+} // namespace skr

@@ -42,7 +42,7 @@ bool MaterialTypeCooker::Cook(CookContext* ctx)
     SKR_DEFER({ ctx->Destroy(material_type); });
 
     // convert to runtime resource
-    skr_material_type_resource_t runtime_material_type;
+    MaterialTypeResource runtime_material_type;
     runtime_material_type.version = material_type->version;
     runtime_material_type.passes.reserve(material_type->passes.size());
     for (const auto& pass : material_type->passes)
@@ -56,7 +56,7 @@ bool MaterialTypeCooker::Cook(CookContext* ctx)
     runtime_material_type.default_values.reserve(material_type->properties.size());
     for (const auto& property : material_type->properties)
     {
-        skr_material_value_t runtime_value;
+        MaterialValue runtime_value;
         runtime_value.slot_name = property.name;
         runtime_value.prop_type = property.prop_type;
         runtime_value.value     = property.default_value;

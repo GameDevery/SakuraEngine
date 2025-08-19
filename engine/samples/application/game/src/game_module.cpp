@@ -66,10 +66,10 @@ class SGameModule : public skr::IDynamicModule
 
     skr::resource::TextureFactory* textureFactory = nullptr;
     skr::resource::TextureSamplerFactory* textureSamplerFactory = nullptr;
-    skr::renderer::MeshFactory* meshFactory = nullptr;
-    skr::renderer::ShaderResourceFactory* shaderFactory = nullptr;
-    skr::renderer::MaterialTypeFactory* matTypeFactory = nullptr;
-    skr::renderer::MaterialFactory* matFactory = nullptr;
+    skr::MeshFactory* meshFactory = nullptr;
+    skr::ShaderResourceFactory* shaderFactory = nullptr;
+    skr::MaterialTypeFactory* matTypeFactory = nullptr;
+    skr::MaterialFactory* matFactory = nullptr;
 
     skr::resource::AnimFactory* animFactory = nullptr;
     skr::resource::SSkelFactory* skeletonFactory = nullptr;
@@ -160,14 +160,14 @@ void SGameModule::installResourceFactories()
     }
     // mesh factory
     {
-        skr::renderer::MeshFactory::Root factoryRoot = {};
+        skr::MeshFactory::Root factoryRoot = {};
         auto RootStr = gameResourceRoot.u8string();
         factoryRoot.dstorage_root = RootStr.c_str();
         factoryRoot.vfs = tex_resource_vfs;
         factoryRoot.ram_service = ram_service;
         factoryRoot.vram_service = vram_service;
         factoryRoot.render_device = game_render_device;
-        meshFactory = skr::renderer::MeshFactory::Create(factoryRoot);
+        meshFactory = skr::MeshFactory::Create(factoryRoot);
         resource_system->RegisterFactory(meshFactory);
     }
     // shader factory
@@ -186,7 +186,7 @@ void SGameModule::installResourceFactories()
         shader_bytes_vfs = skr_create_vfs(&shader_vfs_desc);
 
         // create shader map
-        skr_shader_map_root_t shadermapRoot = {};
+        ShaderMapRoot shadermapRoot = {};
         shadermapRoot.bytecode_vfs = shader_bytes_vfs;
         shadermapRoot.ram_service = ram_service;
         shadermapRoot.device = game_render_device->get_cgpu_device();
@@ -194,30 +194,30 @@ void SGameModule::installResourceFactories()
         shadermap = skr_shader_map_create(&shadermapRoot);
 
         // create shader resource factory
-        skr::renderer::ShaderResourceFactory::Root factoryRoot = {};
+        skr::ShaderResourceFactory::Root factoryRoot = {};
         factoryRoot.render_device = game_render_device;
         factoryRoot.shadermap = shadermap;
-        shaderFactory = skr::renderer::ShaderResourceFactory::Create(factoryRoot);
+        shaderFactory = skr::ShaderResourceFactory::Create(factoryRoot);
         resource_system->RegisterFactory(shaderFactory);
     }
 
     // material type factory
     {
-        skr::renderer::MaterialTypeFactory::Root factoryRoot = {};
+        skr::MaterialTypeFactory::Root factoryRoot = {};
         factoryRoot.render_device = game_render_device;
-        matTypeFactory = skr::renderer::MaterialTypeFactory::Create(factoryRoot);
+        matTypeFactory = skr::MaterialTypeFactory::Create(factoryRoot);
         resource_system->RegisterFactory(matTypeFactory);
     }
 
     // material factory
     {
-        skr::renderer::MaterialFactory::Root factoryRoot = {};
+        skr::MaterialFactory::Root factoryRoot = {};
         factoryRoot.device = game_render_device->get_cgpu_device();
         factoryRoot.shader_map = shadermap;
         factoryRoot.job_queue = job_queue.get();
         factoryRoot.ram_service = ram_service;
         factoryRoot.bytecode_vfs = shader_bytes_vfs;
-        matFactory = skr::renderer::MaterialFactory::Create(factoryRoot);
+        matFactory = skr::MaterialFactory::Create(factoryRoot);
         resource_system->RegisterFactory(matFactory);
     }
 
@@ -276,10 +276,10 @@ void SGameModule::uninstallResourceFactories()
 
     skr::resource::TextureSamplerFactory::Destroy(textureSamplerFactory);
     skr::resource::TextureFactory::Destroy(textureFactory);
-    skr::renderer::MeshFactory::Destroy(meshFactory);
-    skr::renderer::ShaderResourceFactory::Destroy(shaderFactory);
-    skr::renderer::MaterialTypeFactory::Destroy(matTypeFactory);
-    skr::renderer::MaterialFactory::Destroy(matFactory);
+    skr::MeshFactory::Destroy(meshFactory);
+    skr::ShaderResourceFactory::Destroy(shaderFactory);
+    skr::MaterialTypeFactory::Destroy(matTypeFactory);
+    skr::MaterialFactory::Destroy(matFactory);
 
     SkrDelete(animFactory);
     SkrDelete(skeletonFactory);
@@ -424,12 +424,12 @@ void async_attach_skin_mesh(SRendererId renderer)
     filter.none = static_type.build();
     auto skin_type = make_zeroed<sugoi::TypeSetBuilder>();
     auto filter2 = make_zeroed<sugoi_filter_t>();
-    filter2.all = skin_type.with<renderer::MeshComponent, anim::SkinComponent, anim::SkeletonComponent>().build();
+    filter2.all = skin_type.with<MeshComponent, anim::SkinComponent, anim::SkeletonComponent>().build();
     auto attchFunc = [=](sugoi_chunk_view_t* view) {
         auto requestSetup = [=](sugoi_chunk_view_t* view) {
             using namespace skr::literals;
 
-            auto mesh_comps = sugoi::get_owned_rw<renderer::MeshComponent>(view);
+            auto mesh_comps = sugoi::get_owned_rw<MeshComponent>(view);
             auto skin_comps = sugoi::get_owned_rw<anim::SkinComponent>(view);
             auto skel_comps = sugoi::get_owned_rw<anim::SkeletonComponent>(view);
             // auto anim_comps = sugoi::get_owned_rw<anim::AnimComponent>(view);
@@ -467,11 +467,11 @@ void async_attach_render_mesh(SRendererId renderer)
     filter.none = static_type.build();
     auto skin_type = make_zeroed<sugoi::TypeSetBuilder>();
     auto filter2 = make_zeroed<sugoi_filter_t>();
-    filter2.all = skin_type.with<skr::renderer::MeshComponent>().build();
+    filter2.all = skin_type.with<skr::MeshComponent>().build();
     auto attchFunc = [=](sugoi_chunk_view_t* view) {
         auto requestSetup = [=](sugoi_chunk_view_t* view) {
             using namespace skr::literals;
-            auto mesh_comps = sugoi::get_owned_rw<skr::renderer::MeshComponent>(view);
+            auto mesh_comps = sugoi::get_owned_rw<skr::MeshComponent>(view);
 
             for (uint32_t i = 0; i < view->count; i++)
             {
@@ -599,9 +599,9 @@ int SGameModule::main_module_exec(int argc, char8_t** argv)
     animQuery = sugoiQ_from_literal(game_world,
         u8"[in]skr_render_effect_t, [in]game::anim_state_t, [out]<unseq>skr::anim::AnimComponent, [in]<unseq>skr::anim::SkeletonComponent");
     initAnimSkinQuery = sugoiQ_from_literal(game_world,
-        u8"[inout]skr::anim::AnimComponent, [inout]skr::anim::SkinComponent, [in]skr::renderer::MeshComponent, [in]skr::anim::SkeletonComponent");
+        u8"[inout]skr::anim::AnimComponent, [inout]skr::anim::SkinComponent, [in]skr::MeshComponent, [in]skr::anim::SkeletonComponent");
     skinQuery = sugoiQ_from_literal(game_world,
-        u8"[in]skr::anim::AnimComponent, [inout]skr::anim::SkinComponent, [in]skr::renderer::MeshComponent, [in]skr::anim::SkeletonComponent");
+        u8"[in]skr::anim::AnimComponent, [inout]skr::anim::SkinComponent, [in]skr::MeshComponent, [in]skr::anim::SkeletonComponent");
 
     // auto handler = skr_system_get_default_handler();
     // handler->add_window_close_handler(
@@ -808,7 +808,7 @@ int SGameModule::main_module_exec(int argc, char8_t** argv)
             SkrZoneScopedN("SkinSystem");
 
             auto initAnimSkinComps = [&](sugoi_chunk_view_t* r_cv) {
-                const auto meshes = sugoi::get_component_ro<skr::renderer::MeshComponent>(r_cv);
+                const auto meshes = sugoi::get_component_ro<skr::MeshComponent>(r_cv);
                 const auto skels = sugoi::get_component_ro<skr::anim::SkeletonComponent>(r_cv);
                 const auto anims = sugoi::get_owned_rw<skr::anim::AnimComponent>(r_cv);
                 const auto skins = sugoi::get_owned_rw<skr::anim::SkinComponent>(r_cv);
@@ -844,7 +844,7 @@ int SGameModule::main_module_exec(int argc, char8_t** argv)
             // skin dispatch for the frame
             auto cpuSkinJob = SkrNewLambda(
                 [&](sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex) {
-                    const auto meshes = sugoi::get_component_ro<skr::renderer::MeshComponent>(view);
+                    const auto meshes = sugoi::get_component_ro<skr::MeshComponent>(view);
                     const auto anims = sugoi::get_component_ro<skr::anim::AnimComponent>(view);
                     auto skins = sugoi::get_owned_rw<skr::anim::SkinComponent>(view);
 

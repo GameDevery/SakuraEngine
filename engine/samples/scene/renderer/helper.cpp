@@ -5,11 +5,11 @@
 namespace utils
 {
 
-// void SimpleMesh::generate_mesh_resource(skr::RendererDevice* render_device, skr_render_mesh_id render_mesh) SKR_NOEXCEPT
+// void SimpleMesh::generate_mesh_resource(skr::RendererDevice* render_device, RenderMesh* render_mesh) SKR_NOEXCEPT
 // {
 // }
 
-void SimpleMesh::generate_render_mesh(skr::RendererDevice* render_device, skr_render_mesh_id render_mesh) SKR_NOEXCEPT
+void SimpleMesh::generate_render_mesh(skr::RendererDevice* render_device, skr::RenderMesh* render_mesh) SKR_NOEXCEPT
 {
     // generate buffer, ub, ib, ubv, ibv
     auto cgpu_device = render_device->get_cgpu_device();

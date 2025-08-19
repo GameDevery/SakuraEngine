@@ -27,9 +27,9 @@ SkinComponent
 sreflect_struct(guid = "F9195283-41E4-4BB7-8866-5C1BDC8B51C8")
 SkinPrimitive
 {
-    skr_vertex_buffer_entry_t position;
-    skr_vertex_buffer_entry_t normal;
-    skr_vertex_buffer_entry_t tangent;
+    VertexBufferEntry position;
+    VertexBufferEntry normal;
+    VertexBufferEntry tangent;
     skr::span<skr_vertex_buffer_view_t> views;
 };
 
@@ -59,7 +59,7 @@ AnimComponent
 } // namespace skr::anim
 
 SKR_ANIM_API void skr_init_skin_component(skr::anim::SkinComponent* component, const skr::anim::SkeletonResource* skeleton);
-SKR_ANIM_API void skr_init_anim_component(skr::anim::AnimComponent* component, const skr_mesh_resource_t* mesh, skr::anim::SkeletonResource* skeleton);
-SKR_ANIM_API void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, const skr_mesh_resource_t* mesh);
+SKR_ANIM_API void skr_init_anim_component(skr::anim::AnimComponent* component, const skr::MeshResource* mesh, skr::anim::SkeletonResource* skeleton);
+SKR_ANIM_API void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, const skr::MeshResource* mesh);
 
-SKR_ANIM_API void skr_cpu_skin(skr::anim::SkinComponent* skin, const skr::anim::AnimComponent* anim, const skr_mesh_resource_t* mesh);
+SKR_ANIM_API void skr_cpu_skin(skr::anim::SkinComponent* skin, const skr::anim::AnimComponent* anim, const skr::MeshResource* mesh);

@@ -53,7 +53,7 @@ void RenderEffectForward::on_register(SRendererId renderer, sugoi_storage_t* sto
         desc.alignment = alignof(ForwardEffectToken);
         identity_type = sugoiT_register_type(&desc);
         type_builder.with(identity_type);
-        type_builder.with<skr::renderer::MeshComponent>();
+        type_builder.with<skr::MeshComponent>();
         type_builder.with<skr_render_group_t>();
         typeset = type_builder.build();
     }
@@ -66,9 +66,9 @@ void RenderEffectForward::on_register(SRendererId renderer, sugoi_storage_t* sto
 void RenderEffectForward::initialize_queries(sugoi_storage_t* storage)
 {
     // initialize queries
-    mesh_query = sugoiQ_from_literal(storage, u8"[in]game::ForwardEffectToken, [in]skr::renderer::MeshComponent");
-    mesh_write_query = sugoiQ_from_literal(storage, u8"[inout]skr::renderer::MeshComponent");
-    draw_mesh_query = sugoiQ_from_literal(storage, u8"[in]game::ForwardEffectToken, [in]skr::renderer::MeshComponent, [out]skr_render_group_t");
+    mesh_query = sugoiQ_from_literal(storage, u8"[in]game::ForwardEffectToken, [in]skr::MeshComponent");
+    mesh_write_query = sugoiQ_from_literal(storage, u8"[inout]skr::MeshComponent");
+    draw_mesh_query = sugoiQ_from_literal(storage, u8"[in]game::ForwardEffectToken, [in]skr::MeshComponent, [out]skr_render_group_t");
 }
 
 void RenderEffectForward::release_queries()
@@ -82,13 +82,13 @@ void RenderEffectForward::on_unregister(SRendererId renderer, sugoi_storage_t* s
 {
     auto sweepFunction = [&](sugoi_chunk_view_t* r_cv) {
         auto resource_system = skr::resource::GetResourceSystem();
-        auto meshes = sugoi::get_owned_rw<skr::renderer::MeshComponent>(r_cv);
+        auto meshes = sugoi::get_owned_rw<skr::MeshComponent>(r_cv);
         for (uint32_t i = 0; i < r_cv->count; i++)
         {
             auto status = meshes[i].mesh_resource.get_status();
             if (status == ESkrLoadingStatus::SKR_LOADING_STATUS_INSTALLED)
             {
-                auto mesh_resource = (skr_mesh_resource_id)meshes[i].mesh_resource.get_ptr();
+                auto mesh_resource = (skr::MeshResource*)meshes[i].mesh_resource.get_ptr();
                 SKR_LOG_TRACE(u8"Mesh Loaded: name - %s", mesh_resource->name.c_str());
                 resource_system->UnloadResource(meshes[i].mesh_resource);
                 resource_system->Update();
@@ -138,17 +138,17 @@ skr_primitive_draw_packet_t RenderEffectForward::produce_draw_packets(const skr_
     uint32_t primitiveCount = 0;
     auto counterF = [&](sugoi_chunk_view_t* r_cv) {
         SkrZoneScopedN("PreCalculateDrawCallCount");
-        const skr::renderer::MeshComponent* meshes = nullptr;
+        const skr::MeshComponent* meshes = nullptr;
         {
             SkrZoneScopedN("FetchRenderMeshes");
-            meshes = sugoi::get_component_ro<skr::renderer::MeshComponent>(r_cv);
+            meshes = sugoi::get_component_ro<skr::MeshComponent>(r_cv);
         }
         for (uint32_t i = 0; i < r_cv->count; i++)
         {
             auto status = meshes[i].mesh_resource.get_status();
             if (status == SKR_LOADING_STATUS_INSTALLED)
             {
-                auto resourcePtr = (skr_mesh_resource_t*)meshes[i].mesh_resource.get_ptr();
+                auto resourcePtr = (MeshResource*)meshes[i].mesh_resource.get_ptr();
                 auto renderMesh = resourcePtr->render_mesh;
                 primitiveCount += (uint32_t)renderMesh->primitive_commands.size();
             }
@@ -175,11 +175,11 @@ skr_primitive_draw_packet_t RenderEffectForward::produce_draw_packets(const skr_
 
         auto identities = (ForwardEffectToken*)sugoiV_get_owned_ro(r_cv, identity_type);
         auto unbatched_g_ents = (sugoi_entity_t*)identities;
-        const skr::renderer::MeshComponent* meshes = nullptr;
+        const skr::MeshComponent* meshes = nullptr;
         const skr::anim::AnimComponent* anims = nullptr;
         {
             SkrZoneScopedN("FetchRenderMeshes");
-            meshes = sugoi::get_component_ro<skr::renderer::MeshComponent>(r_cv);
+            meshes = sugoi::get_component_ro<skr::MeshComponent>(r_cv);
         }
         {
             SkrZoneScopedN("FetchAnimComps");
@@ -242,7 +242,7 @@ skr_primitive_draw_packet_t RenderEffectForward::produce_draw_packets(const skr_
                     auto status = meshes[r_idx].mesh_resource.get_status();
                     if (status == SKR_LOADING_STATUS_INSTALLED)
                     {
-                        auto resourcePtr = (skr_mesh_resource_t*)meshes[r_idx].mesh_resource.get_ptr();
+                        auto resourcePtr = (MeshResource*)meshes[r_idx].mesh_resource.get_ptr();
                         auto renderMesh = resourcePtr->render_mesh;
 
                         // early resolve all materials
@@ -575,7 +575,7 @@ void RenderEffectForwardSkin::on_register(SRendererId renderer, sugoi_storage_t*
         desc.alignment = alignof(ForwardEffectToken);
         identity_type = sugoiT_register_type(&desc);
         type_builder.with(identity_type)
-            .with<skr::renderer::MeshComponent>()
+            .with<skr::MeshComponent>()
             .with<skr_render_group_t>()
             .with<skr::anim::AnimComponent>()
             .with<skr::anim::SkeletonComponent>()
@@ -590,9 +590,9 @@ void RenderEffectForwardSkin::on_register(SRendererId renderer, sugoi_storage_t*
 
 void RenderEffectForwardSkin::initialize_queries(sugoi_storage_t* storage)
 {
-    mesh_query = sugoiQ_from_literal(storage, u8"[in]forward_skin_render_identity, [in]skr::renderer::MeshComponent");
-    mesh_write_query = sugoiQ_from_literal(storage, u8"[inout]forward_skin_render_identity, [inout]skr::renderer::MeshComponent");
-    draw_mesh_query = sugoiQ_from_literal(storage, u8"[in]forward_skin_render_identity, [in]skr::renderer::MeshComponent, [out]skr_render_group_t");
+    mesh_query = sugoiQ_from_literal(storage, u8"[in]forward_skin_render_identity, [in]skr::MeshComponent");
+    mesh_write_query = sugoiQ_from_literal(storage, u8"[inout]forward_skin_render_identity, [inout]skr::MeshComponent");
+    draw_mesh_query = sugoiQ_from_literal(storage, u8"[in]forward_skin_render_identity, [in]skr::MeshComponent, [out]skr_render_group_t");
     install_query = sugoiQ_from_literal(storage, u8"[in]forward_skin_render_identity, [in]skr::anim::AnimComponent, [in]skr::anim::SkeletonComponent, [in]skr::anim::SkinComponent");
 }
 

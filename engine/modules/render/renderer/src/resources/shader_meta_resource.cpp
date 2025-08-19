@@ -3,10 +3,14 @@
 #include <SkrContainers/string.hpp>
 #include "option_utils.hpp"
 
-bool skr_shader_options_resource_t::flatten_options(skr::Vector<skr_shader_option_template_t>& dst, skr::span<skr_shader_options_resource_t*> srcs) SKR_NOEXCEPT
+namespace skr
+{
+using namespace skr::resource;
+
+bool ShaderOptionsResource::flatten_options(skr::Vector<ShaderOptionTemplate>& dst, skr::span<ShaderOptionsResource*> srcs) SKR_NOEXCEPT
 {
     skr::Set<skr::String>                                                               keys;
-    skr::FlatHashMap<skr::String, skr_shader_option_template_t, skr::Hash<skr::String>> kvs;
+    skr::FlatHashMap<skr::String, ShaderOptionTemplate, skr::Hash<skr::String>> kvs;
     // collect all keys & ensure unique
     for (auto& src : srcs)
     {
@@ -28,22 +32,18 @@ bool skr_shader_options_resource_t::flatten_options(skr::Vector<skr_shader_optio
     }
     // sort result by key
     dst.sort_stable(
-    [](const skr_shader_option_template_t& a, const skr_shader_option_template_t& b) {
+    [](const ShaderOptionTemplate& a, const ShaderOptionTemplate& b) {
         return skr::Hash<skr::String>()(a.key) < skr::Hash<skr::String>()(b.key);
     });
     return true;
 }
 
-SStableShaderHash skr_shader_option_instance_t::calculate_stable_hash(skr::span<skr_shader_option_instance_t> ordered_options)
+StableShaderHash ShaderOptionInstance::calculate_stable_hash(skr::span<ShaderOptionInstance> ordered_options)
 {
     skr::String signatureString;
     option_utils::stringfy(signatureString, ordered_options);
-    return SStableShaderHash::hash_string(signatureString.c_str_raw(), (uint32_t)signatureString.size());
+    return StableShaderHash::hash_string(signatureString.c_str_raw(), (uint32_t)signatureString.size());
 }
-
-namespace skr::renderer
-{
-using namespace skr::resource;
 
 struct SKR_RENDERER_API ShaderOptionsFactoryImpl : public ShaderOptionsFactory {
     ShaderOptionsFactoryImpl(const ShaderOptionsFactoryImpl::Root& root)
@@ -56,7 +56,7 @@ struct SKR_RENDERER_API ShaderOptionsFactoryImpl : public ShaderOptionsFactory {
     bool       AsyncIO() override { return false; }
     skr_guid_t GetResourceType() override
     {
-        const auto collection_type = ::skr::type_id_of<skr_shader_options_resource_t>();
+        const auto collection_type = ::skr::type_id_of<ShaderOptionsResource>();
         return collection_type;
     }
 
@@ -71,7 +71,7 @@ struct SKR_RENDERER_API ShaderOptionsFactoryImpl : public ShaderOptionsFactory {
 
     bool Unload(SResourceRecord* record) override
     {
-        auto options = (skr_shader_options_resource_t*)record->resource;
+        auto options = (ShaderOptionsResource*)record->resource;
         SkrDelete(options);
         return true;
     }
@@ -92,4 +92,4 @@ void ShaderOptionsFactory::Destroy(ShaderOptionsFactory* factory)
 {
     return SkrDelete(factory);
 }
-} // namespace skr::renderer
+} // namespace skr

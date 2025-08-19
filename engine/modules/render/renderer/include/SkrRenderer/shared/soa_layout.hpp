@@ -5,7 +5,7 @@
     #include "detail/type_usings.hpp"
 #endif
 
-namespace skr::renderer
+namespace skr
 {
 
 using uint32_t = skr::data_layout::uint32_t;
@@ -176,7 +176,7 @@ private:
     }
 };
 
-// #define BUNDLE(...) skr::renderer::ComponentBundle<__VA_ARGS__>
+// #define BUNDLE(...) skr::ComponentBundle<__VA_ARGS__>
 
 // 连续布局（需要 capacity）
 /*
@@ -254,4 +254,4 @@ private:
 };
 */
 
-} // namespace skr::renderer
+} // namespace skr

@@ -1,6 +1,6 @@
 #include "SkrRenderer/resources/material_type_resource.hpp"
 
-namespace skr::renderer
+namespace skr
 {
 using namespace skr::resource;
 
@@ -13,19 +13,19 @@ struct MaterialTypeFactoryImpl : public MaterialTypeFactory
 
     skr_guid_t GetResourceType() override
     {
-        return ::skr::type_id_of<skr_material_type_resource_t>();
+        return ::skr::type_id_of<MaterialTypeResource>();
     }
     bool AsyncIO() override { return true; }
     bool Unload(SResourceRecord* record) override
     {
         // TODO: RC management for shader collection resource
-        auto material_type = static_cast<skr_material_type_resource_t*>(record->resource);
+        auto material_type = static_cast<MaterialTypeResource*>(record->resource);
         SkrDelete(material_type);
         return true;
     }
     ESkrInstallStatus Install(SResourceRecord* record) override
     {
-        auto material_type = static_cast<skr_material_type_resource_t*>(record->resource);
+        auto material_type = static_cast<MaterialTypeResource*>(record->resource);
         return material_type ? SKR_INSTALL_STATUS_SUCCEED : SKR_INSTALL_STATUS_FAILED;
     }
     bool Uninstall(SResourceRecord* record) override
@@ -50,4 +50,4 @@ void MaterialTypeFactory::Destroy(MaterialTypeFactory* factory)
     SkrDelete(factory);
 }
 
-} // namespace skr::renderer
+} // namespace skr

@@ -1,13 +1,12 @@
 #pragma once
 #include "SkrBase/config.h"
-#include "SkrRenderer/resources/shader_resource.hpp"
 #include "SkrRenderer/resources/shader_meta_resource.hpp"
 
 #ifndef __meta__
     #include "SkrRenderer/resources/material_type_resource.generated.h" // IWYU pragma: export
 #endif
 
-namespace skr::renderer
+namespace skr
 {
 using MaterialPropertyName = skr::String;
 
@@ -94,9 +93,9 @@ MaterialTypeResource
 
     Vector<MaterialPass> passes;
     Vector<MaterialValue> default_values;
-    Vector<skr_shader_option_instance_t> switch_defaults;
-    Vector<skr_shader_option_instance_t> option_defaults;
-    skr_vertex_layout_id vertex_type;
+    Vector<ShaderOptionInstance> switch_defaults;
+    Vector<ShaderOptionInstance> option_defaults;
+    VertexLayoutId vertex_type;
 };
 
 struct SKR_RENDERER_API MaterialTypeFactory : public resource::ResourceFactory
@@ -111,4 +110,4 @@ struct SKR_RENDERER_API MaterialTypeFactory : public resource::ResourceFactory
     [[nodiscard]] static MaterialTypeFactory* Create(const Root& root);
     static void Destroy(MaterialTypeFactory* factory);
 };
-} // namespace skr::renderer
+} // namespace skr

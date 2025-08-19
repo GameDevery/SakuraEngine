@@ -29,7 +29,7 @@ sreflect_struct(
     guid = "a897c990-abea-4f48-8880-e1ae9a93d777" serde = @json)
 SKR_SHADER_COMPILER_API ShaderImporter final : public Importer
 {
-    using shader_options_handle_t = skr::resource::AsyncResource<skr::renderer::ShaderOptionsResource>;
+    using shader_options_handle_t = skr::resource::AsyncResource<skr::ShaderOptionsResource>;
 
     skr::String sourcePath;
     skr::String entry = u8"main";

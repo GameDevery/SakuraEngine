@@ -85,7 +85,7 @@ STextureSamplerResource
 #ifdef __cplusplus
 #include "SkrRT/resource/resource_factory.h"
 
-namespace skr::renderer
+namespace skr
 {
 using SamplerFilterType = ESkrTextureSamplerFilterType;
 using SamplerMipmapMode = ESkrTextureSamplerMipmapMode;
@@ -93,7 +93,7 @@ using SamplerAddressMode = ESkrTextureSamplerAddressMode;
 using SamplerCompareMode = ESkrTextureSamplerCompareMode;
 using SamplerResource = ::STextureSamplerResource;
 using TextureResource = ::STextureResource;
-} // namespace skr::renderer
+} // namespace skr
 
 namespace skr::resource
 {

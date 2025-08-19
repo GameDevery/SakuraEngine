@@ -1,11 +1,12 @@
 #pragma once
-#include "SkrBase/misc/hash.h"
 #include "SkrRenderer/resources/shader_meta_resource.hpp"
 #include "SkrRenderer/resources/shader_resource.hpp"
 
 namespace option_utils
 {
-inline void stringfy(skr::String& string, skr::span<skr_shader_option_instance_t> ordered_options)
+using namespace skr;
+
+inline void stringfy(skr::String& string, skr::span<ShaderOptionInstance> ordered_options)
 {
     for (auto&& option : ordered_options)
     {
@@ -16,7 +17,7 @@ inline void stringfy(skr::String& string, skr::span<skr_shader_option_instance_t
     }
 }
 
-inline void stringfy(skr::String& string, const skr_shader_option_sequence_t& seq, skr::span<uint32_t> indices)
+inline void stringfy(skr::String& string, const ShaderOptionSequence& seq, skr::span<uint32_t> indices)
 {
     for (uint32_t i = 0; i < seq.keys.size(); i++)
     {

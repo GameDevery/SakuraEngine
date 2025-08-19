@@ -4,7 +4,7 @@
     #include "SkrRenderer/shared/gpu_scene.generated.h" // IWYU pragma: export
 #endif
 
-namespace skr::renderer
+namespace skr
 {
 
 sreflect_managed_component(guid = "7d7ae068-1c62-46a0-a3bc-e6b141c8e56d")
@@ -31,4 +31,4 @@ using DefaultGPUSceneLayout = PagedLayout<16384, // 16K instances per page
     GPUSceneInstanceEmission
 >;
 
-} // namespace skr::renderer
+} // namespace skr

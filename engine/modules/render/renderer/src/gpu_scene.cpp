@@ -7,7 +7,7 @@
 #include "SkrProfile/profile.h"
 #include <atomic>
 
-namespace skr::renderer
+namespace skr
 {
 
 struct GPUSceneInstanceTask
@@ -21,7 +21,7 @@ struct GPUSceneInstanceTask
         }
     }
     skr::ecs::ComponentView<GPUSceneInstance> instances;
-    skr::renderer::GPUScene* pScene = nullptr;
+    skr::GPUScene* pScene = nullptr;
 };
 
 struct AddEntityToGPUScene : public GPUSceneInstanceTask
@@ -795,4 +795,4 @@ void GPUScene::Shutdown()
     SKR_LOG_INFO(u8"GPUScene shutdown complete");
 }
 
-} // namespace skr::renderer
+} // namespace skr

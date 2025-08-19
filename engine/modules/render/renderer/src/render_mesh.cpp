@@ -7,7 +7,9 @@
 
 const bool UseRayTracing = true;
 
-void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resource_id mesh_resource)
+using namespace skr;
+
+void skr_render_mesh_initialize(RenderMesh* render_mesh, MeshResource* mesh_resource)
 {
     uint32_t ibv_c = 0;
     uint32_t vbv_c = 0;
@@ -24,7 +26,7 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
     }
 
     // 2. do early reserve
-    render_mesh->mesh_resource_id = mesh_resource;
+    render_mesh->mesh_resource = mesh_resource;
     render_mesh->index_buffer_views.reserve(ibv_c);
     render_mesh->vertex_buffer_views.reserve(vbv_c);
 
@@ -72,7 +74,7 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
         for (auto primitive : mesh_resource->primitives)
         {
             auto pos_vb = primitive.vertex_buffers.find_if(
-                                                      [](auto prim) { return prim.attribute == SKR_VERT_ATTRIB_POSITION; })
+                                                      [](auto prim) { return prim.attribute == EVertexAttribute::POSITION; })
                               .ptr();
             if (!pos_vb) continue;
 
@@ -100,7 +102,7 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
     }
 }
 
-void skr_render_mesh_free(skr_render_mesh_id render_mesh)
+void skr_render_mesh_free(RenderMesh* render_mesh)
 {
     if (UseRayTracing && render_mesh->blas)
     {

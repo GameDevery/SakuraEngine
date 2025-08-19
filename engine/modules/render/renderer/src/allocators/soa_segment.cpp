@@ -1,7 +1,7 @@
 #include "SkrRenderer/allocators/soa_segment.hpp"
 #include <utility>
 
-namespace skr::renderer
+namespace skr
 {
 
 // ==================== Builder Implementation ====================
@@ -474,4 +474,4 @@ skr::render_graph::BufferHandle SOASegmentBuffer::import_buffer(
     return handle;
 }
 
-} // namespace skr::renderer
+} // namespace skr

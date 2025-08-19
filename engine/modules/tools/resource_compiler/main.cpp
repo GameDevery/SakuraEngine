@@ -27,9 +27,9 @@ bool IsAsset(const skr::Path& path)
     return false;
 }
 
-skr::renderer::ShaderResourceFactory* shaderResourceFactory = nullptr;
-skr::renderer::ShaderOptionsFactory* shaderOptionsFactory = nullptr;
-skr::renderer::MaterialTypeFactory* matTypeFactory = nullptr;
+skr::ShaderResourceFactory* shaderResourceFactory = nullptr;
+skr::ShaderOptionsFactory* shaderOptionsFactory = nullptr;
+skr::MaterialTypeFactory* matTypeFactory = nullptr;
 skr::resource::LocalResourceRegistry* registry = nullptr;
 
 // Animation Factory
@@ -46,21 +46,21 @@ void InitializeResourceSystem(skd::SProject& proj)
 
     // shader options factory
     {
-        skr::renderer::ShaderOptionsFactory::Root factoryRoot = {};
-        shaderOptionsFactory = skr::renderer::ShaderOptionsFactory::Create(factoryRoot);
+        skr::ShaderOptionsFactory::Root factoryRoot = {};
+        shaderOptionsFactory = skr::ShaderOptionsFactory::Create(factoryRoot);
         resource_system->RegisterFactory(shaderOptionsFactory);
     }
     // shader resource factory
     {
-        skr::renderer::ShaderResourceFactory::Root factoryRoot = {};
+        skr::ShaderResourceFactory::Root factoryRoot = {};
         factoryRoot.dont_create_shader = true;
-        shaderResourceFactory = skr::renderer::ShaderResourceFactory::Create(factoryRoot);
+        shaderResourceFactory = skr::ShaderResourceFactory::Create(factoryRoot);
         resource_system->RegisterFactory(shaderResourceFactory);
     }
     // material type factory
     {
-        skr::renderer::MaterialTypeFactory::Root factoryRoot = {};
-        matTypeFactory = skr::renderer::MaterialTypeFactory::Create(factoryRoot);
+        skr::MaterialTypeFactory::Root factoryRoot = {};
+        matTypeFactory = skr::MaterialTypeFactory::Create(factoryRoot);
         resource_system->RegisterFactory(matTypeFactory);
     }
     {
@@ -75,9 +75,9 @@ void InitializeResourceSystem(skd::SProject& proj)
 
 void DestroyResourceSystem(skd::SProject& proj)
 {
-    skr::renderer::MaterialTypeFactory::Destroy(matTypeFactory);
-    skr::renderer::ShaderOptionsFactory::Destroy(shaderOptionsFactory);
-    skr::renderer::ShaderResourceFactory::Destroy(shaderResourceFactory);
+    skr::MaterialTypeFactory::Destroy(matTypeFactory);
+    skr::ShaderOptionsFactory::Destroy(shaderOptionsFactory);
+    skr::ShaderResourceFactory::Destroy(shaderResourceFactory);
 
     SkrDelete(skelFactory);
     SkrDelete(animFactory);

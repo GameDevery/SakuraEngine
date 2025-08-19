@@ -88,27 +88,27 @@ MESH_CORE_API
 skr::span<const uint8_t> GetRawPrimitiveAttributeView(const SRawPrimitive* primitve, const char* semantics, uint32_t idx, uint32_t& stride, ERawVertexStreamType& out_type);
 
 MESH_CORE_API
-void EmplaceRawPrimitiveIndexBuffer(const SRawPrimitive* primitve, skr::Vector<uint8_t>& buffer, skr_index_buffer_entry_t& out_ibv);
+void EmplaceRawPrimitiveIndexBuffer(const SRawPrimitive* primitve, skr::Vector<uint8_t>& buffer, IndexBufferEntry& out_ibv);
 
 MESH_CORE_API
-void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, ERawVertexStreamType type, uint32_t idx, skr::Vector<uint8_t>& buffer, skr_vertex_buffer_entry_t& out_vbv);
+void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, ERawVertexStreamType type, uint32_t idx, skr::Vector<uint8_t>& buffer, VertexBufferEntry& out_vbv);
 
 MESH_CORE_API
-void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, const char* semantics, uint32_t idx, skr::Vector<uint8_t>& buffer, skr_vertex_buffer_entry_t& out_vbv);
+void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, const char* semantics, uint32_t idx, skr::Vector<uint8_t>& buffer, VertexBufferEntry& out_vbv);
 
 // | prim0-indices | prim1-indices | prim2-indices | prim3-indices | ...
 MESH_CORE_API
-void EmplaceAllRawMeshIndices(const SRawMesh* mesh, skr::Vector<uint8_t>& buffer, skr::Vector<skr_mesh_primitive_t>& out_primitives);
+void EmplaceAllRawMeshIndices(const SRawMesh* mesh, skr::Vector<uint8_t>& buffer, skr::Vector<MeshPrimitive>& out_primitives);
 
 // | prim0-pos | prim1-pos | prim0-tangent | prim1-tangent | ...
 MESH_CORE_API
-void EmplaceAllRawMeshVertices(const SRawMesh* mesh, const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer, skr::Vector<skr_mesh_primitive_t>& out_primitives);
+void EmplaceAllRawMeshVertices(const SRawMesh* mesh, const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer, skr::Vector<MeshPrimitive>& out_primitives);
 
 MESH_CORE_API
-void EmplaceSkinRawMeshVertices(const SRawMesh* mesh, const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer, uint32_t buffer_idx, skr::Vector<skr_mesh_primitive_t>& out_primitives);
+void EmplaceSkinRawMeshVertices(const SRawMesh* mesh, const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer, uint32_t buffer_idx, skr::Vector<MeshPrimitive>& out_primitives);
 
 MESH_CORE_API
-void EmplaceStaticRawMeshVertices(const SRawMesh* mesh, const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer, uint32_t buffer_idx, skr::Vector<skr_mesh_primitive_t>& out_primitives);
+void EmplaceStaticRawMeshVertices(const SRawMesh* mesh, const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer, uint32_t buffer_idx, skr::Vector<MeshPrimitive>& out_primitives);
 
 // LUT for raw attributes to semantic names
 static const char* kRawAttributeTypeNameLUT[9] = {
@@ -123,31 +123,32 @@ static const char* kRawAttributeTypeNameLUT[9] = {
     "CUSTOM"
 };
 
-static const ESkrVertexAttribute kRawSkinAttributes[5] = {
-    SKR_VERT_ATTRIB_POSITION,
-    SKR_VERT_ATTRIB_NORMAL,
-    SKR_VERT_ATTRIB_TANGENT,
-    SKR_VERT_ATTRIB_JOINTS,
-    SKR_VERT_ATTRIB_WEIGHTS
+using EVertexAttribute = skr::EVertexAttribute;
+static const EVertexAttribute kRawSkinAttributes[5] = {
+    EVertexAttribute::POSITION,
+    EVertexAttribute::NORMAL,
+    EVertexAttribute::TANGENT,
+    EVertexAttribute::JOINTS,
+    EVertexAttribute::WEIGHTS
 };
 
-static const ESkrVertexAttribute kRawStaticAttributes[4] = {
-    SKR_VERT_ATTRIB_NONE,
-    SKR_VERT_ATTRIB_TEXCOORD,
-    SKR_VERT_ATTRIB_COLOR,
-    SKR_VERT_ATTRIB_CUSTOM
+static const EVertexAttribute kRawStaticAttributes[4] = {
+    EVertexAttribute::NONE,
+    EVertexAttribute::TEXCOORD,
+    EVertexAttribute::COLOR,
+    EVertexAttribute::CUSTOM
 };
 
-static const ESkrVertexAttribute kRawAttributeTypeLUT[9] = {
-    SKR_VERT_ATTRIB_NONE,
-    SKR_VERT_ATTRIB_POSITION,
-    SKR_VERT_ATTRIB_NORMAL,
-    SKR_VERT_ATTRIB_TANGENT,
-    SKR_VERT_ATTRIB_TEXCOORD,
-    SKR_VERT_ATTRIB_COLOR,
-    SKR_VERT_ATTRIB_JOINTS,
-    SKR_VERT_ATTRIB_WEIGHTS,
-    SKR_VERT_ATTRIB_CUSTOM
+static const EVertexAttribute kRawAttributeTypeLUT[9] = {
+    EVertexAttribute::NONE,
+    EVertexAttribute::POSITION,
+    EVertexAttribute::NORMAL,
+    EVertexAttribute::TANGENT,
+    EVertexAttribute::TEXCOORD,
+    EVertexAttribute::COLOR,
+    EVertexAttribute::JOINTS,
+    EVertexAttribute::WEIGHTS,
+    EVertexAttribute::CUSTOM
 };
 
 } // namespace skd::asset

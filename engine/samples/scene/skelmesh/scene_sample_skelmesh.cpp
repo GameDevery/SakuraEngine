@@ -90,7 +90,7 @@ struct SceneSampleSkelMeshModule : public skr::IDynamicModule
     skr::String gltf_path = u8"";
     skr::resource::LocalResourceRegistry* registry = nullptr;
 
-    skr::renderer::MeshFactory* mesh_factory = nullptr;
+    skr::MeshFactory* mesh_factory = nullptr;
     skr::resource::SkelFactory* skelFactory = nullptr;
     skr::resource::AnimFactory* animFactory = nullptr;
     skr::resource::SkinFactory* skinFactory = nullptr;
@@ -152,13 +152,13 @@ void SceneSampleSkelMeshModule::InitializeResourceSystem()
     }
     // mesh factory
     {
-        skr::renderer::MeshFactory::Root factoryRoot = {};
+        skr::MeshFactory::Root factoryRoot = {};
         factoryRoot.dstorage_root = resource_root;
         factoryRoot.vfs = project.GetResourceVFS();
         factoryRoot.ram_service = ram_service;
         factoryRoot.vram_service = vram_service;
         factoryRoot.render_device = render_device;
-        mesh_factory = skr::renderer::MeshFactory::Create(factoryRoot);
+        mesh_factory = skr::MeshFactory::Create(factoryRoot);
         resource_system->RegisterFactory(mesh_factory);
     }
     // skel factory
@@ -183,7 +183,7 @@ void SceneSampleSkelMeshModule::DestroyResourceSystem()
     auto resource_system = skr::resource::GetResourceSystem();
     resource_system->Shutdown();
 
-    skr::renderer::MeshFactory::Destroy(mesh_factory);
+    skr::MeshFactory::Destroy(mesh_factory);
     SkrDelete(skelFactory);
     SkrDelete(animFactory);
     SkrDelete(skinFactory);
@@ -288,7 +288,7 @@ void SceneSampleSkelMeshModule::CookAndLoadGLTF()
     auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"girl.gltf.meta",
         MeshAssetID,
-        skr::type_id_of<skr::renderer::MeshResource>(),
+        skr::type_id_of<skr::MeshResource>(),
         skr::type_id_of<skd::asset::MeshCooker>());
     importer->assetPath = gltf_path.c_str();
     cook_system.ImportAssetMeta(&project, asset, importer, metadata);
@@ -410,7 +410,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
     transform_system->update();
     skr::ecs::TaskScheduler::Get()->sync_all();
 
-    actor1.lock()->GetComponent<skr::renderer::MeshComponent>()->mesh_resource = MeshAssetID;
+    actor1.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = MeshAssetID;
     // for (auto& actor : hierarchy_actors)
     // {
     //     actor.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
@@ -467,7 +467,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
 
         {
 
-            auto* mesh_comp = actor1.lock()->GetComponent<skr::renderer::MeshComponent>();
+            auto* mesh_comp = actor1.lock()->GetComponent<skr::MeshComponent>();
             auto* skel_comp = actor1.lock()->GetComponent<skr::anim::SkeletonComponent>();
             auto* skin_comp = actor1.lock()->GetComponent<skr::anim::SkinComponent>();
 

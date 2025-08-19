@@ -9,6 +9,8 @@
 
 #include "SkrProfile/profile.h"
 
+using namespace skr;
+
 skr::anim::AnimComponent::~AnimComponent()
 {
     for (auto vb : vbs)
@@ -39,7 +41,7 @@ void skr_init_skin_component(skr::anim::SkinComponent* component, const skr::ani
     }
 }
 
-void skr_init_anim_component(skr::anim::AnimComponent* anim, const skr_mesh_resource_t* mesh, skr::anim::SkeletonResource* skeleton)
+void skr_init_anim_component(skr::anim::AnimComponent* anim, const MeshResource* mesh, skr::anim::SkeletonResource* skeleton)
 {
     anim->buffers.resize_zeroed(1); // CPU buffer
     anim->vbs.resize_zeroed(1);     // GPU buffer
@@ -55,18 +57,18 @@ void skr_init_anim_component(skr::anim::AnimComponent* anim, const skr_mesh_reso
     {
         const auto& prim = mesh->primitives[i];
         auto vertex_count = prim.vertex_count;
-        const skr_vertex_buffer_entry_t *joints_buffer = nullptr, *weights_buffer = nullptr, *positions_buffer = nullptr, *normals_buffer = nullptr, *tangents_buffer = nullptr;
+        const VertexBufferEntry *joints_buffer = nullptr, *weights_buffer = nullptr, *positions_buffer = nullptr, *normals_buffer = nullptr, *tangents_buffer = nullptr;
         for (auto& view : prim.vertex_buffers)
         {
-            if (view.attribute == SKR_VERT_ATTRIB_JOINTS)
+            if (view.attribute == EVertexAttribute::JOINTS)
                 joints_buffer = &view;
-            else if (view.attribute == SKR_VERT_ATTRIB_WEIGHTS)
+            else if (view.attribute == EVertexAttribute::WEIGHTS)
                 weights_buffer = &view;
-            else if (view.attribute == SKR_VERT_ATTRIB_POSITION)
+            else if (view.attribute == EVertexAttribute::POSITION)
                 positions_buffer = &view;
-            else if (view.attribute == SKR_VERT_ATTRIB_NORMAL)
+            else if (view.attribute == EVertexAttribute::NORMAL)
                 normals_buffer = &view;
-            else if (view.attribute == SKR_VERT_ATTRIB_TANGENT)
+            else if (view.attribute == EVertexAttribute::TANGENT)
                 tangents_buffer = &view;
         }
         SKR_ASSERT(joints_buffer && weights_buffer);
@@ -113,7 +115,7 @@ void skr_init_anim_component(skr::anim::AnimComponent* anim, const skr_mesh_reso
     anim->buffers[0] = blob.get();
 }
 
-void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, const skr_mesh_resource_t* mesh)
+void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, const MeshResource* mesh)
 {
     auto mesh_resource = mesh;
     for (size_t j = 0u; j < anim->buffers.size(); j++)
@@ -149,21 +151,21 @@ void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, 
                     auto attr = mesh_resource->primitives[k].vertex_buffers[z].attribute;
                     // anim->views.add(vbv);
 
-                    if (attr == SKR_VERT_ATTRIB_POSITION)
+                    if (attr == EVertexAttribute::POSITION)
                     {
                         auto& view = anim->views.add_default().ref();
                         view.buffer = anim->vbs[j];
                         view.offset = prim.position.offset;
                         view.stride = prim.position.stride;
                     }
-                    else if (attr == SKR_VERT_ATTRIB_NORMAL)
+                    else if (attr == EVertexAttribute::NORMAL)
                     {
                         auto& view = anim->views.add_default().ref();
                         view.buffer = anim->vbs[j];
                         view.offset = prim.normal.offset;
                         view.stride = prim.normal.stride;
                     }
-                    else if (attr == SKR_VERT_ATTRIB_TANGENT)
+                    else if (attr == EVertexAttribute::TANGENT)
                     {
                         auto& view = anim->views.add_default().ref();
                         view.buffer = anim->vbs[j];
@@ -189,7 +191,7 @@ void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, 
     }
 }
 
-void skr_cpu_skin(skr::anim::SkinComponent* skin, const skr::anim::AnimComponent* anim, const skr_mesh_resource_t* mesh)
+void skr_cpu_skin(skr::anim::SkinComponent* skin, const skr::anim::AnimComponent* anim, const MeshResource* mesh)
 {
     auto skin_resource = skin->skin_resource.get_resolved();
     // SKR_LOG_INFO(u8"Skin %d mesh primitive(s)", mesh->primitives.size());
@@ -198,24 +200,24 @@ void skr_cpu_skin(skr::anim::SkinComponent* skin, const skr::anim::AnimComponent
         ozz::geometry::SkinningJob job;
         auto& prim = mesh->primitives[i];
         auto vertex_count = prim.vertex_count;
-        const skr_vertex_buffer_entry_t *joints_buffer = nullptr, *weights_buffer = nullptr, *positions_buffer = nullptr, *normals_buffer = nullptr, *tangents_buffer = nullptr;
+        const VertexBufferEntry *joints_buffer = nullptr, *weights_buffer = nullptr, *positions_buffer = nullptr, *normals_buffer = nullptr, *tangents_buffer = nullptr;
 
         for (auto& view : prim.vertex_buffers)
         {
-            if (view.attribute == SKR_VERT_ATTRIB_JOINTS)
+            if (view.attribute == EVertexAttribute::JOINTS)
                 joints_buffer = &view;
-            else if (view.attribute == SKR_VERT_ATTRIB_WEIGHTS)
+            else if (view.attribute == EVertexAttribute::WEIGHTS)
                 weights_buffer = &view;
-            else if (view.attribute == SKR_VERT_ATTRIB_POSITION)
+            else if (view.attribute == EVertexAttribute::POSITION)
                 positions_buffer = &view;
-            else if (view.attribute == SKR_VERT_ATTRIB_NORMAL)
+            else if (view.attribute == EVertexAttribute::NORMAL)
                 normals_buffer = &view;
-            else if (view.attribute == SKR_VERT_ATTRIB_TANGENT)
+            else if (view.attribute == EVertexAttribute::TANGENT)
                 tangents_buffer = &view;
         }
         SKR_ASSERT(joints_buffer && weights_buffer);
 
-        auto buffer_span = [&](const skr_vertex_buffer_entry_t* buffer, auto t, uint32_t comps = 1) {
+        auto buffer_span = [&](const VertexBufferEntry* buffer, auto t, uint32_t comps = 1) {
             using T = typename decltype(t)::type;
             SKR_ASSERT(buffer->stride == sizeof(T) * comps);
             auto offset = mesh->bins[buffer->buffer_index].blob->get_data() + buffer->offset;

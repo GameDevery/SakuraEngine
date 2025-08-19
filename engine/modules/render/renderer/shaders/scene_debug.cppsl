@@ -5,7 +5,7 @@
 #include "SkrRenderer/shared/soa_layout.hpp"
 
 using namespace skr::shader;
-using namespace skr::renderer;
+using namespace skr;
 
 // External resource bindings
 RWTexture2D<float> output_texture;

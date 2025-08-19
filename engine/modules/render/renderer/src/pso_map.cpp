@@ -9,7 +9,7 @@
 
 #include "SkrProfile/profile.h"
 
-namespace skr::renderer {
+namespace skr {
 struct PSOMapImpl;
 using PSOFutureLauncher = skr::FutureLauncher<bool>;
 
@@ -287,11 +287,11 @@ bool PSOProgress::do_in_background()
         return false;
     }
 }
-} // namespace skr::renderer
+} // namespace skr
 
 skr_pso_map_id skr_pso_map_t::Create(const struct skr_pso_map_root_t* root) SKR_NOEXCEPT
 {
-    return SkrNewZeroed<skr::renderer::PSOMapImpl>(*root);
+    return SkrNewZeroed<skr::PSOMapImpl>(*root);
 }
 
 bool skr_pso_map_t::Free(skr_pso_map_id pso_map) SKR_NOEXCEPT

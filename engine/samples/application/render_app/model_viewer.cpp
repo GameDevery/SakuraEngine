@@ -196,10 +196,10 @@ protected:
     skr::resource::LocalResourceRegistry* registry = nullptr;
     skr::resource::TextureSamplerFactory* TextureSamplerFactory = nullptr;
     skr::resource::TextureFactory* TextureFactory = nullptr;
-    skr::renderer::MeshFactory* MeshFactory = nullptr;
+    skr::MeshFactory* MeshFactory = nullptr;
 
     skr::ecs::World world;
-    skr::renderer::GPUScene GPUScene;
+    skr::GPUScene GPUScene;
 
     // Compute pipeline resources for debug rendering
     CGPUShaderLibraryId compute_shader = nullptr;
@@ -259,7 +259,7 @@ void ModelViewerModule::on_load(int argc, char8_t** argv)
 int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
 {
     using namespace skr;
-    using namespace skr::renderer;
+    using namespace skr;
 
     auto device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
@@ -491,7 +491,7 @@ void ModelViewerModule::CookAndLoadGLTF()
         auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
             u8"girl.model.meta",                            // virtual uri for this asset in the project
             MeshAssetID,                                    // guid for this asset
-            skr::type_id_of<skr::renderer::MeshResource>(), // output resource is a mesh resource
+            skr::type_id_of<skr::MeshResource>(), // output resource is a mesh resource
             skr::type_id_of<skd::asset::MeshCooker>()       // this cooker cooks t he raw mesh data to mesh resource
         );
         // source file
@@ -515,7 +515,7 @@ void ModelViewerModule::CookAndLoadGLTF()
 void ModelViewerModule::CreateEntities(uint32_t count)
 {
     using namespace skr::ecs;
-    using namespace skr::renderer;
+    using namespace skr;
 
     // Generate random transforms for 3D validation demo
     static std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
@@ -603,7 +603,7 @@ void ModelViewerModule::CreateEntities(uint32_t count)
         }
 
         ModelViewerModule* pModule = nullptr;
-        skr::renderer::GPUScene* pScene = nullptr;
+        skr::GPUScene* pScene = nullptr;
         ComponentView<GPUSceneInstance> instances;
         ComponentView<GPUSceneInstanceColor> colors;
         ComponentView<GPUSceneObjectToWorld> transforms;
@@ -612,7 +612,7 @@ void ModelViewerModule::CreateEntities(uint32_t count)
         ComponentView<skr::scene::RotationComponent> rotations;
         ComponentView<skr::scene::ScaleComponent> scales;
         ComponentView<skr::scene::IndexComponent> indices;
-        ComponentView<skr::renderer::MeshComponent> meshes;
+        ComponentView<skr::MeshComponent> meshes;
         uint32_t local_index = 0;
         std::mt19937* rng_ptr = nullptr;
     } spawner;
@@ -625,7 +625,7 @@ void ModelViewerModule::CreateEntities(uint32_t count)
 void ModelViewerModule::DestroyRandomEntities(uint32_t count)
 {
     using namespace skr::ecs;
-    using namespace skr::renderer;
+    using namespace skr;
 
     static std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
     static std::uniform_real_distribution<float> rand(0.f, 1.f);
@@ -707,13 +707,13 @@ void ModelViewerModule::InitializeReosurceSystem()
     }
     // mesh factory
     {
-        skr::renderer::MeshFactory::Root factoryRoot = {};
+        skr::MeshFactory::Root factoryRoot = {};
         factoryRoot.dstorage_root = resource_root;
         factoryRoot.vfs = project.GetResourceVFS();
         factoryRoot.ram_service = ram_service;
         factoryRoot.vram_service = vram_service;
         factoryRoot.render_device = render_device;
-        MeshFactory = skr::renderer::MeshFactory::Create(factoryRoot);
+        MeshFactory = skr::MeshFactory::Create(factoryRoot);
         resource_system->RegisterFactory(MeshFactory);
     }
 }
@@ -725,7 +725,7 @@ void ModelViewerModule::DestroyResourceSystem()
 
     skr::resource::TextureSamplerFactory::Destroy(TextureSamplerFactory);
     skr::resource::TextureFactory::Destroy(TextureFactory);
-    skr::renderer::MeshFactory::Destroy(MeshFactory);
+    skr::MeshFactory::Destroy(MeshFactory);
 
     skr_io_ram_service_t::destroy(ram_service);
     skr_io_vram_service_t::destroy(vram_service);
