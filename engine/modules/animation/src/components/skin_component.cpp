@@ -11,7 +11,7 @@
 
 using namespace skr;
 
-skr::anim::AnimComponent::~AnimComponent()
+skr::AnimComponent::~AnimComponent()
 {
     for (auto vb : vbs)
     {
@@ -20,7 +20,7 @@ skr::anim::AnimComponent::~AnimComponent()
     buffers.clear();
 }
 
-void skr_init_skin_component(skr::anim::SkinComponent* component, const skr::anim::SkeletonResource* skeleton)
+void skr_init_skin_component(skr::SkinComponent* component, const skr::SkeletonResource* skeleton)
 {
     auto skin = component->skin_resource.get_resolved();
     if (!skin)
@@ -41,7 +41,7 @@ void skr_init_skin_component(skr::anim::SkinComponent* component, const skr::ani
     }
 }
 
-void skr_init_anim_component(skr::anim::AnimComponent* anim, const MeshResource* mesh, skr::anim::SkeletonResource* skeleton)
+void skr_init_anim_component(skr::AnimComponent* anim, const MeshResource* mesh, skr::SkeletonResource* skeleton)
 {
     anim->buffers.resize_zeroed(1); // CPU buffer
     anim->vbs.resize_zeroed(1);     // GPU buffer
@@ -115,7 +115,7 @@ void skr_init_anim_component(skr::anim::AnimComponent* anim, const MeshResource*
     anim->buffers[0] = blob.get();
 }
 
-void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, const MeshResource* mesh)
+void skr_init_anim_buffers(CGPUDeviceId device, skr::AnimComponent* anim, const MeshResource* mesh)
 {
     auto mesh_resource = mesh;
     for (size_t j = 0u; j < anim->buffers.size(); j++)
@@ -191,7 +191,7 @@ void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, 
     }
 }
 
-void skr_cpu_skin(skr::anim::SkinComponent* skin, const skr::anim::AnimComponent* anim, const MeshResource* mesh)
+void skr_cpu_skin(skr::SkinComponent* skin, const skr::AnimComponent* anim, const MeshResource* mesh)
 {
     auto skin_resource = skin->skin_resource.get_resolved();
     // SKR_LOG_INFO(u8"Skin %d mesh primitive(s)", mesh->primitives.size());

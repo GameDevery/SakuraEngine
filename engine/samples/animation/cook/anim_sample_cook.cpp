@@ -170,7 +170,7 @@ int AnimSampleCookModule::main_module_exec(int argc, char8_t** argv)
     auto skel_asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"test_skeleton.gltf.meta",
         SkelAssetID,
-        skr::type_id_of<skr::anim::SkeletonResource>(),
+        skr::type_id_of<skr::SkeletonResource>(),
         skr::type_id_of<skd::asset::SkelCooker>());
     skelImporter->assetPath = source_gltf;
     system.ImportAssetMeta(&project, skel_asset, skelImporter, meshdata);
@@ -182,7 +182,7 @@ int AnimSampleCookModule::main_module_exec(int argc, char8_t** argv)
     auto anim_asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"test_animation.gltf.meta",
         AnimAssetID,
-        skr::type_id_of<skr::anim::AnimResource>(),
+        skr::type_id_of<skr::AnimResource>(),
         skr::type_id_of<skd::asset::AnimCooker>());
     animImporter->assetPath = source_gltf;
     animImporter->animationName = u8"Take 001";
@@ -208,8 +208,8 @@ int AnimSampleCookModule::main_module_exec(int argc, char8_t** argv)
         nullptr);
     resource_system->Update();
     //----- wait
-    skr::AsyncResource<skr::anim::SkeletonResource> skel_resource = SkelAssetID;
-    skr::AsyncResource<skr::anim::AnimResource> anim_resource = AnimAssetID;
+    skr::AsyncResource<skr::SkeletonResource> skel_resource = SkelAssetID;
+    skr::AsyncResource<skr::AnimResource> anim_resource = AnimAssetID;
 
     // while (!system.AllCompleted() && resource_system->WaitRequest())
     // {

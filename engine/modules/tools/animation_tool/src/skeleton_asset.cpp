@@ -31,7 +31,7 @@ bool SkelCooker::Cook(CookContext* ctx)
     //-----emit dependencies
     // no static dependencies
     //-----cook resource
-    skr::anim::SkeletonResource resource;
+    skr::SkeletonResource resource;
     {
         SkeletonBuilder builder;
         ozz::unique_ptr<ozz::animation::Skeleton> skeleton = builder(*rawSkeleton);

@@ -10,22 +10,22 @@
     #include "GameRuntime/game_animation.generated.h" // IWYU pragma: export
 #endif
 
-namespace skr::anim
+namespace skr
 {
 struct AnimResource;
 struct AnimComponent;
-} // namespace skr::anim
+} // namespace skr
 
 namespace game
 {
 sreflect_managed_component(guid = "E06E11F7-6F3A-4BFF-93D8-37310EF0FB87")
 anim_state_t {
-    SKR_RESOURCE_FIELD(skr::anim::AnimResource, animation_resource);
+    SKR_RESOURCE_FIELD(skr::AnimResource, animation_resource);
     skr::Vector<ozz::math::SoaTransform> local_transforms;
     ozz::animation::SamplingJob::Context sampling_context;
     float                                currtime = 0.f;
 };
 
-GAME_RUNTIME_API void InitializeAnimState(anim_state_t* state, skr::anim::SkeletonResource* skeleton);
-GAME_RUNTIME_API void UpdateAnimState(anim_state_t* state, skr::anim::SkeletonResource* skeleton, float dt, skr::anim::AnimComponent* output);
+GAME_RUNTIME_API void InitializeAnimState(anim_state_t* state, skr::SkeletonResource* skeleton);
+GAME_RUNTIME_API void UpdateAnimState(anim_state_t* state, skr::SkeletonResource* skeleton, float dt, skr::AnimComponent* output);
 } // namespace game

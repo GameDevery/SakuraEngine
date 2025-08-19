@@ -424,15 +424,15 @@ void async_attach_skin_mesh(SRendererId renderer)
     filter.none = static_type.build();
     auto skin_type = make_zeroed<sugoi::TypeSetBuilder>();
     auto filter2 = make_zeroed<sugoi_filter_t>();
-    filter2.all = skin_type.with<MeshComponent, anim::SkinComponent, anim::SkeletonComponent>().build();
+    filter2.all = skin_type.with<MeshComponent, SkinComponent, SkeletonComponent>().build();
     auto attchFunc = [=](sugoi_chunk_view_t* view) {
         auto requestSetup = [=](sugoi_chunk_view_t* view) {
             using namespace skr::literals;
 
             auto mesh_comps = sugoi::get_owned_rw<MeshComponent>(view);
-            auto skin_comps = sugoi::get_owned_rw<anim::SkinComponent>(view);
-            auto skel_comps = sugoi::get_owned_rw<anim::SkeletonComponent>(view);
-            // auto anim_comps = sugoi::get_owned_rw<anim::AnimComponent>(view);
+            auto skin_comps = sugoi::get_owned_rw<SkinComponent>(view);
+            auto skel_comps = sugoi::get_owned_rw<SkeletonComponent>(view);
+            // auto anim_comps = sugoi::get_owned_rw<AnimComponent>(view);
 
             for (uint32_t i = 0; i < view->count; i++)
             {
@@ -597,11 +597,11 @@ int SGameModule::main_module_exec(int argc, char8_t** argv)
     cameraQuery = sugoiQ_from_literal(game_world,
         u8"[has]skr_movement_comp_t, [inout]skr::PositionComponent, [inout]skr::CameraComponent");
     animQuery = sugoiQ_from_literal(game_world,
-        u8"[in]skr_render_effect_t, [in]game::anim_state_t, [out]<unseq>skr::anim::AnimComponent, [in]<unseq>skr::anim::SkeletonComponent");
+        u8"[in]skr_render_effect_t, [in]game::anim_state_t, [out]<unseq>skr::AnimComponent, [in]<unseq>skr::SkeletonComponent");
     initAnimSkinQuery = sugoiQ_from_literal(game_world,
-        u8"[inout]skr::anim::AnimComponent, [inout]skr::anim::SkinComponent, [in]skr::MeshComponent, [in]skr::anim::SkeletonComponent");
+        u8"[inout]skr::AnimComponent, [inout]skr::SkinComponent, [in]skr::MeshComponent, [in]skr::SkeletonComponent");
     skinQuery = sugoiQ_from_literal(game_world,
-        u8"[in]skr::anim::AnimComponent, [inout]skr::anim::SkinComponent, [in]skr::MeshComponent, [in]skr::anim::SkeletonComponent");
+        u8"[in]skr::AnimComponent, [inout]skr::SkinComponent, [in]skr::MeshComponent, [in]skr::SkeletonComponent");
 
     // auto handler = skr_system_get_default_handler();
     // handler->add_window_close_handler(
@@ -769,7 +769,7 @@ int SGameModule::main_module_exec(int argc, char8_t** argv)
             // sugoiJ_wait_all_jobs();
         }
 
-        // [inout]skr::anim::AnimComponent, [in]game::anim_state_t, [in]skr::anim::SkeletonComponent
+        // [inout]skr::AnimComponent, [in]game::anim_state_t, [in]skr::SkeletonComponent
         {
             SkrZoneScopedN("AnimSystem");
             auto animJob = SkrNewLambda([=, this](sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex) {
@@ -777,8 +777,8 @@ int SGameModule::main_module_exec(int argc, char8_t** argv)
                 auto states = (game::anim_state_t*)sugoiV_get_owned_ro_local(view, localTypes[1]);
                 uint32_t g_id = 0;
                 auto syncEffect = [&](sugoi_chunk_view_t* view) {
-                    auto anims = sugoi::get_owned_rw<skr::anim::AnimComponent>(view);
-                    auto skels = sugoi::get_component_ro<skr::anim::SkeletonComponent>(view);
+                    auto anims = sugoi::get_owned_rw<skr::AnimComponent>(view);
+                    auto skels = sugoi::get_component_ro<skr::SkeletonComponent>(view);
                     for (uint32_t i = 0; i < view->count; ++i, ++g_id)
                     {
                         auto& anim = anims[i];
@@ -809,9 +809,9 @@ int SGameModule::main_module_exec(int argc, char8_t** argv)
 
             auto initAnimSkinComps = [&](sugoi_chunk_view_t* r_cv) {
                 const auto meshes = sugoi::get_component_ro<skr::MeshComponent>(r_cv);
-                const auto skels = sugoi::get_component_ro<skr::anim::SkeletonComponent>(r_cv);
-                const auto anims = sugoi::get_owned_rw<skr::anim::AnimComponent>(r_cv);
-                const auto skins = sugoi::get_owned_rw<skr::anim::SkinComponent>(r_cv);
+                const auto skels = sugoi::get_component_ro<skr::SkeletonComponent>(r_cv);
+                const auto anims = sugoi::get_owned_rw<skr::AnimComponent>(r_cv);
+                const auto skins = sugoi::get_owned_rw<skr::SkinComponent>(r_cv);
 
                 SkrZoneScopedN("InitializeAnimSkinComponents");
                 for (uint32_t i = 0; i < r_cv->count; i++)
@@ -845,8 +845,8 @@ int SGameModule::main_module_exec(int argc, char8_t** argv)
             auto cpuSkinJob = SkrNewLambda(
                 [&](sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex) {
                     const auto meshes = sugoi::get_component_ro<skr::MeshComponent>(view);
-                    const auto anims = sugoi::get_component_ro<skr::anim::AnimComponent>(view);
-                    auto skins = sugoi::get_owned_rw<skr::anim::SkinComponent>(view);
+                    const auto anims = sugoi::get_component_ro<skr::AnimComponent>(view);
+                    auto skins = sugoi::get_owned_rw<skr::SkinComponent>(view);
 
                     for (uint32_t i = 0; i < view->count; i++)
                     {

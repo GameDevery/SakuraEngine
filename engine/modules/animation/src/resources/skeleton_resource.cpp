@@ -3,14 +3,14 @@
 
 namespace skr
 {
-bool BinSerde<skr::anim::SkeletonResource>::read(SBinaryReader* r, skr::anim::SkeletonResource& v)
+bool BinSerde<skr::SkeletonResource>::read(SBinaryReader* r, skr::SkeletonResource& v)
 {
     ozz::io::SkrStream stream(r, nullptr);
     ozz::io::IArchive archive(&stream);
     archive >> v.skeleton;
     return true;
 }
-bool BinSerde<skr::anim::SkeletonResource>::write(SBinaryWriter* w, const skr::anim::SkeletonResource& v)
+bool BinSerde<skr::SkeletonResource>::write(SBinaryWriter* w, const skr::SkeletonResource& v)
 {
     ozz::io::SkrStream stream(nullptr, w);
     ozz::io::OArchive archive(&stream);
@@ -23,6 +23,6 @@ namespace skr
 {
 skr_guid_t SkelFactory::GetResourceType()
 {
-    return ::skr::type_id_of<skr::anim::SkeletonResource>();
+    return ::skr::type_id_of<skr::SkeletonResource>();
 }
 } // namespace skr

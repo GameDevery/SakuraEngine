@@ -31,9 +31,9 @@ SkelMeshActor::SkelMeshActor()
                 .add_component<skr::scene::ScaleComponent>()
                 .add_component<skr::scene::TransformComponent>()
                 .add_component<skr::MeshComponent>()
-                .add_component<skr::anim::SkeletonComponent>()
-                .add_component<skr::anim::AnimComponent>()
-                .add_component<skr::anim::SkinComponent>();
+                .add_component<skr::SkeletonComponent>()
+                .add_component<skr::AnimComponent>()
+                .add_component<skr::SkinComponent>();
         },
         [this](skr::ecs::TaskContext& Context) {
             SkrZoneScopedN("SkelMeshActor::Spawner::run");

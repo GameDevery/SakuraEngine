@@ -29,7 +29,7 @@ struct RenderMesh
 sreflect_managed_component(guid = "c66ab7ef-bde9-4e0f-8023-a2d99ba5134c")
 MeshComponent
 {
-    SKR_RESOURCE_FIELD(MeshResource, mesh_resource);
+    skr::AsyncResource<skr::MeshResource> mesh_resource;
 };
 
 } // namespace skr

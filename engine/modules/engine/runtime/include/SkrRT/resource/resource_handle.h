@@ -77,12 +77,8 @@ SKR_EXTERN_C SKR_RUNTIME_API int skr_is_resource_resolved(SResourceHandle* handl
 SKR_EXTERN_C SKR_RUNTIME_API void skr_get_resource_guid(SResourceHandle* handle, skr_guid_t* guid);
 SKR_EXTERN_C SKR_RUNTIME_API void skr_get_resource(SResourceHandle* handle, void** guid);
 
-#if defined(__cplusplus)
 #include "SkrSerde/bin_serde.hpp"
 #include "SkrSerde/json_serde.hpp"
-
-#define SKR_RESOURCE_HANDLE(type) skr::AsyncResource<type>
-#define SKR_RESOURCE_FIELD(type, name) skr::AsyncResource<type> name
 
 SKR_RTTR_TYPE(SResourceHandle, "A9E0CE3D-5E9B-45F1-AC28-B882885C63AB");
 namespace skr
@@ -201,7 +197,3 @@ struct JsonSerde<skr::AsyncResource<T>>
     }
 };
 } // namespace skr
-#else
-    #define SKR_RESOURCE_HANDLE(type) SResourceHandle
-    #define SKR_RESOURCE_FIELD(type, name) SResourceHandle name
-#endif

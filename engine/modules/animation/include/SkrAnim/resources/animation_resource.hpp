@@ -1,6 +1,4 @@
 #pragma once
-#include "SkrBase/config.h"
-#include "SkrRT/config.h"
 #include "SkrRT/resource/resource_factory.h"
 #include "SkrBase/types.h"
 #include "SkrAnim/ozz/animation.h"
@@ -10,19 +8,15 @@
 
 namespace skr
 {
-namespace anim
-{
-
 sreflect_struct(guid = "5D6DC46B-8696-4DD8-ADE4-C27D07CEDCCD")
 AnimResource {
     ozz::animation::Animation animation;
 };
-} // namespace anim
 
 template <>
-struct SKR_ANIM_API BinSerde<anim::AnimResource> {
-    static bool read(SBinaryReader* r, anim::AnimResource& v);
-    static bool write(SBinaryWriter* w, const anim::AnimResource& v);
+struct SKR_ANIM_API BinSerde<AnimResource> {
+    static bool read(SBinaryReader* r, AnimResource& v);
+    static bool write(SBinaryWriter* w, const AnimResource& v);
 };
 
 class SKR_ANIM_API AnimFactory : public ResourceFactory

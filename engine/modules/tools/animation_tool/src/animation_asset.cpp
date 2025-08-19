@@ -19,7 +19,7 @@ namespace skd::asset
 {
 bool AnimCooker::Cook(CookContext* ctx)
 {
-    using namespace skr::anim;
+    using namespace skr;
     using namespace ozz::animation::offline;
     SkrZoneScopedNS("AnimCooker::Cook", 4);
 

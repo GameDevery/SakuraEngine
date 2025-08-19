@@ -19,7 +19,7 @@ namespace skr::scene
 {
 struct AnimRenderJob
 {
-    using RenderF = std::function<void(const skr::span<skr::PrimitiveCommand>, skr_float4x4_t, skr::Vector<skr::anim::SkinPrimitive>)>;
+    using RenderF = std::function<void(const skr::span<skr::PrimitiveCommand>, skr_float4x4_t, skr::Vector<skr::SkinPrimitive>)>;
     AnimRenderJob(RenderF render_callback = nullptr)
         : render_callback(render_callback)
     {
@@ -29,7 +29,7 @@ struct AnimRenderJob
     {
         builder.has<MeshComponent>()
             .has<scene::TransformComponent>()
-            .has<anim::AnimComponent>();
+            .has<AnimComponent>();
 
         builder.access(&AnimRenderJob::mesh_accessor)
             .access(&AnimRenderJob::transform_accessor)
@@ -76,7 +76,7 @@ struct AnimRenderJob
 
     skr::ecs::RandomComponentReadWrite<skr::MeshComponent> mesh_accessor;
     skr::ecs::RandomComponentReader<const skr::scene::TransformComponent> transform_accessor;
-    skr::ecs::RandomComponentReader<const skr::anim::AnimComponent> anim_accessor;
+    skr::ecs::RandomComponentReader<const skr::AnimComponent> anim_accessor;
     RenderF render_callback = nullptr;
 };
 
@@ -130,7 +130,7 @@ void AnimRenderSystem::update() SKR_NOEXCEPT
     impl->push_constants_list.clear();
 
     auto render_func = impl->mp_renderer != nullptr ?
-        scene::AnimRenderJob::RenderF([this](const skr::span<skr::PrimitiveCommand> cmds, skr_float4x4_t model, skr::Vector<skr::anim::SkinPrimitive> skin_primitives) {
+        scene::AnimRenderJob::RenderF([this](const skr::span<skr::PrimitiveCommand> cmds, skr_float4x4_t model, skr::Vector<skr::SkinPrimitive> skin_primitives) {
             auto& push_constants_data = impl->push_constants_list.emplace().ref();
             push_constants_data.model = skr::transpose(model);
             utils::Camera* camera = impl->mp_renderer->get_camera();
@@ -160,7 +160,7 @@ void AnimRenderSystem::update() SKR_NOEXCEPT
                 drawcall.vertex_buffers = skin_prim.views.data();
             }
         }) :
-        scene::AnimRenderJob::RenderF([](const skr::span<skr::PrimitiveCommand> cmds, skr_float4x4_t model, skr::Vector<skr::anim::SkinPrimitive> skin_primitives) {
+        scene::AnimRenderJob::RenderF([](const skr::span<skr::PrimitiveCommand> cmds, skr_float4x4_t model, skr::Vector<skr::SkinPrimitive> skin_primitives) {
             // do nothing
         });
     scene::AnimRenderJob job{ render_func };

@@ -298,7 +298,7 @@ void SceneSampleSkelMeshModule::CookAndLoadGLTF()
     auto skel_asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"test_skeleton.gltf.meta",
         SkelAssetID,
-        skr::type_id_of<skr::anim::SkeletonResource>(),
+        skr::type_id_of<skr::SkeletonResource>(),
         skr::type_id_of<skd::asset::SkelCooker>());
     skelImporter->assetPath = gltf_path.c_str();
     cook_system.ImportAssetMeta(&project, skel_asset, skelImporter, meshdata);
@@ -310,7 +310,7 @@ void SceneSampleSkelMeshModule::CookAndLoadGLTF()
     auto anim_asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"test_animation.gltf.meta",
         AnimAssetID,
-        skr::type_id_of<skr::anim::AnimResource>(),
+        skr::type_id_of<skr::AnimResource>(),
         skr::type_id_of<skd::asset::AnimCooker>());
     animImporter->assetPath = gltf_path.c_str();
     animImporter->animationName = u8"Take 001";
@@ -321,7 +321,7 @@ void SceneSampleSkelMeshModule::CookAndLoadGLTF()
     auto skin_asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"test_skin.gltf.meta",
         SkinAssetID,
-        skr::type_id_of<skr::anim::SkinResource>(),
+        skr::type_id_of<skr::SkinResource>(),
         skr::type_id_of<skd::asset::SkinCooker>());
 
     cook_system.ImportAssetMeta(&project, skin_asset, importer, metadata);
@@ -446,11 +446,11 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
 
     auto resource_system = skr::GetResourceSystem();
 
-    actor1.lock()->GetComponent<skr::anim::SkeletonComponent>()->skeleton_resource = SkelAssetID;
-    actor1.lock()->GetComponent<skr::anim::SkinComponent>()->skin_resource = SkinAssetID;
+    actor1.lock()->GetComponent<skr::SkeletonComponent>()->skeleton_resource = SkelAssetID;
+    actor1.lock()->GetComponent<skr::SkinComponent>()->skin_resource = SkinAssetID;
 
-    skr::AsyncResource<skr::anim::AnimResource> anim_resource_handle = AnimAssetID;
-    // actor1.lock()->GetComponent<skr::anim::AnimComponent>()->use_dynamic_buffer = true; // use CPU/GPU dynamic buffer for simplicity
+    skr::AsyncResource<skr::AnimResource> anim_resource_handle = AnimAssetID;
+    // actor1.lock()->GetComponent<skr::AnimComponent>()->use_dynamic_buffer = true; // use CPU/GPU dynamic buffer for simplicity
     ozz::animation::SamplingJob::Context context_;
 
     while (!imgui_app->want_exit().comsume())
@@ -468,8 +468,8 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
         {
 
             auto* mesh_comp = actor1.lock()->GetComponent<skr::MeshComponent>();
-            auto* skel_comp = actor1.lock()->GetComponent<skr::anim::SkeletonComponent>();
-            auto* skin_comp = actor1.lock()->GetComponent<skr::anim::SkinComponent>();
+            auto* skel_comp = actor1.lock()->GetComponent<skr::SkeletonComponent>();
+            auto* skin_comp = actor1.lock()->GetComponent<skr::SkinComponent>();
 
             mesh_comp->mesh_resource.resolve(true, 0);
             skel_comp->skeleton_resource.resolve(true, 0);
@@ -490,7 +490,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
                 // SKR_LOG_INFO(u8"Skeleton has %d joints", skeleton_resource->skeleton.num_joints());
                 // SKR_LOG_INFO(u8"Animation has %d tracks", anim->animation.num_tracks());
                 // SKR_LOG_INFO(u8"Skin has %d poses", skin_resource->inverse_bind_poses.size());
-                auto* runtime_anim_component = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+                auto* runtime_anim_component = actor1.lock()->GetComponent<skr::AnimComponent>();
 
                 if (skeleton_resource && skin_resource && anim && runtime_anim_component && mesh_resource && mesh_resource->render_mesh)
                 {
@@ -535,7 +535,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
                 {
                     // update joint matrices
                     SkrZoneScopedN("UpdateJointMatrices");
-                    auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+                    auto* anim = actor1.lock()->GetComponent<skr::AnimComponent>();
                 }
                 {
                     if (!(skin_comp->joint_remaps.is_empty() || runtime_anim_component->buffers.is_empty()))
@@ -548,7 +548,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
                     uint64_t skinVerticesSize = 0;
                     {
                         SkrZoneScopedN("CalculateSkinMeshSize");
-                        auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+                        auto* anim = actor1.lock()->GetComponent<skr::AnimComponent>();
                         for (size_t j = 0u; j < anim->buffers.size(); j++)
                         {
                             skinVerticesSize += anim->buffers[j]->get_size();
@@ -581,7 +581,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
                                 CGPUResourceBarrierDescriptor barrier_desc = {};
                                 skr::Vector<CGPUBufferBarrier> barriers;
 
-                                auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+                                auto* anim = actor1.lock()->GetComponent<skr::AnimComponent>();
                                 for (size_t j = 0u; j < anim->buffers.size(); j++)
                                 {
                                     const bool use_dynamic_buffer = anim->use_dynamic_buffer;
@@ -604,7 +604,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
                                 SkrZoneScopedN("MemCopies");
                                 uint64_t cursor = 0;
 
-                                auto* anim = actor1.lock()->GetComponent<skr::anim::AnimComponent>();
+                                auto* anim = actor1.lock()->GetComponent<skr::AnimComponent>();
                                 const bool use_dynamic_buffer = anim->use_dynamic_buffer;
                                 if (!use_dynamic_buffer)
                                 {

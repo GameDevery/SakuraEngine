@@ -7,13 +7,13 @@
     #include "SkrAnim/components/skin_component.generated.h" // IWYU pragma: export
 #endif
 
-namespace skr::anim
+namespace skr
 {
 
 sreflect_managed_component(guid = "05B43406-4BCF-4E59-B2D8-ACED7D37E776")
 SkinComponent
 {
-    SKR_RESOURCE_FIELD(SkinResource, skin_resource);
+    skr::AsyncResource<skr::SkinResource> skin_resource;
 
     sattr(serde = @disable)
     skr::Vector<uint16_t>
@@ -43,7 +43,7 @@ AnimComponent
     skr::Vector<ozz::math::Float4x4>
         joint_matrices;
     sattr(serde = @disable)
-    skr::Vector<skr::anim::SkinPrimitive>
+    skr::Vector<skr::SkinPrimitive>
         primitives;
     sattr(serde = @disable)
     skr::Vector<RC<skr::IBlob>>
@@ -56,10 +56,10 @@ AnimComponent
         views;
 };
 
-} // namespace skr::anim
+} // namespace skr
 
-SKR_ANIM_API void skr_init_skin_component(skr::anim::SkinComponent* component, const skr::anim::SkeletonResource* skeleton);
-SKR_ANIM_API void skr_init_anim_component(skr::anim::AnimComponent* component, const skr::MeshResource* mesh, skr::anim::SkeletonResource* skeleton);
-SKR_ANIM_API void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, const skr::MeshResource* mesh);
+SKR_ANIM_API void skr_init_skin_component(skr::SkinComponent* component, const skr::SkeletonResource* skeleton);
+SKR_ANIM_API void skr_init_anim_component(skr::AnimComponent* component, const skr::MeshResource* mesh, skr::SkeletonResource* skeleton);
+SKR_ANIM_API void skr_init_anim_buffers(CGPUDeviceId device, skr::AnimComponent* anim, const skr::MeshResource* mesh);
 
-SKR_ANIM_API void skr_cpu_skin(skr::anim::SkinComponent* skin, const skr::anim::AnimComponent* anim, const skr::MeshResource* mesh);
+SKR_ANIM_API void skr_cpu_skin(skr::SkinComponent* skin, const skr::AnimComponent* anim, const skr::MeshResource* mesh);
