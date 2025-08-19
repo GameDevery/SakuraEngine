@@ -5,7 +5,7 @@
             #define WIN32_LEAN_AND_MEAN
         #endif
         #include "windows.h"
-        #include "ags/amd_ags.h"
+        #include "amd-ags/amd_ags.h"
         #define AMDAGS
     #endif
 extern "C" {

@@ -4,9 +4,9 @@
 #include <fstream>
 #include "SkrGraphics/containers.hpp"
 #include "SkrGraphics/extensions/cgpu_nsight.h"
-#include "SkrGraphics/drivers/nsight/GFSDK_Aftermath.h" // IWYU pragma: keep
-#include "SkrGraphics/drivers/nsight/GFSDK_Aftermath_GpuCrashDump.h"
-#include "SkrGraphics/drivers/nsight/GFSDK_Aftermath_GpuCrashDumpDecoding.h"
+#include "nsight-aftermath/GFSDK_Aftermath.h" // IWYU pragma: keep
+#include "nsight-aftermath/GFSDK_Aftermath_GpuCrashDump.h"
+#include "nsight-aftermath/GFSDK_Aftermath_GpuCrashDumpDecoding.h"
 #include "./../common/common_utils.h"
 #include "./../winheaders.h"
 #include "./cgpu_nsight_tracker.hpp"

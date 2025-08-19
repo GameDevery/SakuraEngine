@@ -244,17 +244,6 @@ Shipping Build 的最终呈现帧数可以轻松地突破数千帧，这是 Cubi
 
 - [quill](https://github.com/odygrd/quill) v3.0.2 (MIT)
 
-## 接入的扩展 API 以及版本
-
-- [vulkan headers](https://github.com/KhronosGroup/Vulkan-Headers) & volk 1.4.304.0
-- nvapi R510
-- amd_ags 6.0.1
-
-## 内置 SDK /软件版本
-
-- ispc 1.18.0
-- python 3.10.8
-
 ## 构建
 
 ### 前置

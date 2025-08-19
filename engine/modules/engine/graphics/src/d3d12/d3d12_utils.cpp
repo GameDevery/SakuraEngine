@@ -11,7 +11,7 @@
 
 #define USE_PIX
 #ifdef USE_PIX
-    #include "SkrGraphics/drivers/WinPixEventRuntime/pix3.h" // IWYU pragma: keep
+    #include "WinPixEventRuntime/pix3.h" // IWYU pragma: keep
 #endif
 
 struct CGPUUtil_DXCLoader
