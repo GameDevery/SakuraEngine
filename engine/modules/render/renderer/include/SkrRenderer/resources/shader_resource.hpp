@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrGraphics/api.h"
 #include "SkrRT/resource/resource_factory.h"
-#include "SkrRenderer/shader_hash.h"
+#include "SkrRenderer/graphics/shader_hash.h"
 #include <SkrContainers/string.hpp>
 #include <SkrContainers/hashmap.hpp>
 
@@ -15,10 +15,7 @@ sreflect_struct(
     guid = "6c07aa34-249f-45b8-8080-dd2462ad5312" serde = @bin | @json)
 MultiShaderResource
 {
-    using stable_hash_t = StableShaderHash;
-    using stable_hasher_t = StableShaderHash::hasher;
-
-    stable_hash_t stable_hash;
+    StableShaderHash stable_hash;
     skr::EnumAsValue<ECGPUShaderStage> shader_stage;
     skr::String entry;
 
@@ -26,14 +23,15 @@ MultiShaderResource
     {
         return GetDynamicVariants(kZeroStableShaderHash);
     }
-    inline skr::Vector<PlatformShaderIdentifier>& GetDynamicVariants(stable_hash_t hash) SKR_NOEXCEPT
+    
+    inline skr::Vector<PlatformShaderIdentifier>& GetDynamicVariants(StableShaderHash hash) SKR_NOEXCEPT
     {
         auto found = option_variants.find(hash);
         SKR_ASSERT(found != option_variants.end());
         return found->second;
     }
 
-    skr::FlatHashMap<stable_hash_t, skr::Vector<PlatformShaderIdentifier>, stable_hasher_t> option_variants;
+    skr::FlatHashMap<StableShaderHash, skr::Vector<PlatformShaderIdentifier>, StableShaderHash::hasher> option_variants;
 };
 
 sreflect_struct(

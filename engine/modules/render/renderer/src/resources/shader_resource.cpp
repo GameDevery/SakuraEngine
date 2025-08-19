@@ -1,11 +1,10 @@
-#include "SkrRenderer/shader_map.h"
+#include "SkrRenderer/graphics/shader_map.h"
 #include "SkrRenderer/resources/shader_resource.hpp"
 #include "SkrRenderer/render_device.h"
 #include "SkrBase/misc/hash.h"
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrCore/memory/memory.h"
 #include "SkrRT/resource/resource_factory.h"
-#include "SkrContainers/hashmap.hpp"
 #include "option_utils.hpp"
 
 namespace skr

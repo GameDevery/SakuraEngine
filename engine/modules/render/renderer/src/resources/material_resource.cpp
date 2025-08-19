@@ -6,9 +6,9 @@
 #include "SkrRenderer/resources/material_resource.hpp"
 #include "SkrRenderer/resources/material_type_resource.hpp"
 #include "SkrRenderer/resources/texture_resource.h"
-#include "SkrRenderer/shader_map.h"
+#include "SkrRenderer/graphics/shader_map.h"
 
-#include "SkrRenderer/pso_map.h"
+#include "SkrRenderer/graphics/pso_map.h"
 
 namespace skr
 {

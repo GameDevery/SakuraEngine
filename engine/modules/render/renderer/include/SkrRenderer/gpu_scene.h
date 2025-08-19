@@ -7,7 +7,7 @@
 #include "SkrRenderGraph/frame_resource.hpp"
 #include "SkrRenderer/fwd_types.h"
 #include "SkrRenderer/render_device.h"
-#include "SkrRenderer/allocators/soa_segment.hpp"
+#include "SkrRenderer/graphics/soa_segment.hpp"
 #include "SkrRenderer/shared/soa_layout.hpp"
 #ifndef __meta__
     #include "SkrRenderer/gpu_scene.generated.h" // IWYU pragma: export

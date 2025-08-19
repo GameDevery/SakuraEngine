@@ -1,12 +1,11 @@
 #pragma once
-#include "SkrRenderer/pso_map.h"
 #include "SkrBase/atomic/atomic.h"
-#include "SkrContainers/vector.hpp"
+#include "SkrRenderer/graphics/pso_map.h"
 
 namespace skr
 {
 
-struct PSOMapKey
+struct SKR_RENDERER_API PSOMapKey
 {
     PSOMapKey(const CGPURenderPipelineDescriptor& desc, uint64_t frame) SKR_NOEXCEPT;
     ~PSOMapKey() SKR_NOEXCEPT;
