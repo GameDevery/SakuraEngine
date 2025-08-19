@@ -7,6 +7,7 @@
 #include "SkrProfile/profile.h"
 #include "SkrOS/thread.h"
 #include "SkrOS/filesystem.hpp"
+#include "SkrCore/memory/sp.hpp"
 #include "SkrCore/module/module_manager.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderer/skr_renderer.h"
