@@ -401,6 +401,11 @@ CGPUFenceId cgpu_create_fence_d3d12(CGPUDeviceId device)
     CHECK_HRESULT(COM_CALL(CreateFence, D->pDxDevice, 0, D3D12_FENCE_FLAG_NONE, IID_ARGS(ID3D12Fence, &F->pDxFence)));
     F->mFenceValue = 1;
 
+    // sometimes debug-layey or PIX or other development tools create their fences
+    // this name differs from the name of the fence in the debug-layer
+    if (D->super.adapter->instance->enable_set_name && F->pDxFence->lpVtbl->SetName)
+        F->pDxFence->lpVtbl->SetName(F->pDxFence, L"CGPUFence");
+
     F->pDxWaitIdleFenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
     return &F->super;
 }
