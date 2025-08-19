@@ -27,7 +27,7 @@ void SkrRendererModule::on_load(int argc, char8_t** argv)
     cgpu_d3d12_enable_DRED();
 #endif
     // initailize render device
-    auto builder = make_zeroed<skr::RendererDevice::Builder>();
+    auto builder = make_zeroed<skr::RenderDevice::Builder>();
     builder.enable_debug_layer = false;
     builder.enable_gpu_based_validation = false;
     builder.enable_set_name = true;
@@ -52,7 +52,7 @@ void SkrRendererModule::on_load(int argc, char8_t** argv)
         builder.enable_gpu_based_validation |= (0 == ::strcmp((const char*)argv[i], "--gpu_based_validation"));
         builder.enable_set_name |= (0 == ::strcmp((const char*)argv[i], "--gpu_obj_name"));
     }
-    render_device = skr::RendererDevice::Create(builder);
+    render_device = skr::RenderDevice::Create(builder);
 
     // register vertex layout
     {
@@ -77,7 +77,7 @@ void SkrRendererModule::on_unload()
 {
     SKR_LOG_TRACE(u8"skr renderer unloaded!");
 
-    skr::RendererDevice::Destroy(render_device);
+    skr::RenderDevice::Destroy(render_device);
 }
 
 SkrRendererModule* SkrRendererModule::Get()

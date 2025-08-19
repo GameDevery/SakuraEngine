@@ -725,11 +725,15 @@ CGPU_API void cgpu_free_command_pool(CGPUCommandPoolId pool)
 // CMDs
 void cgpu_cmd_begin(CGPUCommandBufferId cmd)
 {
+    SkrCZoneN(zz, "CGPUCmdBegin", 1);
+
     cgpu_assert(cmd != CGPU_NULLPTR && "fatal: call on NULL cmdbuffer!");
     cgpu_assert(cmd->device != CGPU_NULLPTR && "fatal: call on NULL device!");
     const CGPUProcCmdBegin fn_cmd_begin = cmd->device->proc_table_cache->cmd_begin;
     cgpu_assert(fn_cmd_begin && "cmd_begin Proc Missing!");
     fn_cmd_begin(cmd);
+
+    SkrCZoneEnd(zz);
 }
 
 void cgpu_cmd_transfer_buffer_to_buffer(CGPUCommandBufferId cmd, const struct CGPUBufferToBufferTransfer* desc)
@@ -854,11 +858,15 @@ void cgpu_cmd_resolve_query(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, CGPUB
 
 void cgpu_cmd_end(CGPUCommandBufferId cmd)
 {
+    SkrCZoneN(zz, "CGPUCmdEnd", 1);
+
     cgpu_assert(cmd != CGPU_NULLPTR && "fatal: call on NULL cmdbuffer!");
     cgpu_assert(cmd->device != CGPU_NULLPTR && "fatal: call on NULL device!");
     const CGPUProcCmdEnd fn_cmd_end = cmd->device->proc_table_cache->cmd_end;
     cgpu_assert(fn_cmd_end && "cmd_end Proc Missing!");
     fn_cmd_end(cmd);
+
+    SkrCZoneEnd(zz);
 }
 
 // Compute CMDs

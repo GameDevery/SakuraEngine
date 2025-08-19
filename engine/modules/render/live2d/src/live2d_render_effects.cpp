@@ -69,7 +69,7 @@ struct Live2DRendererImpl : public skr::Live2DRenderer
     uint64_t frame_count = 0;
     uint64_t async_slot_index = 0;
 
-    void initialize(skr::RendererDevice* render_device, skr::ecs::World* world, struct skr_vfs_t* resource_vfs) override
+    void initialize(skr::RenderDevice* render_device, skr::ecs::World* world, struct skr_vfs_t* resource_vfs) override
     {
         this->resource_vfs = resource_vfs;
         effect_query = skr::ecs::QueryBuilder(world)
@@ -85,7 +85,7 @@ struct Live2DRendererImpl : public skr::Live2DRenderer
         skr_live2d_render_view_reset(&view_);
     }
 
-    void finalize(skr::RendererDevice* renderer) override
+    void finalize(skr::RenderDevice* renderer) override
     {
         auto sweepFunction = [&](sugoi_chunk_view_t* r_cv) {
             auto meshes = sugoi::get_owned_ro<skr_live2d_render_model_comp_t>(r_cv);
@@ -545,12 +545,12 @@ protected:
     }
 
     void prepare_pipeline_settings();
-    void prepare_pipeline(skr::RendererDevice* renderer);
-    void prepare_mask_pipeline(skr::RendererDevice* renderer);
-    void free_pipeline(skr::RendererDevice* renderer);
-    void free_mask_pipeline(skr::RendererDevice* renderer);
-    uint32_t* read_shader_bytes(skr::RendererDevice* renderer, const char8_t* name, uint32_t* out_length);
-    CGPUShaderLibraryId create_shader_library(skr::RendererDevice* renderer, const char8_t* name, ECGPUShaderStage stage);
+    void prepare_pipeline(skr::RenderDevice* renderer);
+    void prepare_mask_pipeline(skr::RenderDevice* renderer);
+    void free_pipeline(skr::RenderDevice* renderer);
+    void free_mask_pipeline(skr::RenderDevice* renderer);
+    uint32_t* read_shader_bytes(skr::RenderDevice* renderer, const char8_t* name, uint32_t* out_length);
+    CGPUShaderLibraryId create_shader_library(skr::RenderDevice* renderer, const char8_t* name, ECGPUShaderStage stage);
 
     struct PushConstants
     {
@@ -583,7 +583,7 @@ protected:
 };
 Live2DRendererImpl* live2d_effect = SkrNew<Live2DRendererImpl>();
 
-uint32_t* Live2DRendererImpl::read_shader_bytes(skr::RendererDevice* render_device, const char8_t* name, uint32_t* out_length)
+uint32_t* Live2DRendererImpl::read_shader_bytes(skr::RenderDevice* render_device, const char8_t* name, uint32_t* out_length)
 {
     const auto cgpu_device = render_device->get_cgpu_device();
     const auto backend = cgpu_device->adapter->instance->backend;
@@ -598,7 +598,7 @@ uint32_t* Live2DRendererImpl::read_shader_bytes(skr::RendererDevice* render_devi
     return shader_bytes;
 }
 
-CGPUShaderLibraryId Live2DRendererImpl::create_shader_library(skr::RendererDevice* render_device, const char8_t* name, ECGPUShaderStage stage)
+CGPUShaderLibraryId Live2DRendererImpl::create_shader_library(skr::RenderDevice* render_device, const char8_t* name, ECGPUShaderStage stage)
 {
     const auto cgpu_device = render_device->get_cgpu_device();
     uint32_t shader_length = 0;
@@ -631,7 +631,7 @@ void Live2DRendererImpl::prepare_pipeline_settings()
     depth_state.depth_test = false;
 }
 
-void Live2DRendererImpl::prepare_pipeline(skr::RendererDevice* render_device)
+void Live2DRendererImpl::prepare_pipeline(skr::RenderDevice* render_device)
 {
     const auto cgpu_device = render_device->get_cgpu_device();
 
@@ -705,7 +705,7 @@ void Live2DRendererImpl::prepare_pipeline(skr::RendererDevice* render_device)
     cgpu_free_shader_library(ps);
 }
 
-void Live2DRendererImpl::free_pipeline(skr::RendererDevice* renderer)
+void Live2DRendererImpl::free_pipeline(skr::RenderDevice* renderer)
 {
     auto sig_to_free = pipeline->root_signature;
     cgpu_free_render_pipeline(pipeline);
@@ -715,7 +715,7 @@ void Live2DRendererImpl::free_pipeline(skr::RendererDevice* renderer)
     cgpu_free_root_signature(sig_to_free);
 }
 
-void Live2DRendererImpl::prepare_mask_pipeline(skr::RendererDevice* render_device)
+void Live2DRendererImpl::prepare_mask_pipeline(skr::RenderDevice* render_device)
 {
     const auto cgpu_device = render_device->get_cgpu_device();
 
@@ -789,7 +789,7 @@ void Live2DRendererImpl::prepare_mask_pipeline(skr::RendererDevice* render_devic
     cgpu_free_shader_library(ps);
 }
 
-void Live2DRendererImpl::free_mask_pipeline(skr::RendererDevice* renderer)
+void Live2DRendererImpl::free_mask_pipeline(skr::RenderDevice* renderer)
 {
     auto sig_to_free = mask_pipeline->root_signature;
     cgpu_free_render_pipeline(mask_pipeline);

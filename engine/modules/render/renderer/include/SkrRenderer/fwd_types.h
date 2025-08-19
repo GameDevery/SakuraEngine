@@ -9,7 +9,7 @@ SKR_DECLARE_TYPE_ID_FWD(skr::io, IVRAMService, skr_io_vram_service);
 namespace skr
 {
 enum class EShaderOptionType : uint32_t;
-struct RendererDevice;
+struct RenderDevice;
 } // namespace skr
 
 namespace skr
@@ -55,7 +55,7 @@ struct ShaderMap;
 typedef skr_guid_t VertexLayoutId;
 } // namespace skr
 
-typedef struct skr::RendererDevice SRenderDevice;
+typedef struct skr::RenderDevice SRenderDevice;
 class SkrRendererModule;
 
 typedef SRenderDevice* SRenderDeviceId;

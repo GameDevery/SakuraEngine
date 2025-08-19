@@ -495,7 +495,7 @@ void ModelViewerModule::CookAndLoadGLTF()
             skr::type_id_of<skd::asset::MeshCooker>()       // this cooker cooks t he raw mesh data to mesh resource
         );
         // source file
-        importer->assetPath = u8"C:/Code/SakuraEngine/samples/application/game/assets/sketchfab/loli/scene.gltf";
+        importer->assetPath = u8"C:/Code/SakuraEngine/engine/samples/application/game/assets/sketchfab/loli/scene.gltf";
         CookSystem.ImportAssetMeta(&project, asset, importer, metadata);
 
         // save

@@ -65,7 +65,7 @@ public:
     // 获取最大帧数（额外增加一帧用于异步重叠处理）
     static constexpr uint32_t max_frames_in_flight() SKR_NOEXCEPT
     {
-        return RG_MAX_FRAME_IN_FLIGHT + 1;
+        return RG_MAX_FRAME_IN_FLIGHT;
     }
     
     // 迭代器支持
@@ -75,7 +75,7 @@ public:
     auto end() const SKR_NOEXCEPT { return resources.end(); }
 
 private:
-    T resources[RG_MAX_FRAME_IN_FLIGHT + 1];
+    T resources[RG_MAX_FRAME_IN_FLIGHT];
 };
 
 } // namespace skr::render_graph
