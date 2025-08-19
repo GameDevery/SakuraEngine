@@ -11,10 +11,14 @@
     #define SKR_SCENE_MAX_NAME_LENGTH 32
 #endif
 
-namespace skr::scene
+namespace skr
+{
+class TransformSystem;
+namespace scene
 {
 struct TransformFromRootJob;
-} // namespace skr::scene
+} // namespace scene
+} // namespace skr
 
 namespace skr::scene
 {
@@ -77,6 +81,7 @@ public:
 
 private:
     friend struct TransformFromRootJob;
+    friend class ::skr::TransformSystem;
     Rotator euler;
     mutable bool dirty;
 };
@@ -118,6 +123,7 @@ public:
 
 private:
     friend struct TransformFromRootJob;
+    friend class ::skr::TransformSystem;
     Position value;
     mutable bool dirty;
 };
@@ -169,6 +175,7 @@ public:
 
 private:
     friend struct TransformFromRootJob;
+    friend class ::skr::TransformSystem;
     skr::float3 value;
     mutable bool dirty;
 };

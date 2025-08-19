@@ -1,4 +1,5 @@
 #include "SkrBase/math.h"
+#include "SkrSceneCore/scene_components.h"
 #include "rtm/qvvf.h"
 #include "SkrContainers/hashmap.hpp"
 #include "SkrRT/ecs/world.hpp"
@@ -7,6 +8,16 @@
 
 namespace skr::scene
 {
+
+inline bool check_dirty(const skr::scene::PositionComponent& position,
+    const skr::scene::RotationComponent* rotation,
+    const skr::scene::ScaleComponent* scale)
+{
+    const bool position_dirty = position.get_dirty();
+    const bool rotation_dirty = rotation ? rotation->get_dirty() : false;
+    const bool scale_dirty = scale ? scale->get_dirty() : false;
+    return position_dirty || rotation_dirty || scale_dirty;
+}
 
 struct TransformFromRootJob
 {
@@ -18,7 +29,7 @@ struct TransformFromRootJob
             .has<scene::TransformComponent>();
 
         builder.access(&TransformFromRootJob::children_accessor)
-            .access(&TransformFromRootJob::postion_accessor)
+            .access(&TransformFromRootJob::position_accessor)
             .access(&TransformFromRootJob::scale_accessor)
             .access(&TransformFromRootJob::rotation_accessor)
             .access(&TransformFromRootJob::transform_accessor);
@@ -28,12 +39,9 @@ struct TransformFromRootJob
     {
         auto pOptionalRotation = rotation_accessor.get(entity);
         auto pOptionalScale = scale_accessor.get(entity);
-        const auto& Position = postion_accessor[entity];
+        const auto& Position = position_accessor[entity];
 
-        const bool position_dirty = Position.get_dirty();
-        const bool rotation_dirty = pOptionalRotation ? pOptionalRotation->get_dirty() : false;
-        const bool scale_dirty = pOptionalScale ? pOptionalScale->get_dirty() : false;
-        const bool dirty = position_dirty | rotation_dirty | scale_dirty;
+        const bool dirty = check_dirty(Position, pOptionalRotation, pOptionalScale);
         auto& transform = transform_accessor[entity];
 
         // TODO: 当前的更新逻辑存在问题
@@ -71,7 +79,7 @@ struct TransformFromRootJob
     }
 
     skr::ecs::RandomComponentReader<const skr::scene::ChildrenComponent> children_accessor;
-    skr::ecs::RandomComponentReader<const skr::scene::PositionComponent> postion_accessor;
+    skr::ecs::RandomComponentReader<const skr::scene::PositionComponent> position_accessor;
     skr::ecs::RandomComponentReader<const skr::scene::ScaleComponent> scale_accessor;
     skr::ecs::RandomComponentReader<const skr::scene::RotationComponent> rotation_accessor;
     skr::ecs::RandomComponentReadWrite<skr::scene::TransformComponent> transform_accessor;
@@ -120,7 +128,73 @@ void TransformSystem::CalculateFromRoot() SKR_NOEXCEPT
 void TransformSystem::CalculateTransform(sugoi_entity_t entity) SKR_NOEXCEPT
 {
     SkrZoneScopedN("CalculateTransform");
-    // TODO: Implement the reverse dirty propagation logic
+    auto parent_accessor = impl->pWorld->random_read<const skr::scene::ParentComponent>();
+    auto position_accessor = impl->pWorld->random_read<const skr::scene::PositionComponent>();
+    auto rotation_accessor = impl->pWorld->random_read<const skr::scene::RotationComponent>();
+    auto scale_accessor = impl->pWorld->random_read<const skr::scene::ScaleComponent>();
+    auto children_accessor = impl->pWorld->random_read<const skr::scene::ChildrenComponent>();
+    auto transform_accessor = impl->pWorld->random_readwrite<skr::scene::TransformComponent>();
+
+    skr::ecs::Entity ent{ entity };
+    auto check_dirty_ent = [&](skr::ecs::Entity ent) {
+        auto pOptionalRotation = rotation_accessor.get(ent);
+        auto pOptionalScale = scale_accessor.get(ent);
+        const auto& Position = position_accessor[ent];
+        return check_dirty(Position, pOptionalRotation, pOptionalScale);
+    };
+
+    std::function<void(skr::ecs::Entity, const skr::scene::Transform&)> update_transform;
+    update_transform = [&](skr::ecs::Entity _ent, const skr::scene::Transform& prev_transform) {
+        auto pOptionalRotation = rotation_accessor.get(_ent);
+        auto pOptionalScale = scale_accessor.get(_ent);
+        const auto& Position = position_accessor[_ent];
+
+        const bool dirty = check_dirty(Position, pOptionalRotation, pOptionalScale);
+        auto& transform = transform_accessor[_ent];
+        if (dirty)
+        {
+            transform.set(
+                Position.get(),
+                pOptionalRotation ? skr::QuatF(pOptionalRotation->get()) : skr::QuatF(0, 0, 0, 1),
+                pOptionalScale ? pOptionalScale->get() : skr_float3_t{ 1, 1, 1 });
+            transform.set(prev_transform * transform.get());
+
+            Position.dirty = false;
+            if (pOptionalRotation)
+                pOptionalRotation->dirty = false;
+            if (pOptionalScale)
+                pOptionalScale->dirty = false;
+        }
+
+        for (const auto& child : children_accessor[_ent])
+        {
+            update_transform(child.entity, transform.get());
+        }
+    };
+
+    bool dirty = check_dirty_ent(ent);
+    const scene::ParentComponent* pParent = nullptr;
+    if (dirty)
+    {
+        do
+        {
+            pParent = parent_accessor.get(ent);
+            if (!pParent)
+            {
+                // if no parent, use the root transform
+                CalculateFromRoot();
+                return;
+            }
+            ent = pParent->entity;
+        } while ((ent != skr::ecs::Entity{ SUGOI_NULL_ENTITY } && check_dirty_ent(ent)));
+    }
+
+    // now we have the first parent that is not dirty, calculate the transform
+
+    for (const auto& child : children_accessor[ent])
+    {
+        update_transform(child.entity, skr::scene::Transform::Identity());
+    }
 }
 
 } // namespace skr
