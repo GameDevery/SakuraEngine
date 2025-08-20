@@ -405,9 +405,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
         };
         {
             scene_render_system->update();
-            // TODO: remove this and sync the render_system only
-            skr::ecs::TaskScheduler::Get()->sync_all();
-            // SKR_LOG_INFO(u8"Scene Render System has %d drawcalls", scene_render_system->get_drawcalls().size());
+            scene_render_system->get_context()->update_finish.wait(true);
             scene_renderer->draw_primitives(
                 render_graph,
                 scene_render_system->get_drawcalls());

@@ -37,8 +37,7 @@
 #include "SkrSceneCore/transform_system.h"
 
 #include "scene_renderer.hpp"
-// #include "scene_render_system.h"
-#include "anim_render_system.h"
+#include "scene_render_system.h"
 
 #include "helper.hpp"
 
@@ -98,8 +97,7 @@ struct SceneSampleSkelMeshModule : public skr::IDynamicModule
     skd::SProject project;
     skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
     skr::TransformSystem* transform_system = nullptr;
-    // skr::scene::SceneRenderSystem* scene_render_system = nullptr;
-    skr::scene::AnimRenderSystem* anim_render_system = nullptr;
+    skr::scene::SceneRenderSystem* scene_render_system = nullptr;
 };
 
 IMPLEMENT_DYNAMIC_MODULE(SceneSampleSkelMeshModule, SceneSample_SkelMesh);
@@ -221,8 +219,8 @@ void SceneSampleSkelMeshModule::on_load(int argc, char8_t** argv)
     world.initialize();
     actor_manager.initialize(&world);
     transform_system = skr_transform_system_create(&world);
-    // scene_render_system = skr_scene_render_system_create(&world);
-    anim_render_system = skr::scene::AnimRenderSystem::Create(&world);
+
+    scene_render_system = skr::scene::SceneRenderSystem::Create(&world);
     render_device = SkrRendererModule::Get()->get_render_device();
 
     auto resourceRoot = (skr::fs::current_directory() / u8"../resources");
@@ -253,8 +251,7 @@ void SceneSampleSkelMeshModule::on_load(int argc, char8_t** argv)
     }
     scene_renderer = skr::SceneRenderer::Create();
     scene_renderer->initialize(render_device, &world, resource_vfs);
-    // scene_render_system->bind_renderer(scene_renderer);
-    anim_render_system->bind_renderer(scene_renderer);
+    scene_render_system->bind_renderer(scene_renderer);
 }
 
 void SceneSampleSkelMeshModule::on_unload()
@@ -268,7 +265,7 @@ void SceneSampleSkelMeshModule::on_unload()
         DestroyResourceSystem();
     }
     skr_transform_system_destroy(transform_system);
-    skr::scene::AnimRenderSystem::Destroy(anim_render_system);
+    skr::scene::SceneRenderSystem::Destroy(scene_render_system);
 
     actor_manager.finalize();
     world.finalize();
@@ -651,10 +648,9 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
         };
         {
             SkrZoneScopedN("AnimRenderJob");
-            anim_render_system->update();
-            skr::ecs::TaskScheduler::Get()->sync_all();
-            scene_renderer->draw_primitives(render_graph,
-                anim_render_system->get_drawcalls());
+            scene_render_system->update();
+            scene_render_system->get_context()->update_finish.wait(true);
+            scene_renderer->draw_primitives(render_graph, scene_render_system->get_drawcalls());
         }
 
         {
