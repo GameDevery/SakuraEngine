@@ -371,6 +371,11 @@ void RenderGraph::add_before_execute_callback(const BeforeExecuteCallback& callb
     exec_callbacks.add(callback);
 }
 
+void RenderGraph::wait_frame(uint64_t frame_index) SKR_NOEXCEPT
+{
+
+}
+
 uint64_t RenderGraph::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     for (auto callback : exec_callbacks)

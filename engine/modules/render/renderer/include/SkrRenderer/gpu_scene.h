@@ -118,10 +118,12 @@ public:
     const GPUSceneComponentType* GetComponentType(SOAIndex local_id) const;
 
     inline skr::ecs::World* GetECSWorld() const { return ecs_world; }
-    inline skr::render_graph::BufferHandle GetSceneBuffer() const { return scene_buffer; }
+    inline skr::render_graph::BufferHandle GetSceneBuffer(skr::render_graph::RenderGraph* graph) const 
+    {
+        return frame_ctxs.get(graph).scene_handle;
+    }
     skr::render_graph::AccelerationStructureHandle GetTLAS(skr::render_graph::RenderGraph* graph) const 
     { 
-        // Return the current frame's TLAS handle
         return frame_ctxs.get(graph).tlas_handle;
     }
     inline uint32_t GetInstanceCount() const { return instance_count; }
@@ -171,7 +173,6 @@ private:
 
     // core data 的 graph handle
     SOASegmentBuffer soa_segments;
-    skr::render_graph::BufferHandle scene_buffer; 
 
 private:
     static constexpr uint32_t kLaneCount = 2;
@@ -213,16 +214,26 @@ private:
     // Buffer with FrameResource for deferred destruction
     struct FrameContext
     {
+        FrameContext() = default;
+
+        // Delete copies.
+        FrameContext(FrameContext const&) = delete;
+        FrameContext& operator=(FrameContext const&) = delete;
+
         // Single buffer to discard when this frame comes around again
         CGPUBufferId buffer_to_discard = nullptr;
         TLASHandle frame_tlas;
         skr::render_graph::AccelerationStructureHandle tlas_handle;
+        skr::render_graph::BufferHandle scene_handle; 
         
         ~FrameContext()
         {
             // Cleanup any remaining buffer when context is destroyed
             if (buffer_to_discard) 
+            {
                 cgpu_free_buffer(buffer_to_discard);
+                buffer_to_discard = nullptr;
+            }
         }
     };
     skr::render_graph::FrameResource<FrameContext> frame_ctxs;
