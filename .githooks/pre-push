@@ -1,26 +1,28 @@
 #!/bin/sh
 
-# Pre-push hook to block pushing sensitive directories to GitHub
-# This hook is permanent and will work across all platforms
-
-# Read protected directories from config file
-CONFIG_FILE=".github-protected-dirs"
-if [ -f "$CONFIG_FILE" ]; then
-    PROTECTED_DIRS=$(grep -v '^#' "$CONFIG_FILE" | grep -v '^$' | tr '\n' ' ')
-else
-    # Fallback if config file doesn't exist
-    PROTECTED_DIRS="path/to/secret/directory another/private/dir internal/tools"
-fi
+# Pre-push hook to block pushing sensitive directories
+# Supports different rules for different remotes and branches
 
 remote="$1"
 url="$2"
 
-# Check if pushing to GitHub
+# Configuration files in .githooks directory
+ENGINE_PROTECTED=".githooks/engine-protected-dirs"
+RENDER_PROTECTED=".githooks/render-protected-dirs"
+
+# Check if environment variable to skip check is set
+if [ "$SKIP_PROTECTION_CHECK" = "1" ]; then
+    exit 0
+fi
+
+# Main logic - check different rules based on remote URL
 case "$url" in
-    *github.com*)
-        # Check if environment variable to skip check is set
-        if [ "$SKIP_GITHUB_CHECK" = "1" ]; then
-            exit 0
+    *github.com*SakuraEngine*)
+        # GitHub repos - use ENGINE_PROTECTED for d5 content
+        if [ -f "$ENGINE_PROTECTED" ]; then
+            PROTECTED_DIRS=$(grep -v '^#' "$ENGINE_PROTECTED" | grep -v '^$' | tr '\n' ' ')
+        else
+            PROTECTED_DIRS="d5 d5-* d5_*"
         fi
         
         # Read the commits being pushed
@@ -44,16 +46,14 @@ case "$url" in
             for dir in $PROTECTED_DIRS; do
                 # Check if any commits touch the protected directory
                 if git diff --name-only $range 2>/dev/null | grep -q "^$dir"; then
-                    echo "❌ ERROR: Attempting to push changes to protected directory: $dir"
+                    echo "❌ ERROR: Cannot push d5-related content to GitHub"
+                    echo "   Protected path: $dir"
                     echo ""
                     echo "This push to GitHub has been blocked because it contains"
                     echo "changes to directories that should not be on GitHub."
                     echo ""
-                    echo "To push to GitLab instead:"
-                    echo "  git push gitlab $local_ref"
-                    echo ""
                     echo "To override (NOT RECOMMENDED):"
-                    echo "  SKIP_GITHUB_CHECK=1 git push github ..."
+                    echo "  SKIP_PROTECTION_CHECK=1 git push $remote ..."
                     exit 1
                 fi
                 
@@ -62,10 +62,93 @@ case "$url" in
                     echo "❌ ERROR: Protected directory exists: $dir"
                     echo ""
                     echo "Cannot push to GitHub - the branch contains protected directories."
-                    echo "Please use GitLab for branches with sensitive content."
                     exit 1
                 fi
             done
+        done
+        ;;
+        
+    *D5Engine*)
+        # D5Engine internal repository - check branch type
+        # Read the refs being pushed to determine branch type
+        while read local_ref local_sha remote_ref remote_sha
+        do
+            # Skip deleted branches
+            if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+                continue
+            fi
+            
+            # Extract branch name
+            branch_name=$(echo "$remote_ref" | sed 's/refs\/heads\///')
+            
+            # Determine commit range
+            if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+                # New branch - check all commits
+                range="$local_sha"
+            else
+                # Existing branch - check new commits
+                range="$remote_sha..$local_sha"
+            fi
+            
+            # Check branch type and apply appropriate rules
+            case "$branch_name" in
+                engine|engine-*|main|master|dev-engine)
+                    # Engine branches - protect d5 content (same as GitHub)
+                    if [ -f "$ENGINE_PROTECTED" ]; then
+                        PROTECTED_DIRS=$(grep -v '^#' "$ENGINE_PROTECTED" | grep -v '^$' | tr '\n' ' ')
+                    else
+                        PROTECTED_DIRS="d5 d5-* d5_*"
+                    fi
+                    
+                    for dir in $PROTECTED_DIRS; do
+                        # Check if any commits touch the protected directory
+                        if git diff --name-only $range 2>/dev/null | grep -q "^$dir"; then
+                            echo "❌ ERROR: Engine branches cannot modify d5-related content"
+                            echo "   Branch: $branch_name"
+                            echo "   Protected path: $dir"
+                            echo ""
+                            echo "To override (NOT RECOMMENDED):"
+                            echo "  SKIP_PROTECTION_CHECK=1 git push $remote $local_ref"
+                            exit 1
+                        fi
+                        
+                        # Also check if directory exists in the tree
+                        if git ls-tree -r $local_sha --name-only 2>/dev/null | grep -q "^$dir/"; then
+                            echo "❌ ERROR: Protected directory exists in tree: $dir"
+                            echo "   Engine branches cannot contain d5-related content"
+                            echo ""
+                            echo "To override (NOT RECOMMENDED):"
+                            echo "  SKIP_PROTECTION_CHECK=1 git push $remote $local_ref"
+                            exit 1
+                        fi
+                    done
+                    ;;
+                    
+                render-*|feat-*|dev-*|hotfix/*|bugfix/*)
+                    # Feature branches - protect engine directory
+                    # Skip dev-engine as it's an engine branch
+                    if [ "$branch_name" != "dev-engine" ]; then
+                        if [ -f "$RENDER_PROTECTED" ]; then
+                            PROTECTED_DIRS=$(grep -v '^#' "$RENDER_PROTECTED" | grep -v '^$' | tr '\n' ' ')
+                        else
+                            PROTECTED_DIRS="engine engine/**"
+                        fi
+                        
+                        for dir in $PROTECTED_DIRS; do
+                            # Check if any commits touch the protected directory
+                            if git diff --name-only $range 2>/dev/null | grep -q "^$dir"; then
+                                echo "❌ ERROR: Feature branches cannot modify the engine directory"
+                                echo "   Branch: $branch_name"
+                                echo "   Protected path: $dir"
+                                echo ""
+                                echo "To override (NOT RECOMMENDED):"
+                                echo "  SKIP_PROTECTION_CHECK=1 git push $remote $local_ref"
+                                exit 1
+                            fi
+                        done
+                    fi
+                    ;;
+            esac
         done
         ;;
 esac
