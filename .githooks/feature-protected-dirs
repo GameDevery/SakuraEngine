@@ -1,0 +1,9 @@
+# Protected directories for feature branches (feature/*, dev-*, etc.)
+# These paths cannot be modified in feature branches of D5Engine
+# One path per line
+
+# Engine core directory - feature branches should not modify
+engine
+engine/**
+
+# Add more protected paths below as needed
