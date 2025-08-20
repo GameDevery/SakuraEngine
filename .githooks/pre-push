@@ -124,7 +124,7 @@ case "$url" in
                     done
                     ;;
                     
-                render-*|feat-*|dev-*|hotfix/*|bugfix/*)
+                render|render-*|feat-*|dev-*|hotfix/*|bugfix/*)
                     # Feature branches - protect engine directory
                     # Skip dev-engine as it's an engine branch
                     if [ "$branch_name" != "dev-engine" ]; then
