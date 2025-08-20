@@ -11,6 +11,7 @@
 #include <SkrV8/bind_template/v8bt_mapping.hpp>
 #include <SkrV8/bind_template/v8bt_object.hpp>
 #include <SkrV8/bind_template/v8bt_value.hpp>
+#include <SkrV8/v8_vfs.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
