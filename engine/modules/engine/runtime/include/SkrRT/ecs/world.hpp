@@ -257,7 +257,7 @@ public:
 
     template <typename T>
         requires std::is_copy_constructible_v<T>
-    void dispatch_task(T TaskBody, uint32_t batch_size, skr::span<skr::ecs::Entity> entities)
+    void dispatch_task(T TaskBody, uint32_t batch_size, skr::span<skr::ecs::Entity> entities, skr::Optional<TaskOptions> opts = skr::Optional<TaskOptions>())
     {
         SKR_ASSERT(TaskScheduler::Get());
 
@@ -266,6 +266,7 @@ public:
 
         Access->task = skr::RC<Task>::New();
         Access->task->batch_size = batch_size;
+        Access->opts = opts;
         skr::stl_function<void(sugoi_chunk_view_t, uint32_t, uint32_t)> TASK =
             [TaskBody, Access, Storage = this->storage](sugoi_chunk_view_t view, uint32_t count, uint32_t offset) mutable {
                 T TASK = TaskBody;
@@ -308,7 +309,7 @@ public:
 
     template <typename T>
         requires std::is_copy_constructible_v<T>
-    EntityQuery* dispatch_task(T TaskBody, uint32_t batch_size, sugoi_query_t* reuse_query)
+    EntityQuery* dispatch_task(T TaskBody, uint32_t batch_size, sugoi_query_t* reuse_query, skr::Optional<TaskOptions> opts = skr::Optional<TaskOptions>())
     {
         SKR_ASSERT(TaskScheduler::Get());
 
@@ -323,6 +324,7 @@ public:
         Access->query = reuse_query;
         Access->task = skr::RC<Task>::New();
         Access->task->batch_size = batch_size;
+        Access->opts = opts;
         skr::stl_function<void(sugoi_chunk_view_t, uint32_t, uint32_t)> TASK =
             [TaskBody, Access, Storage = this->storage](sugoi_chunk_view_t view, uint32_t count, uint32_t offset) mutable {
                 T TASK = TaskBody;

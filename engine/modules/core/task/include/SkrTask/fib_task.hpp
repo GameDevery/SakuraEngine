@@ -223,7 +223,7 @@ namespace skr::task
     {
     public:
         using internal_t = marl::Event;
-        event_t() : internal(marl::Event::Mode::Manual) {}
+        event_t(bool initialState = false) : internal(marl::Event::Mode::Manual, initialState) {}
         event_t(std::nullptr_t) : internal(nullptr) {}
 
         bool operator==(const event_t& other) const { return internal == other.internal; }
