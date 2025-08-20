@@ -1,0 +1,8 @@
+# Directories that should NOT be pushed to GitHub
+# One directory per line, relative to repository root
+# Lines starting with # are comments
+
+# Example protected directories (modify as needed):
+d5
+d5-render
+d5_render
