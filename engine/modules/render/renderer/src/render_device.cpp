@@ -110,13 +110,6 @@ void RendererDeviceImpl::initialize(const Builder& builder)
     cgpu_enum_adapters(instance, adapters, &adapters_count);
     adapter = adapters[0];
 
-    // create default nsight tracker on nvidia devices
-    if (cgpux_adapter_is_nvidia(adapter))
-    {
-        CGPUNSightTrackerDescriptor desc = {};
-        nsight_tracker = cgpu_create_nsight_tracker(instance, &desc);
-    }
-
     // create device
     const auto cpy_queue_count_ = cgpu_min(cgpu_query_queue_count(adapter, CGPU_QUEUE_TYPE_TRANSFER), MAX_CPY_QUEUE_COUNT);
     const auto cmpt_queue_count_ = cgpu_min(cgpu_query_queue_count(adapter, CGPU_QUEUE_TYPE_COMPUTE), MAX_CMPT_QUEUE_COUNT);
@@ -142,6 +135,13 @@ void RendererDeviceImpl::initialize(const Builder& builder)
     device_desc.queue_group_count = (uint32_t)Gs.size();
     device = cgpu_create_device(adapter, &device_desc);
     gfx_queue = cgpu_get_queue(device, CGPU_QUEUE_TYPE_GRAPHICS, 0);
+
+    // create default nsight tracker on nvidia devices
+    if (cgpux_adapter_is_nvidia(adapter))
+    {
+        CGPUNSightTrackerDescriptor desc = {};
+        nsight_tracker = cgpu_create_nsight_tracker(device, &desc);
+    }
 
     if (cpy_queue_count_) // request at least one copy queue by default
     {

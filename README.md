@@ -92,16 +92,6 @@ https://user-images.githubusercontent.com/39457738/192722537-6ab035a5-2789-43d0-
 
 ## 示例 (从上到下逐渐贴近底层)
 
-### [Multi-Player Server/Game](samples/application/multiplayer)
-
-基于 ECS 的多人游戏以及服务器。
-
-<div align=center>
-
-https://user-images.githubusercontent.com/39457738/232537408-1266011b-d722-4b0b-9bd3-5c3af0faf043.mp4
-
-</div>
-
 ### [Next Generation Graphics](samples/cgpu/cgpu-statebuffer)
 
 使用 StateBuffer 的次世代 CGPU 图形接口。摒弃 PSO 的概念，使用 StateBuffer 作为图形管线的状态描述。传统的图形管线 API 往往使用 PSO，其中打包了所有的管线状态以及着色器 ISA，并整体上传到 GPU 上：
@@ -121,16 +111,6 @@ StateBuffer 由一系列的 StateChunk 组成，每个 StateChunk 描述了一�
 </div>
 
 StateBuffer 可以大幅缓解管线和着色器组合爆炸引起的内存膨胀问题，而 PSO 反而会加剧此问题。
-
-### [MVU GUI]()
-
-WIP...
-
-### [GUI Canvas](samples/application/ogui2/robjects)
-
-GUI 的渲染树 (RenderTree) 层，有排版和渲染 Render Object 的功能。支持基本图元、纹理、颜色刷和文本段落等。
-
-![RObjects](https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/showcase/RObjects.gif)
 
 ### [Live2D Viewer](samples/application/live2d-viewer)
 
@@ -243,17 +223,6 @@ Shipping Build 的最终呈现帧数可以轻松地突破数千帧，这是 Cubi
 ## 参考和借鉴的开源库
 
 - [quill](https://github.com/odygrd/quill) v3.0.2 (MIT)
-
-## 接入的扩展 API 以及版本
-
-- [vulkan headers](https://github.com/KhronosGroup/Vulkan-Headers) & volk 1.4.304.0
-- nvapi R510
-- amd_ags 6.0.1
-
-## 内置 SDK /软件版本
-
-- ispc 1.18.0
-- python 3.10.8
 
 ## 构建
 

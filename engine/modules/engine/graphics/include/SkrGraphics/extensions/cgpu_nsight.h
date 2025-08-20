@@ -25,13 +25,7 @@ struct CGPUNSightTracker
 };
 
 CGPU_EXTERN_C CGPU_API
-CGPUNSightTrackerId cgpu_create_nsight_tracker(CGPUInstanceId instance, const CGPUNSightTrackerDescriptor* descriptor);
+CGPUNSightTrackerId cgpu_create_nsight_tracker(CGPUDeviceId device, const CGPUNSightTrackerDescriptor* descriptor);
 
 CGPU_EXTERN_C CGPU_API
 void cgpu_free_nsight_tracker(CGPUNSightTrackerId tracker);
-
-#ifdef _WIN32
-struct ID3D12Device;
-CGPU_EXTERN_C CGPU_API
-void cgpu_nsight_initialize_dx12_aftermath(CGPUInstanceId instance, ID3D12Device* device);
-#endif

@@ -20,7 +20,7 @@ public static class SkrGraphics
             .AddCppFiles("src/build.*.cpp");
 
         // ignore warnings from SDKs
-        SkrGraphics.ClangCl_CXFlags(Visibility.Private, 
+        SkrGraphics.ClangCl_CXFlags(Visibility.Private,
             "-Wno-switch",
             "-Wno-microsoft-cast",
             "-Wno-ignored-attributes",
@@ -34,8 +34,8 @@ public static class SkrGraphics
             OCOptions.Arguments.CppFlags(Visibility.Private, "-fobjc-arc");
 
             SkrGraphics
-                .AddObjCFiles(OCOptions, "src/build.*.m") 
-                .AddObjCppFiles(OCOptions, "src/build.*.mm") 
+                .AddObjCFiles(OCOptions, "src/build.*.m")
+                .AddObjCppFiles(OCOptions, "src/build.*.mm")
                 .AppleFramework(Visibility.Public, "CoreFoundation", "Cocoa", "Metal", "IOKit", "QuartzCore")
                 .Defines(Visibility.Private, "VK_USE_PLATFORM_MACOS_MVK");
         }
@@ -44,7 +44,28 @@ public static class SkrGraphics
         {
             SkrGraphics
                 .Defines(Visibility.Private, "UNICODE")
-                .Link(Visibility.Private, "nvapi_x64")
+
+                .Require("WinPixEventRuntime", new PackageConfig { Version = new Version(1, 0, 240308001) })
+                .Depend(Visibility.Private, "WinPixEventRuntime@WinPixEventRuntime")
+
+                .Require("NvML", new PackageConfig { Version = new Version(13, 0, 0) })
+                .Depend(Visibility.Private, "NvML@NvML")
+
+                .Require("NvApi", new PackageConfig { Version = new Version(580, 0, 0) })
+                .Depend(Visibility.Private, "NvApi@NvApi")
+
+                .Require("NvPerf", new PackageConfig { Version = new Version(2025, 1, 0) })
+                .Depend(Visibility.Private, "NvPerf@NvPerf")
+
+                .Require("NvAftermath", new PackageConfig { Version = new Version(2025, 1, 0) })
+                .Depend(Visibility.Private, "NvAftermath@NvAftermath")
+
+                .Require("AmdAgs", new PackageConfig { Version = new Version(6, 3, 0) })
+                .Depend(Visibility.Private, "AmdAgs@AmdAgs")
+
+                .Require("AmdGPUPerf", new PackageConfig { Version = new Version(4, 1, 0) })
+                .Depend(Visibility.Private, "AmdGPUPerf@AmdGPUPerf")
+
                 .Link(Visibility.Private, "WinPixEventRuntime");
         }
     }
@@ -57,11 +78,7 @@ public class SkrGraphicsSetup : ISetup
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
             Task.WaitAll(
-                Install.SDK("dxc-2025_02_21"),
-                Install.SDK("amdags"),
-                Install.SDK("nvapi"),
-                Install.SDK("nsight-2025.1.0.25009"),
-                Install.SDK("WinPixEventRuntime")
+                Install.SDK("dxc-2025_02_21")
             );
         }
     }
