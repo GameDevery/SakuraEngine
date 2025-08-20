@@ -81,6 +81,11 @@ struct ComponentAccess
     EAccessType access_type = EAccessType::Component;
 };
 
+struct TaskOptions
+{
+    skr::InlineVector<skr::task::weak_event_t, 4> on_finishes;
+};
+
 struct TaskSignature
 {
 public:
@@ -95,6 +100,7 @@ public:
     const sugoi_query_t* query = nullptr;
     uint32_t thread_affinity = ~0;
     bool self_confict = false;
+    skr::Optional<TaskOptions> opts;
 
 protected:
     friend struct TaskScheduler;
@@ -108,7 +114,8 @@ protected:
 
     friend struct WorkUnitGenerator;
     StackMap<const sugoi_group_t*, WorkGroup> _work_groups;
-    skr::task::counter_t _finish;
+    skr::task::counter_t _finish_counter;
+    skr::task::event_t _finish;
 
     std::atomic_uint32_t _exec_counter = 0;
 };

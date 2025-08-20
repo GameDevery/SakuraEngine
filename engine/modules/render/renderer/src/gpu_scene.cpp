@@ -314,9 +314,13 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
         if (!Lane.add_ents.is_empty())
         {
             SkrZoneScopedN("GPUScene::AddEntityToGPUScene");
+            skr::ecs::TaskOptions options;
+            upload_ctx.add_finish.clear();
+            options.on_finishes.add(upload_ctx.add_finish);
+
             AddEntityToGPUScene add;
             add.pScene = this;
-            ecs_world->dispatch_task(add, get_batchsize(Lane.add_ents.size()), Lane.add_ents);
+            ecs_world->dispatch_task(add, get_batchsize(Lane.add_ents.size()), Lane.add_ents, std::move(options));
         }
         if (!Lane.dirty_ents.is_empty())
         {
@@ -326,9 +330,13 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
             uint64_t total_dirty_count = Lane.dirty_comp_count.load();
             upload_ctx.soa_segments_uploads.resize_unsafe(total_dirty_count);
 
+            skr::ecs::TaskOptions options;
+            upload_ctx.scan_finish.clear();
+            options.on_finishes.add(upload_ctx.scan_finish);
+
             ScanGPUScene scan(graph, &upload_ctx.DRAMCache, &upload_ctx.upload_counter);
             scan.pScene = this;
-            ecs_world->dispatch_task(scan, get_batchsize(Lane.dirty_ents.size()), Lane.dirty_ents);
+            ecs_world->dispatch_task(scan, get_batchsize(Lane.dirty_ents.size()), Lane.dirty_ents, std::move(options));
         }
 
         // Import TLAS to RenderGraph if it exists
@@ -387,9 +395,9 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
             },
             [this, dispatch_groups, ops_size, ops_buffer](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
                 SkrZoneScopedN("GPUScene::SparseUploadScene");
-                
-                // TODO: REMOVE THIS AND SYNC GPUSCENE TASKS ONLY
-                skr::ecs::TaskScheduler::Get()->sync_all();
+                auto& upload_ctx = upload_ctxs.get(ctx.graph);
+                upload_ctx.add_finish.wait(true);
+                upload_ctx.scan_finish.wait(true);
 
                 // Send BLAS / TLAS requests
                 {
@@ -418,7 +426,6 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
                 }
 
                 auto& Lane = GetLaneForUpload();
-                auto& upload_ctx = upload_ctxs.get(ctx.graph);
                 uint32_t actual_uploads = upload_ctx.upload_counter.load();
                 if (actual_uploads)
                 {

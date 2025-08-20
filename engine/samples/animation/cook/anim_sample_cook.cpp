@@ -164,7 +164,7 @@ int AnimSampleCookModule::main_module_exec(int argc, char8_t** argv)
 
     auto& system = *skd::asset::GetCookSystem();
     // import skeleton
-    auto source_gltf = u8"D:/ws/repos/SakuraEngine/samples/application/game/assets/sketchfab/ruby/scene.gltf";
+    auto source_gltf = u8"D:/ws/repos/SakuraEngine/samples/assets/sketchfab/ruby/scene.gltf";
     auto skelImporter = skd::asset::GltfSkelImporter::Create<skd::asset::GltfSkelImporter>();
     auto meshdata = skd::asset::SkeletonAsset::Create<skd::asset::SkeletonAsset>();
     auto skel_asset = skr::RC<skd::asset::AssetMetaFile>::New(
