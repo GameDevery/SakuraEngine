@@ -249,6 +249,17 @@ uint64_t RenderGraphBackend::get_latest_finished_frame() SKR_NOEXCEPT
     return result;
 }
 
+void RenderGraphBackend::wait_frame(uint64_t to_wait) SKR_NOEXCEPT
+{
+    SkrZoneScopedN("WaitFrame");
+    if (to_wait > frame_index)
+        return;
+    if (to_wait < frame_index - RG_MAX_FRAME_IN_FLIGHT)
+        return;
+    const auto executor_to_wait = to_wait % RG_MAX_FRAME_IN_FLIGHT;
+    cgpu_wait_fences(&executors[executor_to_wait].exec_fence, 1);
+}
+
 uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     for (auto callback : exec_callbacks)
@@ -409,6 +420,7 @@ uint32_t RenderGraphBackend::collect_buffer_garbage(uint64_t critical_frame, uin
         {
             if (pooled.mark.frame_index <= critical_frame && (pooled.mark.tags & with_tags) && !(pooled.mark.tags & without_tags))
             {
+                buffer_view_pool.erase(pooled.buffer);
                 cgpu_free_buffer(pooled.buffer);
                 pooled.buffer = nullptr;
             }
