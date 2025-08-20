@@ -16,7 +16,7 @@ public static class NvApi
                 if (Config.Version == new Version(580, 0, 0))
                 {
                     Target.IncludeDirs(Visibility.Public, "R580")
-                        .Link(Visibility.Public, "nvapi_x64");
+                        .Link(Visibility.Public, "nvapi64");
                 }
                 else
                 {
