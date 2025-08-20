@@ -6,13 +6,15 @@ public static class NvApi
 {
     static NvApi()
     {
+        // TODO: WE NEED TO ENABLE SETUP IN PACKAGE SCOPE
+        BuildSystem.AddSetup<NvApiSetup>();
+
         BuildSystem.Package("NvApi")
             .AddTarget("NvApi", (Target Target, PackageConfig Config) =>
             {
                 Target.TargetType(TargetType.HeaderOnly);
                 if (Config.Version == new Version(580, 0, 0))
                 {
-                    BuildSystem.AddSetup<NvApiSetup>();
                     Target.IncludeDirs(Visibility.Public, "R580")
                         .Link(Visibility.Public, "nvapi_x64");
                 }
