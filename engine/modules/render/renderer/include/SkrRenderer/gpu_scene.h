@@ -205,6 +205,8 @@ private:
         skr::Vector<uint8_t> DRAMCache;
         std::atomic_uint32_t upload_counter = 0;
         std::atomic<uint64_t> upload_cursor = 0;
+        skr::task::event_t add_finish = skr::task::event_t(true);
+        skr::task::event_t scan_finish = skr::task::event_t(true);
     };
     skr::render_graph::FrameResource<UploadContext> upload_ctxs;
 
