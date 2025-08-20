@@ -10,7 +10,7 @@
 #include "nsight-aftermath/GFSDK_Aftermath_GpuCrashDumpDecoding.h"
 #include "./../common/common_utils.h"
 #include "./cgpu_nsight_tracker.hpp"
-#include "./../winheaders.h"
+#include "./../winheaders.h" // IWYU pragma: keep
 
 inline cgpu::String AftermathErrorMessage(GFSDK_Aftermath_Result result)
 {
