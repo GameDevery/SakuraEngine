@@ -45,7 +45,7 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
                 auto entity = Context.entities()[i];
                 const auto& mesh = meshes[i];
                 if (!mesh.mesh_resource.is_resolved())
-                {                    
+                {
                     pScene->AddEntity(entity);
                     continue;
                 }
@@ -139,7 +139,7 @@ struct ScanGPUScene : public GPUSceneInstanceTask
                         continue;
 
                     const auto data = Context.read(cpu_type).at(i);
-                    if (!data) 
+                    if (!data)
                         continue;
 
                     const auto& component_info = pScene->component_types[gpu_type];
@@ -165,8 +165,7 @@ struct ScanGPUScene : public GPUSceneInstanceTask
                         {
                             SKR_LOG_ERROR(u8"GPUScene: data upload operations array overflow - index %u >= size %u",
                                 upload_index,
-                                (uint32_t)uploads.size()
-                            );
+                                (uint32_t)uploads.size());
                         }
                     }
                     else
@@ -199,17 +198,17 @@ void GPUScene::AdjustBuffer(skr::render_graph::RenderGraph* graph)
         tlas_instances.resize_zeroed(tlas_instances.size() + Lane.add_ents.size());
     }
     const auto required_instances = tlas_instances.size();
-    
+
     // Get current frame's buffer context for deferred destruction
     auto& current_buffer_ctx = frame_ctxs.get(graph);
-    
+
     // First, clean up any buffer marked for discard from previous frame
     if (current_buffer_ctx.buffer_to_discard != nullptr)
     {
         cgpu_free_buffer(current_buffer_ctx.buffer_to_discard);
         current_buffer_ctx.buffer_to_discard = nullptr;
     }
-    
+
     if (soa_segments.needs_resize(required_instances))
     {
         SKR_LOG_INFO(u8"GPUScene: GPUScene data resize needed. Current: %u/%u instances",
@@ -222,7 +221,7 @@ void GPUScene::AdjustBuffer(skr::render_graph::RenderGraph* graph)
         // Resize and get old buffer (no blocking sync needed now)
         auto old_buffer = soa_segments.resize(new_capacity);
         scene_buffer = soa_segments.import_buffer(graph, u8"scene_buffer");
-        
+
         if (old_buffer && soa_segments.get_buffer())
         {
             // Import old buffer for copy source
@@ -233,7 +232,7 @@ void GPUScene::AdjustBuffer(skr::render_graph::RenderGraph* graph)
                 });
             // Copy data from old to new buffer
             soa_segments.copy_segments(graph, old_buffer_handle, scene_buffer, existed_instances);
-            
+
             // Mark old buffer for deferred destruction (will be freed next time this frame slot comes around)
             // Unlike TLAS, we don't reuse the old buffer - we always discard it after copy
             current_buffer_ctx.buffer_to_discard = old_buffer;
@@ -344,8 +343,7 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
         frame_ctx.frame_tlas = tlas_manager->GetLatestTLAS();
         if (frame_ctx.frame_tlas)
         {
-            frame_ctx.tlas_handle = graph->create_acceleration_structure([&frame_ctx](RenderGraph& graph, class RenderGraph::AccelerationStructureBuilder& builder) 
-            {
+            frame_ctx.tlas_handle = graph->create_acceleration_structure([&frame_ctx](RenderGraph& graph, class RenderGraph::AccelerationStructureBuilder& builder) {
                 builder.set_name(u8"GPUScene-TLAS")
                     .import(frame_ctx.frame_tlas.get());
             });
@@ -466,7 +464,6 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
                     Lane.dirties.clear();
                     Lane.dirty_buffer_size = 0;
 
-
                     upload_ctx.upload_cursor.store(0);
                     upload_ctx.upload_counter.store(0);
                 }
@@ -500,7 +497,7 @@ void GPUScene::RemoveEntity(skr::ecs::Entity entity)
     if (iter != entity_ids.end())
     {
         const auto instance_data = ecs_world->random_readwrite<GPUSceneInstance>().get(entity);
-        
+
         free_ids.enqueue(instance_data->instance_index);
         free_id_count += 1;
 
@@ -699,7 +696,6 @@ void GPUScene::CreateSparseUploadPipeline(CGPUDeviceId device)
 
     SKR_LOG_INFO(u8"SparseUpload compute pipeline created successfully");
 }
-
 
 void GPUScene::Initialize(const GPUSceneConfig& cfg, const SOASegmentBuffer::Builder& soa_builder)
 {

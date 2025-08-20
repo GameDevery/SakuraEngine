@@ -48,7 +48,3 @@ private:
 };
 
 } // namespace skr::scene
-
-SKR_EXTERN_C SCENE_RENDERER_API skr::scene::SceneRenderSystem* skr_scene_render_system_create(skr::ecs::World* world);
-SKR_EXTERN_C SCENE_RENDERER_API void skr_scene_render_system_destroy(skr::scene::SceneRenderSystem* system);
-// SKR_EXTERN_C SCENE_RENDERER_API void skr_scene_render_system_update(skr::scene::SceneRenderSystem* system);

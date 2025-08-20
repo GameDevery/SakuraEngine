@@ -94,6 +94,7 @@ struct skr::TransformSystem::Impl
 {
     skr::ecs::World* pWorld = nullptr;
     sugoi_query_t* rootJobQuery = nullptr;
+    skr::TransformSystem::Context context;
 };
 
 TransformSystem* TransformSystem::Create(skr::ecs::World* world) SKR_NOEXCEPT
@@ -114,6 +115,11 @@ void TransformSystem::Destroy(TransformSystem* system) SKR_NOEXCEPT
     sakura_free(system);
 }
 
+TransformSystem::Context const* TransformSystem::get_context() const SKR_NOEXCEPT
+{
+    return &impl->context;
+}
+
 void TransformSystem::update() SKR_NOEXCEPT
 {
     CalculateFromRoot();
@@ -121,8 +127,11 @@ void TransformSystem::update() SKR_NOEXCEPT
 
 void TransformSystem::CalculateFromRoot() SKR_NOEXCEPT
 {
+    impl->context.update_finish.clear();
+    skr::ecs::TaskOptions options;
+    options.on_finishes.add(impl->context.update_finish);
     scene::TransformFromRootJob job;
-    impl->rootJobQuery = impl->pWorld->dispatch_task(job, UINT32_MAX, impl->rootJobQuery);
+    impl->rootJobQuery = impl->pWorld->dispatch_task(job, UINT32_MAX, impl->rootJobQuery, std::move(options));
 }
 
 void TransformSystem::CalculateTransform(sugoi_entity_t entity) SKR_NOEXCEPT

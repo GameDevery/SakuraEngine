@@ -44,6 +44,8 @@ struct SceneRenderJob
             auto* mesh_component = mesh_accessor.get(entity);
             auto* transform_component = transform_accessor.get(entity);
             auto* pAnimComponent = anim_accessor.get(entity);
+            // SKR_LOG_INFO(u8"pAnimComponent: %p", pAnimComponent);
+
             if (!mesh_component || !transform_component)
             {
                 // not a renderable entity
@@ -131,6 +133,7 @@ void SceneRenderSystem::update() SKR_NOEXCEPT
     impl->push_constants_list.clear();
 
     skr::ecs::TaskOptions options;
+    impl->context.update_finish.clear();
     options.on_finishes.add(impl->context.update_finish);
 
     auto render_func = impl->mp_renderer != nullptr ?
@@ -176,23 +179,7 @@ void SceneRenderSystem::update() SKR_NOEXCEPT
             // do nothing
         });
     scene::SceneRenderJob job{ render_func };
-    impl->m_render_job_query = impl->mp_world->dispatch_task(job, UINT32_MAX, impl->m_render_job_query);
+    impl->m_render_job_query = impl->mp_world->dispatch_task(job, UINT32_MAX, impl->m_render_job_query, std::move(options));
 }
 
 } // namespace skr::scene
-
-// C interface
-skr::scene::SceneRenderSystem* skr_scene_render_system_create(skr::ecs::World* world)
-{
-    return skr::scene::SceneRenderSystem::Create(world);
-}
-
-void skr_scene_render_system_destroy(skr::scene::SceneRenderSystem* system)
-{
-    skr::scene::SceneRenderSystem::Destroy(system);
-}
-
-// void skr_scene_render_system_update(skr::scene::SceneRenderSystem* system, skr::render_graph::RenderGraph* render_graph)
-// {
-//     system->update(render_graph);
-// }
