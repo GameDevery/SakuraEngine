@@ -190,10 +190,10 @@ void TransformSystem::CalculateTransform(sugoi_entity_t entity) SKR_NOEXCEPT
     }
 
     // now we have the first parent that is not dirty, calculate the transform
-
+    auto transform = transform_accessor.get(ent);
     for (const auto& child : children_accessor[ent])
     {
-        update_transform(child.entity, skr::scene::Transform::Identity());
+        update_transform(child.entity, transform->get());
     }
 }
 

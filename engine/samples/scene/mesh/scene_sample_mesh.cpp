@@ -265,7 +265,7 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
 int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
 {
     using namespace skr;
-    
+
     SkrZoneScopedN("SceneSampleMeshModule::main_module_exec");
     SKR_LOG_INFO(u8"Running Scene Sample Mesh Module");
 
@@ -405,7 +405,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
         };
         {
             scene_render_system->update();
-            // Currently we just sync all, but this logic will be moved to Render Thread in the future
+            // TODO: remove this and sync the render_system only
             skr::ecs::TaskScheduler::Get()->sync_all();
             // SKR_LOG_INFO(u8"Scene Render System has %d drawcalls", scene_render_system->get_drawcalls().size());
             scene_renderer->draw_primitives(
