@@ -36,14 +36,14 @@ namespace SB
             return ToolDirectory;
         }
 
-        public static async Task SDK(string Name, Dictionary<string, string>? DirectoryMappings = null)
+        public static async Task SDK(string Name, Dictionary<string, string>? DirectoryMappings = null, bool PlatPostfix = true)
         {
             var IntermediateDirectory = Path.Combine(Engine.DownloadDirectory, "SDKs", Name);
 
             await DownloadDepend.OnChanged("Install.SDK.Download", Name, "Install.SDKs", async (Depend depend) =>
             {
                 Directory.CreateDirectory(IntermediateDirectory);
-                var ZipFile = await Download.DownloadFile(Name + GetPlatPostfix());
+                var ZipFile = await Download.DownloadFile(PlatPostfix ? Name + GetPlatPostfix() : Name + ".zip");
                 using (Profiler.BeginZone($"Install.SDKs | {Name} | Download", color: (uint)Profiler.ColorType.Pink1))
                 {
                     if (!OperatingSystem.IsWindows())
