@@ -218,7 +218,7 @@ void V8Context::_init(V8Isolate* isolate, String name)
     _context.Reset(_isolate->v8_isolate(), new_context);
 
     // bind this
-    new_context->SetAlignedPointerInEmbedderData(1, this);
+    new_context->SetAlignedPointerInEmbedderData(0, this);
 }
 void V8Context::_shutdown()
 {

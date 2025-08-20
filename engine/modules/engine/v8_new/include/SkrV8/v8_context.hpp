@@ -39,9 +39,9 @@ struct SKR_V8_NEW_API V8Context {
     void exit();
 
     // build export
-    void build_export(FunctionRef<void(V8VirtualModule&)> build_func);
-    bool is_export_built() const;
-    void clear_export();
+    void                          build_export(FunctionRef<void(V8VirtualModule&)> build_func);
+    bool                          is_export_built() const;
+    void                          clear_export();
     inline const V8VirtualModule& virtual_module() const { return _virtual_module; }
 
     // set & get global value
@@ -102,5 +102,9 @@ private:
     v8::Persistent<v8::Context> _context        = {};
     String                      _name           = {};
     V8VirtualModule             _virtual_module = {};
+
+    // module cache
+    Map<String, v8::Global<v8::Module>> _path_to_module = {};
+    Map<int, v8::Global<v8::Module>>    _id_to_module   = {};
 };
 } // namespace skr

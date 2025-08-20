@@ -75,16 +75,11 @@ sreflect_struct(
 SKR_V8_NEW_API V8Isolate : IScriptMixinCore {
     // clang-format on
     SKR_GENERATE_BODY(V8Isolate)
+    SKR_DELETE_COPY_MOVE(V8Isolate)
 
     // ctor & dtor
     V8Isolate();
     ~V8Isolate();
-
-    // delate copy & move
-    V8Isolate(const V8Isolate&)            = delete;
-    V8Isolate(V8Isolate&&)                 = delete;
-    V8Isolate& operator=(const V8Isolate&) = delete;
-    V8Isolate& operator=(V8Isolate&&)      = delete;
 
     // init & shutdown
     void init();
@@ -179,8 +174,8 @@ SKR_V8_NEW_API V8Isolate : IScriptMixinCore {
     void wait_for_debugger_connected(uint64_t timeout_ms = std::numeric_limits<uint64_t>::max());
     bool any_debugger_connected() const;
 
-private:
-    // helper
+public:
+    RC<IV8VFS> vfs = {};
 
 private:
     // isolate data
@@ -208,9 +203,6 @@ private:
     // debugger
     V8WebSocketServer _websocket_server = {};
     V8InspectorClient _inspector_client = {};
-
-    // TODO. cpp module manage
-    // TODO. script module manage
 };
 } // namespace skr
 
