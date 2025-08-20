@@ -3,8 +3,7 @@
     #include <d3d12.h>
     #include <dxgi.h>
 #endif
-#include "SkrGraphics/drivers/cgpu_nvapi.h"
-#include "common_utils.h"
+#include "SkrGraphics/driver-extensions/cgpu_nvapi.h"
 
 // NVAPI
 ECGPUNvAPI_Status cgpu_nvapi_init(CGPUInstanceId Inst)

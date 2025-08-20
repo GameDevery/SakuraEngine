@@ -58,6 +58,10 @@
     #define ENABLE_NSIGHT_AFTERMATH
 #endif
 
+#if !defined(ENABLE_NSIGHT_PERF) && defined(_WIN32)
+    #define ENABLE_NSIGHT_PERF
+#endif
+
 #ifndef CGPU_API
 #define CGPU_API SKR_GRAPHICS_API
 #endif

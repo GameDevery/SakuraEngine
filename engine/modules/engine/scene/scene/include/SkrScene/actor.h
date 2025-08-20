@@ -139,7 +139,7 @@ public:
     {
         RTTRType* ActorType = skr::type_of<T>();
         void* actor_data = sakura_malloc_aligned(ActorType->size(), ActorType->alignment()); // TODO: leak?
-        ActorType->find_default_ctor().invoke(actor_data);                                   // TODO: pooling ?
+        ActorType->find_default_ctor().invoke(actor_data); // TODO: pooling ?
         return skr::RC<Actor>(reinterpret_cast<Actor*>(actor_data));
     }
 

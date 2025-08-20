@@ -1,6 +1,5 @@
 #include "SkrGraphics/api.h"
-#include "SkrGraphics/drivers/cgpu_ags.h"
-#include "common_utils.h"
+#include "SkrGraphics/driver-extensions/cgpu_ags.h"
 #include "SkrBase/atomic/atomic.h"
 
 // AGS
