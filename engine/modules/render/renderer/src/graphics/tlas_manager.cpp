@@ -141,9 +141,10 @@ public:
         cgpu_submit_queue(gpu_queue, &submit);
     }
 
-    TLASHandle Use()
+    TLASHandle Use(uint64_t frame)
     {
         TLASHandle handle(_tlas, this);
+        last_used_frame = frame;
         return handle;
     }
 
@@ -185,6 +186,7 @@ private:
     std::atomic<ETLASState> _state = ETLASState::Updating;
     CGPUAccelerationStructureId _tlas = nullptr;
     std::atomic<uint64_t> _use_count = 0;
+    std::atomic<uint64_t> last_used_frame = 0;
 
     struct BuildContext
     {
@@ -233,20 +235,20 @@ public:
         }
     }
     
-    void Request(const TLASUpdateRequest& request) override
+    void Request(skr::render_graph::RenderGraph* graph, const TLASUpdateRequest& request) override
     {
-        auto tlas = GetTLASForUpdate(false);
+        auto tlas = GetTLASForUpdate(graph, false);
         tlas->Update(device, cmd_pool, request, version++);
     }
 
-    TLASHandle GetLatestTLAS() const override
+    TLASHandle GetLatestTLAS(skr::render_graph::RenderGraph* graph) const override
     {
-        auto tlas = GetTLASToUse(true);
-        return tlas ? tlas->Use() : TLASHandle();
+        auto tlas = GetTLASToUse(graph);
+        return tlas ? tlas->Use(graph->get_frame_index()) : TLASHandle();
     }
 
 private:
-    AsyncTLASInstanceImpl* GetTLASForUpdate(bool sync_ready) const
+    AsyncTLASInstanceImpl* GetTLASForUpdate(skr::render_graph::RenderGraph* graph, bool sync_ready) const
     {
         uint64_t oldest_version = UINT64_MAX;
         AsyncTLASInstanceImpl* oldest_tlas = nullptr;
@@ -256,9 +258,9 @@ private:
             {
                 tlas->UpdateState();
                 // Find the oldest (smallest version) TLAS that is Ready (not InUse)
-                if (tlas->_version < oldest_version && tlas->_state != ETLASState::InUse)
+                if (tlas->_version <= oldest_version && tlas->last_used_frame < graph->get_frame_index())
                 {
-                    if (tlas->_state == ETLASState::Ready || sync_ready)
+                    if ((tlas->_state == ETLASState::Ready) || sync_ready)
                     {
                         oldest_version = tlas->_version;
                         oldest_tlas = tlas.get();
@@ -267,24 +269,32 @@ private:
             }
             tlases_mutex.unlock_shared();
         }
-        if (sync_ready && oldest_tlas->_state.load() != ETLASState::Ready) 
+        if (sync_ready && (oldest_tlas->_state != ETLASState::Ready)) // all tlases are dirty or in use
         {
-            cgpu_wait_fences(&oldest_tlas->_build_ctx.build_fence, 1);
+            if (oldest_tlas->_state == ETLASState::Updating) // wait last update to finish
+                cgpu_wait_fences(&oldest_tlas->_build_ctx.build_fence, 1);
+            if (oldest_tlas->_state == ETLASState::InUse) // wait last use to finish
+                graph->wait_frame(oldest_tlas->last_used_frame);
         }
         if (!oldest_tlas)
         {
             if (tlas_count < max_tlas_count)
                 oldest_tlas = CreateNewTLAS();
             else
-                return GetTLASForUpdate(true);
+                return GetTLASForUpdate(graph, true);
         }
         return oldest_tlas;
     }
 
-    AsyncTLASInstanceImpl* GetTLASToUse(bool sync_ready) const
+    AsyncTLASInstanceImpl* GetTLASToUse(skr::render_graph::RenderGraph* graph) const
     {
-        uint64_t newest_version = 0;
-        AsyncTLASInstanceImpl* newest_tlas = nullptr;
+        AsyncTLASInstanceImpl* chosen = nullptr;
+
+        uint64_t oldest_tlas_version = UINT64_MAX;
+        AsyncTLASInstanceImpl* oldest_tlas = nullptr;
+        
+        uint64_t newest_usable_version = 0;
+        AsyncTLASInstanceImpl* newest_usable_tlas = nullptr;
         {
             tlases_mutex.lock_shared();
             if (tlases.is_empty())
@@ -297,18 +307,37 @@ private:
             {
                 tlas->UpdateState();
                 // Find the newest (largest version) TLAS that is Ready
-                if (tlas->_version > newest_version)
+                // Version must >= latest_used_version otherwise it will ficker
+                if ((tlas->_version >= latest_used_version))
                 {
-                    if (tlas->_state == ETLASState::Ready || sync_ready)
+                    if (tlas->_version >= newest_usable_version)
                     {
-                        newest_version = tlas->_version;
-                        newest_tlas = tlas.get();
+                        if ((tlas->_state == ETLASState::InUse) || (tlas->_state == ETLASState::Ready))
+                        {
+                            newest_usable_version = tlas->_version;
+                            newest_usable_tlas = tlas.get();
+                        }
+                    }
+                    if (tlas->_version <= oldest_tlas_version)
+                    {
+                        oldest_tlas_version = tlas->_version;
+                        oldest_tlas = tlas.get();
                     }
                 }
             }
             tlases_mutex.unlock_shared();
         }
-        return newest_tlas;
+        chosen = newest_usable_tlas;
+
+        if (chosen == nullptr) // not found! all tlases are updating
+        {
+            chosen = oldest_tlas;
+            if (oldest_tlas->_state == ETLASState::Updating)
+                cgpu_wait_fences(&oldest_tlas->_build_ctx.build_fence, 1);
+        }
+        latest_used_version = chosen->_version.load();
+
+        return chosen;
     }
     
     AsyncTLASInstanceImpl* CreateNewTLAS() const
@@ -325,8 +354,9 @@ private:
     RenderDevice* device = nullptr;
     CGPUCommandPoolId cmd_pool = nullptr;
 
-    mutable shared_atomic_mutex tlases_mutex;
+    mutable std::atomic_uint64_t latest_used_version = 0;
     mutable std::atomic_uint64_t version = 0;
+    mutable shared_atomic_mutex tlases_mutex;
     mutable skr::Vector<skr::UPtr<AsyncTLASInstanceImpl>> tlases;
     
     mutable std::atomic_uint32_t tlas_count = 0;

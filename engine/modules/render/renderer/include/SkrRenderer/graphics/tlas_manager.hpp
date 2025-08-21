@@ -2,6 +2,7 @@
 #include "SkrGraphics/raytracing.h"
 #include "SkrContainersDef/vector.hpp"
 #include "SkrContainersDef/optional.hpp"
+#include "SkrRenderGraph/frontend/render_graph.hpp"
 
 namespace skr {
 
@@ -56,8 +57,8 @@ struct SKR_RENDERER_API TLASManager
     static TLASManager* Create(uint32_t max_count, RenderDevice* device);
     static void Destroy(TLASManager* manager);
 
-    virtual void Request(const TLASUpdateRequest& request) = 0; 
-    virtual TLASHandle GetLatestTLAS() const = 0;
+    virtual void Request(skr::render_graph::RenderGraph* graph, const TLASUpdateRequest& request) = 0; 
+    virtual TLASHandle GetLatestTLAS(skr::render_graph::RenderGraph* graph) const = 0;
 };
 
 } // namespace skr

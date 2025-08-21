@@ -283,6 +283,7 @@ public:
     friend struct IRenderGraphPhase;
     using BeforeExecuteCallback = skr::stl_function<void(RenderGraph&)>;
     void add_before_execute_callback(const BeforeExecuteCallback& callback);
+    virtual void wait_frame(uint64_t frame_index) SKR_NOEXCEPT;
     virtual uint64_t execute(RenderGraphProfiler* profiler = nullptr) SKR_NOEXCEPT;
     virtual uint32_t collect_texture_garbage(uint64_t critical_frame,
         uint32_t with_tags = kRenderGraphDefaultResourceTag | kRenderGraphDynamicResourceTag, uint32_t without_flags = 0) SKR_NOEXCEPT { return 0; }

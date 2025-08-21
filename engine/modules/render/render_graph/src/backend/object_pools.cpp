@@ -302,6 +302,7 @@ BufferPool::Key::Key(CGPUDeviceId device, const CGPUBufferDescriptor& desc)
     , descriptors(desc.usages)
     , memory_usage(desc.memory_usage)
     , flags(desc.flags)
+    , pool(desc.memory_pool)
 {
 }
 
@@ -343,13 +344,13 @@ std::pair<CGPUBufferId, ECGPUResourceState> BufferPool::allocate(const CGPUBuffe
             break;
         }
     }
-    if (found_index > 0)
+    if (found_index >= 0)
     {
         PooledBuffer found = buffers[key][found_index];
         buffers[key].erase(buffers[key].begin() + found_index);
         buffers[key].emplace_front(found.buffer, found.state, mark);
     }
-    if (found_index < 0)
+    else
     {
         auto new_buffer = cgpu_create_buffer(device, &desc);
         buffers[key].emplace_front(new_buffer, desc.start_state, mark);
