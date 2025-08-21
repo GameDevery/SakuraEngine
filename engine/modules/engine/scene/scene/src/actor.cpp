@@ -1,12 +1,6 @@
 #include "SkrScene/actor.h"
-#include "SkrCore/memory/impl/skr_new_delete.hpp"
 #include "SkrRT/ecs/world.hpp"
 #include "SkrRT/sugoi/sugoi_config.h"
-#include "SkrRT/sugoi/sugoi_types.h"
-#include "SkrRTTR/type_registry.hpp"
-#include "SkrRTTR/type.hpp"
-#include "SkrRTTR/rttr_traits.hpp"
-#include "SkrRTTR/type_registry.hpp"
 #include "SkrSceneCore/scene_components.h"
 
 namespace skr
@@ -98,48 +92,6 @@ void Actor::DetachFromParent()
     }
 }
 
-// skr::scene::ScaleComponent* Actor::GetScaleComponent() const
-// {
-//     auto entity = GetEntity();
-//     if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
-//     {
-//         // return skr::ActorManager::GetInstance().scale_accessor.get(entity);
-//         return world->random_readwrite<skr::scene::ScaleComponent>().get(entity);
-//     }
-//     SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get ScaleComponent", display_name.c_str());
-//     return nullptr;
-// }
-// skr::scene::PositionComponent* Actor::GetPositionComponent() const
-// {
-//     auto entity = GetEntity();
-//     if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
-//     {
-//         return skr::ActorManager::GetInstance().pos_accessor.get(entity);
-//     }
-//     SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get PositionComponent", display_name.c_str());
-//     return nullptr;
-// }
-// skr::scene::RotationComponent* Actor::GetRotationComponent() const
-// {
-//     auto entity = GetEntity();
-//     if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
-//     {
-//         return skr::ActorManager::GetInstance().rot_accessor.get(entity);
-//     }
-//     SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get RotationComponent", display_name.c_str());
-//     return nullptr;
-// }
-// skr::scene::TransformComponent* Actor::GetTransformComponent() const
-// {
-//     auto entity = GetEntity();
-//     if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
-//     {
-//         return skr::ActorManager::GetInstance().trans_accessor.get(entity);
-//     }
-//     SKR_LOG_ERROR(u8"Actor {%s} has no valid entity to get TransformComponent", display_name.c_str());
-//     return nullptr;
-// }
-
 /////////////////////
 // ActorManager Implementation
 /////////////////////
@@ -147,13 +99,6 @@ void Actor::DetachFromParent()
 void ActorManager::initialize(skr::ecs::World* world)
 {
     this->world = world; // Store the ECS world pointer for actor management
-    // parent_accessor = world->random_readwrite<skr::scene::ParentComponent>();
-    // children_accessor = world->random_readwrite<skr::scene::ChildrenComponent>();
-    // pos_accessor = world->random_readwrite<skr::scene::PositionComponent>();
-    // rot_accessor = world->random_readwrite<skr::scene::RotationComponent>();
-    // scale_accessor = world->random_readwrite<skr::scene::ScaleComponent>();
-    // trans_accessor = world->random_readwrite<skr::scene::TransformComponent>();
-    // mesh_accessor = world->random_readwrite<skr::MeshComponent>();
 }
 
 bool ActorManager::DestroyActor(skr::GUID guid)

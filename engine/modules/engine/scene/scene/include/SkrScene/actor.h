@@ -36,8 +36,7 @@ EActorType{
 
 sreflect_struct(
     guid = "4cb20865-0d27-43ee-90b9-7b43ac4c067c";
-    rttr = @enable;
-    rttr.reflect_ctors = true;)
+    rttr = @enable;)
 SKR_SCENE_API Actor
 {
     friend class ActorManager;
@@ -99,11 +98,6 @@ public:
         return nullptr;
     }
 
-    // skr::scene::ScaleComponent* GetScaleComponent() const;
-    // skr::scene::PositionComponent* GetPositionComponent() const;
-    // skr::scene::RotationComponent* GetRotationComponent() const;
-    // skr::scene::TransformComponent* GetTransformComponent() const;
-
     skr::GUID GetGUID() const { return guid; }
 
     skr::String display_name;             // for editor, profiler, and runtime dump
@@ -137,10 +131,11 @@ public:
     template <typename T>
     skr::RC<Actor> CreateActorInstance()
     {
-        RTTRType* ActorType = skr::type_of<T>();
-        void* actor_data = sakura_malloc_aligned(ActorType->size(), ActorType->alignment()); // TODO: leak?
-        ActorType->find_default_ctor().invoke(actor_data); // TODO: pooling ?
-        return skr::RC<Actor>(reinterpret_cast<Actor*>(actor_data));
+        // RTTRType* ActorType = skr::type_of<T>();
+        // void* actor_data = sakura_malloc_aligned(ActorType->size(), ActorType->alignment());
+        // ActorType->find_default_ctor().invoke(actor_data);
+        // return skr::RC<Actor>(reinterpret_cast<Actor*>(actor_data));
+        return skr::RC<T>::New();
     }
 
     bool DestroyActor(skr::GUID guid);
@@ -157,49 +152,38 @@ protected:
 private:
     ActorManager() = default;
     ~ActorManager() = default;
-    skr::ecs::World* world = nullptr; // Pointer to the ECS world for actor management
 
-    // Disable copy and move semantics
     ActorManager(const ActorManager&) = delete;
     ActorManager& operator=(const ActorManager&) = delete;
     ActorManager(ActorManager&&) = delete;
     ActorManager& operator=(ActorManager&&) = delete;
 
+    skr::ecs::World* world = nullptr; // Pointer to the ECS world for actor management
     // Currently, we only use Map<GUID, Actor*> and cpp new/delete for Actor management.
     // In the future, we can implement a more sophisticated memory management system.
     skr::Map<skr::GUID, skr::RC<Actor>> actors; // Map to manage actors by their GUIDs
-
-    // Accessors
 };
 
 sreflect_struct(
     guid = "01987a21-a2b4-7488-924d-17639e937f87";
-    rttr = @enable;
-    rttr.reflect_ctors = true;)
+    rttr = @enable;)
 SKR_SCENE_API MeshActor : public Actor
 {
     friend class ActorManager;
 
 public:
-    SKR_GENERATE_BODY()
-    SKR_RC_IMPL();
-
-    ~MeshActor() SKR_NOEXCEPT;
+    ~MeshActor() SKR_NOEXCEPT override;
     MeshActor();
 };
 
 sreflect_struct(
     guid = "01987a21-e796-76b6-89c4-fb550edf5610";
-    rttr = @enable;
-    rttr.reflect_ctors = true;)
+    rttr = @enable;)
 SKR_SCENE_API SkelMeshActor : public MeshActor
 {
     friend class ActorManager;
 
 public:
-    SKR_GENERATE_BODY()
-    SKR_RC_IMPL();
-
     ~SkelMeshActor() SKR_NOEXCEPT override;
     SkelMeshActor();
 };
