@@ -3,6 +3,7 @@
 #include "SkrRT/resource/config_resource.h"
 #include "SkrToolCore/assets/config_asset.hpp"
 #include "SkrToolCore/cook_system/cook_system.hpp"
+#include <SkrRTTR/type_registry.hpp>
 
 namespace skd::asset
 {

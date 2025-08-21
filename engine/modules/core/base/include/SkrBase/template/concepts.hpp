@@ -120,4 +120,14 @@ concept HasGe = requires(LHS lhs, RHS rhs) {
     { lhs >= rhs } -> std::convertible_to<bool>;
 };
 
+// invocable
+template <typename Func, typename Ret, typename... Args>
+concept InvocableR = requires(Func&& func, Args&&... args) {
+    { std::invoke(std::forward<Func>(func), std::forward<Args>(args)...) } -> std::convertible_to<Ret>;
+};
+template <typename Func, typename... Args>
+concept Invocable = requires(Func&& func, Args&&... args) {
+    std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
+};
+
 } // namespace skr::concepts

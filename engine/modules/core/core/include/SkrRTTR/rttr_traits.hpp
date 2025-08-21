@@ -1,5 +1,4 @@
 #pragma once
-#include "SkrRTTR/type_registry.hpp"
 #include "SkrContainersDef/string.hpp"
 #include "SkrBase/meta.h"
 #include "SkrBase/math.h"
@@ -37,12 +36,6 @@ template <typename T>
 inline constexpr skr::StringView type_name_of()
 {
     return RTTRTraits<T>::get_name();
-}
-
-template <typename T>
-inline RTTRType* type_of()
-{
-    return get_type_from_guid(type_id_of<T>());
 }
 
 } // namespace skr

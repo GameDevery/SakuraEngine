@@ -8,6 +8,7 @@
 #include "SkrRT/ecs/world.hpp"
 #include "SkrRTTR/rttr_traits.hpp"
 #include "SkrRTTR/type.hpp"
+#include "SkrRTTR/type_registry.hpp"
 #include "SkrSceneCore/scene_components.h"
 #include "SkrRenderer/render_mesh.h"
 

@@ -365,10 +365,12 @@ V8BindTemplate* V8Isolate::solve_bind_tp(
     TypeSignatureView signature
 )
 {
-    auto jumped_modifiers = signature.jump_modifier();
-    if (!jumped_modifiers.is_empty())
     {
-        SKR_LOG_WARN(u8"modifiers of signature will be ignored, to disable this warning, please jump modifier before call this function");
+        auto jumped_modifiers = signature.jump_modifier();
+        if (!jumped_modifiers.is_empty())
+        {
+            SKR_LOG_WARN(u8"modifiers of signature will be ignored, to disable this warning, please jump modifier before call this function");
+        }
     }
 
     if (signature.is_type())
@@ -377,9 +379,29 @@ V8BindTemplate* V8Isolate::solve_bind_tp(
         signature.read_type_id(type_id);
         return solve_bind_tp(type_id);
     }
+    else if (signature.is_generic_type())
+    {
+        // get generic type id
+        GUID     generic_id;
+        uint32_t generic_param_count;
+        signature.read_generic_type_id(generic_id, generic_param_count);
+
+        switch (generic_id.get_hash())
+        {
+        case kFunctionRefGenericId.get_hash(): {
+            
+        }
+        default: {
+            SKR_LOG_FMT_ERROR(
+                u8"V8Isolate::solve_bind_tp: generic type not supported: {}",
+                generic_id
+            );
+        }
+        }
+    }
     else
     {
-        SKR_UNIMPLEMENTED_FUNCTION()
+        SKR_UNREACHABLE_CODE()
     }
 
     return nullptr;

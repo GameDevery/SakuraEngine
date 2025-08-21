@@ -2,6 +2,7 @@
 #include "SkrBase/config.h"
 #include <type_traits>
 #include <SkrContainers/optional.hpp>
+#include <SkrRTTR/script/stack_proxy.hpp>
 
 // TODO. 添加基类以支持反射
 // TODO. 添加类型擦除的调用 core 来支持脚本绑定
@@ -24,31 +25,35 @@ enum class EDelegateKind : uint8_t
     Static,
     Member,
     Functor,
+    StackProxy,
 };
 
 template <typename Obj, typename Ret, typename... Args>
-struct MemberFuncTraits<Ret (Obj::*)(Args...)> {
-    using FuncType                 = Ret (Obj::*)(Args...);
-    using ObjType                  = Obj;
-    using ObjPtrType               = Obj*;
-    using RetType                  = Ret;
+struct MemberFuncTraits<Ret (Obj::*)(Args...)>
+{
+    using FuncType = Ret (Obj::*)(Args...);
+    using ObjType = Obj;
+    using ObjPtrType = Obj*;
+    using RetType = Ret;
     static constexpr bool is_const = false;
 };
 template <typename Obj, typename Ret, typename... Args>
-struct MemberFuncTraits<Ret (Obj::*)(Args...) const> {
-    using FuncType                 = Ret (Obj::*)(Args...) const;
-    using ObjType                  = Obj;
-    using ObjPtrType               = const Obj*;
-    using RetType                  = Ret;
+struct MemberFuncTraits<Ret (Obj::*)(Args...) const>
+{
+    using FuncType = Ret (Obj::*)(Args...) const;
+    using ObjType = Obj;
+    using ObjPtrType = const Obj*;
+    using RetType = Ret;
     static constexpr bool is_const = true;
 };
 
 template <typename Ret, typename... Args>
-struct MemberFuncDelegateCore<Ret(Args...)> {
+struct MemberFuncDelegateCore<Ret(Args...)>
+{
     using InvokeFunc = Ret (*)(void*, Args...);
-    using ThisType   = MemberFuncDelegateCore<Ret(Args...)>;
+    using ThisType = MemberFuncDelegateCore<Ret(Args...)>;
 
-    void*      object = nullptr;
+    void* object = nullptr;
     InvokeFunc invoke = nullptr;
 
     template <auto MemberFunc>
@@ -75,14 +80,15 @@ struct MemberFuncDelegateCore<Ret(Args...)> {
     }
 };
 template <typename Ret, typename... Args>
-struct FunctorDelegateCore<Ret(Args...)> {
-    using ThisType   = FunctorDelegateCore<Ret(Args...)>;
-    using SizeType   = uint64_t;
+struct FunctorDelegateCore<Ret(Args...)>
+{
+    using ThisType = FunctorDelegateCore<Ret(Args...)>;
+    using SizeType = uint64_t;
     using InvokeFunc = Ret (*)(ThisType*, Args...);
     using DeleteFunc = void (*)(ThisType*);
 
     InvokeFunc invoke = nullptr;
-    DeleteFunc dtor   = nullptr;
+    DeleteFunc dtor = nullptr;
 
     inline SizeType ref_count() const
     {
@@ -107,7 +113,8 @@ private:
     std::atomic<SizeType> _ref_count = 0;
 };
 template <typename Functor, typename Ret, typename... Args>
-struct FunctorDelegateCoreNormal<Ret(Args...), Functor> : public FunctorDelegateCore<Ret(Args...)> {
+struct FunctorDelegateCoreNormal<Ret(Args...), Functor> : public FunctorDelegateCore<Ret(Args...)>
+{
     using Super = FunctorDelegateCore<Ret(Args...)>;
 
     Placeholder<Functor> functor_holder;
@@ -135,12 +142,46 @@ struct FunctorDelegateCoreNormal<Ret(Args...), Functor> : public FunctorDelegate
         };
     }
 };
+struct StackProxyDelegateCore
+{
+    using ThisType = StackProxyDelegateCore;
+    using SizeType = uint64_t;
+    using InvokeFunc = void (*)(ThisType* self, span<const StackProxy> params, StackProxy return_value);
+    using DeleteFunc = void (*)(ThisType* self);
+
+    InvokeFunc invoke = nullptr;
+    DeleteFunc dtor = nullptr;
+
+    inline SizeType ref_count() const
+    {
+        return _ref_count.load(std::memory_order_relaxed);
+    }
+    inline void add_ref()
+    {
+        _ref_count.fetch_add(1, std::memory_order_relaxed);
+    }
+    inline void release()
+    {
+        SKR_ASSERT(_ref_count.load(std::memory_order_relaxed) > 0);
+        if (_ref_count.fetch_sub(1, std::memory_order_release) == 1)
+        {
+            std::atomic_thread_fence(std::memory_order_acquire);
+            dtor(this);
+            SkrDelete(this, SkrDeleteFlag_No_Dtor);
+        }
+    }
+
+private:
+    std::atomic<SizeType> _ref_count = 0;
+};
 
 template <typename Ret, typename... Args>
-struct Delegate<Ret(Args...)> {
-    using FuncType     = Ret(Args...);
-    using MemberCore   = MemberFuncDelegateCore<FuncType>;
-    using FunctorCore  = FunctorDelegateCore<FuncType>;
+struct Delegate<Ret(Args...)>
+{
+    using FuncType = Ret(Args...);
+    using MemberCore = MemberFuncDelegateCore<FuncType>;
+    using FunctorCore = FunctorDelegateCore<FuncType>;
+    using StackProxyCore = StackProxyDelegateCore;
     using InvokeResult = std::conditional_t<std::is_same_v<Ret, void>, bool, Optional<Ret>>;
 
     // ctor & dtor
@@ -164,6 +205,7 @@ struct Delegate<Ret(Args...)> {
     template <typename Func>
     static Delegate Lambda(Func&& lambda);
     static Delegate CustomFunctorCore(FunctorCore* core);
+    static Delegate StackProxy(StackProxyCore* core);
 
     // binder
     void bind_static(FuncType* func);
@@ -174,6 +216,7 @@ struct Delegate<Ret(Args...)> {
     template <typename Func>
     void bind_lambda(Func&& lambda);
     void bind_custom_functor_core(FunctorCore* core);
+    void bind_stack_proxy(StackProxyCore* core);
 
     // invoke
     InvokeResult invoke(Args... args);
@@ -183,14 +226,15 @@ struct Delegate<Ret(Args...)> {
 
     // getter
     EDelegateKind kind() const;
-    bool          is_empty() const;
+    bool is_empty() const;
 
 private:
     union
     {
-        FuncType*    _static_delegate;  // 64 bits,  void*
-        MemberCore   _member_delegate;  // 128 bits, [void*, void*]
-        FunctorCore* _functor_delegate; // 64 bits,  void*
+        FuncType* _static_delegate;            // 64 bits,  void*
+        MemberCore _member_delegate;           // 128 bits, [void*, void*]
+        FunctorCore* _functor_delegate;        // 64 bits,  void*
+        StackProxyCore* _stack_proxy_delegate; // 64 bits,  void*
     };
     EDelegateKind _kind = EDelegateKind::Empty; // 8 bits, wrap to 64 bits
 };
@@ -228,6 +272,13 @@ inline Delegate<Ret(Args...)>::Delegate(const Delegate& other)
         _functor_delegate = other._functor_delegate;
         _functor_delegate->add_ref();
         break;
+    case EDelegateKind::StackProxy:
+        _stack_proxy_delegate = other._stack_proxy_delegate;
+        _stack_proxy_delegate->add_ref();
+        break;
+    default:
+        SKR_UNREACHABLE_CODE();
+        break;
     }
 }
 template <typename Ret, typename... Args>
@@ -245,8 +296,15 @@ inline Delegate<Ret(Args...)>::Delegate(Delegate&& other)
         _member_delegate = other._member_delegate;
         break;
     case EDelegateKind::Functor:
-        _functor_delegate       = other._functor_delegate;
+        _functor_delegate = other._functor_delegate;
         other._functor_delegate = nullptr;
+        break;
+    case EDelegateKind::StackProxy:
+        _stack_proxy_delegate = other._stack_proxy_delegate;
+        other._stack_proxy_delegate = nullptr;
+        break;
+    default:
+        SKR_UNREACHABLE_CODE();
         break;
     }
     other._kind = EDelegateKind::Empty;
@@ -272,6 +330,13 @@ inline Delegate<Ret(Args...)>& Delegate<Ret(Args...)>::operator=(const Delegate&
         _functor_delegate = other._functor_delegate;
         _functor_delegate->add_ref();
         break;
+    case EDelegateKind::StackProxy:
+        _stack_proxy_delegate = other._stack_proxy_delegate;
+        _stack_proxy_delegate->add_ref();
+        break;
+    default:
+        SKR_UNREACHABLE_CODE();
+        break;
     }
 
     return *this;
@@ -292,8 +357,15 @@ inline Delegate<Ret(Args...)>& Delegate<Ret(Args...)>::operator=(Delegate&& othe
         _member_delegate = other._member_delegate;
         break;
     case EDelegateKind::Functor:
-        _functor_delegate       = other._functor_delegate;
+        _functor_delegate = other._functor_delegate;
         other._functor_delegate = nullptr;
+        break;
+    case EDelegateKind::StackProxy:
+        _stack_proxy_delegate = other._stack_proxy_delegate;
+        other._stack_proxy_delegate = nullptr;
+        break;
+    default:
+        SKR_UNREACHABLE_CODE();
         break;
     }
     other._kind = EDelegateKind::Empty;
@@ -340,6 +412,13 @@ inline Delegate<Ret(Args...)> Delegate<Ret(Args...)>::CustomFunctorCore(FunctorC
     delegate.bind_custom_functor_core(core);
     return delegate;
 }
+template <typename Ret, typename... Args>
+inline Delegate<Ret(Args...)> Delegate<Ret(Args...)>::StackProxy(StackProxyCore* core)
+{
+    Delegate delegate;
+    delegate.bind_stack_proxy(core);
+    return delegate;
+}
 
 // binder
 template <typename Ret, typename... Args>
@@ -347,7 +426,7 @@ inline void Delegate<Ret(Args...)>::bind_static(FuncType* func)
 {
     reset();
     _static_delegate = func;
-    _kind            = EDelegateKind::Static;
+    _kind = EDelegateKind::Static;
 }
 template <typename Ret, typename... Args>
 template <auto MemberFunc>
@@ -355,7 +434,7 @@ inline void Delegate<Ret(Args...)>::bind_member(typename MemberFuncTraits<declty
 {
     reset();
     _member_delegate = MemberCore::template Make<MemberFunc>(obj);
-    _kind            = EDelegateKind::Member;
+    _kind = EDelegateKind::Member;
 }
 template <typename Ret, typename... Args>
 template <typename Func>
@@ -367,7 +446,7 @@ inline void Delegate<Ret(Args...)>::bind_functor(Func&& functor)
     auto* core = SkrNew<FunctorCore>(std::forward<Func>(functor));
     core->add_ref();
     _functor_delegate = core;
-    _kind             = EDelegateKind::Functor;
+    _kind = EDelegateKind::Functor;
 }
 template <typename Ret, typename... Args>
 template <typename Func>
@@ -379,7 +458,7 @@ inline void Delegate<Ret(Args...)>::bind_lambda(Func&& lambda)
     auto* core = SkrNew<FunctorCore>(std::forward<Func>(lambda));
     core->add_ref();
     _functor_delegate = core;
-    _kind             = EDelegateKind::Functor;
+    _kind = EDelegateKind::Functor;
 }
 template <typename Ret, typename... Args>
 inline void Delegate<Ret(Args...)>::bind_custom_functor_core(FunctorCore* core)
@@ -388,6 +467,14 @@ inline void Delegate<Ret(Args...)>::bind_custom_functor_core(FunctorCore* core)
     _functor_delegate = core;
     _functor_delegate->add_ref();
     _kind = EDelegateKind::Functor;
+}
+template <typename Ret, typename... Args>
+inline void Delegate<Ret(Args...)>::bind_stack_proxy(StackProxyCore* core)
+{
+    reset();
+    _stack_proxy_delegate = core;
+    _stack_proxy_delegate->add_ref();
+    _kind = EDelegateKind::StackProxy;
 }
 
 // invoke
@@ -409,8 +496,24 @@ inline typename Delegate<Ret(Args...)>::InvokeResult Delegate<Ret(Args...)>::inv
         case EDelegateKind::Functor:
             _functor_delegate->invoke(_functor_delegate, std::forward<Args>(args)...);
             return true;
+        case EDelegateKind::StackProxy: {
+            if constexpr (concepts::WithTypeSignatureTraits<FuncType>)
+            {
+                _stack_proxy_delegate->invoke(
+                    _stack_proxy_delegate,
+                    { StackProxyMaker<Args>::Make(std::forward<Args>(args))... },
+                    {});
+            }
+            else
+            {
+                SKR_ASSERT(false && "cannot use stack proxy delegate without type signature support");
+            }
+            return true;
+        }
+        default:
+            SKR_UNREACHABLE_CODE();
+            return false;
         };
-        return false;
     }
     else
     {
@@ -424,8 +527,26 @@ inline typename Delegate<Ret(Args...)>::InvokeResult Delegate<Ret(Args...)>::inv
             return _member_delegate.invoke(_member_delegate.object, std::forward<Args>(args)...);
         case EDelegateKind::Functor:
             return _functor_delegate->invoke(_functor_delegate, std::forward<Args>(args)...);
+        case EDelegateKind::StackProxy: {
+            if constexpr (concepts::WithTypeSignatureTraits<FuncType>)
+            {
+                Placeholder<Ret> result;
+                _stack_proxy_delegate->invoke(
+                    _stack_proxy_delegate,
+                    { StackProxyMaker<Args>::Make(std::forward<Args>(args))... },
+                    { .data = result.data(), .signature = type_signature_of<Ret>() });
+                return Optional<Ret>{ std::move(*result.data_typed()) };
+            }
+            else
+            {
+                SKR_ASSERT(false && "cannot use stack proxy delegate without type signature support");
+                return {};
+            }
+        }
+        default:
+            SKR_UNREACHABLE_CODE();
+            return {};
         };
-        return {};
     }
 }
 
@@ -441,6 +562,12 @@ inline void Delegate<Ret(Args...)>::reset()
         break;
     case EDelegateKind::Functor:
         _functor_delegate->release();
+        break;
+    case EDelegateKind::StackProxy:
+        _stack_proxy_delegate->release();
+        break;
+    default:
+        SKR_UNREACHABLE_CODE();
         break;
     }
     _kind = EDelegateKind::Empty;
