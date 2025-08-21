@@ -1,5 +1,7 @@
 #include "SkrAnim/components/skeleton_component.hpp"
 #include "SkrAnim/components/skin_component.hpp"
+#include "SkrRenderer/render_mesh.h"
+#include "SkrSceneCore/scene_components.h"
 #include "SkrScene/actor.h"
 
 namespace skr

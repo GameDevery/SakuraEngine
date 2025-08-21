@@ -313,10 +313,8 @@ void create_render_pipeline()
     }
 }
 
-void initialize(void* usrdata)
+void initialize()
 {
-    backend = *(ECGPUBackend*)usrdata;
-
     // Create window
     sdl_window = SDL_CreateWindow(
         gCGPUBackendNames[backend],
@@ -537,9 +535,9 @@ void finalize()
     cgpu_free_instance(instance);
 }
 
-void ProgramMain(void* usrdata)
+void ProgramMain()
 {
-    initialize(usrdata);
+    initialize();
     raster_program();
     finalize();
 }
@@ -547,31 +545,14 @@ void ProgramMain(void* usrdata)
 int main(int argc, char* argv[])
 {
     // When we support more add them here
-    ECGPUBackend backends[] = {
-        CGPU_BACKEND_VULKAN
+    backend =
 #ifdef CGPU_USE_D3D12
-        ,
-        CGPU_BACKEND_D3D12
-#endif
-    };
-#if defined(__APPLE__) || defined(__EMSCRIPTEN__) || defined(__wasi__)
-    ProgramMain(backends);
+        CGPU_BACKEND_D3D12;
+#elif defined(CGPU_USE_METAL)
+        CGPU_BACKEND_METAL;
 #else
-    const uint32_t TEST_BACKEND_COUNT = sizeof(backends) / sizeof(ECGPUBackend);
-    SKR_DECLARE_ZERO_VLA(SThreadHandle, hdls, TEST_BACKEND_COUNT)
-    SKR_DECLARE_ZERO_VLA(SThreadDesc, thread_descs, TEST_BACKEND_COUNT)
-    for (uint32_t i = 0; i < TEST_BACKEND_COUNT; i++)
-    {
-        thread_descs[i].pFunc = &ProgramMain;
-        thread_descs[i].pData = &backends[i];
-        skr_init_thread(&thread_descs[i], &hdls[i]);
-    }
-    for (uint32_t i = 0; i < TEST_BACKEND_COUNT; i++)
-    {
-        skr_join_thread(hdls[i]);
-        skr_destroy_thread(hdls[i]);
-    }
+        CGPU_BACKEND_VULKAN;
 #endif
-
+    ProgramMain(backend);
     return 0;
 }

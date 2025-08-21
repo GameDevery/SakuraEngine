@@ -12,9 +12,14 @@ namespace skr
 struct SKR_SCENE_CORE_API TransformSystem
 {
 public:
+    struct Context
+    {
+        skr::task::event_t update_finish;
+    };
     static TransformSystem* Create(skr::ecs::World* world) SKR_NOEXCEPT;
     static void Destroy(TransformSystem* system) SKR_NOEXCEPT;
     void update() SKR_NOEXCEPT;
+    Context const* get_context() const SKR_NOEXCEPT;
 
 private:
     // 正向全量脏树传播：每帧调用，处理所有标记为脏的变换树，进行批量计算

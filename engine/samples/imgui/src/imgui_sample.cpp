@@ -7,7 +7,6 @@ int main()
 {
     using namespace skr;
 
-    // Create instance
     // initailize render device
     skr::RenderDevice::Builder builder = {};
     builder.enable_debug_layer = false;

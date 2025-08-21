@@ -10,14 +10,14 @@ struct RootConstants
     float ColorMultiplier;
 };
 
-[[push_constant]]
+[[push_constant, binding(0, 0)]]
 ConstantBuffer<RootConstants> push_constants;
 
 // Bindless texture array - length 0 means unbounded/bindless
-[[binding(0, 0)]]
+[[binding(0, 1)]]
 Texture2D<float> sampled_textures[0];
 
-[[binding(0, 1)]]
+[[binding(0, 2)]]
 Sampler texture_sampler;
 
 struct [[stage_inout]] VSOut

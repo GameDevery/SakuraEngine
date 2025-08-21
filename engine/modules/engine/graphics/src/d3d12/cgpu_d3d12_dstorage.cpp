@@ -9,7 +9,7 @@ struct CGPUDStorageSingleton
 {
     static CGPUDStorageSingleton* Get(CGPUInstanceId instance)
     {
-        auto _instance =  (SkrWindowsDStorageInstance*)skr_get_dstorage_instnace();
+        auto _instance = (SkrWindowsDStorageInstance*)skr_get_dstorage_instnace();
         if (_instance)
         {
             auto _this = SkrNew<CGPUDStorageSingleton>();
@@ -20,11 +20,10 @@ struct CGPUDStorageSingleton
                 SkrDelete(_this);
             };
             cgpu_runtime_table_add_early_sweep_callback(instance->runtime_table, SKR_DSTORAGE_SINGLETON_NAME, sweep, _this);
-            return _instance->initialize_failed ? nullptr : _this;
+            return _instance->pFactory ? _this : nullptr;
         }
         return nullptr;
     }
-    cgpu::Map<CGPUDeviceId, ECGPUDStorageAvailability> availability_map = {};
 };
 
 inline static IDStorageFactory* GetDStorageFactory(CGPUInstanceId instance)
@@ -35,22 +34,7 @@ inline static IDStorageFactory* GetDStorageFactory(CGPUInstanceId instance)
 
 ECGPUDStorageAvailability cgpu_query_dstorage_availability_d3d12(CGPUDeviceId device)
 {
-    auto instance = device->adapter->instance;
-    auto _this = CGPUDStorageSingleton::Get(instance);
-    if (!_this) return SKR_DSTORAGE_AVAILABILITY_NONE;
-    
-    if (!_this->availability_map.find(device))
-    {
-        if (!GetDStorageFactory(instance))
-        {
-            _this->availability_map.add(device, SKR_DSTORAGE_AVAILABILITY_NONE);
-        }
-        else
-        {
-            _this->availability_map.add(device, SKR_DSTORAGE_AVAILABILITY_HARDWARE);
-        }
-    }
-    return _this->availability_map.find(device).value();
+    return skr_query_dstorage_availability();
 }
 
 using CGPUDStorageQueueD3D12 = DStorageQueueWindows;
