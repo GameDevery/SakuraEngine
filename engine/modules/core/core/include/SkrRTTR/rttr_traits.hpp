@@ -15,16 +15,16 @@ namespace skr
 {
 template <typename T>
 struct RTTRTraits {
-    inline static constexpr skr::StringView get_name()
-    {
-        static_assert(std ::is_same_v<T, T*>, "RTTRTraits<T>::get_name() is not implemented");
-        return {};
-    }
-    inline static constexpr GUID get_guid()
-    {
-        static_assert(std ::is_same_v<T, T*>, "RTTRTraits<T>::get_guid() is not implemented");
-        return {};
-    }
+    // inline static constexpr skr::StringView get_name()
+    // {
+    //     static_assert(std ::is_same_v<T, T*>, "RTTRTraits<T>::get_name() is not implemented");
+    //     return {};
+    // }
+    // inline static constexpr GUID get_guid()
+    // {
+    //     static_assert(std ::is_same_v<T, T*>, "RTTRTraits<T>::get_guid() is not implemented");
+    //     return {};
+    // }
 };
 
 template <typename T>
@@ -46,6 +46,16 @@ inline RTTRType* type_of()
 }
 
 } // namespace skr
+
+namespace skr::concepts
+{
+template <typename T>
+concept WithRTTRTraits = requires {
+    typename RTTRTraits<T>;
+    { RTTRTraits<T>::get_guid() } -> std::convertible_to<GUID>;
+    { RTTRTraits<T>::get_name() } -> std::convertible_to<skr::StringView>;
+};
+} // namespace skr::concepts
 
 //======================================== register marco
 #define SKR_RTTR_MAKE_U8(__VALUE) u8##__VALUE

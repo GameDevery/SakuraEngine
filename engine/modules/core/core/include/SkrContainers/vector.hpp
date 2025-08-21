@@ -7,9 +7,11 @@ namespace skr
 {
 static constexpr GUID kVectorGenericId = u8"3e982879-a893-4975-aca6-ed8627f33f91"_guid;
 template <typename T>
-struct TypeSignatureTraits<::skr::Vector<T>> {
+struct TypeSignatureTraits<::skr::Vector<T>>
+{
+    inline static constexpr bool is_supported = concepts::WithRTTRTraits<T>;
     inline static constexpr size_t buffer_size = type_signature_size_v<ETypeSignatureSignal::GenericTypeId> + TypeSignatureTraits<T>::buffer_size;
-    inline static uint8_t*         write(uint8_t* pos, uint8_t* end)
+    inline static uint8_t* write(uint8_t* pos, uint8_t* end)
     {
         pos = TypeSignatureHelper::write_generic_type_id(pos, end, kVectorGenericId, 1);
         return TypeSignatureTraits<T>::write(pos, end);
@@ -22,7 +24,8 @@ struct TypeSignatureTraits<::skr::Vector<T>> {
 namespace skr
 {
 template <typename V>
-struct BinSerde<Vector<V>> {
+struct BinSerde<Vector<V>>
+{
     inline static bool read(SBinaryReader* r, Vector<V>& v)
     {
         // read bin
@@ -63,7 +66,8 @@ struct BinSerde<Vector<V>> {
 // vector bin reader writer
 namespace skr::archive
 {
-struct BinVectorWriter {
+struct BinVectorWriter
+{
     Vector<uint8_t>* buffer;
 
     bool write(const void* data, size_t size)
@@ -72,10 +76,11 @@ struct BinVectorWriter {
         return true;
     }
 };
-struct BinVectorWriterBitpacked {
+struct BinVectorWriterBitpacked
+{
     Vector<uint8_t>* buffer;
-    uint8_t          bitOffset = 0;
-    bool             write(const void* data, size_t size)
+    uint8_t bitOffset = 0;
+    bool write(const void* data, size_t size)
     {
         return write_bits(data, size * 8);
     }
@@ -128,7 +133,8 @@ struct BinVectorWriterBitpacked {
 namespace skr
 {
 template <class V>
-struct JsonSerde<skr::Vector<V>> {
+struct JsonSerde<skr::Vector<V>>
+{
     inline static bool read(skr::archive::JsonReader* r, skr::Vector<V>& v)
     {
         size_t count;

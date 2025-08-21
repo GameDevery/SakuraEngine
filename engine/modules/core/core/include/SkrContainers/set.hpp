@@ -7,9 +7,11 @@ namespace skr
 {
 inline constexpr GUID kSetGenericId = u8"7218b701-572f-48f3-ab3a-d6c0b31efeb0"_guid;
 template <typename T>
-struct TypeSignatureTraits<::skr::Set<T>> {
+struct TypeSignatureTraits<::skr::Set<T>>
+{
+    inline static constexpr bool is_supported = concepts::WithRTTRTraits<T>;
     inline static constexpr size_t buffer_size = type_signature_size_v<ETypeSignatureSignal::GenericTypeId> + TypeSignatureTraits<T>::buffer_size;
-    inline static uint8_t*         write(uint8_t* pos, uint8_t* end)
+    inline static uint8_t* write(uint8_t* pos, uint8_t* end)
     {
         pos = TypeSignatureHelper::write_generic_type_id(pos, end, kSetGenericId, 1);
         return TypeSignatureTraits<T>::write(pos, end);
@@ -22,7 +24,8 @@ struct TypeSignatureTraits<::skr::Set<T>> {
 namespace skr
 {
 template <typename T>
-struct BinSerde<skr::Set<T>> {
+struct BinSerde<skr::Set<T>>
+{
     inline static bool read(SBinaryReader* r, skr::Set<T>& v)
     {
         // read size
@@ -65,7 +68,8 @@ struct BinSerde<skr::Set<T>> {
 namespace skr
 {
 template <typename T>
-struct JsonSerde<skr::Set<T>> {
+struct JsonSerde<skr::Set<T>>
+{
     inline static bool read(skr::archive::JsonReader* r, skr::Set<T>& v)
     {
         size_t count;

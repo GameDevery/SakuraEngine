@@ -8,9 +8,11 @@ namespace skr
 {
 static constexpr GUID kOptionalGenericId = u8"bc48634e-85dd-45ce-a7c7-f85d5bab9680"_guid;
 template <typename T>
-struct TypeSignatureTraits<::skr::Optional<T>> {
+struct TypeSignatureTraits<::skr::Optional<T>>
+{
+    inline static constexpr bool is_supported = concepts::WithRTTRTraits<T>;
     inline static constexpr size_t buffer_size = type_signature_size_v<ETypeSignatureSignal::GenericTypeId> + TypeSignatureTraits<T>::buffer_size;
-    inline static uint8_t*         write(uint8_t* pos, uint8_t* end)
+    inline static uint8_t* write(uint8_t* pos, uint8_t* end)
     {
         pos = TypeSignatureHelper::write_generic_type_id(pos, end, kOptionalGenericId, 1);
         return TypeSignatureTraits<T>::write(pos, end);
@@ -23,7 +25,8 @@ struct TypeSignatureTraits<::skr::Optional<T>> {
 namespace skr
 {
 template <typename T>
-struct BinSerde<skr::Optional<T>> {
+struct BinSerde<skr::Optional<T>>
+{
     inline static bool read(SBinaryReader* r, skr::Optional<T>& v)
     {
         // read size
@@ -69,7 +72,8 @@ struct BinSerde<skr::Optional<T>> {
 namespace skr
 {
 template <typename T>
-struct JsonSerde<skr::Optional<T>> {
+struct JsonSerde<skr::Optional<T>>
+{
     inline static bool read(skr::archive::JsonReader* r, skr::Optional<T>& v)
     {
         SKR_EXPECTED_CHECK(r->StartObject(), false);
