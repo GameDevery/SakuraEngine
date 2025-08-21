@@ -4,7 +4,6 @@
 #include <SkrV8/v8_virtual_module.hpp>
 #include <SkrV8/v8_value.hpp>
 #include <SkrCore/memory/rc.hpp>
-#include <SkrRTTR/script/script_binder.hpp>
 #include <SkrRTTR/script/stack_proxy.hpp>
 
 // v8 includes
