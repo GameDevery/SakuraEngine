@@ -10,20 +10,26 @@ extern int receiver_main(int argc, char* argv[]);
 
 int main(int argc, char* argv[])
 {
+    // TODO: 当前没有报错但也没有输出，只有一个黑色页面，等待修复效果
+
     exec_name = (const char8_t*)argv[0];
     if (argc == 1)
     {
         SKR_LOG_DEBUG(u8"exec_name: %s", exec_name);
-    
-        const char8_t* provider_arguments[] = { u8"provider", u8"-1"};
-        auto provider = skr_run_process(exec_name, 
-            provider_arguments, 2, u8"provider.log");
+
+        const char8_t* provider_arguments[] = { u8"provider", u8"-1" };
+        auto provider = skr_run_process(exec_name,
+            provider_arguments,
+            2,
+            u8"provider.log");
         const auto provider_id = skr_get_process_id(provider);
 
         skr::String providerIdString = skr::format(u8"{}", provider_id);
         const char8_t* receiver_arguments[] = { u8"receiver", providerIdString.c_str() };
-        auto receiver = skr_run_process(exec_name, 
-            receiver_arguments, 2, u8"receiver.log");
+        auto receiver = skr_run_process(exec_name,
+            receiver_arguments,
+            2,
+            u8"receiver.log");
 
         auto provider_result = skr_wait_process(provider);
         auto receriver_result = skr_wait_process(receiver);
@@ -39,12 +45,12 @@ int main(int argc, char* argv[])
         if (!skr::fs::Directory::exists(u8"./cross-proc"))
         {
             SKR_LOG_INFO(u8"subdir cross-proc not existed, create it");
-            skr::fs::Directory::create(skr::Path{u8"./cross-proc"}, true);
+            skr::fs::Directory::create(skr::Path{ u8"./cross-proc" }, true);
         }
 
-        if (is_receiver) 
+        if (is_receiver)
             return receiver_main(argc, argv);
-        else 
+        else
             return provider_main(argc, argv);
     }
 }
