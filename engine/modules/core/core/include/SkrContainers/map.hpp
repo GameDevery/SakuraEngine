@@ -7,9 +7,11 @@ namespace skr
 {
 static constexpr GUID kMapGenericId = u8"9eae06c4-d7ea-4246-af0e-c95d401a7a71"_guid;
 template <typename K, typename V>
-struct TypeSignatureTraits<::skr::Map<K, V>> {
+struct TypeSignatureTraits<::skr::Map<K, V>>
+{
+    inline static constexpr bool is_supported = concepts::WithRTTRTraits<K> && concepts::WithRTTRTraits<V>;
     inline static constexpr size_t buffer_size = type_signature_size_v<ETypeSignatureSignal::GenericTypeId> + TypeSignatureTraits<K>::buffer_size + TypeSignatureTraits<V>::buffer_size;
-    inline static uint8_t*         write(uint8_t* pos, uint8_t* end)
+    inline static uint8_t* write(uint8_t* pos, uint8_t* end)
     {
         pos = TypeSignatureHelper::write_generic_type_id(pos, end, kMapGenericId, 2);
         pos = TypeSignatureTraits<K>::write(pos, end);
@@ -23,7 +25,8 @@ struct TypeSignatureTraits<::skr::Map<K, V>> {
 namespace skr
 {
 template <typename K, typename V>
-struct BinSerde<skr::Map<K, V>> {
+struct BinSerde<skr::Map<K, V>>
+{
     inline static bool read(SBinaryReader* r, skr::Map<K, V>& v)
     {
         // read size
@@ -69,7 +72,8 @@ struct BinSerde<skr::Map<K, V>> {
 namespace skr
 {
 template <typename K, typename V>
-struct JsonSerde<skr::Map<K, V>> {
+struct JsonSerde<skr::Map<K, V>>
+{
     inline static bool read(skr::archive::JsonReader* r, skr::Map<K, V>& v)
     {
         size_t count;

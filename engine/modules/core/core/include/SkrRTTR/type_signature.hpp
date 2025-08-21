@@ -100,33 +100,34 @@ inline constexpr size_t get_type_signature_size_of_signal(ETypeSignatureSignal s
 // 比较选项
 enum class ETypeSignatureCompareFlag : uint8_t
 {
-    IgnoreConst        = 1 << 0, // const xxx == xxx
-    IgnoreRValue       = 1 << 1, // && == &
-    RefAsPointer       = 1 << 2, // & == *1
+    IgnoreConst = 1 << 0,        // const xxx == xxx
+    IgnoreRValue = 1 << 1,       // && == &
+    RefAsPointer = 1 << 2,       // & == *1
     RValueRefAsPointer = 1 << 3, // && == *1
 
-    Strict          = 0,
-    Relax           = IgnoreConst | IgnoreRValue | RefAsPointer | RValueRefAsPointer,
+    Strict = 0,
+    Relax = IgnoreConst | IgnoreRValue | RefAsPointer | RValueRefAsPointer,
     AllRefAsPointer = RefAsPointer | RValueRefAsPointer | IgnoreRValue, // assume all ref as pointer, sync to decay
 };
 
 // 常规化选项
 enum class ETypeSignatureDecayFlag : uint8_t
 {
-    IgnoreConst        = 1 << 0, // remove const
-    IgnoreRvalue       = 1 << 1, // translate && to &, sync to compare
-    RefAsPointer       = 1 << 2, // translate & to *, sync to compare
+    IgnoreConst = 1 << 0,        // remove const
+    IgnoreRvalue = 1 << 1,       // translate && to &, sync to compare
+    RefAsPointer = 1 << 2,       // translate & to *, sync to compare
     RValueRefAsPointer = 1 << 3, // translate && to *, sync to compare
 
-    Strict          = 0,
-    Relax           = IgnoreConst | IgnoreRvalue | RefAsPointer | RValueRefAsPointer,
+    Strict = 0,
+    Relax = IgnoreConst | IgnoreRvalue | RefAsPointer | RValueRefAsPointer,
     AllRefAsPointer = RefAsPointer | RValueRefAsPointer | IgnoreRvalue, // translate all ref to pointer, sync to compare
 };
 
 template <ETypeSignatureSignal... signals>
 constexpr size_t type_signature_size_v = (__helper::get_type_signature_size_of_signal(signals) + ...);
 
-struct TypeSignatureHelper {
+struct TypeSignatureHelper
+{
 #pragma region MISC HELPER
     // misc helper
     template <typename T>
@@ -200,8 +201,8 @@ struct TypeSignatureHelper {
     inline static const uint8_t* jump_next_data(const uint8_t* pos, const uint8_t* end)
     {
         SKR_ASSERT(pos < end && "invalid signature buffer");
-        ETypeSignatureSignal signal    = peek_signal(pos, end);
-        auto                 jump_size = __helper::get_type_signature_size_of_signal(signal);
+        ETypeSignatureSignal signal = peek_signal(pos, end);
+        auto jump_size = __helper::get_type_signature_size_of_signal(signal);
         SKR_ASSERT(has_enough_buffer(pos, end, signal));
         return pos + jump_size;
     }
@@ -554,12 +555,11 @@ struct TypeSignatureHelper {
 
 #pragma region OPERATOR
     inline static bool signal_equal(
-        const uint8_t*&           lhs,
-        const uint8_t*            lhs_end,
-        const uint8_t*&           rhs,
-        const uint8_t*            rhs_end,
-        ETypeSignatureCompareFlag flag
-    )
+        const uint8_t*& lhs,
+        const uint8_t* lhs_end,
+        const uint8_t*& rhs,
+        const uint8_t* rhs_end,
+        ETypeSignatureCompareFlag flag)
     {
         SKR_ASSERT(has_enough_buffer(lhs, lhs_end, peek_signal(lhs, lhs_end)));
         SKR_ASSERT(has_enough_buffer(rhs, rhs_end, peek_signal(rhs, rhs_end)));
@@ -604,7 +604,7 @@ struct TypeSignatureHelper {
                 return lhs_guid == rhs_guid;
             }
             case ETypeSignatureSignal::GenericTypeId: {
-                GUID     lhs_guid, rhs_guid;
+                GUID lhs_guid, rhs_guid;
                 uint32_t lhs_count, rhs_count;
                 lhs = read_generic_type_id(lhs, lhs_end, lhs_guid, lhs_count);
                 rhs = read_generic_type_id(rhs, rhs_end, rhs_guid, rhs_count);
@@ -710,12 +710,11 @@ struct TypeSignatureHelper {
         }
     }
     inline static bool signature_equal(
-        const uint8_t*            lhs,
-        const uint8_t*            lhs_end,
-        const uint8_t*            rhs,
-        const uint8_t*            rhs_end,
-        ETypeSignatureCompareFlag flag
-    )
+        const uint8_t* lhs,
+        const uint8_t* lhs_end,
+        const uint8_t* rhs,
+        const uint8_t* rhs_end,
+        ETypeSignatureCompareFlag flag)
     {
         SKR_ASSERT(lhs < lhs_end && rhs < rhs_end && "invalid signature buffer");
 
@@ -748,10 +747,9 @@ struct TypeSignatureHelper {
         return lhs_reach_end && rhs_reach_end;
     }
     inline static void decay_signature(
-        uint8_t*                pos,
-        uint8_t*                end,
-        ETypeSignatureDecayFlag flag
-    )
+        uint8_t* pos,
+        uint8_t* end,
+        ETypeSignatureDecayFlag flag)
     {
         uint8_t *read_pos = pos, *write_pos = pos;
         while (read_pos < end)
@@ -766,7 +764,7 @@ struct TypeSignatureHelper {
             }
 
             // get jump size
-            auto signal    = peek_signal(read_pos, end);
+            auto signal = peek_signal(read_pos, end);
             auto move_size = __helper::get_type_signature_size_of_signal(signal);
 
             // write
@@ -805,7 +803,8 @@ struct TypeSignatureHelper {
 };
 
 #pragma region TYPE SIGNATURE VIEW
-struct TypeSignatureView {
+struct TypeSignatureView
+{
     // ctor & dtor
     inline TypeSignatureView() = default;
     inline TypeSignatureView(uint8_t* data, uint64_t size)
@@ -817,11 +816,11 @@ struct TypeSignatureView {
 
     // copy & move
     inline TypeSignatureView(const TypeSignatureView& other) = default;
-    inline TypeSignatureView(TypeSignatureView&& other)      = default;
+    inline TypeSignatureView(TypeSignatureView&& other) = default;
 
     // assign & move assign
     inline TypeSignatureView& operator=(const TypeSignatureView& other) = default;
-    inline TypeSignatureView& operator=(TypeSignatureView&& other)      = default;
+    inline TypeSignatureView& operator=(TypeSignatureView&& other) = default;
 
     // subviews
     inline TypeSignatureView first(size_t count) const
@@ -847,47 +846,47 @@ struct TypeSignatureView {
     }
     inline bool is_type() const
     {
-        auto pos        = _data;
-        auto end        = _data + _size;
+        auto pos = _data;
+        auto end = _data + _size;
         auto jumped_pos = TypeSignatureHelper::jump_modifiers(pos, end);
         return jumped_pos < end && TypeSignatureHelper::peek_signal(jumped_pos, end) == ETypeSignatureSignal::TypeId;
     }
     inline bool is_generic_type() const
     {
-        auto pos        = _data;
-        auto end        = _data + _size;
+        auto pos = _data;
+        auto end = _data + _size;
         auto jumped_pos = TypeSignatureHelper::jump_modifiers(pos, end);
         return jumped_pos < end && TypeSignatureHelper::peek_signal(jumped_pos, end) == ETypeSignatureSignal::GenericTypeId;
     }
     inline bool is_function() const
     {
-        auto pos        = _data;
-        auto end        = _data + _size;
+        auto pos = _data;
+        auto end = _data + _size;
         auto jumped_pos = TypeSignatureHelper::jump_modifiers(pos, end);
         return jumped_pos < end && TypeSignatureHelper::peek_signal(jumped_pos, end) == ETypeSignatureSignal::FunctionSignature;
     }
     inline bool has_modifier(ETypeSignatureSignal signal) const
     {
         SKR_ASSERT(TypeSignatureHelper::is_modifier(signal));
-        const uint8_t* pos         = _data;
-        const uint8_t* end         = _data + _size;
-        auto           peek_signal = TypeSignatureHelper::peek_signal(pos, end);
+        const uint8_t* pos = _data;
+        const uint8_t* end = _data + _size;
+        auto peek_signal = TypeSignatureHelper::peek_signal(pos, end);
         while (TypeSignatureHelper::is_modifier(peek_signal))
         {
             if (peek_signal == signal)
             {
                 return true;
             }
-            pos         = TypeSignatureHelper::jump_signal(pos, end);
+            pos = TypeSignatureHelper::jump_signal(pos, end);
             peek_signal = TypeSignatureHelper::peek_signal(pos, end);
         }
         return false;
     }
     inline bool is_decayed_pointer() const
     {
-        const uint8_t* pos         = _data;
-        const uint8_t* end         = _data + _size;
-        auto           peek_signal = TypeSignatureHelper::peek_signal(pos, end);
+        const uint8_t* pos = _data;
+        const uint8_t* end = _data + _size;
+        auto peek_signal = TypeSignatureHelper::peek_signal(pos, end);
         while (TypeSignatureHelper::is_modifier(peek_signal))
         {
             if (peek_signal == ETypeSignatureSignal::Pointer ||
@@ -896,17 +895,17 @@ struct TypeSignatureView {
             {
                 return true;
             }
-            pos         = TypeSignatureHelper::jump_signal(pos, end);
+            pos = TypeSignatureHelper::jump_signal(pos, end);
             peek_signal = TypeSignatureHelper::peek_signal(pos, end);
         }
         return false;
     }
     inline uint32_t decayed_pointer_level()
     {
-        uint32_t       level       = 0;
-        const uint8_t* pos         = _data;
-        const uint8_t* end         = _data + _size;
-        auto           peek_signal = TypeSignatureHelper::peek_signal(pos, end);
+        uint32_t level = 0;
+        const uint8_t* pos = _data;
+        const uint8_t* end = _data + _size;
+        auto peek_signal = TypeSignatureHelper::peek_signal(pos, end);
         while (TypeSignatureHelper::is_modifier(peek_signal))
         {
             if (peek_signal == ETypeSignatureSignal::Pointer ||
@@ -916,7 +915,7 @@ struct TypeSignatureView {
                 ++level;
                 peek_signal = TypeSignatureHelper::peek_signal(pos, end);
             }
-            pos         = TypeSignatureHelper::jump_signal(pos, end);
+            pos = TypeSignatureHelper::jump_signal(pos, end);
             peek_signal = TypeSignatureHelper::peek_signal(pos, end);
         }
         return level;
@@ -946,9 +945,8 @@ struct TypeSignatureView {
         return TypeSignatureHelper::validate_complete_signature(_data, _data + _size);
     }
     inline bool equal(
-        const TypeSignatureView&  rhs,
-        ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict
-    ) const
+        const TypeSignatureView& rhs,
+        ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict) const
     {
         if (is_empty() && rhs.is_empty())
         {
@@ -966,8 +964,7 @@ struct TypeSignatureView {
             _data + _size,
             rhs._data,
             rhs._data + rhs._size,
-            flag
-        );
+            flag);
     }
     inline String to_string() const
     {
@@ -978,32 +975,32 @@ struct TypeSignatureView {
     inline TypeSignatureView jump_modifier()
     {
         auto old_data = _data;
-        auto old_end  = _data + _size;
-        _data         = const_cast<uint8_t*>(TypeSignatureHelper::jump_modifiers(_data, _data + _size));
-        _size         = static_cast<size_t>(old_end - _data);
+        auto old_end = _data + _size;
+        _data = const_cast<uint8_t*>(TypeSignatureHelper::jump_modifiers(_data, _data + _size));
+        _size = static_cast<size_t>(old_end - _data);
         return { old_data, static_cast<size_t>(_data - old_data) };
     }
     inline TypeSignatureView jump_next_data()
     {
         auto old_data = _data;
-        auto old_end  = _data + _size;
-        _data         = const_cast<uint8_t*>(TypeSignatureHelper::jump_next_data(_data, _data + _size));
-        _size         = static_cast<size_t>(old_end - _data);
+        auto old_end = _data + _size;
+        _data = const_cast<uint8_t*>(TypeSignatureHelper::jump_next_data(_data, _data + _size));
+        _size = static_cast<size_t>(old_end - _data);
         return { old_data, static_cast<size_t>(_data - old_data) };
     }
     inline TypeSignatureView jump_next_type_or_data()
     {
         auto old_data = _data;
-        auto old_end  = _data + _size;
-        _data         = const_cast<uint8_t*>(TypeSignatureHelper::jump_next_type_or_data(_data, _data + _size));
-        _size         = static_cast<size_t>(old_end - _data);
+        auto old_end = _data + _size;
+        _data = const_cast<uint8_t*>(TypeSignatureHelper::jump_next_type_or_data(_data, _data + _size));
+        _size = static_cast<size_t>(old_end - _data);
         return { old_data, static_cast<size_t>(_data - old_data) };
     }
 
     // getter
     inline uint8_t* data() const { return _data; }
     inline uint64_t size() const { return _size; }
-    inline bool     is_empty() const { return _size == 0; }
+    inline bool is_empty() const { return _size == 0; }
 
     // read
     inline ETypeSignatureSignal peek_signal() const
@@ -1019,140 +1016,140 @@ struct TypeSignatureView {
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_none(pos, end));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_none(pos, end));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_type_id(GUID& guid) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_type_id(pos, end, guid));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_type_id(pos, end, guid));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_generic_type_id(GUID& guid, uint32_t& data_count) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_generic_type_id(pos, end, guid, data_count));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_generic_type_id(pos, end, guid, data_count));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_function_signature(uint32_t& data_count) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_function_signature(pos, end, data_count));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_function_signature(pos, end, data_count));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_const() const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_const(pos, end));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_const(pos, end));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_pointer() const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_pointer(pos, end));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_pointer(pos, end));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_ref() const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_ref(pos, end));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_ref(pos, end));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_rvalue_ref() const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_rvalue_ref(pos, end));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_rvalue_ref(pos, end));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_array_dim(uint32_t& dim) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_array_dim(pos, end, dim));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_array_dim(pos, end, dim));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_bool(bool& value) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_bool(pos, end, value));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_bool(pos, end, value));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_int8(int8_t& value) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_int8(pos, end, value));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_int8(pos, end, value));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_int16(int16_t& value) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_int16(pos, end, value));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_int16(pos, end, value));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_int32(int32_t& value) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_int32(pos, end, value));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_int32(pos, end, value));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_int64(int64_t& value) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_int64(pos, end, value));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_int64(pos, end, value));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_uint8(uint8_t& value) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_uint8(pos, end, value));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_uint8(pos, end, value));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_uint16(uint16_t& value) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_uint16(pos, end, value));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_uint16(pos, end, value));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_uint32(uint32_t& value) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_uint32(pos, end, value));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_uint32(pos, end, value));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_uint64(uint64_t& value) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_uint64(pos, end, value));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_uint64(pos, end, value));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_float(float& value) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_float(pos, end, value));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_float(pos, end, value));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_double(double& value) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos      = const_cast<uint8_t*>(TypeSignatureHelper::read_double(pos, end, value));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_double(pos, end, value));
         return { pos, static_cast<size_t>(end - pos) };
     }
 
@@ -1165,9 +1162,11 @@ private:
 #pragma region TYPE SIGNATURE TRAITS
 // default as type_id
 template <typename T>
-struct TypeSignatureTraits {
+struct TypeSignatureTraits
+{
+    inline static constexpr bool is_supported = concepts::WithRTTRTraits<T>;
     inline static constexpr size_t buffer_size = type_signature_size_v<ETypeSignatureSignal::TypeId>;
-    inline static uint8_t*         write(uint8_t* pos, uint8_t* end)
+    inline static uint8_t* write(uint8_t* pos, uint8_t* end)
     {
         return TypeSignatureHelper::write_type_id(pos, end, RTTRTraits<T>::get_guid());
     }
@@ -1175,14 +1174,17 @@ struct TypeSignatureTraits {
 
 // ignore volatile
 template <typename T>
-struct TypeSignatureTraits<volatile T> : TypeSignatureTraits<T> {
+struct TypeSignatureTraits<volatile T> : TypeSignatureTraits<T>
+{
 };
 
 // [MODIFIER] const
 template <typename T>
-struct TypeSignatureTraits<const T> : TypeSignatureTraits<T> {
+struct TypeSignatureTraits<const T> : TypeSignatureTraits<T>
+{
+    inline static constexpr bool is_supported = concepts::WithRTTRTraits<T>;
     inline static constexpr size_t buffer_size = type_signature_size_v<ETypeSignatureSignal::Const> + TypeSignatureTraits<T>::buffer_size;
-    inline static uint8_t*         write(uint8_t* pos, uint8_t* end)
+    inline static uint8_t* write(uint8_t* pos, uint8_t* end)
     {
         pos = TypeSignatureHelper::write_const(pos, end);
         return TypeSignatureTraits<T>::write(pos, end);
@@ -1191,9 +1193,11 @@ struct TypeSignatureTraits<const T> : TypeSignatureTraits<T> {
 
 // [MODIFIER] pointer
 template <typename T>
-struct TypeSignatureTraits<T*> {
+struct TypeSignatureTraits<T*>
+{
+    inline static constexpr bool is_supported = concepts::WithRTTRTraits<T>;
     inline static constexpr size_t buffer_size = type_signature_size_v<ETypeSignatureSignal::Pointer> + TypeSignatureTraits<T>::buffer_size;
-    inline static uint8_t*         write(uint8_t* pos, uint8_t* end)
+    inline static uint8_t* write(uint8_t* pos, uint8_t* end)
     {
         pos = TypeSignatureHelper::write_pointer(pos, end);
         return TypeSignatureTraits<T>::write(pos, end);
@@ -1202,9 +1206,11 @@ struct TypeSignatureTraits<T*> {
 
 // [MODIFIER] reference
 template <typename T>
-struct TypeSignatureTraits<T&> {
+struct TypeSignatureTraits<T&>
+{
+    inline static constexpr bool is_supported = concepts::WithRTTRTraits<T>;
     inline static constexpr size_t buffer_size = type_signature_size_v<ETypeSignatureSignal::Ref> + TypeSignatureTraits<T>::buffer_size;
-    inline static uint8_t*         write(uint8_t* pos, uint8_t* end)
+    inline static uint8_t* write(uint8_t* pos, uint8_t* end)
     {
         pos = TypeSignatureHelper::write_ref(pos, end);
         return TypeSignatureTraits<T>::write(pos, end);
@@ -1213,9 +1219,11 @@ struct TypeSignatureTraits<T&> {
 
 // [MODIFIER] rvalue reference
 template <typename T>
-struct TypeSignatureTraits<T&&> {
+struct TypeSignatureTraits<T&&>
+{
+    inline static constexpr bool is_supported = concepts::WithRTTRTraits<T>;
     inline static constexpr size_t buffer_size = type_signature_size_v<ETypeSignatureSignal::RValueRef> + TypeSignatureTraits<T>::buffer_size;
-    inline static uint8_t*         write(uint8_t* pos, uint8_t* end)
+    inline static uint8_t* write(uint8_t* pos, uint8_t* end)
     {
         pos = TypeSignatureHelper::write_rvalue_ref(pos, end);
         return TypeSignatureTraits<T>::write(pos, end);
@@ -1224,9 +1232,11 @@ struct TypeSignatureTraits<T&&> {
 
 // [MODIFIER] no dim array
 template <typename T>
-struct TypeSignatureTraits<T[]> {
+struct TypeSignatureTraits<T[]>
+{
+    inline static constexpr bool is_supported = concepts::WithRTTRTraits<T>;
     inline static constexpr size_t buffer_size = type_signature_size_v<ETypeSignatureSignal::ArrayDim> + TypeSignatureTraits<T>::buffer_size;
-    inline static uint8_t*         write(uint8_t* pos, uint8_t* end)
+    inline static uint8_t* write(uint8_t* pos, uint8_t* end)
     {
         pos = TypeSignatureHelper::write_pointer(pos, end); // as pointer
         return TypeSignatureTraits<T>::write(pos, end);
@@ -1235,9 +1245,11 @@ struct TypeSignatureTraits<T[]> {
 
 // [MODIFIER] array
 template <typename T, size_t N>
-struct TypeSignatureTraits<T[N]> {
+struct TypeSignatureTraits<T[N]>
+{
+    inline static constexpr bool is_supported = concepts::WithRTTRTraits<T>;
     inline static constexpr size_t buffer_size = type_signature_size_v<ETypeSignatureSignal::ArrayDim> + TypeSignatureTraits<T>::buffer_size;
-    inline static uint8_t*         write(uint8_t* pos, uint8_t* end)
+    inline static uint8_t* write(uint8_t* pos, uint8_t* end)
     {
         pos = TypeSignatureHelper::write_array_dim(pos, end, N);
         return TypeSignatureTraits<T>::write(pos, end);
@@ -1246,9 +1258,11 @@ struct TypeSignatureTraits<T[N]> {
 
 // [MODIFIER] const array
 template <typename T, size_t N>
-struct TypeSignatureTraits<const T[N]> {
+struct TypeSignatureTraits<const T[N]>
+{
+    inline static constexpr bool is_supported = concepts::WithRTTRTraits<T>;
     inline static constexpr size_t buffer_size = type_signature_size_v<ETypeSignatureSignal::ArrayDim> + TypeSignatureTraits<T>::buffer_size;
-    inline static uint8_t*         write(uint8_t* pos, uint8_t* end)
+    inline static uint8_t* write(uint8_t* pos, uint8_t* end)
     {
         pos = TypeSignatureHelper::write_const(pos, end);
         pos = TypeSignatureHelper::write_array_dim(pos, end, N);
@@ -1258,7 +1272,9 @@ struct TypeSignatureTraits<const T[N]> {
 
 // function pointer
 template <typename Ret>
-struct TypeSignatureTraits<Ret(void)> {
+struct TypeSignatureTraits<Ret(void)>
+{
+    inline static constexpr bool is_supported = concepts::WithRTTRTraits<Ret>;
     inline static constexpr size_t buffer_size =
         type_signature_size_v<ETypeSignatureSignal::FunctionSignature> +
         TypeSignatureTraits<Ret>::buffer_size;
@@ -1275,7 +1291,11 @@ struct TypeSignatureTraits<Ret(void)> {
 };
 
 template <typename Ret, typename... Args>
-struct TypeSignatureTraits<Ret(Args...)> {
+struct TypeSignatureTraits<Ret(Args...)>
+{
+    inline static constexpr bool is_supported =
+        concepts::WithRTTRTraits<Ret> &&
+        (concepts::WithRTTRTraits<Args> && ...);
     inline static constexpr size_t buffer_size =
         type_signature_size_v<ETypeSignatureSignal::FunctionSignature> +
         TypeSignatureTraits<Ret>::buffer_size +
@@ -1301,7 +1321,8 @@ struct TypeSignatureTraits<Ret(Args...)> {
 #pragma endregion
 
 #pragma region TYPE SIGNATURE
-struct TypeSignature : private SkrAllocator {
+struct TypeSignature : private SkrAllocator
+{
     friend struct TypeSignatureBuilder;
 
     // ctor & dtor
@@ -1356,8 +1377,8 @@ struct TypeSignature : private SkrAllocator {
         if (this != &other)
         {
             reset();
-            _data       = other._data;
-            _size       = other._size;
+            _data = other._data;
+            _size = other._size;
             other._data = nullptr;
             other._size = 0;
         }
@@ -1393,13 +1414,13 @@ struct TypeSignature : private SkrAllocator {
     }
 
     // to view
-    inline                   operator TypeSignatureView() const { return { _data, _size }; }
+    inline operator TypeSignatureView() const { return { _data, _size }; }
     inline TypeSignatureView view() const { return { _data, _size }; }
 
     // getter
     inline uint8_t* data() const { return _data; }
-    inline size_t   size() const { return _size; }
-    inline bool     is_empty() const { return _size == 0; }
+    inline size_t size() const { return _size; }
+    inline bool is_empty() const { return _size == 0; }
 
     // decay
     inline void decay(ETypeSignatureDecayFlag flag = ETypeSignatureDecayFlag::Relax)
@@ -1407,8 +1428,7 @@ struct TypeSignature : private SkrAllocator {
         TypeSignatureHelper::decay_signature(
             data(),
             data() + size(),
-            flag
-        );
+            flag);
     }
 
     // ops
@@ -1423,9 +1443,10 @@ struct TypeSignature : private SkrAllocator {
 
 private:
     uint8_t* _data = nullptr;
-    size_t   _size = 0;
+    size_t _size = 0;
 };
-struct TypeSignatureBuilder {
+struct TypeSignatureBuilder
+{
     // write helper
     inline void write_none()
     {
@@ -1556,7 +1577,8 @@ struct TypeSignatureBuilder {
 
 #pragma region TYPE SIGNATURE TYPED
 template <typename T>
-struct TypeSignatureTyped {
+struct TypeSignatureTyped
+{
     // ctor
     inline TypeSignatureTyped()
     {
@@ -1593,13 +1615,13 @@ struct TypeSignatureTyped {
     }
 
     // to view
-    inline                   operator TypeSignatureView() const { return { data(), TypeSignatureTraits<T>::buffer_size }; }
+    inline operator TypeSignatureView() const { return { data(), TypeSignatureTraits<T>::buffer_size }; }
     inline TypeSignatureView view() const { return { data(), TypeSignatureTraits<T>::buffer_size }; }
 
     // getter
     inline uint8_t* data() const { return const_cast<uint8_t*>(&_data[0]); }
-    inline size_t   size() const { return TypeSignatureTraits<T>::buffer_size; }
-    inline bool     is_empty() const { return TypeSignatureTraits<T>::buffer_size == 0; }
+    inline size_t size() const { return TypeSignatureTraits<T>::buffer_size; }
+    inline bool is_empty() const { return TypeSignatureTraits<T>::buffer_size == 0; }
 
     // decay
     inline void decay(ETypeSignatureDecayFlag flag = ETypeSignatureDecayFlag::Relax)
@@ -1607,8 +1629,7 @@ struct TypeSignatureTyped {
         TypeSignatureHelper::decay_signature(
             data(),
             data() + size(),
-            flag
-        );
+            flag);
     }
 
 private:
@@ -1621,7 +1642,7 @@ template <typename T>
 inline TypeSignature type_signature_of()
 {
     TypeSignature result{ TypeSignatureTraits<T>::buffer_size };
-    auto          pos = TypeSignatureTraits<T>::write(result.data(), result.data() + result.size());
+    auto pos = TypeSignatureTraits<T>::write(result.data(), result.data() + result.size());
     SKR_ASSERT(pos == (result.data() + result.size()) && "type signature did not write enough data, please check the writer function");
     return result;
 }
@@ -1680,7 +1701,8 @@ inline TypeSignatureTyped<decltype(__helper::decay_field(field))> type_signature
 namespace skr::container
 {
 template <>
-struct Formatter<TypeSignatureView> {
+struct Formatter<TypeSignatureView>
+{
     template <typename TString>
     inline static void format(TString& out, const TypeSignatureView& value, typename TString::ViewType spec)
     {
@@ -1688,7 +1710,8 @@ struct Formatter<TypeSignatureView> {
     }
 };
 template <>
-struct Formatter<TypeSignature> {
+struct Formatter<TypeSignature>
+{
     template <typename TString>
     inline static void format(TString& out, const TypeSignature& value, typename TString::ViewType spec)
     {
@@ -1696,3 +1719,10 @@ struct Formatter<TypeSignature> {
     }
 };
 } // namespace skr::container
+
+// concept
+namespace skr::concepts
+{
+template <typename T>
+inline constexpr bool WithTypeSignatureTraits = TypeSignatureTraits<T>::is_supported;
+} // namespace skr::concepts
