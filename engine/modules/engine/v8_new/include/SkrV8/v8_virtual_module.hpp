@@ -145,7 +145,7 @@ private:
     Map<String, V8VirtualModuleNode*> _children = {};
 };
 
-struct SKR_V8_NEW_API V8VirtualModule {
+struct SKR_V8_API V8VirtualModule {
     // getter & setter
     inline const V8VirtualModuleNode& root_node() const { return _root_node; }
     inline bool                       is_empty() const { return _root_node.children().is_empty(); }

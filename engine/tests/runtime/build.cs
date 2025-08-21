@@ -51,19 +51,12 @@ public static class RuntimeTests
             .Depend(Visibility.Public, "SkrRT")
             .AddCppFiles("proxy/**.cpp");
 
-        Engine.Program("V8Test")
+        Engine.Program("V8TestNew")
             .EnableCodegen("v8")
             .AddMetaHeaders("v8/**.hpp")
             .Depend(Visibility.Private, "SkrTestFramework")
             .Depend(Visibility.Public, "SkrV8")
             .AddCppFiles("v8/**.cpp");
-
-        Engine.Program("V8TestNew")
-            .EnableCodegen("v8_new")
-            .AddMetaHeaders("v8_new/**.hpp")
-            .Depend(Visibility.Private, "SkrTestFramework")
-            .Depend(Visibility.Public, "SkrV8New")
-            .AddCppFiles("v8_new/**.cpp");
 
     }
 }

@@ -11,7 +11,7 @@ namespace skr
 {
 // clang-format off
 sreflect_struct(guid = "71d1b125-2e17-4a92-b162-64297f0d41e5")
-SKR_V8_NEW_API IV8VFS : virtual IObject {
+SKR_V8_API IV8VFS : virtual IObject {
     // clang-format on
     SKR_GENERATE_BODY(IV8VFS)
     SKR_RC_IMPL();
@@ -26,7 +26,7 @@ SKR_V8_NEW_API IV8VFS : virtual IObject {
 
 // clang-format off
 sreflect_struct(guid = "e2db63ac-86d4-474a-8c79-46566a1f7135")
-SKR_V8_NEW_API V8VFSSystemFS : IV8VFS {
+SKR_V8_API V8VFSSystemFS : IV8VFS {
     // clang-format on
     SKR_GENERATE_BODY(V8VFSSystemFS)
 
