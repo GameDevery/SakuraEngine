@@ -16,8 +16,9 @@ inline static void read_bytes(const char* file_name, char8_t** bytes, uint32_t* 
     fclose(f);
 }
 
-typedef struct SKR_ALIGNAS(16) skr_float4_tt {
-    struct 
+typedef struct SKR_ALIGNAS(16) skr_float4_tt
+{
+    struct
     {
         float x;
         float y;
@@ -27,8 +28,7 @@ typedef struct SKR_ALIGNAS(16) skr_float4_tt {
 } skr_float4_tt;
 
 inline static void read_shader_bytes(
-const char* virtual_path, uint32_t** bytes, uint32_t* length,
-ECGPUBackend backend)
+    const char* virtual_path, uint32_t** bytes, uint32_t* length, ECGPUBackend backend)
 {
     char shader_file[256];
     const char* shader_path = "./../resources/shaders/";
@@ -36,19 +36,19 @@ ECGPUBackend backend)
     strcat(shader_file, virtual_path);
     switch (backend)
     {
-        case CGPU_BACKEND_VULKAN:
-            strcat(shader_file, ".spv");
-            break;
-        case CGPU_BACKEND_D3D12:
-        case CGPU_BACKEND_XBOX_D3D12:
-            strcat(shader_file, ".dxil");
-            break;
-        case CGPU_BACKEND_METAL:
-            strcat(shader_file, ".metallib");
-            break;
-        default:
-            SKR_UNIMPLEMENTED_FUNCTION();
-            break;
+    case CGPU_BACKEND_VULKAN:
+        strcat(shader_file, ".spv");
+        break;
+    case CGPU_BACKEND_D3D12:
+    case CGPU_BACKEND_XBOX_D3D12:
+        strcat(shader_file, ".dxil");
+        break;
+    case CGPU_BACKEND_METAL:
+        strcat(shader_file, ".metallib");
+        break;
+    default:
+        SKR_UNIMPLEMENTED_FUNCTION();
+        break;
     }
     read_bytes(shader_file, (char8_t**)bytes, length);
 }
@@ -63,7 +63,8 @@ static const char8_t* gPNGNames[CGPU_BACKEND_COUNT] = {
     "mandelbrot-metal.png"
 };
 
-typedef struct Pixel {
+typedef struct Pixel
+{
     float r, g, b, a;
 } Pixel;
 
@@ -100,7 +101,9 @@ void ComputeFunc(void* usrdata)
     // Create compute shader
     uint32_t *shader_bytes, shader_length;
     read_shader_bytes("cgpu-mandelbrot/mandelbrot.compute_main",
-    &shader_bytes, &shader_length, backend);
+        &shader_bytes,
+        &shader_length,
+        backend);
     CGPUShaderLibraryDescriptor shader_desc = {
         .code = shader_bytes,
         .code_size = shader_length,
