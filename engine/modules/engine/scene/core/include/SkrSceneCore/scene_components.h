@@ -11,6 +11,15 @@
     #define SKR_SCENE_MAX_NAME_LENGTH 32
 #endif
 
+namespace skr
+{
+class TransformSystem;
+namespace scene
+{
+struct TransformFromRootJob;
+} // namespace scene
+} // namespace skr
+
 namespace skr::scene
 {
 
@@ -25,7 +34,6 @@ using Position = float3;
 using Transform = skr_transform_f_t;
 #endif
 using Rotator = skr::RotatorF;
-struct TransformJob;
 
 sreflect_struct(
     guid = "01981176-1f33-777f-b448-10ddaf1d03e2";
@@ -72,7 +80,8 @@ public:
     inline bool get_dirty() const { return dirty; }
 
 private:
-    friend struct TransformJob;
+    friend struct TransformFromRootJob;
+    friend class ::skr::TransformSystem;
     Rotator euler;
     mutable bool dirty;
 };
@@ -113,7 +122,8 @@ public:
     inline bool get_dirty() const { return dirty; }
 
 private:
-    friend struct TransformJob;
+    friend struct TransformFromRootJob;
+    friend class ::skr::TransformSystem;
     Position value;
     mutable bool dirty;
 };
@@ -164,7 +174,8 @@ public:
     inline bool get_dirty() const { return dirty; }
 
 private:
-    friend struct TransformJob;
+    friend struct TransformFromRootJob;
+    friend class ::skr::TransformSystem;
     skr::float3 value;
     mutable bool dirty;
 };

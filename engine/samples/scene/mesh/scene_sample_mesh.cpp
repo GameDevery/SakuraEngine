@@ -9,6 +9,7 @@
 #include <SkrRT/io/vram_io.hpp>
 #include "SkrOS/thread.h"
 #include "SkrProfile/profile.h"
+#include "SkrRT/ecs/scheduler.hpp"
 #include "SkrRT/io/ram_io.hpp"
 #include "SkrRT/misc/cmd_parser.hpp"
 #include "SkrRTTR/rttr_traits.hpp"
@@ -68,7 +69,6 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     skr::String gltf_path = u8"";
     skr::LocalResourceRegistry* registry = nullptr;
     skr::MeshFactory* mesh_factory = nullptr;
-    bool use_gltf = false;
 
     skd::SProject project;
     skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
@@ -153,8 +153,7 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     SKR_LOG_INFO(u8"Scene Sample Mesh Module Loaded");
 
     skr::cmd::parser parser(argc, (char**)argv);
-    parser.add(u8"gltf", u8"gltf file path", u8"-g", false);
-    parser.add(u8"use-gltf", u8"whether to use gltf file", u8"-u", false);
+    parser.add(u8"gltf", u8"use gltf", u8"-g", false);
 
     if (!parser.parse())
     {
@@ -171,25 +170,12 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     {
         SKR_LOG_INFO(u8"No gltf file specified");
     }
-
-    auto use_gltf_opt = parser.get_optional<bool>(u8"use-gltf");
-    if (use_gltf_opt)
-    {
-        use_gltf = *use_gltf_opt;
-        SKR_LOG_INFO(u8"use gltf: %s", use_gltf ? u8"true" : u8"false");
-    }
-    else
-    {
-        use_gltf = true; // default to true
-        SKR_LOG_INFO(u8"use gltf: %s", use_gltf ? u8"true" : u8"false");
-    }
-
     scheduler.initialize({});
     scheduler.bind();
     world.initialize();
     actor_manager.initialize(&world);
     transform_system = skr_transform_system_create(&world);
-    scene_render_system = skr_scene_render_system_create(&world);
+    scene_render_system = skr::scene::SceneRenderSystem::Create(&world);
     render_device = SkrRendererModule::Get()->get_render_device();
 
     auto resourceRoot = (skr::fs::current_directory() / u8"../resources");
@@ -233,7 +219,7 @@ void SceneSampleMeshModule::on_unload()
         DestroyResourceSystem();
     }
     skr_transform_system_destroy(transform_system);
-    skr_scene_render_system_destroy(scene_render_system);
+    skr::scene::SceneRenderSystem::Destroy(scene_render_system);
 
     actor_manager.finalize();
     world.finalize();
@@ -265,12 +251,12 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
 int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
 {
     using namespace skr;
-    
+
     SkrZoneScopedN("SceneSampleMeshModule::main_module_exec");
     SKR_LOG_INFO(u8"Running Scene Sample Mesh Module");
 
     SKR_LOG_INFO(u8"gltf file path: {%s}", gltf_path.c_str());
-    if (use_gltf && gltf_path.is_empty())
+    if (gltf_path.is_empty())
     {
         SKR_LOG_ERROR(u8"gltf file path is empty, please specify a valid gltf file path.");
         return 1;
@@ -302,6 +288,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 1.0f, 0.0f });
     actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
     actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
+
     for (auto i = 0; i < hierarchy_count; ++i)
     {
         auto actor = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
@@ -309,6 +296,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
 
         actor.lock()->SetDisplayName(skr::format(u8"Actor {}", i + 2).c_str());
         actor.lock()->CreateEntity();
+
         if (i == 0)
         {
             actor.lock()->AttachTo(actor1);
@@ -323,29 +311,16 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     }
 
     transform_system->update();
-    skr::ecs::TaskScheduler::Get()->sync_all();
+    transform_system->get_context()->update_finish.wait(true);
 
-    MeshResource* mesh_resource = nullptr;
-    RenderMesh* render_mesh = SkrNew<RenderMesh>();
-
-    utils::Grid2DMesh dummy_mesh;
     actor1.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = MeshAssetID;
     for (auto& actor : hierarchy_actors)
     {
         actor.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = MeshAssetID;
     }
 
-    if (use_gltf)
-    {
-        CookAndLoadGLTF();
-    }
-    else
-    {
-        mesh_resource = SkrNew<MeshResource>();
-        dummy_mesh.init();
-        dummy_mesh.generate_render_mesh(render_device, render_mesh);
-        mesh_resource->render_mesh = render_mesh;
-    }
+    CookAndLoadGLTF();
+
     {
         skr::render_graph::RenderGraphBuilder graph_builder;
         graph_builder.with_device(cgpu_device)
@@ -404,10 +379,9 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             camera.aspect = (float)size.x / (float)size.y;
         };
         {
+            transform_system->get_context()->update_finish.wait(true);
             scene_render_system->update();
-            // Currently we just sync all, but this logic will be moved to Render Thread in the future
-            skr::ecs::TaskScheduler::Get()->sync_all();
-            // SKR_LOG_INFO(u8"Scene Render System has %d drawcalls", scene_render_system->get_drawcalls().size());
+            scene_render_system->get_context()->update_finish.wait(true);
             scene_renderer->draw_primitives(
                 render_graph,
                 scene_render_system->get_drawcalls());
@@ -431,16 +405,5 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     cgpu_wait_queue_idle(gfx_queue);
     imgui_app->shutdown();
     skr::input::Input::Finalize();
-    skr_render_mesh_free(render_mesh);
-    if (use_gltf)
-    {
-        mesh_resource->bins.clear();
-        mesh_resource->render_mesh = nullptr;
-    }
-    else
-    {
-        dummy_mesh.destroy();
-    }
-    SkrDelete(mesh_resource);
     return 0;
 }

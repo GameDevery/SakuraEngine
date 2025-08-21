@@ -285,7 +285,7 @@ void GPUScene::PrepareUploadBuffer(skr::render_graph::RenderGraph* graph)
 void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
 {
     using namespace skr::render_graph;
-    
+
     SkrZoneScopedN("GPUScene::ExecuteUpload");
     SwitchLane();
 
@@ -305,8 +305,7 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
         if (frame_ctx.frame_tlas.get() != nullptr)
         {
             frame_ctx.tlas_handle = graph->create_acceleration_structure(
-                [&frame_ctx, graph](RenderGraph& rg, class RenderGraph::AccelerationStructureBuilder& builder)
-                {
+                [&frame_ctx, graph](RenderGraph& rg, class RenderGraph::AccelerationStructureBuilder& builder) {
                     builder.set_name(u8"GPUScene-TLAS")
                         .import(frame_ctx.frame_tlas.get());
                 });

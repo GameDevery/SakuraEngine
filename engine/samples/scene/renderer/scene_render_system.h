@@ -24,11 +24,17 @@ namespace skr::scene
 struct SCENE_RENDERER_API SceneRenderSystem
 {
 public:
+    struct Context
+    {
+        skr::task::event_t update_finish;
+    };
     static SceneRenderSystem* Create(skr::ecs::World* world) SKR_NOEXCEPT;
     static void Destroy(SceneRenderSystem* system) SKR_NOEXCEPT;
+
     void bind_renderer(skr::SceneRenderer* renderer) SKR_NOEXCEPT;
     void update() SKR_NOEXCEPT;
     skr::span<skr_primitive_draw_t> get_drawcalls() const SKR_NOEXCEPT;
+    Context const* get_context() const SKR_NOEXCEPT;
 
 private:
 private:
@@ -42,7 +48,3 @@ private:
 };
 
 } // namespace skr::scene
-
-SKR_EXTERN_C SCENE_RENDERER_API skr::scene::SceneRenderSystem* skr_scene_render_system_create(skr::ecs::World* world);
-SKR_EXTERN_C SCENE_RENDERER_API void skr_scene_render_system_destroy(skr::scene::SceneRenderSystem* system);
-// SKR_EXTERN_C SCENE_RENDERER_API void skr_scene_render_system_update(skr::scene::SceneRenderSystem* system);
