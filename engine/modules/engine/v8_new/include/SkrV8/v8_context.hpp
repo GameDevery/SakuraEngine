@@ -14,7 +14,7 @@
 
 namespace skr
 {
-struct SKR_V8_NEW_API V8Context {
+struct SKR_V8_API V8Context {
     SKR_RC_IMPL();
 
     friend struct V8Isolate;

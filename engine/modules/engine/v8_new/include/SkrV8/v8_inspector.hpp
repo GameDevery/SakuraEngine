@@ -10,7 +10,7 @@ struct V8Isolate;
 struct V8Context;
 
 // websocket
-struct SKR_V8_NEW_API V8WebSocketServer {
+struct SKR_V8_API V8WebSocketServer {
     V8WebSocketServer();
     ~V8WebSocketServer();
 
@@ -47,7 +47,7 @@ private:
 };
 
 // channel
-struct SKR_V8_NEW_API V8InspectorChannel : v8_inspector::V8Inspector::Channel {
+struct SKR_V8_API V8InspectorChannel : v8_inspector::V8Inspector::Channel {
     // override
     void sendResponse(int callId, std::unique_ptr<v8_inspector::StringBuffer> message) override;
     void sendNotification(std::unique_ptr<v8_inspector::StringBuffer> message) override;
@@ -57,7 +57,7 @@ struct SKR_V8_NEW_API V8InspectorChannel : v8_inspector::V8Inspector::Channel {
 };
 
 // inspector client
-struct SKR_V8_NEW_API V8InspectorClient : v8_inspector::V8InspectorClient {
+struct SKR_V8_API V8InspectorClient : v8_inspector::V8InspectorClient {
     friend struct V8Isolate;
 
 private:
