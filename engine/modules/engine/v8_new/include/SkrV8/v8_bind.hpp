@@ -1,8 +1,6 @@
 #pragma once
 #include <SkrV8/v8_fwd.hpp>
 #include <SkrRTTR/script/scriptble_object.hpp>
-#include <SkrRTTR/script/script_binder.hpp>
-#include <SkrRTTR/script/script_tools.hpp>
 #include <SkrRTTR/script/stack_proxy.hpp>
 
 // v8 includes
