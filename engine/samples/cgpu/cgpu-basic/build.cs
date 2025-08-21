@@ -13,8 +13,6 @@ public static class CGPUSamples
             .AddCFiles("mandelbrot/mandelbrot.c")
             .AddCppSLFiles("mandelbrot/**.cppsl")
             .CppSLOutputDirectory("resources/shaders/cgpu-mandelbrot");
-            //.AddHLSLFilesWithEntry("compute_main", "mandelbrot/**.hlsl")
-            //.DXCOutputDirectory("resources/shaders/cgpu-mandelbrot");
 
         Engine.Program("CGPURayTracing")
             .Depend(Visibility.Public, "SkrRT")

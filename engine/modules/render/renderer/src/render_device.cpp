@@ -171,8 +171,7 @@ void RendererDeviceImpl::initialize(const Builder& builder)
 
     // dstorage queue
     auto dstorage_cap = cgpu_query_dstorage_availability(device);
-    const bool supportDirectStorage = (dstorage_cap != SKR_DSTORAGE_AVAILABILITY_NONE);
-    if (supportDirectStorage)
+    if (const bool SupportDirectStorage = (dstorage_cap != SKR_DSTORAGE_AVAILABILITY_NONE))
     {
 #ifdef _WIN32
         skr_win_dstorage_set_staging_buffer_size(4096 * 4096 * 8);

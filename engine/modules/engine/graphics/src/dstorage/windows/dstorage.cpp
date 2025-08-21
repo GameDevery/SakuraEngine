@@ -11,8 +11,90 @@
 struct StatusEventArray;
 SkrWindowsDStorageInstance* SkrWindowsDStorageInstance::_this = nullptr;
 
+struct DStorageDLL
+{
+public:
+    bool Fail = false;
+    static DStorageDLL& Get()
+    {
+        if (!DLL.Initialized)
+            DLL.Initialize();
+        return DLL;
+    }
+
+    skr::SharedLibrary dstorage_library;
+    skr::SharedLibrary dstorage_core;
+
+private:
+    bool Initialize()
+    {
+        if (const bool wine = skr_win_is_wine())
+        {
+            Fail = true;
+        }
+        else
+        {
+            this->dstorage_core.load(u8"dstoragecore.dll");
+            this->dstorage_library.load(u8"dstorage.dll");
+            if (!this->dstorage_core.isLoaded() || !this->dstorage_library.isLoaded())
+            {
+                if (!this->dstorage_core.isLoaded()) 
+                    cgpu_trace(u8"dstoragecore.dll not found, direct storage is disabled");
+                if (!this->dstorage_library.isLoaded()) 
+                    cgpu_trace(u8"dstorage.dll not found, direct storage is disabled");
+                this->Fail = true;
+            }
+        }
+        Initialized = true;
+        return !Fail;
+    }
+    bool Initialized = false;
+    static DStorageDLL DLL;    
+};
+DStorageDLL DStorageDLL::DLL = {};
+
+SkrWindowsDStorageInstance* SkrWindowsDStorageInstance::Initialize(const SkrDStorageConfig& cfg)
+{
+    if (!_this)
+    {
+        _this = SkrNew<SkrWindowsDStorageInstance>();
+        cgpu_trace(u8"dstorage.dll loaded");
+
+        auto pfn_set_config = SKR_SHARED_LIB_LOAD_API(DStorageDLL::Get().dstorage_library, DStorageSetConfiguration);
+        if (!pfn_set_config) return nullptr;
+
+        auto pfn_set_config1 = SKR_SHARED_LIB_LOAD_API(DStorageDLL::Get().dstorage_library, DStorageSetConfiguration1);
+        if (!pfn_set_config1) return nullptr;
+        auto config1 = make_zeroed<DSTORAGE_CONFIGURATION1>();
+        config1.DisableBypassIO = cfg.no_bypass;
+        config1.ForceFileBuffering = cfg.enable_cache;
+        if (const bool hdd = !skr_win_is_executable_on_ssd())
+        {
+            // force file buffering on HDD
+            config1.DisableBypassIO = true;
+            config1.ForceFileBuffering = true;
+        }
+        if (!SUCCEEDED(pfn_set_config1(&config1)))
+        {
+            cgpu_error(u8"Failed to set DStorage config!");
+            return nullptr;
+        }
+
+        auto pfn_get_factory = SKR_SHARED_LIB_LOAD_API(DStorageDLL::Get().dstorage_library, DStorageGetFactory);
+        if (!pfn_get_factory) return nullptr;
+        if (!SUCCEEDED(pfn_get_factory(IID_PPV_ARGS(&_this->pFactory))))
+        {
+            cgpu_error(u8"Failed to get DStorage factory!");
+            return nullptr;
+        }
+        _this->pEventPool = SkrNew<DStorageEventPool>(_this->pFactory);
+    }
+    return DStorageDLL::Get().Fail ? nullptr : _this;
+}
+
 struct SkrDStorageEvent
 {
+public:
     SkrDStorageEvent(StatusEventArray* array, uint32_t slot) SKR_NOEXCEPT
         : pArray(array), mSlot(slot) 
     {
@@ -173,65 +255,6 @@ SkrWindowsDStorageInstance* SkrWindowsDStorageInstance::Get()
     return _this;
 }
 
-SkrWindowsDStorageInstance* SkrWindowsDStorageInstance::Initialize(const SkrDStorageConfig& cfg)
-{
-    const bool wine = skr_win_is_wine();
-    if (!_this)
-    {
-        _this = SkrNew<SkrWindowsDStorageInstance>();
-        if (wine)
-        {
-            _this->initialize_failed = true;
-        }
-        else
-        {
-            _this->dstorage_core.load(u8"dstoragecore.dll");
-            _this->dstorage_library.load(u8"dstorage.dll");
-            if (!_this->dstorage_core.isLoaded() || !_this->dstorage_library.isLoaded())
-            {
-                if (!_this->dstorage_core.isLoaded()) cgpu_trace(u8"dstoragecore.dll not found, direct storage is disabled");
-                if (!_this->dstorage_library.isLoaded()) cgpu_trace(u8"dstorage.dll not found, direct storage is disabled");
-                _this->initialize_failed = true;
-            }
-            else
-            {
-                cgpu_trace(u8"dstorage.dll loaded");
-
-                auto pfn_set_config = SKR_SHARED_LIB_LOAD_API(_this->dstorage_library, DStorageSetConfiguration);
-                if (!pfn_set_config) return nullptr;
-
-                auto pfn_set_config1 = SKR_SHARED_LIB_LOAD_API(_this->dstorage_library, DStorageSetConfiguration1);
-                if (!pfn_set_config1) return nullptr;
-                auto config1 = make_zeroed<DSTORAGE_CONFIGURATION1>();
-                config1.DisableBypassIO = cfg.no_bypass;
-                config1.ForceFileBuffering = cfg.enable_cache;
-                if (const bool hdd = !skr_win_is_executable_on_ssd())
-                {
-                    // force file buffering on HDD
-                    config1.DisableBypassIO = true;
-                    config1.ForceFileBuffering = true;
-                }
-                if (!SUCCEEDED(pfn_set_config1(&config1)))
-                {
-                    cgpu_error(u8"Failed to set DStorage config!");
-                    return nullptr;
-                }
-
-                auto pfn_get_factory = SKR_SHARED_LIB_LOAD_API(_this->dstorage_library, DStorageGetFactory);
-                if (!pfn_get_factory) return nullptr;
-                if (!SUCCEEDED(pfn_get_factory(IID_PPV_ARGS(&_this->pFactory))))
-                {
-                    cgpu_error(u8"Failed to get DStorage factory!");
-                    return nullptr;
-                }
-
-                _this->pEventPool = SkrNew<DStorageEventPool>(_this->pFactory);
-            }
-        }
-    }
-    return _this->initialize_failed ? nullptr : _this;
-}
-
 SkrWindowsDStorageInstance::~SkrWindowsDStorageInstance()
 {
     if (_this->pEventPool) 
@@ -240,10 +263,6 @@ SkrWindowsDStorageInstance::~SkrWindowsDStorageInstance()
         pFactory->Release();
     if (pDxDevice) 
         pDxDevice->Release();
-    if (dstorage_library.isLoaded()) 
-        dstorage_library.unload();
-    if (dstorage_core.isLoaded()) 
-        dstorage_core.unload();
     
     cgpu_trace(u8"Direct Storage unloaded");
 }
@@ -266,7 +285,7 @@ ESkrDStorageAvailability skr_query_dstorage_availability()
 {
     if (auto inst = SkrWindowsDStorageInstance::Get())
     {
-        return inst->initialize_failed ? SKR_DSTORAGE_AVAILABILITY_NONE : SKR_DSTORAGE_AVAILABILITY_HARDWARE;
+        return DStorageDLL::Get().Fail ? SKR_DSTORAGE_AVAILABILITY_NONE : SKR_DSTORAGE_AVAILABILITY_HARDWARE;
     }
     return SKR_DSTORAGE_AVAILABILITY_NONE;
 }
