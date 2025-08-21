@@ -27,6 +27,7 @@ void skd::asset::GltfMeshImporter::Destroy(void* resource)
 bool skd::asset::MeshCooker::Cook(CookContext* ctx)
 {
     auto assetMetaFile = ctx->GetAssetMetaFile();
+
     auto& mesh_asset = *assetMetaFile->GetMetadata<MeshAsset>();
     if (mesh_asset.vertexType == skr_guid_t{})
     {
@@ -39,6 +40,7 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
     mesh.install_to_vram = mesh_asset.install_to_vram;
     //----- write materials
     mesh.materials.reserve(mesh_asset.materials.size());
+
     for (const auto material : mesh_asset.materials)
     {
         ctx->AddRuntimeDependency(material);
@@ -157,8 +159,9 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
         auto filename = skr::format(u8"{}.buffer{}", assetMetaFile->GetGUID(), i);
         if (!ctx->SaveExtra(blobs[i], filename.c_str()))
         {
-            SKR_LOG_FMT_ERROR(u8"[MeshCooker::Cook] failed to write buffer {} for resource {}!", 
-                i, assetMetaFile->GetGUID());
+            SKR_LOG_FMT_ERROR(u8"[MeshCooker::Cook] failed to write buffer {} for resource {}!",
+                i,
+                assetMetaFile->GetGUID());
             return false;
         }
     }

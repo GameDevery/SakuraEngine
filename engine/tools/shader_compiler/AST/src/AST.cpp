@@ -844,10 +844,6 @@ void AST::DeclareIntrinsics()
     _intrinsics["LERP"] = DeclareTemplateFunction(L"lerp", ReturnFirstArgType, ThreeArithmetic);
 
     std::array<VarConceptDecl*, 1> OneArithmeticVec = { ArthmeticVectorFamily };
-    _intrinsics["REDUCE_SUM"] = DeclareTemplateFunction(L"reduce_sum", FloatType, OneArithmeticVec);
-    _intrinsics["REDUCE_PRODUCT"] = DeclareTemplateFunction(L"reduce_product", FloatType, OneArithmeticVec);
-    _intrinsics["REDUCE_MIN"] = DeclareTemplateFunction(L"reduce_min", FloatType, OneArithmeticVec);
-    _intrinsics["REDUCE_MAX"] = DeclareTemplateFunction(L"reduce_max", FloatType, OneArithmeticVec);
 
     std::array<VarConceptDecl*, 1> OneBoolFamily = { BoolFamily };
     _intrinsics["ALL"] = DeclareTemplateFunction(L"all", BoolType, OneBoolFamily);
@@ -1005,13 +1001,27 @@ void AST::DeclareIntrinsics()
 
     std::array<VarConceptDecl*, 1> RayQueryProceedParams = { RayQueryFamily };
     _intrinsics["RAY_QUERY_PROCEED"] = DeclareTemplateFunction(L"ray_query_proceed", BoolType, RayQueryProceedParams);
+    
     _intrinsics["RAY_QUERY_COMMITTED_STATUS"] = DeclareTemplateFunction(L"ray_query_committed_status", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS"] = DeclareTemplateFunction(L"ray_query_committed_triangle_bary", Float2Type, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_COMMITTED_PRIMIVE_INDEX"] = DeclareTemplateFunction(L"ray_query_committed_primitive_index", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_INSTANCE_ID"] = DeclareTemplateFunction(L"ray_query_committed_instance_id", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_COMMITTED_PROCEDURAL_DISTANCE"] = DeclareTemplateFunction(L"ray_query_committed_procedual_distance", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_RAY_T"] = DeclareTemplateFunction(L"ray_query_committed_ray_t", FloatType, RayQueryProceedParams);
+    
+    _intrinsics["RAY_QUERY_CANDIDATE_STATUS"] = DeclareTemplateFunction(L"ray_query_candidate_status", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_CANDIDATE_TRIANGLE_BARYCENTRICS"] = DeclareTemplateFunction(L"ray_query_candidate_triangle_bary", Float2Type, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_CANDIDATE_PRIMIVE_INDEX"] = DeclareTemplateFunction(L"ray_query_candidate_primitive_index", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_CANDIDATE_INSTANCE_ID"] = DeclareTemplateFunction(L"ray_query_candidate_instance_id", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_CANDIDATE_PROCEDURAL_DISTANCE"] = DeclareTemplateFunction(L"ray_query_candidate_procedual_distance", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_CANDIDATE_TRIANGLE_RAY_T"] = DeclareTemplateFunction(L"ray_query_candidate_triangle_ray_t", FloatType, RayQueryProceedParams);
+    
     _intrinsics["RAY_QUERY_WORLD_RAY_ORIGIN"] = DeclareTemplateFunction(L"ray_query_world_ray_origin", Float3Type, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_WORLD_RAY_DIRECTION"] = DeclareTemplateFunction(L"ray_query_world_ray_direction", Float3Type, RayQueryProceedParams);
     
+    _intrinsics["RAY_QUERY_COMMIT_TRIANGLE"] = DeclareTemplateFunction(L"ray_query_commit_triangle", BoolType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_TERMINATE"] = DeclareTemplateFunction(L"ray_query_terminate", BoolType, RayQueryProceedParams);
+
     // void trace_ray_inline(Accel& AS, uint32 mask, Trait<Ray> ray);
     std::array<VarConceptDecl*, 4> TraceRayInlineParams = { RayQueryFamily, AccelFamily, IntScalar, ValueFamily };
     _intrinsics["RAY_QUERY_TRACE_RAY_INLINE"] = DeclareTemplateFunction(L"ray_query_trace_ray_inline", VoidType, TraceRayInlineParams);
@@ -1023,7 +1033,10 @@ void AST::DeclareIntrinsics()
     // SM 5.1
     _intrinsics["AllMemoryBarrier"] = DeclareTemplateFunction(L"AllMemoryBarrier", VoidType, {});
     _intrinsics["AllMemoryBarrierWithGroupSync"] = DeclareTemplateFunction(L"AllMemoryBarrierWithGroupSync", VoidType, {});
-
+    _intrinsics["GroupMemoryBarrier"] = DeclareTemplateFunction(L"GroupMemoryBarrier", VoidType, {});
+    _intrinsics["GroupMemoryBarrierWithGroupSync"] = DeclareTemplateFunction(L"GroupMemoryBarrierWithGroupSync", VoidType, {});
+    _intrinsics["DeviceMemoryBarrier"] = DeclareTemplateFunction(L"DeviceMemoryBarrier", VoidType, {});
+    _intrinsics["DeviceMemoryBarrierWithGroupSync"] = DeclareTemplateFunction(L"DeviceMemoryBarrierWithGroupSync", VoidType, {});
 
     // SM 6.1 Wave Intrinstics
     std::array<VarConceptDecl*, 2> ReadLaneAtArgs = { ValueFamily, IntScalar };

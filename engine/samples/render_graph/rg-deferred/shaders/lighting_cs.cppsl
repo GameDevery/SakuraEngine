@@ -1,6 +1,4 @@
 #include <std/std.hpp>
-#include <std2/constant_buffer.hpp>
-#include <std2/sampler.hpp>
 
 using namespace skr::shader;
 
@@ -24,11 +22,11 @@ void compute([[sv_thread_id]] uint2 threadID)
         return;
 
     int2 pixelPosition = threadID.xy + uint2(push_constants.viewportOrigin);
-    float4 gbufferColor = gbuffer_color.load(pixelPosition);
-    float4 gbufferNormal = gbuffer_normal.load(pixelPosition);
-    float4 depth = gbuffer_depth.load(pixelPosition);
+    float4 gbufferColor = gbuffer_color.Load(pixelPosition);
+    float4 gbufferNormal = gbuffer_normal.Load(pixelPosition);
+    float4 depth = gbuffer_depth.Load(pixelPosition);
 
     float4 out_color = gbufferColor * 0.5f + abs(gbufferNormal) * 0.5f;
     out_color *= depth.rrrr;
-    lighting_output.store(pixelPosition, out_color);
+    lighting_output.Store(pixelPosition, out_color);
 }

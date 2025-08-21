@@ -5,6 +5,7 @@
 
 namespace skr::shader {
 struct Ray {
+public:
 	Ray() = default;
 	Ray(const float3& origin, const float3& dir, float t_min = 0.0f, float t_max = 1e30f)
 		: _origin{origin.x, origin.y, origin.z}, t_min(t_min), _dir{dir.x, dir.y, dir.z}, t_max(t_max)
@@ -20,9 +21,10 @@ struct Ray {
 	[[nodiscard, noignore]] float tmin() const { return t_min; }
 	[[nodiscard, noignore]] float tmax() const { return t_max; }
 
-	Array<float, 3> _origin;
+private:
+	float3 _origin;
 	float t_min = 0.0f;
-	Array<float, 3> _dir;
+	float3 _dir;
 	float t_max = 1e30f;
 };
 
@@ -34,10 +36,10 @@ enum struct HitType : uint32
 };
 
 struct CommittedHit {
-	uint32 inst;
-	uint32 prim;
-	float2 bary;
-	HitType hit_type;
+	const uint32 inst = max_uint32;
+	const uint32 prim = max_uint32;
+	const float2 bary;
+	const HitType hit_type = HitType::Miss;
 	float ray_t;
 	[[nodiscard, noignore]] bool miss() const {
 		return hit_type == HitType::Miss;
@@ -54,11 +56,21 @@ struct CommittedHit {
 	}
 };
 
-struct TriangleHit {
-	uint32 inst;
-	uint32 prim;
-	float2 bary;
-	float ray_t;
+struct TriangleHit 
+{
+public:
+	TriangleHit() = default;
+	TriangleHit(uint32 inst, uint32 prim, float2 bary, float ray_t)
+		: inst(inst), prim(prim), bary(bary), ray_t(ray_t)
+	{
+
+	}
+
+	const uint32 inst = max_uint32;
+	const uint32 prim = max_uint32;
+	const float2 bary = float2();
+	const float ray_t = 0.f;
+
 	[[nodiscard, noignore]] bool miss() const {
 		return inst == max_uint32;
 	}

@@ -100,7 +100,7 @@ cgltf_data* ImportGLTFWithData(skr::StringView assetPath, skr_io_ram_service_t* 
             else
             {
                 SkrZoneScopedN("LoadGLTFBuffer");
-                const skr::Path fullPath = skr::Path{vfs->mount_dir} / u8Path.u8_str();
+                const skr::Path fullPath = skr::Path{ vfs->mount_dir } / u8Path.u8_str();
                 result = cgltf_load_buffers(&options, gltf_data_, fullPath.string().c_str_raw());
                 result = cgltf_validate(gltf_data_);
                 if (result != cgltf_result_success)
@@ -159,7 +159,7 @@ void CookGLTFMeshData(const cgltf_data* gltf_data, MeshAsset* cfg, MeshResource&
                 auto& prim = new_primitives[j];
                 prim.vertex_layout = shuffle_layout_id;
                 prim.material_index = static_cast<uint32_t>(gltf_prim.material - gltf_data->materials);
-                mesh_section.primive_indices.add(out_resource.primitives.size() + j);
+                mesh_section.primitive_indices.add(out_resource.primitives.size() + j);
             }
             out_resource.primitives.reserve(out_resource.primitives.size() + new_primitives.size());
             out_resource.primitives += new_primitives;
@@ -214,7 +214,7 @@ void CookGLTFMeshData_SplitSkin(const cgltf_data* gltf_data, MeshAsset* cfg, Mes
                 auto& prim = new_primitives[j];
                 prim.vertex_layout = shuffle_layout_id;
                 prim.material_index = static_cast<uint32_t>(gltf_prim.material - gltf_data->materials);
-                mesh_section.primive_indices.add(out_resource.primitives.size() + j);
+                mesh_section.primitive_indices.add(out_resource.primitives.size() + j);
             }
             out_resource.primitives.reserve(out_resource.primitives.size() + new_primitives.size());
             out_resource.primitives += new_primitives;

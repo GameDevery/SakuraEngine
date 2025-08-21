@@ -1,6 +1,5 @@
 #include <std/std.hpp>
-#include <std2/sampler.hpp>
-#include <std2/constant_buffer.hpp>
+#include <std/resources/sampler.hpp>
 
 using namespace skr::shader;
 

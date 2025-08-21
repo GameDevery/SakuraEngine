@@ -123,7 +123,6 @@ SakuraEngine 着色器系统使用 Clang 注解属性进行元数据标记：
 
 ```cpp
 #include "std/attributes.hpp"
-#include "std2/attributes.hpp"
 
 // 计算着色器入口点
 [[compute_shader("compute_main")]]
@@ -146,11 +145,9 @@ float4 ps_main(PSInput input);
 
 #### 2. 资源绑定属性
 
-使用 `std2/attributes.hpp` 中的绑定宏：
+使用绑定宏：
 
 ```cpp
-#include "std2/attributes.hpp"
-
 // 资源绑定：binding(register, space)
 [[binding(0, 0)]]
 extern rw_structured_buffer<float4> output_buffer;
@@ -283,7 +280,6 @@ if (isSampleCall(call)) {
 
 ```cpp
 #include "std/std.hpp"
-#include "std2/attributes.hpp"
 using namespace skr::shader;
 
 #define WIDTH 3200
@@ -331,7 +327,6 @@ void compute_main([[sv_thread_id]] uint3 tid) {
 
 ```cpp
 #include "std/std.hpp"
-#include "std2/attributes.hpp"
 using namespace skr::shader;
 
 // 声明外部资源
@@ -363,7 +358,6 @@ void compute_main([[sv_thread_id]] uint3 tid) {
 ### 顶点/像素着色器示例
 
 ```cpp
-#include "std2/attributes.hpp"
 
 // 输入输出结构
 struct VSInput {

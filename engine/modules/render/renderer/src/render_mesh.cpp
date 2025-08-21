@@ -17,7 +17,7 @@ void skr_render_mesh_initialize(RenderMesh* render_mesh, MeshResource* mesh_reso
     for (uint32_t i = 0; i < mesh_resource->sections.size(); i++)
     {
         const auto& section = mesh_resource->sections[i];
-        for (auto prim_idx : section.primive_indices)
+        for (auto prim_idx : section.primitive_indices)
         {
             auto& prim = mesh_resource->primitives[prim_idx];
             vbv_c += (uint32_t)prim.vertex_buffers.size();
@@ -34,7 +34,7 @@ void skr_render_mesh_initialize(RenderMesh* render_mesh, MeshResource* mesh_reso
     for (uint32_t i = 0; i < mesh_resource->sections.size(); i++)
     {
         const auto& section = mesh_resource->sections[i];
-        for (auto prim_idx : section.primive_indices)
+        for (auto prim_idx : section.primitive_indices)
         {
             SKR_ASSERT(render_mesh->index_buffer_views.capacity() >= render_mesh->index_buffer_views.size());
             SKR_ASSERT(render_mesh->vertex_buffer_views.capacity() >= render_mesh->vertex_buffer_views.size());
