@@ -59,6 +59,7 @@ struct SceneRenderJob
 
                 if (mesh_resource && mesh_resource->render_mesh)
                 {
+                    // SKR_LOG_INFO(u8"Materials Count: %d", mesh_resource->materials.size());
                     render_callback(mesh_resource->render_mesh->primitive_commands, transform_component->get().to_matrix(), pAnimComponent);
                 }
                 else

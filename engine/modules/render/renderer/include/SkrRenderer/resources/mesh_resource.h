@@ -12,7 +12,7 @@
 namespace skr
 {
 sreflect_enum_class(guid = "01f05eb7-6d5d-46d8-945e-ce1259d22c8f" serde = @bin | @json)
-EVertexAttribute : uint32_t {
+EVertexAttribute : uint32_t{
     NONE,
     POSITION,
     NORMAL,
@@ -74,7 +74,7 @@ MeshSection
     skr_float3_t translation;
     skr_float3_t scale;
     skr_float4_t rotation;
-    skr::Vector<uint32_t> primive_indices;
+    skr::Vector<uint32_t> primitive_indices;
 };
 
 sreflect_struct(guid = "3b8ca511-33d1-4db4-b805-00eea6a8d5e1" serde = @bin)

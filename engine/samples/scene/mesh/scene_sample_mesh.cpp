@@ -21,13 +21,21 @@
 #include <SkrRT/resource/local_resource_registry.hpp>
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrImGui/imgui_app.hpp"
+
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderer/resources/mesh_resource.h"
+#include "SkrRenderer/resources/texture_resource.h"
+#include "SkrRenderer/resources/material_resource.hpp"
 #include "SkrRenderer/render_mesh.h"
+
 #include "SkrTask/fib_task.hpp"
 #include "SkrMeshCore/mesh_processing.hpp"
 #include "SkrToolCore/project/project.hpp"
 #include "SkrToolCore/cook_system/cook_system.hpp"
+
+#include "SkrTextureCompiler/texture_compiler.hpp"
+#include "SkrTextureCompiler/texture_sampler_asset.hpp"
+
 #include "SkrGLTFTool/mesh_asset.hpp"
 
 #include "SkrScene/actor.h"
@@ -40,6 +48,7 @@
 
 using namespace skr::literals;
 const auto MeshAssetID = u8"01985f1f-8286-773f-8bcc-7d7451b0265d"_guid;
+const auto TextureID = u8"0198cb9d-35ab-7342-bd41-21f61e1d0d8e"_guid;
 
 // The Three-Triangle Example: simple mesh scene hierarchy
 struct SceneSampleMeshModule : public skr::IDynamicModule
@@ -69,6 +78,9 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     skr::String gltf_path = u8"";
     skr::LocalResourceRegistry* registry = nullptr;
     skr::MeshFactory* mesh_factory = nullptr;
+    skr::TextureSamplerFactory* TextureSamplerFactory = nullptr;
+    skr::TextureFactory* TextureFactory = nullptr;
+    skr::MaterialFactory* matFactory = nullptr;
 
     skd::SProject project;
     skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
@@ -122,6 +134,24 @@ void SceneSampleMeshModule::InitializeResourceSystem()
         vram_service = skr_io_vram_service_t::create(&vramServiceDesc);
         vram_service->run();
     }
+    // texture sampler factory
+    {
+        skr::TextureSamplerFactory::Root factoryRoot = {};
+        factoryRoot.device = render_device->get_cgpu_device();
+        TextureSamplerFactory = skr::TextureSamplerFactory::Create(factoryRoot);
+        resource_system->RegisterFactory(TextureSamplerFactory);
+    }
+    // texture factory
+    {
+        skr::TextureFactory::Root factoryRoot = {};
+        factoryRoot.dstorage_root = resource_root;
+        factoryRoot.vfs = project.GetResourceVFS();
+        factoryRoot.ram_service = ram_service;
+        factoryRoot.vram_service = vram_service;
+        factoryRoot.render_device = render_device;
+        TextureFactory = skr::TextureFactory::Create(factoryRoot);
+        resource_system->RegisterFactory(TextureFactory);
+    }
     // mesh factory
     {
         skr::MeshFactory::Root factoryRoot = {};
@@ -141,6 +171,8 @@ void SceneSampleMeshModule::DestroyResourceSystem()
     resource_system->Shutdown();
 
     skr::MeshFactory::Destroy(mesh_factory);
+    skr::TextureFactory::Destroy(TextureFactory);
+    skr::TextureSamplerFactory::Destroy(TextureSamplerFactory);
 
     skr_io_ram_service_t::destroy(ram_service);
     skr_io_vram_service_t::destroy(vram_service);
@@ -230,13 +262,23 @@ void SceneSampleMeshModule::on_unload()
 void SceneSampleMeshModule::CookAndLoadGLTF()
 {
     auto& System = *skd::asset::GetCookSystem();
+
+    // auto textureImporter = skd::asset::TextureImporter::Create<skd::asset::TextureImporter>();
+    // auto textureAsset = skr::RC<skd::asset::AssetMetaFile>::New(
+    //     u8"test_texture.meta",
+    //     TextureID,
+    //     skr::type_id_of<skr::TextureResource>(),
+    //     skr::type_id_of<skd::asset::TextureCooker>());
+    // textureImporter->assetPath = u8"D:/ws/ext/glTFSample/media/Cauldron-Media/buster_drone/Assets/Models/Public/BusterDrone/Materials/body_albedo2048.png";
+    // System.ImportAssetMeta(&project, textureAsset, textureImporter);
+
     auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
     auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
 
-    // metadata->vertexType = u8"1b357a40-83ff-471c-8903-23e99d95b273"_guid; // GLTFVertexLayoutWithoutTangentId
     metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; // GLTFVertexLayoutWithJointId
+    // metadata->materials.push_back(TextureID);                             // Use the texture we just imported
     auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
-        u8"girl.gltf.meta",
+        u8"test.gltf.meta",
         MeshAssetID,
         skr::type_id_of<skr::MeshResource>(),
         skr::type_id_of<skd::asset::MeshCooker>());

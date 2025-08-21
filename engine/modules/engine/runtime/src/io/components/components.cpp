@@ -2,41 +2,37 @@
 #include "blocks_component.hpp"
 #include "src_components.hpp"
 
-namespace skr {
-namespace io {
-
-IORequestComponent::IORequestComponent(IIORequest* const request) SKR_NOEXCEPT 
-    : request(request) 
+namespace skr
+{
+namespace io
 {
 
+IORequestComponent::IORequestComponent(IIORequest* const request) SKR_NOEXCEPT
+    : request(request)
+{
 }
 
 IORequestComponent::~IORequestComponent() SKR_NOEXCEPT
 {
-
 }
 
-IOStatusComponent::IOStatusComponent(IIORequest* const request) SKR_NOEXCEPT 
-    : IORequestComponent(request) 
+IOStatusComponent::IOStatusComponent(IIORequest* const request) SKR_NOEXCEPT
+    : IORequestComponent(request)
 {
-    
 }
 
 IOStatusComponent::~IOStatusComponent() SKR_NOEXCEPT
 {
-
 }
 
-PathSrcComponent::PathSrcComponent(IIORequest* const request) SKR_NOEXCEPT 
-    : IORequestComponent(request) 
+PathSrcComponent::PathSrcComponent(IIORequest* const request) SKR_NOEXCEPT
+    : IORequestComponent(request)
 {
-    
 }
 
 FileComponent::FileComponent(IIORequest* const request) SKR_NOEXCEPT
     : IORequestComponent(request)
 {
-
 }
 
 uint64_t FileComponent::get_fsize() const SKR_NOEXCEPT
@@ -58,22 +54,19 @@ uint64_t FileComponent::get_fsize() const SKR_NOEXCEPT
     return 0;
 }
 
-MemorySrcComponent::MemorySrcComponent(IIORequest* const request) SKR_NOEXCEPT 
-    : IORequestComponent(request) 
+MemorySrcComponent::MemorySrcComponent(IIORequest* const request) SKR_NOEXCEPT
+    : IORequestComponent(request)
 {
-    
 }
 
-BlocksComponent::BlocksComponent(IIORequest* const request) SKR_NOEXCEPT 
-    : IORequestComponent(request) 
+BlocksComponent::BlocksComponent(IIORequest* const request) SKR_NOEXCEPT
+    : IORequestComponent(request)
 {
-    
 }
 
-CompressedBlocksComponent::CompressedBlocksComponent(IIORequest* const request) SKR_NOEXCEPT 
-    : IORequestComponent(request) 
+CompressedBlocksComponent::CompressedBlocksComponent(IIORequest* const request) SKR_NOEXCEPT
+    : IORequestComponent(request)
 {
-    
 }
 
 } // namespace io
