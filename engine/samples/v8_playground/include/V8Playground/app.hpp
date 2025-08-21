@@ -18,6 +18,7 @@ struct V8PlaygroundApp {
     // init & shutdown
     void init();
     void shutdown();
+    void setup_vfs(StringView path);
 
     // debug
     void init_debugger(int port);
