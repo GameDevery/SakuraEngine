@@ -240,9 +240,9 @@ namespace SB.Core
 
                     foreach (var file in Directory.EnumerateFiles(path))
                     {
-                        if (Path.GetFileName(file) == "cl.exe")
+                        if (Path.GetFileName(file) == "cl.exe" && file.Contains("MSVC"))
                             CLCCPath = file;
-                        if (Path.GetFileName(file) == "link.exe")
+                        if (Path.GetFileName(file) == "link.exe" && file.Contains("MSVC"))
                             LINKPath = file;
                         if (Path.GetFileName(file) == "clang-cl.exe")
                             ClangCLPath = file;
