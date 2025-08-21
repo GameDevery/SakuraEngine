@@ -33,7 +33,7 @@ struct FunctionRef<R(Args...)>
 {
     using FuncType = R(Args...);
     using CallerType = R(void*, Args...);
-    using StackProxyCallerType = void(span<const StackProxy> params, StackProxy return_value);
+    using StackProxyCallerType = void(void* payload,span<const StackProxy> params, StackProxy return_value);
 
     // ctor & dtor
     inline FunctionRef() noexcept = default;
@@ -135,6 +135,7 @@ struct FunctionRef<R(Args...)>
                 if constexpr (std::is_same_v<R, void>)
                 {
                     reinterpret_cast<StackProxyCallerType*>(_caller)(
+                        _payload,
                         { StackProxyMaker<Args>::Make(std::forward<Args>(args))... },
                         {});
                 }
@@ -142,6 +143,7 @@ struct FunctionRef<R(Args...)>
                 {
                     Placeholder<R> result;
                     reinterpret_cast<StackProxyCallerType*>(_caller)(
+                        _payload,
                         { StackProxyMaker<Args>::Make(std::forward<Args>(args))... },
                         { .data = result.data(), .signature = type_signature_of<R>() });
                     return std::move(*result.data_typed());
@@ -157,6 +159,13 @@ struct FunctionRef<R(Args...)>
     }
 
 private:
+    EFunctionRefKind _kind = EFunctionRefKind::Empty;
+    void* _payload = nullptr;
+    void* _caller = nullptr;
+};
+
+struct FunctionRefMemory
+{
     EFunctionRefKind _kind = EFunctionRefKind::Empty;
     void* _payload = nullptr;
     void* _caller = nullptr;

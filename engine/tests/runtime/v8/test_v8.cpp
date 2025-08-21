@@ -727,13 +727,34 @@ TEST_CASE("test basic export")
     }
 }
 
+TEST_CASE("test generic")
+{
+    using namespace skr;
+
+    SUBCASE("function ref")
+    {
+        V8Context& context = *isolate.create_context();
+        SKR_DEFER({ isolate.destroy_context(&context); });
+
+        context.build_export([](V8VirtualModule& module) {
+            module.register_type<test_v8::TestFunctionRef>(u8"");
+        });
+
+        context.exec(u8R"__(
+            TestFunctionRef.range_map(0, 10, 2, (num)=> {
+                return `TS[${num}]`;
+            });
+        )__");
+    }
+}
+
 TEST_CASE("test export defines")
 {
     auto* context = isolate.create_context();
     SKR_DEFER({ isolate.destroy_context(context); });
 
     context->build_export([&](skr::V8VirtualModule& module) {
-        skr::each_types_of_module(u8"V8TestNew", [&](const skr::RTTRType* type) -> bool {
+        skr::each_types_of_module(u8"V8Test", [&](const skr::RTTRType* type) -> bool {
             module.raw_register_type(type->type_id());
             return true;
         });

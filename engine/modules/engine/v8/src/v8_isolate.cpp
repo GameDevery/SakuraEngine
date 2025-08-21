@@ -5,13 +5,15 @@
 #include <SkrRTTR/type.hpp>
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_bind_proxy.hpp>
+#include <SkrV8/v8_vfs.hpp>
+
 #include <SkrV8/bind_template/v8_bind_template.hpp>
 #include <SkrV8/bind_template/v8bt_primitive.hpp>
 #include <SkrV8/bind_template/v8bt_enum.hpp>
 #include <SkrV8/bind_template/v8bt_mapping.hpp>
 #include <SkrV8/bind_template/v8bt_object.hpp>
 #include <SkrV8/bind_template/v8bt_value.hpp>
-#include <SkrV8/v8_vfs.hpp>
+#include <SkrV8/bind_template/v8bt_function_ref.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -381,15 +383,27 @@ V8BindTemplate* V8Isolate::solve_bind_tp(
     }
     else if (signature.is_generic_type())
     {
+        // find exist bind template
+        if (auto found = _bind_tp_map_generic.find(signature))
+        {
+            return found.value();
+        }
+
         // get generic type id
         GUID     generic_id;
         uint32_t generic_param_count;
-        signature.read_generic_type_id(generic_id, generic_param_count);
+        auto     solve_sig = signature.read_generic_type_id(generic_id, generic_param_count);
 
         switch (generic_id.get_hash())
         {
         case kFunctionRefGenericId.get_hash(): {
-            
+            // get function signature
+            solve_sig = solve_sig.jump_next_type_or_data();
+
+            // make bind tp
+            auto* func_ref_bind_tp = V8BTFunctionRef::Create(this, solve_sig);
+            _bind_tp_map_generic.add(signature, func_ref_bind_tp);
+            return func_ref_bind_tp;
         }
         default: {
             SKR_LOG_FMT_ERROR(
