@@ -182,6 +182,9 @@ template<typename T>
 concept arithmetic_scalar = is_arithmetic_scalar_v<T>;
 
 template<typename T>
+concept struct_type = __is_class(T) && !__is_union(T) && !__is_enum(T) && !is_vec_or_matrix_v<T> && !is_arithmetic_v<T>;
+
+template<typename T>
 concept primitive = is_arithmetic_v<T> || is_vec_or_matrix_v<T>;
 #ifdef DEBUG
 template<typename T>

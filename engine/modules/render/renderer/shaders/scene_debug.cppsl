@@ -1,6 +1,4 @@
 #include <std/std.hpp>
-#include <std2/attributes.hpp>
-#include <std2/constant_buffer.hpp>
 #include "SkrRenderer/shared/gpu_scene.hpp"
 #include "SkrRenderer/shared/soa_layout.hpp"
 
@@ -223,5 +221,5 @@ void scene_debug([[sv_thread_id]] uint3 thread_id)
     }
     
     // Write pixel color to output texture
-    output_texture.store(pixel_coord, pixel_color);
+    output_texture.Store(pixel_coord, pixel_color);
 }

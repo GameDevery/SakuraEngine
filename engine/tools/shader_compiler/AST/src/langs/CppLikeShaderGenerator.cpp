@@ -1,5 +1,8 @@
 #include "CppSL/langs/CppLikeShaderGenerator.hpp"
 #include <functional>
+#include <sstream>
+#include <iomanip>
+#include <cmath>
 
 namespace skr::CppSL
 {
@@ -164,7 +167,54 @@ void CppLikeShaderGenerator::visitStmt(SourceBuilderNew& sb, const skr::CppSL::S
         }
         else if (auto f = std::get_if<FloatValue>(&constant->value))
         {
-            sb.append(std::to_wstring(f->ieee.value()));
+            // Use hexfloat for exact precision
+            double value = f->ieee.value();
+            
+            // Format as hexfloat
+            std::wostringstream hexstream;
+            hexstream << std::hexfloat << value;
+            sb.append(hexstream.str());
+            
+            // Add readable comment - avoid scientific notation for readability
+            std::wostringstream decstream;
+            decstream << std::fixed; // Use fixed-point notation
+            
+            // Choose appropriate precision based on value magnitude
+            double abs_value = std::abs(value);
+            if (abs_value == 0.0) {
+                decstream << std::setprecision(1) << value;
+            }
+            else if (abs_value >= 1e6 || abs_value < 1e-6) {
+                // For very large or very small numbers, use scientific notation
+                decstream << std::scientific << std::setprecision(6) << value;
+            }
+            else if (abs_value >= 1.0) {
+                // For numbers >= 1, show up to 6 decimal places
+                decstream << std::setprecision(6) << value;
+            }
+            else {
+                // For small numbers, show more precision
+                decstream << std::setprecision(9) << value;
+            }
+            
+            std::wstring decstr = decstream.str();
+            
+            // Remove trailing zeros after decimal point
+            size_t dot_pos = decstr.find(L'.');
+            if (dot_pos != std::wstring::npos) {
+                size_t last_nonzero = decstr.find_last_not_of(L'0');
+                if (last_nonzero != std::wstring::npos && last_nonzero > dot_pos) {
+                    decstr.erase(last_nonzero + 1);
+                }
+                // Remove decimal point if no fractional part remains
+                if (decstr.back() == L'.') {
+                    decstr.pop_back();
+                }
+            }
+            
+            sb.append(L"/*");
+            sb.append(decstr);
+            sb.append(L"*/");
         }
         else
         {

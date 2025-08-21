@@ -7,6 +7,8 @@
 #include <clang/AST/DeclTemplate.h>
 #include <format>
 #include <filesystem>
+#include <vector>
+#include <algorithm>
 
 namespace skr::CppSL
 {
@@ -163,6 +165,22 @@ private:
     }
 };
 
+bool ContainsDerefThis(const clang::Stmt* stmt)
+{
+    if (auto unaryOp = llvm::dyn_cast<clang::UnaryOperator>(stmt))
+    {
+        if (unaryOp->getOpcode() == clang::UO_Deref)
+            if (llvm::isa<clang::CXXThisExpr>(unaryOp->getSubExpr()))
+                return true;
+    }
+    for (auto child : stmt->children())
+    {
+        if (ContainsDerefThis(child))
+            return true;
+    }
+    return false;
+}
+
 inline static std::string OpKindToName(clang::OverloadedOperatorKind kind);
 
 template <typename T>
@@ -286,7 +304,74 @@ bool LanguageRule_BanDoubleFieldsAndVariables(const clang::Decl* decl, const cla
 
 bool LanguageRule_UseFunctionInsteadOfMethod(const clang::CXXMethodDecl* Method)
 {
-    return Method->isStatic() || IsBuiltin(Method->getParent()) || Method->getParent()->isLambda();
+    // Original conditions
+    if (Method->isStatic() || IsBuiltin(Method->getParent()) || Method->getParent()->isLambda())
+    {
+        return true;
+    }
+    
+    if (auto body = Method->getBody())
+    {
+        // TODO: HLSL does not support *this, we should process these shit in HLSL Generator but not here
+        struct DerefThisScanner : public clang::RecursiveASTVisitor<DerefThisScanner>
+        {
+            bool hasDerefThis = false;
+            // 仅在同一类内传播
+            const clang::CXXRecordDecl* ownerClass = nullptr;
+            // 简单去环
+            std::vector<const clang::CXXMethodDecl*>* visited = nullptr;
+
+            bool VisitStmt(clang::Stmt* expr)
+            {
+                if (ContainsDerefThis(expr))
+                {
+                    hasDerefThis = true;
+                    return false; // Stop traversal
+                }
+                return true;
+            }
+            bool VisitCallExpr(clang::CallExpr* call)
+            {
+                if (auto called = clang::dyn_cast<clang::CXXMethodDecl>(call->getCalleeDecl()))
+                {
+                    // 仅同一类传播，且需要有定义体
+                    if (ownerClass && called->getParent() != ownerClass)
+                        return true;
+
+                    if (auto calledBody = called->getBody())
+                    {
+                        if (visited)
+                        {
+                            if (std::find(visited->begin(), visited->end(), called) != visited->end())
+                                return true;
+                            visited->push_back(called);
+                        }
+
+                        DerefThisScanner scanner;
+                        scanner.ownerClass = ownerClass;
+                        scanner.visited = visited;
+                        scanner.TraverseStmt(calledBody);
+                        if (scanner.hasDerefThis)
+                        {
+                            hasDerefThis = true;
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+        };
+
+        std::vector<const clang::CXXMethodDecl*> visited;
+        DerefThisScanner visitor;
+        visitor.ownerClass = Method->getParent();
+        visitor.visited = &visited;
+        visitor.TraverseStmt(body);
+        if (visitor.hasDerefThis)
+            return true;
+    }
+    
+    return false;
 }
 
 const skr::CppSL::TypeDecl* FunctionStack::methodThisType() const
@@ -1370,6 +1455,12 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt* x)
     }
     else if (auto cxxBranch = llvm::dyn_cast<clang::IfStmt>(x))
     {
+        CppSL::Stmt* InnerVar = nullptr;
+        if (auto innerVar = cxxBranch->getConditionVariableDeclStmt())
+        {
+            InnerVar = TranslateStmt(innerVar);
+        }
+
         auto cxxCond = cxxBranch->getCond();
         auto ifConstVar = cxxCond->getIntegerConstantExpr(*pASTContext);
         if (ifConstVar)
@@ -1377,14 +1468,24 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt* x)
             if (ifConstVar->getExtValue() != 0)
             {
                 if (cxxBranch->getThen())
-                    return TranslateStmt(cxxBranch->getThen());
+                {
+                    if (InnerVar)
+                        return AST.Block({ InnerVar, TranslateStmt(cxxBranch->getThen())});
+                    else
+                        return TranslateStmt(cxxBranch->getThen());
+                }
                 else
                     return AST.Comment(L"c++: here is an optimized if constexpr false branch");
             }
             else
             {
                 if (cxxBranch->getElse())
-                    return TranslateStmt(cxxBranch->getElse());
+                {
+                    if (InnerVar)
+                        return AST.Block({ InnerVar, TranslateStmt(cxxBranch->getElse())});
+                    else
+                        return TranslateStmt(cxxBranch->getElse());
+                }
                 else
                     return AST.Comment(L"c++: here is an optimized if constexpr true branch");
             }
@@ -1398,7 +1499,10 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt* x)
             auto _else = TranslateStmt(cxxElse);
             CppSL::CompoundStmt* _then_body = cxxThen ? llvm::dyn_cast<clang::CompoundStmt>(cxxThen) ? (CppSL::CompoundStmt*)_then : AST.Block({ _then }) : nullptr;
             CppSL::CompoundStmt* _else_body = cxxElse ? llvm::dyn_cast<clang::CompoundStmt>(cxxElse) ? (CppSL::CompoundStmt*)_else : AST.Block({ _else }) : nullptr;
-            return AST.If(_cond, _then_body, _else_body);
+            if (InnerVar)
+                return AST.Block({ InnerVar, AST.If(_cond, _then_body, _else_body) });
+            else
+                return AST.If(_cond, _then_body, _else_body);
         }
     }
     else if (auto cxxSwitch = llvm::dyn_cast<clang::SwitchStmt>(x))
@@ -1438,6 +1542,9 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt* x)
     }
     else if (auto cxxWhile = llvm::dyn_cast<clang::WhileStmt>(x))
     {
+        if (auto innerVar = cxxWhile->getConditionVariableDeclStmt())
+            return TranslateStmt(innerVar);
+
         auto _cond = TranslateStmt<CppSL::Expr>(cxxWhile->getCond());
         return AST.While(_cond, TranslateStmt<CppSL::CompoundStmt>(cxxWhile->getBody()));
     }
@@ -1471,9 +1578,11 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt* x)
         const DeclGroupRef declGroup = cxxDecl->getDeclGroup();
         std::vector<CppSL::DeclStmt*> var_decls;
         std::vector<CppSL::CommentStmt*> comments;
+        
         for (auto decl : declGroup)
         {
-            if (!decl) continue;
+            if (!decl) 
+                continue;
 
             if (auto* varDecl = dyn_cast<clang::VarDecl>(decl))
             {
@@ -1773,7 +1882,7 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt* x)
         if (cxxOp == clang::UO_Deref)
         {
             if (auto _this = llvm::dyn_cast<CXXThisExpr>(cxxUnaryOp->getSubExpr()))
-                return AST.This(getType(_this->getType().getCanonicalType())); // deref 'this' (*this)
+                return TranslateStmt(cxxUnaryOp->getSubExpr());
             else
                 ReportFatalError(x, "Unsupported deref operator on non-'this' expression: {}", cxxUnaryOp->getStmtClassName());
         }
