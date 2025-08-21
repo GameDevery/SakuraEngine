@@ -1724,5 +1724,5 @@ struct Formatter<TypeSignature>
 namespace skr::concepts
 {
 template <typename T>
-inline constexpr bool WithTypeSignatureTraits = TypeSignatureTraits<T>::is_supported;
+concept WithTypeSignatureTraits = TypeSignatureTraits<T>::is_supported;
 } // namespace skr::concepts
