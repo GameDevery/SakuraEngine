@@ -2,6 +2,7 @@
 #include "v8-exception.h"
 #include <V8Playground/app.hpp>
 #include "SkrOS/filesystem.hpp"
+#include <SkrV8/v8_vfs.hpp>
 
 namespace skr
 {
@@ -39,6 +40,12 @@ void V8PlaygroundApp::shutdown()
         SkrDelete(_isolate);
         _isolate = nullptr;
     }
+}
+void V8PlaygroundApp::setup_vfs(StringView path)
+{
+    auto vfs = RC<V8VFSSystemFS>::New();
+    vfs->root_path = path;
+    _isolate->vfs = vfs;
 }
 
 // debug
@@ -83,55 +90,7 @@ void V8PlaygroundApp::load_native_types()
 // run script
 bool V8PlaygroundApp::run_script(StringView script_path)
 {
-    // load script
-    String script = _load_from_file(script_path);
-    if (script.is_empty())
-    {
-        SKR_LOG_FMT_ERROR(u8"Failed to load script: {}", script_path);
-        return false;
-    }
-
-    // // scopes
-    // auto                   isolate = _isolate->v8_isolate();
-    // v8::Isolate::Scope     isolate_scope(isolate);
-    // v8::HandleScope        handle_scope(isolate);
-    // v8::Local<v8::Context> context = _main_context->v8_context().Get(isolate);
-    // v8::Context::Scope     context_scope(context);
-
-    // v8::TryCatch try_catch(isolate);
-
-    // run script
     _isolate->main_context()->exec_file(script_path);
-
-    // auto _inspect_str = +[](const skr_char8* str) {
-    //     return v8_inspector::StringView{
-    //         (const uint8_t*)str,
-    //         strlen((const char*)str)
-    //     };
-    // };
-    // auto _skr_str = [&](v8::Local<v8::Value> str) {
-    //     return String::From(*v8::String::Utf8Value(isolate, str));
-    // };
-
-    // if (try_catch.HasCaught())
-    // {
-    //     String detail = _skr_str(try_catch.Message()->Get());
-    //     String url    = _skr_str(try_catch.Message()->GetScriptResourceName());
-
-    //     _inspector_client.v8_inspector()->exceptionThrown(
-    //         _main_context->v8_context().Get(_isolate->v8_isolate()),
-    //         _inspect_str(u8"uncaught exception"),
-    //         try_catch.Exception(),
-    //         _inspect_str(detail.c_str()),
-    //         _inspect_str(url.c_str()),
-    //         try_catch.Message()->GetLineNumber(context).FromMaybe(0),
-    //         try_catch.Message()->GetStartColumn(context).FromMaybe(0),
-    //         _inspector_client.v8_inspector()->createStackTrace(try_catch.Message()->GetStackTrace()),
-    //         0
-    //     );
-    //     // _inspector_client.runMessageLoopOnPause(0);
-    // }
-
     return true;
 }
 

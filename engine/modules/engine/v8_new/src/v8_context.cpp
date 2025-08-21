@@ -4,6 +4,7 @@
 #include <SkrRTTR/type.hpp>
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_isolate.hpp>
+#include <SkrV8/v8_vfs.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -196,7 +197,74 @@ V8Value V8Context::exec_file(StringView file_path, bool as_module)
     Local<Context> context = _context.Get(isolate);
     Context::Scope context_scope(context);
 
-    SKR_UNIMPLEMENTED_FUNCTION();
+    // check vfs and load script
+    if (!_isolate->vfs)
+    {
+        SKR_LOG_ERROR(u8"vfs is not set, cannot load script from file");
+        return {};
+    }
+    auto normalized_path = _isolate->vfs->path_normalize(file_path);
+    auto script_content  = _isolate->vfs->load_script(normalized_path);
+    if (!script_content)
+    {
+        SKR_LOG_FMT_ERROR(u8"failed to load script from file: {}", normalized_path.c_str());
+        return {};
+    }
+
+    if (as_module)
+    {
+        // compile module
+        auto maybe_module = _compile_module(
+            isolate,
+            script_content.value(),
+            normalized_path
+        );
+        if (maybe_module.IsEmpty())
+        {
+            SKR_LOG_ERROR(u8"compile module failed");
+            return {};
+        }
+        auto module = maybe_module.ToLocalChecked();
+
+        // cache module path for evaluation
+        _module_id_to_path.add(module->GetIdentityHash(), normalized_path);
+
+        // run module
+        auto run_result = _exec_module(
+            isolate,
+            context,
+            module,
+            true
+        );
+
+        // pop module path
+        _module_id_to_path.remove(module->GetIdentityHash());
+
+        return run_result;
+    }
+    else
+    {
+        // compile script
+        auto maybe_script = _compile_script(
+            isolate,
+            context,
+            script_content.value(),
+            normalized_path
+        );
+        if (maybe_script.IsEmpty())
+        {
+            SKR_LOG_ERROR(u8"compile script failed");
+            return {};
+        }
+
+        // run script
+        return _exec_script(
+            isolate,
+            context,
+            maybe_script.ToLocalChecked(),
+            true
+        );
+    }
 
     return {};
 }
@@ -405,6 +473,7 @@ v8::MaybeLocal<v8::Module> V8Context::_resolve_module(
 {
     auto isolate     = v8::Isolate::GetCurrent();
     auto skr_isolate = reinterpret_cast<V8Isolate*>(isolate->GetData(0));
+    auto skr_context = reinterpret_cast<V8Context*>(context->GetAlignedPointerFromEmbedderData(0));
 
     // get module name
     skr::String module_name;
@@ -415,30 +484,156 @@ v8::MaybeLocal<v8::Module> V8Context::_resolve_module(
         return {};
     }
 
-    // solve module kind
-    bool is_cpp_module = true;
+    // check module name
+    bool is_relative_file =
+        module_name.starts_with(u8"..") ||
+        module_name.starts_with(u8".");
 
-    // TODO. solve module
     // solve module
-    // if (is_cpp_module)
-    // { // cpp module
-    //     // find module
-    //     auto found_module = skr_isolate->find_cpp_module(module_name);
-    //     if (!found_module)
-    //     {
-    //         isolate->ThrowException(V8Bind::to_v8(u8"cannot find module"));
-    //         SKR_LOG_FMT_ERROR(u8"module {} not found", module_name);
-    //         return {};
-    //     }
+    if (is_relative_file)
+    { // relative path
+        // check vfs
+        if (!skr_isolate->vfs)
+        {
+            isolate->ThrowException(
+                V8Bind::to_v8(u8"vfs is not set, cannot load script from file")
+            );
+            SKR_LOG_ERROR(u8"vfs is not set, cannot load script from file");
+            return {};
+        }
 
-    //     // return module
-    //     return found_module->v8_module();
-    // }
-    // else
-    // {
-    //     return {};
-    // }
+        // get referrer module path
+        auto find_referrer_path_result = skr_context->_module_id_to_path.find(referrer->GetIdentityHash());
+        if (!find_referrer_path_result)
+        {
+            isolate->ThrowException(
+                V8Bind::to_v8(u8"referrer module path not found")
+            );
+            return {};
+        }
 
-    return {};
+        // append .js suffix if needed
+        // TODO. optimize it
+        if (!module_name.ends_with(u8".js"))
+        {
+            module_name.append(u8".js");
+        }
+
+        // combine path and find cache
+        auto full_path = skr_isolate->vfs->path_solve_relative_module(
+            find_referrer_path_result.value(),
+            module_name
+        );
+        auto find_module_result = skr_context->_path_to_module.find(full_path);
+        if (find_module_result)
+        { // found in cache
+            return { find_module_result.value().Get(isolate) };
+        }
+
+        // load script
+        auto script_content = skr_isolate->vfs->load_script(full_path);
+        if (!script_content)
+        {
+            isolate->ThrowException(
+                V8Bind::to_v8(skr::format(u8"failed to load script from file: {}", full_path))
+            );
+            SKR_LOG_FMT_ERROR(u8"failed to load script from file: {}", full_path);
+            return {};
+        }
+
+        // compile module
+        auto maybe_module = skr_context->_compile_module(
+            isolate,
+            script_content.value(),
+            full_path
+        );
+        if (maybe_module.IsEmpty())
+        {
+            SKR_LOG_ERROR(u8"compile module failed");
+            return {};
+        }
+        auto module = maybe_module.ToLocalChecked();
+
+        // cache module id to path
+        skr_context->_module_id_to_path.add(module->GetIdentityHash(), full_path);
+
+        // evaluate module
+        auto run_result = skr_context->_exec_module(
+            isolate,
+            context,
+            module,
+            true
+        );
+
+        // cache module
+        skr_context->_path_to_module.add(full_path, v8::Global<v8::Module>(isolate, module));
+
+        return module;
+    }
+    else
+    { // absolute path
+        // check vfs
+        if (!skr_isolate->vfs)
+        {
+            isolate->ThrowException(V8Bind::to_v8(u8"vfs is not set, cannot load script from file"));
+            SKR_LOG_ERROR(u8"vfs is not set, cannot load script from file");
+            return {};
+        }
+
+        // append .js suffix if needed
+        // TODO. optimize it
+        if (!module_name.ends_with(u8".js"))
+        {
+            module_name.append(u8".js");
+        }
+
+        // normalize path and find cache
+        auto normalized_path    = skr_isolate->vfs->path_normalize(module_name);
+        auto find_module_result = skr_context->_path_to_module.find(normalized_path);
+        if (find_module_result)
+        { // found in cache
+            return { find_module_result.value().Get(isolate) };
+        }
+
+        // load script
+        auto script_content = skr_isolate->vfs->load_script(normalized_path);
+        if (!script_content)
+        {
+            isolate->ThrowException(
+                V8Bind::to_v8(skr::format(u8"failed to load script from file: {}", normalized_path))
+            );
+            SKR_LOG_FMT_ERROR(u8"failed to load script from file: {}", normalized_path);
+            return {};
+        }
+
+        // compile module
+        auto maybe_module = skr_context->_compile_module(
+            isolate,
+            script_content.value(),
+            normalized_path
+        );
+        if (maybe_module.IsEmpty())
+        {
+            SKR_LOG_ERROR(u8"compile module failed");
+            return {};
+        }
+        auto module = maybe_module.ToLocalChecked();
+
+        // cache module id to path
+        skr_context->_module_id_to_path.add(module->GetIdentityHash(), normalized_path);
+
+        // evaluate module
+        auto run_result = skr_context->_exec_module(
+            isolate,
+            context,
+            module,
+            true
+        );
+
+        // cache module
+        skr_context->_path_to_module.add(normalized_path, v8::Global<v8::Module>(isolate, module));
+
+        return module;
+    }
 }
 } // namespace skr

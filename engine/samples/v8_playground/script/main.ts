@@ -1,4 +1,5 @@
 export { }
+import * as a from "./a"
 
 // @ts-expect-error
 Symbol.metadata ??= Symbol('Symbol.metadata');
@@ -34,8 +35,10 @@ let test_inst = new TestClass("汪汪汪");
 
 Debug.wait(1000)
 Debug.info("Hello V8")
-Debug.warn(`圆头 来了`)
-Debug.error("我们创建了 20w 个 BLAS")
+Debug.warn(`This is a warning`)
+Debug.error("This is an error")
+
+a.duck_speak()
 
 Debug.exit(0)
 Debug.info("Hello V8")

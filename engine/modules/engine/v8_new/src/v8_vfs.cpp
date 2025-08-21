@@ -9,11 +9,11 @@ String V8VFSSystemFS::path_normalize(String raw_path)
     Path path{ raw_path };
     return path.normalize().to_string();
 }
-String V8VFSSystemFS::path_combine(String a, String b)
+String V8VFSSystemFS::path_solve_relative_module(String referrer, String relative_path)
 {
-    Path path_a{ a };
-    Path path_b{ b };
-    return (path_a / path_b).normalize().to_string();
+    Path path_referrer{ referrer };
+    Path path_relative{ relative_path };
+    return (path_referrer.parent_directory() / path_relative).normalize().to_string();
 }
 
 // io operations

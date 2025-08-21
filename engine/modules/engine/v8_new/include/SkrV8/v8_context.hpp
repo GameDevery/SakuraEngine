@@ -103,8 +103,8 @@ private:
     String                      _name           = {};
     V8VirtualModule             _virtual_module = {};
 
-    // module cache
-    Map<String, v8::Global<v8::Module>> _path_to_module = {};
-    Map<int, v8::Global<v8::Module>>    _id_to_module   = {};
+    // module/script cache
+    Map<String, v8::Global<v8::Module>> _path_to_module    = {};
+    Map<int, String>                    _module_id_to_path = {};
 };
 } // namespace skr

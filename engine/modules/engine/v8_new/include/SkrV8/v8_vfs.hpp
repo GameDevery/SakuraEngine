@@ -17,8 +17,8 @@ SKR_V8_NEW_API IV8VFS : virtual IObject {
     SKR_RC_IMPL();
 
     // path operations
-    virtual String path_normalize(String raw_path)  = 0;
-    virtual String path_combine(String a, String b) = 0;
+    virtual String path_normalize(String raw_path)                                   = 0;
+    virtual String path_solve_relative_module(String referrer, String relative_path) = 0;
 
     // io operations
     virtual Optional<String> load_script(String path) = 0;
@@ -32,7 +32,7 @@ SKR_V8_NEW_API V8VFSSystemFS : IV8VFS {
 
     // path operations
     String path_normalize(String raw_path) override;
-    String path_combine(String a, String b) override;
+    String path_solve_relative_module(String referrer, String relative_path) override;
 
     // io operations
     Optional<String> load_script(String path) override;
