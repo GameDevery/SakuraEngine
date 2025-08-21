@@ -51,7 +51,7 @@ public static class RuntimeTests
             .Depend(Visibility.Public, "SkrRT")
             .AddCppFiles("proxy/**.cpp");
 
-        Engine.Program("V8TestNew")
+        Engine.Program("V8Test")
             .EnableCodegen("v8")
             .AddMetaHeaders("v8/**.hpp")
             .Depend(Visibility.Private, "SkrTestFramework")

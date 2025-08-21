@@ -358,3 +358,28 @@ MixinHelper {
 };
 
 }
+
+// function ref
+namespace test_v8
+{
+sreflect_struct(guid = "fbf0c81b-b2ba-4105-a8fd-0a3744c36d25" rttr = @full)
+sscript_visible sscript_newable
+TestFunctionRef {
+    sscript_visible
+    static void range_map(
+        uint32_t start,
+        uint32_t end,
+        uint32_t gap,
+        skr::FunctionRef<skr::String(uint32_t)> func
+    )
+    {
+        if (func)
+        {
+            for (uint32_t i = start; i < end; i += gap)
+            {
+                SKR_LOG_FMT_INFO(u8"{} => {}", i, func(i)) ;
+            }
+        }
+    }
+};
+}

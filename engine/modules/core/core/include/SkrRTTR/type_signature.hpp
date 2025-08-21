@@ -435,13 +435,13 @@ struct TypeSignatureHelper
         pos = read_buffer(pos, data_count);
         return read_buffer(pos, guid);
     }
-    inline static const uint8_t* read_function_signature(const uint8_t* pos, const uint8_t* end, uint32_t& data_count)
+    inline static const uint8_t* read_function_signature(const uint8_t* pos, const uint8_t* end, uint32_t& param_count)
     {
         SKR_ASSERT(has_enough_buffer(pos, end, ETypeSignatureSignal::FunctionSignature));
         auto signal = peek_signal(pos, end);
         SKR_ASSERT(signal == ETypeSignatureSignal::FunctionSignature);
         pos = jump_signal(pos, end);
-        return read_buffer(pos, data_count);
+        return read_buffer(pos, param_count);
     }
     inline static const uint8_t* read_const(const uint8_t* pos, const uint8_t* end)
     {
@@ -1033,11 +1033,11 @@ struct TypeSignatureView
         pos = const_cast<uint8_t*>(TypeSignatureHelper::read_generic_type_id(pos, end, guid, data_count));
         return { pos, static_cast<size_t>(end - pos) };
     }
-    inline TypeSignatureView read_function_signature(uint32_t& data_count) const
+    inline TypeSignatureView read_function_signature(uint32_t& param_count) const
     {
         auto pos = _data;
         auto end = _data + _size;
-        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_function_signature(pos, end, data_count));
+        pos = const_cast<uint8_t*>(TypeSignatureHelper::read_function_signature(pos, end, param_count));
         return { pos, static_cast<size_t>(end - pos) };
     }
     inline TypeSignatureView read_const() const
