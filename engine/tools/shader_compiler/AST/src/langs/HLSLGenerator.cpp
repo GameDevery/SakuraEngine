@@ -186,7 +186,8 @@ void HLSLGenerator::VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::
     }
     String content = typeName + L" " + varName + arrayDimensions;
 
-    if (const auto pushConstant = FindAttr<PushConstantAttr>(var->attrs()))
+    const auto asPushConstant = FindAttr<PushConstantAttr>(var->attrs());
+    if (asPushConstant)
     {
         sb.append(L"[[vk::push_constant]]");
         sb.endline();
@@ -214,7 +215,7 @@ void HLSLGenerator::VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::
         }
     }
 
-    if (!vk_binding.empty())
+    if (!asPushConstant && !vk_binding.empty())
     {
         sb.append(vk_binding);
         sb.endline();
