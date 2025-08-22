@@ -18,7 +18,7 @@ void* skd::asset::BuiltinMeshImporter::Import(skr::io::IRAMService* ioService, C
     }
     void* data = sakura_malloc_aligned(type->size(), type->alignment());
     type->find_default_ctor().invoke(data);
-    return (void*)nullptr;
+    return (void*)data;
 }
 
 void skd::asset::BuiltinMeshImporter::Destroy(void* resource)

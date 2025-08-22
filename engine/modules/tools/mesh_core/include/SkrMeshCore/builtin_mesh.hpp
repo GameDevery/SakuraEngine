@@ -17,22 +17,25 @@ sreflect_struct(
 MESH_CORE_API BuiltInMesh
 {
     virtual void generate_resource(skr::MeshResource & out_resource, skr::Vector<skr::Vector<uint8_t>> & out_bins, skr_guid_t shuffle_layout_id) = 0;
+    virtual ~BuiltInMesh() = default;
 };
 
 sreflect_struct(
     guid = "0198cc6e-48e0-757e-9848-d5bbe4796a9e";
     serde = @json)
-MESH_CORE_API SimpleTriangleMesh : public BuiltInMesh
+MESH_CORE_API SimpleTriangleMesh final : public BuiltInMesh
 {
     void generate_resource(skr::MeshResource & out_resource, skr::Vector<skr::Vector<uint8_t>> & out_bins, skr_guid_t shuffle_layout_id) override;
+    virtual ~SimpleTriangleMesh() = default;
 };
 
 sreflect_struct(
     guid = "0198cc70-7f4c-7a5d-8e4e-1f3f3f0e2b6f";
     serde = @json)
-MESH_CORE_API SimpleCubeMesh : public BuiltInMesh
+MESH_CORE_API SimpleCubeMesh final : public BuiltInMesh
 {
     void generate_resource(skr::MeshResource & out_resource, skr::Vector<skr::Vector<uint8_t>> & out_bins, skr_guid_t shuffle_layout_id) override;
+    virtual ~SimpleCubeMesh() = default;
 };
 
 } // namespace skd::asset

@@ -17,7 +17,7 @@ TOOL_CORE_API Importer
 {
 public:
     SKR_GENERATE_BODY(Importer);
-    
+
     using CreateFN = skr::RC<Importer> (*)();
     using LoadFromJson = bool (*)(skr::archive::JsonReader* reader, skr::RC<Importer> object);
     using StoreToJson = bool (*)(skr::archive::JsonWriter* writer, skr::RC<Importer> object);
@@ -26,7 +26,7 @@ public:
     static uint32_t Version() { return kDevelopmentVersion; }
 
     virtual ~Importer() = default;
-    virtual void* Import(skr::io::IRAMService*, CookContext* context) = 0;
+    virtual void* Import(skr::io::IRAMService*, CookContext * context) = 0;
     virtual void Destroy(void*) = 0;
     inline skr::GUID GetType() const { return importer_type; }
 
@@ -51,7 +51,7 @@ protected:
 
     sattr(serde = @disable)
     LoadFromJson Load = nullptr;
-    
+
     sattr(serde = @disable)
     StoreToJson Store = nullptr;
 

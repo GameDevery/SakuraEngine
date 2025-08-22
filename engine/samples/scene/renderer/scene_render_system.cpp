@@ -1,6 +1,7 @@
 #include "scene_render_system.h"
 #include "SkrAnim/components/skin_component.hpp"
 #include "SkrBase/math.h"
+#include "SkrCore/log.hpp"
 #include "SkrRenderer/primitive_draw.h"
 #include "SkrSceneCore/scene_components.h"
 #include "SkrRenderer/render_mesh.h"
@@ -55,7 +56,8 @@ struct SceneRenderJob
             mesh_component->mesh_resource.resolve(true, 0);
             if (mesh_component->mesh_resource.is_resolved())
             {
-                auto* mesh_resource = mesh_component->mesh_resource.get_resolved(true);
+                MeshResource* mesh_resource = mesh_component->mesh_resource.get_resolved(true);
+                // SKR_LOG_FMT_INFO(u8"Rendering: {}", mesh_resource->name);
 
                 if (mesh_resource && mesh_resource->render_mesh)
                 {

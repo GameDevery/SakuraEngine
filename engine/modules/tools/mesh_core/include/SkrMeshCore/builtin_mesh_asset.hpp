@@ -12,11 +12,11 @@ namespace skd::asset
 {
 
 sreflect_struct(
-    guid = "0198cc2f-a789-7574-8047-dc332afeac83")
+    guid = "0198cc2f-a789-7574-8047-dc332afeac83" serde = @json)
 MESH_CORE_API BuiltinMeshImporter final : public Importer
 {
     skr_guid_t built_in_mesh_tid;
-    void* data = nullptr;
+
     void* Import(skr::io::IRAMService*, CookContext * context) override;
     void Destroy(void* resource) override;
 };

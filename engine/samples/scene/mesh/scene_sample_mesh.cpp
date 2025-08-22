@@ -37,6 +37,8 @@
 #include "SkrTextureCompiler/texture_sampler_asset.hpp"
 
 #include "SkrGLTFTool/mesh_asset.hpp"
+#include "SkrMeshCore/builtin_mesh_asset.hpp"
+#include "SkrMeshCore/builtin_mesh.hpp"
 
 #include "SkrScene/actor.h"
 #include "SkrSceneCore/transform_system.h"
@@ -49,6 +51,7 @@
 using namespace skr::literals;
 const auto MeshAssetID = u8"01985f1f-8286-773f-8bcc-7d7451b0265d"_guid;
 const auto TextureID = u8"0198cb9d-35ab-7342-bd41-21f61e1d0d8e"_guid;
+const auto BuiltinMeshID = u8"0198cfc4-9bfd-77fd-a9a0-553938b10314"_guid;
 
 // The Three-Triangle Example: simple mesh scene hierarchy
 struct SceneSampleMeshModule : public skr::IDynamicModule
@@ -271,11 +274,22 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
     //     skr::type_id_of<skd::asset::TextureCooker>());
     // textureImporter->assetPath = u8"D:/ws/ext/glTFSample/media/Cauldron-Media/buster_drone/Assets/Models/Public/BusterDrone/Materials/body_albedo2048.png";
     // System.ImportAssetMeta(&project, textureAsset, textureImporter);
+    auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
+    metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; //    GLTFVertexLayoutWithJointId
+
+    auto builtin_importer = skd::asset::BuiltinMeshImporter::Create<skd::asset::BuiltinMeshImporter>();
+    builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleTriangleMesh>();
+    auto builtin_asset = skr::RC<skd::asset::AssetMetaFile>::New(
+        u8"simple_triangle.meta",
+        BuiltinMeshID,
+        skr::type_id_of<skr::MeshResource>(),
+        skr::type_id_of<skd::asset::BuiltinMeshCooker>());
+    System.ImportAssetMeta(&project, builtin_asset, builtin_importer, metadata);
+    auto builtin_event = System.EnsureCooked(BuiltinMeshID);
+    builtin_event.wait(true);
 
     auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
-    auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
 
-    metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; // GLTFVertexLayoutWithJointId
     // metadata->materials.push_back(TextureID);                             // Use the texture we just imported
     auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"test.gltf.meta",
@@ -312,18 +326,22 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     auto cgpu_device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
 
-    skr::Vector<skr::RCWeak<skr::MeshActor>> hierarchy_actors;
-    constexpr int hierarchy_count = 3; // Number of actors in the hierarchy
+    // skr::Vector<skr::RCWeak<skr::MeshActor>> hierarchy_actors;
+    // constexpr int hierarchy_count = 3; // Number of actors in the hierarchy
 
     auto root = skr::Actor::GetRoot();
     auto actor1 = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
+    auto actor2 = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
 
     actor1.lock()->SetDisplayName(u8"Actor 1");
+    actor2.lock()->SetDisplayName(u8"Actor 2");
 
     root.lock()->CreateEntity();
     actor1.lock()->CreateEntity();
+    actor2.lock()->CreateEntity();
 
     actor1.lock()->AttachTo(root);
+    actor2.lock()->AttachTo(root);
 
     root.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
@@ -331,35 +349,40 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
     actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
-    for (auto i = 0; i < hierarchy_count; ++i)
-    {
-        auto actor = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
-        hierarchy_actors.push_back(actor);
+    actor2.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 5.0f, 5.0f, 1.0f });
+    actor2.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 8.f, 8.f, 2.0f });
+    actor2.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
-        actor.lock()->SetDisplayName(skr::format(u8"Actor {}", i + 2).c_str());
-        actor.lock()->CreateEntity();
+    // for (auto i = 0; i < hierarchy_count; ++i)
+    // {
+    //     auto actor = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
+    //     hierarchy_actors.push_back(actor);
 
-        if (i == 0)
-        {
-            actor.lock()->AttachTo(actor1);
-        }
-        else
-        {
-            actor.lock()->AttachTo(hierarchy_actors[i - 1]);
-        }
+    //     actor.lock()->SetDisplayName(skr::format(u8"HActor {}", i).c_str());
+    //     actor.lock()->CreateEntity();
 
-        actor.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, (float)(i + 1) * 5.0f });
-        actor.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .8f, .8f, .8f });
-    }
+    //     if (i == 0)
+    //     {
+    //         actor.lock()->AttachTo(actor1);
+    //     }
+    //     else
+    //     {
+    //         actor.lock()->AttachTo(hierarchy_actors[i - 1]);
+    //     }
+
+    //     actor.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, (float)(i + 1) * 5.0f });
+    //     actor.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .8f, .8f, .8f });
+    // }
 
     transform_system->update();
     transform_system->get_context()->update_finish.wait(true);
 
     actor1.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = MeshAssetID;
-    for (auto& actor : hierarchy_actors)
-    {
-        actor.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = MeshAssetID;
-    }
+    actor2.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = BuiltinMeshID;
+    // for (auto& actor : hierarchy_actors)
+    // {
+    //     actor.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = MeshAssetID;
+    // }
 
     CookAndLoadGLTF();
 
