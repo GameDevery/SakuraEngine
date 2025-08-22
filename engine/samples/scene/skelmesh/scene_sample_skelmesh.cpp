@@ -59,6 +59,7 @@ const auto MeshAssetID = u8"01988203-c467-72ef-916b-c8a5db2ec18d"_guid;
 const auto SkelAssetID = u8"0198a7d5-6819-76e2-88c3-fad2f6c3d5d5"_guid;
 const auto AnimAssetID = u8"0198a890-b5f8-750e-8e4d-cb200eb53b0e"_guid;
 const auto SkinAssetID = u8"0198ab86-af53-72bd-be58-ef888ea9c023"_guid;
+const auto BuiltinMeshID = u8"0198cfc4-9bfd-77fd-a9a0-553938b10314"_guid;
 
 // The Three-Triangle Example: simple mesh scene hierarchy
 struct SceneSampleSkelMeshModule : public skr::IDynamicModule
@@ -276,6 +277,24 @@ void SceneSampleSkelMeshModule::on_unload()
 void SceneSampleSkelMeshModule::CookAndLoadGLTF()
 {
     auto& cook_system = *skd::asset::GetCookSystem();
+
+    auto grid_metadata = skd::asset::SimpleGridMeshAsset::Create<skd::asset::SimpleGridMeshAsset>();
+    grid_metadata->x_segments = 10;
+    grid_metadata->y_segments = 10;
+    grid_metadata->x_size = 10.0f;
+    grid_metadata->y_size = 10.0f;
+    grid_metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; // GLTFVertexLayoutWithJointId
+    auto builtin_importer = skd::asset::ProceduralMeshImporter::Create<skd::asset::ProceduralMeshImporter>();
+    // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleTriangleMesh>();
+    // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleCubeMesh>();
+    builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleGridMesh>();
+    auto builtin_asset = skr::RC<skd::asset::AssetMetaFile>::New(
+        u8"simple_triangle.meta",
+        BuiltinMeshID,
+        skr::type_id_of<skr::MeshResource>(),
+        skr::type_id_of<skd::asset::MeshCooker>());
+    cook_system.ImportAssetMeta(&project, builtin_asset, builtin_importer, grid_metadata);
+
     auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
     auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
 
@@ -370,15 +389,23 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
 
     auto root = skr::Actor::GetRoot();
     auto actor1 = actor_manager.CreateActor<skr::SkelMeshActor>().cast_static<skr::SkelMeshActor>();
+    auto actor2 = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
     {
         actor1.lock()->SetDisplayName(u8"Actor 1");
+        actor2.lock()->SetDisplayName(u8"Actor 2");
         root.lock()->CreateEntity();
         actor1.lock()->CreateEntity();
+        actor2.lock()->CreateEntity();
         actor1.lock()->AttachTo(root);
+        actor2.lock()->AttachTo(root);
+
         root.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
-        actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, -5.0f, 10.0f });
+        actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 1.0f, 10.0f });
         actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
         actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.8f, 0.0f });
+        actor2.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
+        actor2.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 1.f, 1.f, 1.0f });
+        actor2.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
     }
 
     for (auto i = 0; i < hierarchy_count; ++i)
@@ -386,26 +413,29 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
         auto actor = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
         hierarchy_actors.push_back(actor);
 
-        actor.lock()->SetDisplayName(skr::format(u8"Actor {}", i + 2).c_str());
+        actor.lock()->SetDisplayName(skr::format(u8"HActor {}", i).c_str());
         actor.lock()->CreateEntity();
 
         if (i == 0)
         {
-            actor.lock()->AttachTo(actor1);
+            actor.lock()->AttachTo(actor2);
+            actor.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
         }
         else
         {
             actor.lock()->AttachTo(hierarchy_actors[i - 1]);
+            actor.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .5f, .5f, .5f });
+            actor.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, (float)i * 0.5f });
         }
 
-        actor.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, (float)(i + 1) * 5.0f });
-        actor.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .8f, .8f, .8f });
+        actor.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, (float)(i + 1) * 5.0f, (float)(i + 1) * 5.0f });
     }
 
     transform_system->update();
     skr::ecs::TaskScheduler::Get()->sync_all();
 
     actor1.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = MeshAssetID;
+    actor2.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = BuiltinMeshID;
     for (auto& actor : hierarchy_actors)
     {
         actor.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = MeshAssetID;
@@ -447,6 +477,8 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
     skr::AsyncResource<skr::AnimResource> anim_resource_handle = AnimAssetID;
     ozz::animation::SamplingJob::Context context_;
 
+    bool controlling_actor = false;
+
     while (!imgui_app->want_exit().comsume())
     {
         SkrZoneScopedN("LoopBody");
@@ -454,6 +486,39 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
             SkrZoneScopedN("PumpMessage");
             imgui_app->pump_message();
         }
+        {
+            // if left mouse button is pressed, toggle controlling actor
+            SkrZoneScopedN("InputControl");
+            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            {
+                // Move Actor 1 with WASD keys
+                if (ImGui::IsKeyDown(ImGuiKey_W))
+                {
+                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
+                    pos.z -= 0.1f;
+                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
+                }
+                if (ImGui::IsKeyDown(ImGuiKey_S))
+                {
+                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
+                    pos.z += 0.1f;
+                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
+                }
+                if (ImGui::IsKeyDown(ImGuiKey_A))
+                {
+                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
+                    pos.x -= 0.1f;
+                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
+                }
+                if (ImGui::IsKeyDown(ImGuiKey_D))
+                {
+                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
+                    pos.x += 0.1f;
+                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
+                }
+            }
+        }
+
         {
             // ResourceSystem Update
             resource_system->Update();
@@ -644,6 +709,19 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
 
             // skr::ecs::TaskScheduler::Get()->sync_all();
             scene_render_system->get_context()->update_finish.wait(true);
+
+            auto backbuffer = render_graph->get_texture(u8"backbuffer");
+            const auto back_desc = render_graph->resolve_descriptor(backbuffer);
+            auto depthbuffer = render_graph->create_texture(
+                [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::TextureBuilder& builder) {
+                    builder.set_name(SKR_UTF8("render_depth"))
+                        .extent(back_desc->width, back_desc->height)
+                        .format(CGPU_FORMAT_D32_SFLOAT)
+                        .sample_count(CGPU_SAMPLE_COUNT_1)
+                        .allow_depth_stencil();
+                    if (back_desc->width > 2048) builder.allocate_dedicated();
+                });
+
             scene_renderer->draw_primitives(render_graph, scene_render_system->get_drawcalls());
         }
 

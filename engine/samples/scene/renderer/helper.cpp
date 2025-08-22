@@ -18,17 +18,20 @@ void CameraController::imgui_control_frame()
     constexpr float kPi = rtm::constants::pi();
     ImGuiIO& io = ImGui::GetIO();
 
-    const float camera_speed = 0.0025f * io.DeltaTime;
+    const float camera_speed = 0.025f * io.DeltaTime;
     const float camera_pan_speed = 0.0025f * io.DeltaTime;
     const float camera_sensitivity = 0.05f;
 
     skr_float3_t world_up = { 0.0f, 1.0f, 0.0f };
 
     // Movement
-    if (ImGui::IsKeyDown(ImGuiKey_W)) camera->position += camera->front * camera_speed;
-    if (ImGui::IsKeyDown(ImGuiKey_S)) camera->position -= camera->front * camera_speed;
-    if (ImGui::IsKeyDown(ImGuiKey_A)) camera->position -= camera->right * camera_speed;
-    if (ImGui::IsKeyDown(ImGuiKey_D)) camera->position += camera->right * camera_speed;
+    if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+    {
+        if (ImGui::IsKeyDown(ImGuiKey_W)) camera->position += camera->front * camera_speed;
+        if (ImGui::IsKeyDown(ImGuiKey_S)) camera->position -= camera->front * camera_speed;
+        if (ImGui::IsKeyDown(ImGuiKey_A)) camera->position -= camera->right * camera_speed;
+        if (ImGui::IsKeyDown(ImGuiKey_D)) camera->position += camera->right * camera_speed;
+    }
 
     // Rotation
     if (ImGui::IsMouseDown(ImGuiMouseButton_Right))

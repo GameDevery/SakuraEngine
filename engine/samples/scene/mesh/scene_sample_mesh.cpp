@@ -274,20 +274,28 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
     //     skr::type_id_of<skd::asset::TextureCooker>());
     // textureImporter->assetPath = u8"D:/ws/ext/glTFSample/media/Cauldron-Media/buster_drone/Assets/Models/Public/BusterDrone/Materials/body_albedo2048.png";
     // System.ImportAssetMeta(&project, textureAsset, textureImporter);
-    auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
-    metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; //    GLTFVertexLayoutWithJointId
 
+    auto grid_metadata = skd::asset::SimpleGridMeshAsset::Create<skd::asset::SimpleGridMeshAsset>();
+    grid_metadata->x_segments = 10;
+    grid_metadata->y_segments = 10;
+    grid_metadata->x_size = 10.0f;
+    grid_metadata->y_size = 10.0f;
+    grid_metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; // GLTFVertexLayoutWithJointId
     auto builtin_importer = skd::asset::ProceduralMeshImporter::Create<skd::asset::ProceduralMeshImporter>();
     // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleTriangleMesh>();
-    builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleCubeMesh>();
+    // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleCubeMesh>();
+    builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleGridMesh>();
 
     auto builtin_asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"simple_triangle.meta",
         BuiltinMeshID,
         skr::type_id_of<skr::MeshResource>(),
         skr::type_id_of<skd::asset::MeshCooker>());
+    System.ImportAssetMeta(&project, builtin_asset, builtin_importer, grid_metadata);
 
-    System.ImportAssetMeta(&project, builtin_asset, builtin_importer, metadata);
+    auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
+    metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; //    GLTFVertexLayoutWithJointId
+
     auto builtin_event = System.EnsureCooked(BuiltinMeshID);
     builtin_event.wait(true);
 
@@ -348,12 +356,12 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
 
     root.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
-    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 1.0f, 0.0f });
+    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 10.0f, 0.0f });
     actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
     actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
-    actor2.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 8.0f, 5.0f, 3.0f });
-    actor2.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 8.f, 8.f, 8.0f });
+    actor2.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
+    actor2.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 1.f, 1.f, 1.0f });
     actor2.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
     // for (auto i = 0; i < hierarchy_count; ++i)
@@ -450,6 +458,19 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             transform_system->get_context()->update_finish.wait(true);
             scene_render_system->update();
             scene_render_system->get_context()->update_finish.wait(true);
+
+            auto backbuffer = render_graph->get_texture(u8"backbuffer");
+            const auto back_desc = render_graph->resolve_descriptor(backbuffer);
+            auto depthbuffer = render_graph->create_texture(
+                [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::TextureBuilder& builder) {
+                    builder.set_name(SKR_UTF8("render_depth"))
+                        .extent(back_desc->width, back_desc->height)
+                        .format(CGPU_FORMAT_D32_SFLOAT)
+                        .sample_count(CGPU_SAMPLE_COUNT_1)
+                        .allow_depth_stencil();
+                    if (back_desc->width > 2048) builder.allocate_dedicated();
+                });
+
             scene_renderer->draw_primitives(
                 render_graph,
                 scene_render_system->get_drawcalls());
