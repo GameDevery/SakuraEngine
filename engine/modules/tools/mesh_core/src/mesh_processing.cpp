@@ -6,7 +6,7 @@
 namespace skd::asset
 {
 
-stl_string GetNameFromAttribute(EVertexAttribute attr)
+inline stl_string GetNameFromAttribute(EVertexAttribute attr)
 {
     switch (attr)
     {
@@ -31,7 +31,7 @@ stl_string GetNameFromAttribute(EVertexAttribute attr)
     }
 }
 
-stl_string GetNameFromVertexStreamType(ERawVertexStreamType type)
+inline stl_string GetNameFromVertexStreamType(ERawVertexStreamType type)
 {
     switch (type)
     {
@@ -56,7 +56,7 @@ stl_string GetNameFromVertexStreamType(ERawVertexStreamType type)
     }
 }
 
-EVertexAttribute GetVertexAttributeFromRawVertexStreamType(ERawVertexStreamType type)
+inline EVertexAttribute GetVertexAttributeFromRawVertexStreamType(ERawVertexStreamType type)
 {
     switch (type)
     {

@@ -30,7 +30,6 @@ void skd::asset::BuiltinMeshImporter::Destroy(void* resource)
 
 bool skd::asset::BuiltinMeshCooker::Cook(CookContext* ctx)
 {
-    // builtin mesh cooker still need a metadata file, because its vertexLayout and installType still need to be set
     auto assetMetaFile = ctx->GetAssetMetaFile();
     auto& mesh_asset = *assetMetaFile->GetMetadata<MeshAsset>();
 

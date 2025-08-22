@@ -278,7 +278,8 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
     metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; //    GLTFVertexLayoutWithJointId
 
     auto builtin_importer = skd::asset::BuiltinMeshImporter::Create<skd::asset::BuiltinMeshImporter>();
-    builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleTriangleMesh>();
+    // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleTriangleMesh>();
+    builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleCubeMesh>();
     auto builtin_asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"simple_triangle.meta",
         BuiltinMeshID,
@@ -349,8 +350,8 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
     actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
-    actor2.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 5.0f, 5.0f, 1.0f });
-    actor2.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 8.f, 8.f, 2.0f });
+    actor2.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 8.0f, 5.0f, 3.0f });
+    actor2.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 8.f, 8.f, 8.0f });
     actor2.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
     // for (auto i = 0; i < hierarchy_count; ++i)
