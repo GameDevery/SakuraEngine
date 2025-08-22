@@ -5,6 +5,82 @@
 
 namespace skd::asset
 {
+
+stl_string GetNameFromAttribute(EVertexAttribute attr)
+{
+    switch (attr)
+    {
+    case EVertexAttribute::POSITION:
+        return "POSITION";
+    case EVertexAttribute::NORMAL:
+        return "NORMAL";
+    case EVertexAttribute::TANGENT:
+        return "TANGENT";
+    case EVertexAttribute::TEXCOORD:
+        return "TEXCOORD";
+    case EVertexAttribute::COLOR:
+        return "COLOR";
+    case EVertexAttribute::JOINTS:
+        return "JOINTS";
+    case EVertexAttribute::WEIGHTS:
+        return "WEIGHTS";
+    case EVertexAttribute::CUSTOM:
+        return "CUSTOM";
+    default:
+        return "UNKNOWN";
+    }
+}
+
+stl_string GetNameFromVertexStreamType(ERawVertexStreamType type)
+{
+    switch (type)
+    {
+    case ERawVertexStreamType::POSITION:
+        return "POSITION";
+    case ERawVertexStreamType::NORMAL:
+        return "NORMAL";
+    case ERawVertexStreamType::TANGENT:
+        return "TANGENT";
+    case ERawVertexStreamType::TEXCOORD:
+        return "TEXCOORD";
+    case ERawVertexStreamType::COLOR:
+        return "COLOR";
+    case ERawVertexStreamType::JOINTS:
+        return "JOINTS";
+    case ERawVertexStreamType::WEIGHTS:
+        return "WEIGHTS";
+    case ERawVertexStreamType::CUSTOM:
+        return "CUSTOM";
+    default:
+        return "UNKNOWN";
+    }
+}
+
+EVertexAttribute GetVertexAttributeFromRawVertexStreamType(ERawVertexStreamType type)
+{
+    switch (type)
+    {
+    case ERawVertexStreamType::POSITION:
+        return EVertexAttribute::POSITION;
+    case ERawVertexStreamType::NORMAL:
+        return EVertexAttribute::NORMAL;
+    case ERawVertexStreamType::TANGENT:
+        return EVertexAttribute::TANGENT;
+    case ERawVertexStreamType::TEXCOORD:
+        return EVertexAttribute::TEXCOORD;
+    case ERawVertexStreamType::COLOR:
+        return EVertexAttribute::COLOR;
+    case ERawVertexStreamType::JOINTS:
+        return EVertexAttribute::JOINTS;
+    case ERawVertexStreamType::WEIGHTS:
+        return EVertexAttribute::WEIGHTS;
+    case ERawVertexStreamType::CUSTOM:
+        return EVertexAttribute::CUSTOM;
+    default:
+        return EVertexAttribute::NONE;
+    }
+}
+
 skr::span<const uint8_t> GetRawPrimitiveIndicesView(const SRawPrimitive* primitve, uint32_t& index_stride)
 {
     index_stride = (uint32_t)primitve->index_stream.stride;
@@ -36,7 +112,7 @@ skr::span<const uint8_t> GetRawPrimitiveAttributeView(const SRawPrimitive* primi
     const auto kVertexStreamTypesCount = static_cast<uint32_t>(ERawVertexStreamType::Count);
     for (uint32_t type = 0; type < kVertexStreamTypesCount; type++)
     {
-        const auto refStr = kRawAttributeTypeNameLUT[type];
+        const auto refStr = GetNameFromVertexStreamType(static_cast<ERawVertexStreamType>(type));
         skr::stl_string_view semantics_sv = semantics;
         if (semantics_sv.starts_with(refStr))
         {
@@ -66,7 +142,8 @@ void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, ERa
     uint32_t attribute_stride = 0;
     vertex_attribtue_slice = GetRawPrimitiveAttributeView(primitve, type, idx, attribute_stride);
 
-    out_vbv.attribute = kRawAttributeTypeLUT[static_cast<uint32_t>(type)];
+    // out_vbv.attribute = kRawAttributeTypeLUT[static_cast<uint32_t>(type)];
+    out_vbv.attribute = GetVertexAttributeFromRawVertexStreamType(type);
     out_vbv.attribute_index = idx;
 
     out_vbv.buffer_index = 0;
@@ -82,7 +159,8 @@ void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, con
     ERawVertexStreamType type;
     vertex_attribtue_slice = GetRawPrimitiveAttributeView(primitve, semantics, idx, attribute_stride, type);
 
-    out_vbv.attribute = kRawAttributeTypeLUT[static_cast<uint32_t>(type)];
+    // out_vbv.attribute = kRawAttributeTypeLUT[static_cast<uint32_t>(type)];
+    out_vbv.attribute = GetVertexAttributeFromRawVertexStreamType(type);
     out_vbv.attribute_index = idx;
 
     out_vbv.buffer_index = 0;
@@ -124,7 +202,8 @@ void EmplaceRawMeshVerticesWithRange(skr::span<const EVertexAttribute> range, ui
                     bool within = false;
                     for (auto type : range)
                     {
-                        const skr::stl_string semantic = kRawAttributeTypeNameLUT[static_cast<uint32_t>(type)];
+                        // const skr::stl_string semantic = kRawAttributeTypeNameLUT[static_cast<uint32_t>(type)];
+                        const auto semantic = GetNameFromAttribute(type);
                         if (semantic == (const char*)shuffle_attrib.semantic_name)
                         {
                             within = true;
@@ -148,7 +227,7 @@ void EmplaceRawMeshVerticesWithRange(skr::span<const EVertexAttribute> range, ui
 
 void EmplaceAllRawMeshVertices(const SRawMesh* mesh, const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer, skr::Vector<MeshPrimitive>& out_primitives)
 {
-    EmplaceRawMeshVerticesWithRange(kRawAttributeTypeLUT, 0, mesh, layout, buffer, out_primitives);
+    EmplaceRawMeshVerticesWithRange(kRawAttributes, 0, mesh, layout, buffer, out_primitives);
 }
 
 void EmplaceSkinRawMeshVertices(const SRawMesh* mesh, const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer, uint32_t buffer_idx, skr::Vector<MeshPrimitive>& out_primitives)

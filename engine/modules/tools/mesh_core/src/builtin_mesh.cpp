@@ -58,16 +58,16 @@ void SimpleTriangleMesh::generate_resource(skr::MeshResource& out_resource, skr:
         vertex_stream.offset = 0;
         vertex_stream.count = 3;
         vertex_stream.stride = sizeof(float) * 3;
-        // vertex_stream.type = ERawVertexStreamType::POSITION;
-        vertex_stream.type = ERawVertexStreamType::NORMAL;
+        vertex_stream.type = ERawVertexStreamType::POSITION;
+        // vertex_stream.type = ERawVertexStreamType::NORMAL;
 
         auto& normal_stream = raw_prim.vertex_streams.add_default().ref();
         normal_stream.buffer_view = skr::span<const uint8_t>((const uint8_t*)normals, sizeof(normals));
         normal_stream.offset = 0;
         normal_stream.count = 3;
         normal_stream.stride = sizeof(float) * 3;
-        // normal_stream.type = ERawVertexStreamType::NORMAL;
-        normal_stream.type = ERawVertexStreamType::TANGENT;
+        normal_stream.type = ERawVertexStreamType::NORMAL;
+        // normal_stream.type = ERawVertexStreamType::TANGENT;
 
         auto& tangent_stream = raw_prim.vertex_streams.add_default().ref();
 
@@ -76,8 +76,8 @@ void SimpleTriangleMesh::generate_resource(skr::MeshResource& out_resource, skr:
         texcoord_stream.offset = 0;
         texcoord_stream.count = 3;
         texcoord_stream.stride = sizeof(float) * 2;
-        // texcoord_stream.type = ERawVertexStreamType::TEXCOORD;
-        texcoord_stream.type = ERawVertexStreamType::COLOR;
+        texcoord_stream.type = ERawVertexStreamType::TEXCOORD;
+        // texcoord_stream.type = ERawVertexStreamType::COLOR;
     }
     skr::Vector<MeshPrimitive> new_primitives;
     EmplaceAllRawMeshIndices(&raw_mesh, buffer0, new_primitives);

@@ -25,6 +25,29 @@ static const ERawVertexStreamType kGLTFToRawAttributeTypeLUT[] = {
     ERawVertexStreamType::Count,
 };
 
+inline ERawVertexStreamType getVertexStreamTypeFromGLTFAttribute(cgltf_attribute_type attr)
+{
+    switch (attr)
+    {
+    case cgltf_attribute_type_position:
+        return ERawVertexStreamType::POSITION;
+    case cgltf_attribute_type_normal:
+        return ERawVertexStreamType::NORMAL;
+    case cgltf_attribute_type_tangent:
+        return ERawVertexStreamType::TANGENT;
+    case cgltf_attribute_type_texcoord:
+        return ERawVertexStreamType::TEXCOORD;
+    case cgltf_attribute_type_color:
+        return ERawVertexStreamType::COLOR;
+    case cgltf_attribute_type_joints:
+        return ERawVertexStreamType::JOINTS;
+    case cgltf_attribute_type_weights:
+        return ERawVertexStreamType::WEIGHTS;
+    default:
+        return ERawVertexStreamType::CUSTOM;
+    }
+}
+
 inline static SRawMesh GenerateRawMeshForGLTFMesh(cgltf_mesh* mesh)
 {
     SRawMesh raw_mesh = {};
@@ -58,7 +81,8 @@ inline static SRawMesh GenerateRawMeshForGLTFMesh(cgltf_mesh* mesh)
             vertex_stream.offset = 0;
             vertex_stream.count = vertex_count;
             vertex_stream.stride = attribute.data->stride;
-            vertex_stream.type = kGLTFToRawAttributeTypeLUT[attribute.type];
+            // vertex_stream.type = kGLTFToRawAttributeTypeLUT[attribute.type];
+            vertex_stream.type = getVertexStreamTypeFromGLTFAttribute(attribute.type);
         }
     }
     return raw_mesh;

@@ -111,17 +111,17 @@ MESH_CORE_API
 void EmplaceStaticRawMeshVertices(const SRawMesh* mesh, const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer, uint32_t buffer_idx, skr::Vector<MeshPrimitive>& out_primitives);
 
 // LUT for raw attributes to semantic names
-static const char* kRawAttributeTypeNameLUT[9] = {
-    "NONE",
-    "POSITION",
-    "NORMAL",
-    "TANGENT",
-    "TEXCOORD",
-    "COLOR",
-    "JOINTS",
-    "WEIGHTS",
-    "CUSTOM"
-};
+// static const char* kRawAttributeTypeNameLUT[9] = {
+//     "NONE",
+//     "POSITION",
+//     "NORMAL",
+//     "TANGENT",
+//     "TEXCOORD",
+//     "COLOR",
+//     "JOINTS",
+//     "WEIGHTS",
+//     "CUSTOM"
+// };
 
 using EVertexAttribute = skr::EVertexAttribute;
 static const EVertexAttribute kRawSkinAttributes[5] = {
@@ -139,7 +139,7 @@ static const EVertexAttribute kRawStaticAttributes[4] = {
     EVertexAttribute::CUSTOM
 };
 
-static const EVertexAttribute kRawAttributeTypeLUT[9] = {
+static const EVertexAttribute kRawAttributes[9] = {
     EVertexAttribute::NONE,
     EVertexAttribute::POSITION,
     EVertexAttribute::NORMAL,
