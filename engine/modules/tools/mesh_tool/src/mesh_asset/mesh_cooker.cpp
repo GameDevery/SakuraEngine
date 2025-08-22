@@ -10,21 +10,11 @@
 #include "MeshOpt/meshoptimizer.h"
 
 #include "SkrProfile/profile.h"
+#include "SkrRTTR/type.hpp"
 
-void* skd::asset::GltfMeshImporter::Import(skr::io::IRAMService* ioService, CookContext* context)
+namespace skd::asset
 {
-    const auto assetMetaFile = context->GetAssetMetaFile();
-    auto path = context->AddSourceFile(assetPath);
-    auto vfs = assetMetaFile->GetProject()->GetAssetVFS();
-    return ImportGLTFWithData(path.string().c_str(), ioService, vfs);
-}
-
-void skd::asset::GltfMeshImporter::Destroy(void* resource)
-{
-    ::cgltf_free((cgltf_data*)resource);
-}
-
-bool skd::asset::MeshCooker::Cook(CookContext* ctx)
+bool MeshCooker::Cook(CookContext* ctx)
 {
     auto assetMetaFile = ctx->GetAssetMetaFile();
 
@@ -73,6 +63,24 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
             // TODO: support ram-only mode install
             mesh.install_to_vram = true;
         }
+    }
+    else if (importer_type == skr::type_id_of<ProceduralMeshImporter>())
+    {
+        auto pBuiltInMesh = ctx->Import<ProceduralMesh>();
+        if (!pBuiltInMesh)
+        {
+            SKR_LOG_FATAL(u8"MeshCooker: Failed to import built-in mesh for asset %s!", ctx->GetAssetPath().c_str());
+            return false;
+        }
+        SKR_DEFER({ ctx->Destroy(pBuiltInMesh); });
+
+        skr_guid_t shuffle_layout_id = mesh_asset.vertexType;
+        pBuiltInMesh->generate_resource(mesh, blobs, shuffle_layout_id);
+    }
+    else
+    {
+        SKR_LOG_FATAL(u8"MeshCooker: Unsupported importer type for asset %s!", ctx->GetAssetPath().c_str());
+        return false;
     }
 
     //----- optimize mesh
@@ -168,7 +176,8 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
     return true;
 }
 
-uint32_t skd::asset::MeshCooker::Version()
+uint32_t MeshCooker::Version()
 {
     return kDevelopmentVersion;
 }
+} // namespace skd::asset

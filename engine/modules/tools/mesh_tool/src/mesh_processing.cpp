@@ -13,18 +13,6 @@
 
 namespace skd::asset
 {
-static const ERawVertexStreamType kGLTFToRawAttributeTypeLUT[] = {
-    ERawVertexStreamType::POSITION,
-    ERawVertexStreamType::NORMAL,
-    ERawVertexStreamType::TANGENT,
-    ERawVertexStreamType::TEXCOORD,
-    ERawVertexStreamType::COLOR,
-    ERawVertexStreamType::JOINTS,
-    ERawVertexStreamType::WEIGHTS,
-    ERawVertexStreamType::CUSTOM,
-    ERawVertexStreamType::Count,
-};
-
 inline ERawVertexStreamType getVertexStreamTypeFromGLTFAttribute(cgltf_attribute_type attr)
 {
     switch (attr)
@@ -81,7 +69,6 @@ inline static SRawMesh GenerateRawMeshForGLTFMesh(cgltf_mesh* mesh)
             vertex_stream.offset = 0;
             vertex_stream.count = vertex_count;
             vertex_stream.stride = attribute.data->stride;
-            // vertex_stream.type = kGLTFToRawAttributeTypeLUT[attribute.type];
             vertex_stream.type = getVertexStreamTypeFromGLTFAttribute(attribute.type);
         }
     }

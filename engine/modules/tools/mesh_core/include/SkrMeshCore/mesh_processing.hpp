@@ -8,6 +8,7 @@
 
 namespace skd::asset
 {
+
 sreflect_struct(
     guid = "9A2C9CBF-517D-4197-BDE3-E40D85D88320" serde = @json)
 MeshAsset : public skd::asset::AssetMetadata

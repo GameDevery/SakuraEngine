@@ -1,9 +1,50 @@
-#include "SkrMeshCore/builtin_mesh.hpp"
+#include "SkrBase/misc/defer.hpp"
+#include "SkrCore/log.hpp"
+#include "SkrTask/parallel_for.hpp"
+#include "SkrContainers/stl_vector.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
+#include "SkrToolCore/project/project.hpp"
+#include "SkrMeshTool/mesh_asset.hpp"
+#include "SkrMeshTool/mesh_processing.hpp"
+#include "MeshOpt/meshoptimizer.h"
+
+#include "SkrProfile/profile.h"
+#include "SkrRTTR/type.hpp"
 #include "SkrMeshCore/mesh_processing.hpp"
 #include "SkrContainersDef/stl_string.hpp"
+#include "SkrGraphics/api.h"
 
 namespace skd::asset
 {
+
+void* ProceduralMeshImporter::Import(skr::io::IRAMService* ioService, CookContext* context)
+{
+    skr::RTTRType* type = get_type_from_guid(built_in_mesh_tid);
+    if (!type)
+    {
+        SKR_LOG_FATAL(u8"BuiltinMeshImporter: Failed to find type for guid %s", built_in_mesh_tid);
+        return nullptr;
+    }
+    void* data = sakura_malloc_aligned(type->size(), type->alignment());
+    type->find_default_ctor().invoke(data);
+    return (void*)data;
+}
+
+void ProceduralMeshImporter::Destroy(void* resource)
+{
+    skr::RTTRType* type = get_type_from_guid(built_in_mesh_tid);
+    sakura_free_aligned((ProceduralMesh*)resource, type->alignment());
+    return;
+}
+
+void SimpleTriangleMesh::configure(const ProceduralArgsBase* args)
+{
+    if (args)
+    {
+        auto pArgs = static_cast<const Args*>(args);
+    }
+}
+
 void SimpleTriangleMesh::generate_resource(skr::MeshResource& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins, skr_guid_t shuffle_layout_id)
 {
     // TODO: directly construct on bins, no copy
@@ -96,6 +137,14 @@ void SimpleTriangleMesh::generate_resource(skr::MeshResource& out_resource, skr:
     }
 
     out_bins.add(buffer0);
+}
+
+void SimpleCubeMesh::configure(const ProceduralArgsBase* args)
+{
+    if (args)
+    {
+        auto pArgs = static_cast<const Args*>(args);
+    }
 }
 
 void SimpleCubeMesh::generate_resource(skr::MeshResource& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins, skr_guid_t shuffle_layout_id)
@@ -195,6 +244,17 @@ void SimpleCubeMesh::generate_resource(skr::MeshResource& out_resource, skr::Vec
     }
 
     out_bins.add(buffer0);
+}
+
+void SimpleGridMesh::configure(const ProceduralArgsBase* args)
+{
+    if (args)
+    {
+        auto pArgs = static_cast<const Args*>(args);
+    }
+}
+void SimpleGridMesh::generate_resource(skr::MeshResource& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins, skr_guid_t shuffle_layout_id)
+{
 }
 
 } // namespace skd::asset

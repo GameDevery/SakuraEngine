@@ -37,8 +37,8 @@
 #include "SkrTextureCompiler/texture_sampler_asset.hpp"
 
 #include "SkrMeshTool/mesh_asset.hpp"
-#include "SkrMeshCore/builtin_mesh_asset.hpp"
-#include "SkrMeshCore/builtin_mesh.hpp"
+// #include "SkrMeshCore/builtin_mesh_asset.hpp"
+// #include "SkrMeshCore/builtin_mesh.hpp"
 
 #include "SkrScene/actor.h"
 #include "SkrSceneCore/transform_system.h"
@@ -277,7 +277,7 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
     auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
     metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; //    GLTFVertexLayoutWithJointId
 
-    auto builtin_importer = skd::asset::BuiltinMeshImporter::Create<skd::asset::BuiltinMeshImporter>();
+    auto builtin_importer = skd::asset::ProceduralMeshImporter::Create<skd::asset::ProceduralMeshImporter>();
     // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleTriangleMesh>();
     builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleCubeMesh>();
 
@@ -285,7 +285,8 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
         u8"simple_triangle.meta",
         BuiltinMeshID,
         skr::type_id_of<skr::MeshResource>(),
-        skr::type_id_of<skd::asset::BuiltinMeshCooker>());
+        skr::type_id_of<skd::asset::MeshCooker>());
+
     System.ImportAssetMeta(&project, builtin_asset, builtin_importer, metadata);
     auto builtin_event = System.EnsureCooked(BuiltinMeshID);
     builtin_event.wait(true);

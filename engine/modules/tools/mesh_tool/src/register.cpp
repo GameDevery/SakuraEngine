@@ -13,6 +13,7 @@ public:
 
 #define _IMPORTER(__TYPE) skd::asset::RegisterImporter<__TYPE>(skr::RTTRTraits<__TYPE>::get_guid());
         _IMPORTER(skd::asset::GltfMeshImporter)
+        _IMPORTER(skd::asset::ProceduralMeshImporter)
 #undef _IMPORTER
     }
     virtual void on_unload() override
