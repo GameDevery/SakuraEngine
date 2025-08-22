@@ -10,15 +10,15 @@ struct cgltf_node;
 namespace skd::asset
 {
 // returned cgltf_data* needs to be freed by cgltf_free
-GLTFTOOL_API
+MESH_TOOL_API
 cgltf_data* ImportGLTFWithData(skr::StringView assetPath, skr::io::IRAMService* ioService, struct skr_vfs_t* vfs) SKR_NOEXCEPT;
 
-GLTFTOOL_API
+MESH_TOOL_API
 void GetGLTFNodeTransform(const cgltf_node* node, skr_float3_t& translation, skr_float3_t& scale, skr_float4_t& rotation);
 
-GLTFTOOL_API
+MESH_TOOL_API
 void CookGLTFMeshData(const cgltf_data* data, MeshAsset* config, MeshResource& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins);
 
-GLTFTOOL_API
+MESH_TOOL_API
 void CookGLTFMeshData_SplitSkin(const cgltf_data* data, MeshAsset* config, MeshResource& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins);
 } // namespace skd::asset

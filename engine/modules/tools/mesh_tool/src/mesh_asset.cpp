@@ -5,8 +5,8 @@
 #include "SkrContainers/stl_vector.hpp"
 #include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrToolCore/project/project.hpp"
-#include "SkrGLTFTool/mesh_asset.hpp"
-#include "SkrGLTFTool/mesh_processing.hpp"
+#include "SkrMeshTool/mesh_asset.hpp"
+#include "SkrMeshTool/mesh_processing.hpp"
 #include "MeshOpt/meshoptimizer.h"
 
 #include "SkrProfile/profile.h"

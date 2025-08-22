@@ -3,11 +3,11 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-public static class SkrGLTFTool
+public static class SkrMeshTool
 {
-    static SkrGLTFTool()
+    static SkrMeshTool()
     {
-        Engine.Module("SkrGLTFTool", "GLTFTOOL")
+        Engine.Module("SkrMeshTool", "MESH_TOOL")
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrMeshCore")
             .IncludeDirs(Visibility.Public, "include")

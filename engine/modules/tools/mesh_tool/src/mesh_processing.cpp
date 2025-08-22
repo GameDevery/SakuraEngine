@@ -5,7 +5,7 @@
 #include "SkrTask/fib_task.hpp"
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrMeshCore/mesh_processing.hpp"
-#include "SkrGLTFTool/mesh_processing.hpp"
+#include "SkrMeshTool/mesh_processing.hpp"
 
 #include "cgltf/cgltf.h"
 

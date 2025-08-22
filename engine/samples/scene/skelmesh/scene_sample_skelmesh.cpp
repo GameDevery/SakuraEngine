@@ -30,7 +30,7 @@
 #include "SkrMeshCore/mesh_processing.hpp"
 #include "SkrToolCore/project/project.hpp"
 #include "SkrToolCore/cook_system/cook_system.hpp"
-#include "SkrGLTFTool/mesh_asset.hpp"
+#include "SkrMeshTool/mesh_asset.hpp"
 
 #include "SkrScene/actor.h"
 

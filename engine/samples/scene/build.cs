@@ -23,7 +23,7 @@ public static class SceneSamples
             .AddCppFiles("mesh/*.cpp")
             .Depend(Visibility.Private, "SceneRenderer")
             .Depend(Visibility.Private, "SkrTextureCompiler")
-            .Depend(Visibility.Private, "SkrGLTFTool")
+            .Depend(Visibility.Private, "SkrMeshTool")
             .CopyFilesWithRoot(
                 RootDir: "assets",
                 Destination: "resources/scene",
@@ -35,6 +35,6 @@ public static class SceneSamples
             .Depend(Visibility.Private, "SceneRenderer")
             .Depend(Visibility.Private, "SkrTextureCompiler")
             .Depend(Visibility.Private, "SkrAnimTool")
-            .Depend(Visibility.Private, "SkrGLTFTool");
+            .Depend(Visibility.Private, "SkrMeshTool");
     }
 }

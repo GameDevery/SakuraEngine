@@ -24,7 +24,7 @@
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrRenderer/render_mesh.h"
 #include "SkrMeshCore/mesh_processing.hpp"
-#include "SkrGLTFTool/mesh_asset.hpp"
+#include "SkrMeshTool/mesh_asset.hpp"
 #include "common/utils.h"
 
 using namespace skr::literals;
@@ -490,10 +490,10 @@ void ModelViewerModule::CookAndLoadGLTF()
         metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid;
 
         auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
-            u8"girl.model.meta",                            // virtual uri for this asset in the project
-            MeshAssetID,                                    // guid for this asset
-            skr::type_id_of<skr::MeshResource>(), // output resource is a mesh resource
-            skr::type_id_of<skd::asset::MeshCooker>()       // this cooker cooks t he raw mesh data to mesh resource
+            u8"girl.model.meta",                      // virtual uri for this asset in the project
+            MeshAssetID,                              // guid for this asset
+            skr::type_id_of<skr::MeshResource>(),     // output resource is a mesh resource
+            skr::type_id_of<skd::asset::MeshCooker>() // this cooker cooks t he raw mesh data to mesh resource
         );
         // source file
         importer->assetPath = u8"C:/Code/SakuraEngine/engine/samples/assets/sketchfab/loli/scene.gltf";

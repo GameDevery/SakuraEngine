@@ -10,12 +10,13 @@
 #include "SkrCore/async/wait_timeout.hpp"
 #include "SkrRT/io/ram_io.hpp"
 #include "SkrRT/misc/cmd_parser.hpp"
-#include "SkrGLTFTool/mesh_processing.hpp"
+#include "SkrMeshTool/mesh_processing.hpp"
 #include "cgltf/cgltf.h"
 
 // Module IOSample_gltf_tool
 
-struct IOSampleGLTFToolModule : public skr::IDynamicModule {
+struct IOSampleGLTFToolModule : public skr::IDynamicModule
+{
     virtual void on_load(int argc, char8_t** argv) override;
     virtual int main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
@@ -32,7 +33,7 @@ void IOSampleGLTFToolModule::on_unload()
 int IOSampleGLTFToolModule::main_module_exec(int argc, char8_t** argv)
 {
     SkrZoneScopedN("IOSample_gltf_tool::main_module_exec");
-    SKR_LOG_INFO(u8"Running SkrGLTFTool Module");
+    SKR_LOG_INFO(u8"Running SkrMeshTool Module");
     skr::cmd::parser parser(argc, (char**)argv);
     parser.add(u8"gltf", u8"gltf file path", u8"-f", true);
     parser.add(u8"buffer", u8"load gltf buffer file", u8"-b", false);
@@ -83,7 +84,7 @@ int IOSampleGLTFToolModule::main_module_exec(int argc, char8_t** argv)
     //     rq->set_path(gltf_path->c_str());
     //     rq->add_block({}); // read all
     //     blob = ioService->request(rq, &future);
-    // } 
+    // }
     // wait_timeout([&future]()->bool
     // {
     //     return future.is_ready();
@@ -91,7 +92,7 @@ int IOSampleGLTFToolModule::main_module_exec(int argc, char8_t** argv)
     // skr::String result = (const skr_char8*)blob->get_data();
     // SKR_LOG_INFO(u8"Loaded glTF file: {%s}", result.c_str());
 
-    auto gltf_data = skd::asset::ImportGLTFWithData(gltf_path->view(), ioService, abs_fs); 
+    auto gltf_data = skd::asset::ImportGLTFWithData(gltf_path->view(), ioService, abs_fs);
     // process binary buffer file automatically
     if (!gltf_data)
     {
@@ -119,14 +120,13 @@ int IOSampleGLTFToolModule::main_module_exec(int argc, char8_t** argv)
 
     // TODO: load to Mesh Resource
 
-
-    skr_io_ram_service_t::destroy(ioService);  
+    skr_io_ram_service_t::destroy(ioService);
 
     return 0;
 }
 
-
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     auto moduleManager = skr_get_module_manager();
     auto root = skr::fs::current_directory();
     {

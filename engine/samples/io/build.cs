@@ -16,7 +16,7 @@ public static class IOSamples
             .IncludeDirs(Visibility.Private, ".")
             .AddCppFiles("gltf/gltf_tool.cpp")
             .Depend(Visibility.Private, "SkrRT")
-            .Depend(Visibility.Private, "SkrGLTFTool")
+            .Depend(Visibility.Private, "SkrMeshTool")
             .Require("cgltf", new PackageConfig { Version = new Version(1, 13, 0) })
             .Depend(Visibility.Private, "cgltf@cgltf");
     }

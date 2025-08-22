@@ -36,7 +36,7 @@
 #include "SkrTextureCompiler/texture_compiler.hpp"
 #include "SkrTextureCompiler/texture_sampler_asset.hpp"
 
-#include "SkrGLTFTool/mesh_asset.hpp"
+#include "SkrMeshTool/mesh_asset.hpp"
 #include "SkrMeshCore/builtin_mesh_asset.hpp"
 #include "SkrMeshCore/builtin_mesh.hpp"
 
@@ -280,6 +280,7 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
     auto builtin_importer = skd::asset::BuiltinMeshImporter::Create<skd::asset::BuiltinMeshImporter>();
     // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleTriangleMesh>();
     builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleCubeMesh>();
+
     auto builtin_asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"simple_triangle.meta",
         BuiltinMeshID,

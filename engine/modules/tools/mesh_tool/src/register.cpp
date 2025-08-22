@@ -1,8 +1,8 @@
 #include "SkrCore/module/module.hpp"
-#include "SkrGLTFTool/mesh_asset.hpp"
+#include "SkrMeshTool/mesh_asset.hpp"
 #include "SkrRenderer/resources/mesh_resource.h"
 
-struct GLTFToolModule : public skr::IDynamicModule
+struct MeshToolModule : public skr::IDynamicModule
 {
 public:
     virtual void on_load(int argc, char8_t** argv) override
@@ -17,7 +17,6 @@ public:
     }
     virtual void on_unload() override
     {
-
     }
 };
-IMPLEMENT_DYNAMIC_MODULE(GLTFToolModule, SkrGLTFTool);
+IMPLEMENT_DYNAMIC_MODULE(MeshToolModule, SkrMeshTool);
