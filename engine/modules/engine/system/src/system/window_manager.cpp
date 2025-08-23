@@ -128,6 +128,11 @@ void ISystemWindowManager::unregister_window(SystemWindow* window) SKR_NOEXCEPT
     } 
 }
 
+extern ISystemWindowManager* CreateSDL3WindowManager();
+#ifdef _WIN32
+extern ISystemWindowManager* CreateWin32WindowManager();
+#endif
+
 // Factory implementation
 ISystemWindowManager* ISystemWindowManager::Create(const char* backend)
 {
@@ -145,12 +150,10 @@ ISystemWindowManager* ISystemWindowManager::Create(const char* backend)
     // Create appropriate implementation
     if (strcmp(backend, "SDL3") == 0) {
         // Forward declaration issue - we'll use a factory function instead
-        extern ISystemWindowManager* CreateSDL3WindowManager();
         return CreateSDL3WindowManager();
     }
 #ifdef _WIN32
     else if (strcmp(backend, "Win32") == 0) {
-        extern ISystemWindowManager* CreateWin32WindowManager();
         return CreateWin32WindowManager();
     }
 #endif
