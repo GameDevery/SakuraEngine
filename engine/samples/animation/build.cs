@@ -3,7 +3,8 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-public static class AnimSamples {
+public static class AnimSamples
+{
     static AnimSamples()
     {
         Engine.Program("AnimReadSkeleton")
@@ -22,7 +23,7 @@ public static class AnimSamples {
 
         Engine.Program("AnimSampleCook")
             .Depend(Visibility.Private, "SkrAnim")
-            .Depend(Visibility.Private, "SkrGLTFTool")
+            .Depend(Visibility.Private, "SkrMeshTool")
             .Depend(Visibility.Private, "SkrAnimTool")
             .AddCppFiles("cook/*.cpp");
     }

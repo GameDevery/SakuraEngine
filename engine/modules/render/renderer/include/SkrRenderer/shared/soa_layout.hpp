@@ -111,6 +111,15 @@ public:
         return align_up<page_stride_helper<0, Es...>(), 256>;
     }
 
+#ifdef __CPPSL__
+    template <typename T>
+    static T Load(const data_layout::ByteAddressBuffer& buffer, uint32_t instance_id)
+    {
+        const auto offset = PagedLayout::component_location<T>(instance_id);
+        return buffer.Load<T>(offset);
+    }
+#endif
+
 private:
     template <AddressType Off, typename E, typename... Rs>
     static constexpr AddressType page_stride_helper() {

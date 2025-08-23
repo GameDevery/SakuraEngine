@@ -23,7 +23,7 @@ struct SceneRendererImpl : public skr::SceneRenderer
     CGPURenderPipelineId pipeline = nullptr;
     CGPUVertexLayout vertex_layout = {};
     CGPURasterizerStateDescriptor rs_state = {};
-    CGPUDepthStateDescriptor depth_state = {};
+    CGPUDepthStateDescriptor ds_desc = {};
     // temp push_constants
     struct push_constants
     {
@@ -64,10 +64,13 @@ struct SceneRendererImpl : public skr::SceneRenderer
 
         auto backbuffer = render_graph->get_texture(u8"backbuffer");
         const auto back_desc = render_graph->resolve_descriptor(backbuffer);
+        auto depthbuffer = render_graph->get_texture(u8"render_depth");
+
         render_graph->add_render_pass(
-            [this, backbuffer](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
+            [this, backbuffer, depthbuffer](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
                 builder.set_name(u8"scene_render_pass")
                     .set_pipeline(pipeline) // captured this->pipeline
+                    .set_depth_stencil(depthbuffer.clear_depth(100.0f))
                     .write(0, backbuffer, CGPU_LOAD_ACTION_CLEAR);
             },
             [back_desc, drawcalls](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& context) {
@@ -130,8 +133,10 @@ void SceneRendererImpl::prepare_pipeline_settings()
     rs_state.fill_mode = CGPU_FILL_MODE_SOLID;
     rs_state.front_face = CGPU_FRONT_FACE_CCW;
 
-    depth_state.depth_write = true;
-    depth_state.depth_test = true;
+    ds_desc.depth_func = CGPU_CMP_LEQUAL;
+    // ds_desc.depth_func = CGPU_CMP_GEQUAL;
+    ds_desc.depth_write = true;
+    ds_desc.depth_test = true;
 }
 
 void SceneRendererImpl::prepare_pipeline(skr::RenderDevice* render_device)
@@ -166,8 +171,10 @@ void SceneRendererImpl::prepare_pipeline(skr::RenderDevice* render_device)
     rp_desc.fragment_shader = &ppl_fs;
     rp_desc.render_target_count = 1;
     rp_desc.color_formats = &color_format;
+    rp_desc.depth_stencil_format = depth_format;
 
     rp_desc.rasterizer_state = &rs_state;
+    rp_desc.depth_state = &ds_desc;
     pipeline = cgpu_create_render_pipeline(cgpu_device, &rp_desc);
 
     cgpu_free_shader_library(fs);

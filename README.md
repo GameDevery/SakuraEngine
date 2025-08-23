@@ -62,7 +62,7 @@ https://user-images.githubusercontent.com/39457738/192722537-6ab035a5-2789-43d0-
 | `devtime/inspect`    |                            -                            | 提供运行时的变量状态可视化                         |
 | `SkrToolCore`        |                            -                            | 管理并驱动资源烘焙流程                             |
 | `SkrAnimTool`        |              [ozz-animation][ozz-animation]              | 导入并烘焙动画相关资源                             |
-| `SkrGLTFTool`        |                      [cgltf][cgltf]                      | 导入gltf模型并烘焙                                 |
+| `SkrMeshTool`        |                      [cgltf][cgltf]                      | 导入gltf模型并烘焙                                 |
 | `SkrTextureCompiler` |      [ISPCTextureCompressor][ISPCTextureCompressor]      | 导入并烘焙贴图                                     |
 | `SkrShaderCompiler`  |                            -                            | 导入并烘焙材质相关资源                             |
 | `codegen`            | [libtooling][libtooling], [mako-template][mako-template] | 提供代码生成                                       |

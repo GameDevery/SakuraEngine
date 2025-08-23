@@ -37,8 +37,8 @@ void fs(VSOut psIn, [[sv_render_target(0)]] float4 out_color)
     if (push_constants.bFlipUVY) 
         uv.y = 1 - uv.y;
     
-    float4 gbufferColor = texture_sampler.Sample(gbuffer_color, uv);
-    float4 gbufferNormal = texture_sampler.Sample(gbuffer_normal, uv);
+    float4 gbufferColor = gbuffer_color.Sample(texture_sampler, uv);
+    float4 gbufferNormal = gbuffer_normal.Sample(texture_sampler, uv);
     out_color = gbufferColor * 0.5f + abs(gbufferNormal) * 0.5f;
-    out_color *= texture_sampler.Sample(gbuffer_depth, uv).rrrr;
+    out_color *= gbuffer_depth.Sample(texture_sampler, uv).rrrr;
 }
