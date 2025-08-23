@@ -6,7 +6,10 @@
 namespace skr::data_layout
 {
 using namespace skr;
+using uint32 = ::uint32_t;
 using uint32_t = ::uint32_t;
+using uint64 = ::uint64_t;
+using uint64_t = ::uint64_t;
 using AddressType = uint32_t;
 
 struct DataReader

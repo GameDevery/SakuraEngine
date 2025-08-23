@@ -33,6 +33,7 @@ public static class LLVMTools
             .Depend(Visibility.Public, "CppSLAst")
             .IncludeDirs(Visibility.Public, "shader_compiler/LLVM/include")
             .AddCppFiles("shader_compiler/LLVM/src/**.cpp")
+            .UsePrivatePCH("shader_compiler/LLVM/src/LLVM.pch.hpp")
             .LinkAgainstLLVM();
 
         BuildSystem.Target("CppSLCompiler")

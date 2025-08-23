@@ -57,7 +57,7 @@ void fragment(VSOut psIn, [[sv_render_target(0)]] float4& color)
 {
     // Access texture from bindless array using dynamic index
     uint texture_index = push_constants.TextureIndex;
-    float4 sampled_color = texture_sampler.Sample(sampled_textures[texture_index], psIn.uv);
+    float4 sampled_color = sampled_textures[texture_index].Sample(texture_sampler, psIn.uv);
     
     // Apply color multiplier
     color = sampled_color * push_constants.ColorMultiplier;

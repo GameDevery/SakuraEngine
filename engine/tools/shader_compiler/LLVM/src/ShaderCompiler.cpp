@@ -11,7 +11,7 @@
 #include "CppSL/langs/HLSLGenerator.hpp"
 #include "CppSL/langs/MSLGenerator.hpp"
 
-#include "ShaderASTConsumer.hpp"
+#include "ShaderTranslator.hpp"
 
 namespace skr::CppSL {
 
