@@ -1,5 +1,5 @@
 #pragma once
-#include "SkrContainersDef/string.hpp"
+#include "SkrContainersDef/string.hpp" // IWYU pragma: export
 
 // bin serde
 #include "SkrCore/log.h"

@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrRenderer/fwd_types.h"
-#include "SkrContainersDef/vector.hpp"
-#include "SkrContainersDef/string.hpp"
+#include "SkrContainers/vector.hpp"
+#include "SkrContainers/string.hpp"
 #include "SkrToolCore/cook_system/importer.hpp"
 #include "SkrToolCore/cook_system/cooker.hpp"
 #ifndef __meta__

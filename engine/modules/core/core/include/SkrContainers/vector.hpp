@@ -1,5 +1,5 @@
 #pragma once
-#include "SkrContainersDef/vector.hpp"
+#include "SkrContainersDef/vector.hpp" // IWYU pragma: export
 
 // rttr
 #include "SkrRTTR/type_signature.hpp"
