@@ -46,7 +46,7 @@ TextureSRVHandle TextureSRVHandle::dimension(ECGPUTextureDimension dim) const
     return _;
 }
 
-TextureSRVHandle::ShaderReadHandle(const handle_t _this, 
+TextureSRVHandle::ShaderReadHandle(const HandleStorage _this, 
     const uint32_t mip_base, const uint32_t mip_count, const uint32_t array_base, const uint32_t array_count)
     : _this(_this)
     , mip_base(mip_base)
@@ -57,7 +57,7 @@ TextureSRVHandle::ShaderReadHandle(const handle_t _this,
 }
 
 // rtv
-TextureRTVHandle::ShaderWriteHandle(const handle_t _this)
+TextureRTVHandle::ShaderWriteHandle(const HandleStorage _this)
     : _this(_this)
 {
 }
@@ -70,25 +70,25 @@ TextureRTVHandle TextureRTVHandle::write_mip(uint32_t mip) const
 }
 
 // UAV
-TextureUAVHandle::ShaderReadWriteHandle(const handle_t _this)
+TextureUAVHandle::ShaderReadWriteHandle(const HandleStorage _this)
     : _this(_this)
 {
 }
 
 // Subresource
-TextureSubresourceHandle::SubresourceHandle(const handle_t _this)
+TextureSubresourceHandle::SubresourceHandle(const HandleStorage _this)
     : _this(_this)
 {
 }
 
 // CBV
-BufferCBVHandle::ShaderReadHandle(const handle_t _this)
+BufferCBVHandle::ShaderReadHandle(const HandleStorage _this)
     : _this(_this)
 {
 }
 
 // UAV
-BufferUAVHandle::ShaderReadWriteHandle(const handle_t _this)
+BufferUAVHandle::ShaderReadWriteHandle(const HandleStorage _this)
     : _this(_this)
 {
 }
@@ -109,13 +109,13 @@ TextureDSVHandle TextureDSVHandle::clear_depth(float depth) const
 }
 
 // VB/IB
-PipelineBufferHandle::PipelineReferenceHandle(const handle_t _this)
+PipelineBufferHandle::PipelineReferenceHandle(const HandleStorage _this)
     : _this(_this)
 {
 }
 
 // AccelerationStructure SRV
-AccelerationStructureSRVHandle::ShaderReadHandle(const handle_t _this)
+AccelerationStructureSRVHandle::ShaderReadHandle(const HandleStorage _this)
     : _this(_this)
 {
 }

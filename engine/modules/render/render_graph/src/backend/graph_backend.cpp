@@ -350,6 +350,9 @@ uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 
         graph->clear();
         blackboard->clear();
+        imported_textures.clear();
+        imported_buffers.clear();
+        imported_acceleration_structures.clear();
     }
 
     // early acquire then CPU logics will not race with GPU resource (N - MAX_FRAMES_IN_FLIGHT)

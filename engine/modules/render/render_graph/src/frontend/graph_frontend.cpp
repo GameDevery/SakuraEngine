@@ -141,7 +141,7 @@ public:
         }
         named_textures.emplace(name, texture);
     }
-    
+
     void override_buffer(const char8_t* name, class BufferNode* buffer) SKR_NOEXCEPT final override
     {
         auto it = named_buffers.find(name);
@@ -163,7 +163,7 @@ public:
     }
 
 protected:
-    template<typename T>
+    template <typename T>
     using FlatStringMap = skr::FlatHashMap<skr::StringView, T, skr::Hash<skr::StringView>>;
 
     FlatStringMap<class PassNode*> named_passes;
@@ -203,24 +203,42 @@ RenderGraph::RenderGraph(const RenderGraphBuilder& builder) SKR_NOEXCEPT
 {
 }
 
-BufferNode* RenderGraph::resolve(BufferHandle hdl) SKR_NOEXCEPT { return static_cast<BufferNode*>(graph->access_node(hdl)); }
-TextureNode* RenderGraph::resolve(TextureHandle hdl) SKR_NOEXCEPT { return static_cast<TextureNode*>(graph->access_node(hdl)); }
-PassNode* RenderGraph::resolve(PassHandle hdl) SKR_NOEXCEPT { return static_cast<PassNode*>(graph->access_node(hdl)); }
-const CGPUBufferDescriptor* RenderGraph::resolve_descriptor(BufferHandle hdl) SKR_NOEXCEPT 
+BufferNode* RenderGraph::resolve(BufferHandle hdl) SKR_NOEXCEPT
+{
+    if (hdl.handle.frame_index() != frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: buffer is not alive in the current frame");
+    return static_cast<BufferNode*>(graph->access_node(hdl.handle.id()));
+}
+
+TextureNode* RenderGraph::resolve(TextureHandle hdl) SKR_NOEXCEPT
+{
+    if (hdl.handle.frame_index() != frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: texture is not alive in the current frame");
+    return static_cast<TextureNode*>(graph->access_node(hdl.handle.id()));
+}
+
+PassNode* RenderGraph::resolve(PassHandle hdl) SKR_NOEXCEPT
+{
+    if (hdl.handle.frame_index() != frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: pass is not alive in the current frame");
+    return static_cast<PassNode*>(graph->access_node(hdl.handle.id()));
+}
+
+const CGPUBufferDescriptor* RenderGraph::resolve_descriptor(BufferHandle hdl) SKR_NOEXCEPT
 {
     if (const auto node = resolve(hdl))
     {
         return &node->descriptor;
-    } 
+    }
     return nullptr;
 }
 
-const CGPUTextureDescriptor* RenderGraph::resolve_descriptor(TextureHandle hdl) SKR_NOEXCEPT 
+const CGPUTextureDescriptor* RenderGraph::resolve_descriptor(TextureHandle hdl) SKR_NOEXCEPT
 {
     if (const auto node = resolve(hdl))
     {
         return &node->descriptor;
-    } 
+    }
     return nullptr;
 }
 
@@ -243,21 +261,21 @@ uint32_t RenderGraph::foreach_passes(TextureHandle texture,
 {
     uint32_t n = 0;
     n += graph->foreach_incoming_edges(
-    texture,
-    [&](DependencyGraphNode* from, DependencyGraphNode* to, DependencyGraphEdge* e) {
-        PassNode* pass = static_cast<PassNode*>(from);
-        TextureNode* texture = static_cast<TextureNode*>(to);
-        RenderGraphEdge* edge = static_cast<RenderGraphEdge*>(e);
-        f(pass, texture, edge);
-    });
+        texture.handle.id(),
+        [&](DependencyGraphNode* from, DependencyGraphNode* to, DependencyGraphEdge* e) {
+            PassNode* pass = static_cast<PassNode*>(from);
+            TextureNode* texture = static_cast<TextureNode*>(to);
+            RenderGraphEdge* edge = static_cast<RenderGraphEdge*>(e);
+            f(pass, texture, edge);
+        });
     n += graph->foreach_outgoing_edges(
-    texture,
-    [&](DependencyGraphNode* from, DependencyGraphNode* to, DependencyGraphEdge* e) {
-        PassNode* pass = static_cast<PassNode*>(to);
-        TextureNode* texture = static_cast<TextureNode*>(from);
-        RenderGraphEdge* edge = static_cast<RenderGraphEdge*>(e);
-        f(pass, texture, edge);
-    });
+        texture.handle.id(),
+        [&](DependencyGraphNode* from, DependencyGraphNode* to, DependencyGraphEdge* e) {
+            PassNode* pass = static_cast<PassNode*>(to);
+            TextureNode* texture = static_cast<TextureNode*>(from);
+            RenderGraphEdge* edge = static_cast<RenderGraphEdge*>(e);
+            f(pass, texture, edge);
+        });
     return n;
 }
 
@@ -266,21 +284,21 @@ uint32_t RenderGraph::foreach_passes(BufferHandle buffer,
 {
     uint32_t n = 0;
     n += graph->foreach_incoming_edges(
-    buffer,
-    [&](DependencyGraphNode* from, DependencyGraphNode* to, DependencyGraphEdge* e) SKR_NOEXCEPT {
-        PassNode* pass = static_cast<PassNode*>(from);
-        BufferNode* buffer = static_cast<BufferNode*>(to);
-        RenderGraphEdge* edge = static_cast<RenderGraphEdge*>(e);
-        f(pass, buffer, edge);
-    });
+        buffer.handle.id(),
+        [&](DependencyGraphNode* from, DependencyGraphNode* to, DependencyGraphEdge* e) SKR_NOEXCEPT {
+            PassNode* pass = static_cast<PassNode*>(from);
+            BufferNode* buffer = static_cast<BufferNode*>(to);
+            RenderGraphEdge* edge = static_cast<RenderGraphEdge*>(e);
+            f(pass, buffer, edge);
+        });
     n += graph->foreach_outgoing_edges(
-    buffer,
-    [&](DependencyGraphNode* from, DependencyGraphNode* to, DependencyGraphEdge* e) SKR_NOEXCEPT {
-        PassNode* pass = static_cast<PassNode*>(to);
-        BufferNode* buffer = static_cast<BufferNode*>(from);
-        RenderGraphEdge* edge = static_cast<RenderGraphEdge*>(e);
-        f(pass, buffer, edge);
-    });
+        buffer.handle.id(),
+        [&](DependencyGraphNode* from, DependencyGraphNode* to, DependencyGraphEdge* e) SKR_NOEXCEPT {
+            PassNode* pass = static_cast<PassNode*>(to);
+            BufferNode* buffer = static_cast<BufferNode*>(from);
+            RenderGraphEdge* edge = static_cast<RenderGraphEdge*>(e);
+            f(pass, buffer, edge);
+        });
     return n;
 }
 
@@ -293,35 +311,35 @@ const ECGPUResourceState RenderGraph::get_lastest_state(const TextureNode* textu
     PassNode* pass_iter = nullptr;
     auto result = texture->init_state;
     foreach_passes(texture->get_handle(),
-    [&](PassNode* pass, TextureNode* texture, RenderGraphEdge* edge) {
-        if (edge->type == ERelationshipType::TextureWrite)
-        {
-            auto write_edge = static_cast<TextureRenderEdge*>(edge);
-            if (pass->after(pass_iter) && pass->before(pending_pass))
+        [&](PassNode* pass, TextureNode* texture, RenderGraphEdge* edge) {
+            if (edge->type == ERelationshipType::TextureWrite)
             {
-                pass_iter = pass;
-                result = write_edge->requested_state;
+                auto write_edge = static_cast<TextureRenderEdge*>(edge);
+                if (pass->after(pass_iter) && pass->before(pending_pass))
+                {
+                    pass_iter = pass;
+                    result = write_edge->requested_state;
+                }
             }
-        }
-        else if (edge->type == ERelationshipType::TextureReadWrite)
-        {
-            auto rw_edge = static_cast<TextureReadWriteEdge*>(edge);
-            if (pass->after(pass_iter) && pass->before(pending_pass))
+            else if (edge->type == ERelationshipType::TextureReadWrite)
             {
-                pass_iter = pass;
-                result = rw_edge->requested_state;
+                auto rw_edge = static_cast<TextureReadWriteEdge*>(edge);
+                if (pass->after(pass_iter) && pass->before(pending_pass))
+                {
+                    pass_iter = pass;
+                    result = rw_edge->requested_state;
+                }
             }
-        }
-        else if (edge->type == ERelationshipType::TextureRead)
-        {
-            auto read_edge = static_cast<TextureRenderEdge*>(edge);
-            if (pass->after(pass_iter) && pass->before(pending_pass))
+            else if (edge->type == ERelationshipType::TextureRead)
             {
-                pass_iter = pass;
-                result = read_edge->requested_state;
+                auto read_edge = static_cast<TextureRenderEdge*>(edge);
+                if (pass->after(pass_iter) && pass->before(pending_pass))
+                {
+                    pass_iter = pass;
+                    result = read_edge->requested_state;
+                }
             }
-        }
-    });
+        });
     return result;
 }
 
@@ -334,35 +352,35 @@ const ECGPUResourceState RenderGraph::get_lastest_state(const BufferNode* buffer
     PassNode* pass_iter = nullptr;
     auto result = buffer->init_state;
     foreach_passes(buffer->get_handle(),
-    [&](PassNode* pass, BufferNode* buffer, RenderGraphEdge* edge) SKR_NOEXCEPT {
-        if (edge->type == ERelationshipType::BufferReadWrite)
-        {
-            auto write_edge = static_cast<BufferReadWriteEdge*>(edge);
-            if (pass->after(pass_iter) && pass->before(pending_pass))
+        [&](PassNode* pass, BufferNode* buffer, RenderGraphEdge* edge) SKR_NOEXCEPT {
+            if (edge->type == ERelationshipType::BufferReadWrite)
             {
-                pass_iter = pass;
-                result = write_edge->requested_state;
+                auto write_edge = static_cast<BufferReadWriteEdge*>(edge);
+                if (pass->after(pass_iter) && pass->before(pending_pass))
+                {
+                    pass_iter = pass;
+                    result = write_edge->requested_state;
+                }
             }
-        }
-        else if (edge->type == ERelationshipType::BufferRead)
-        {
-            auto read_edge = static_cast<BufferReadEdge*>(edge);
-            if (pass->after(pass_iter) && pass->before(pending_pass))
+            else if (edge->type == ERelationshipType::BufferRead)
             {
-                pass_iter = pass;
-                result = read_edge->requested_state;
+                auto read_edge = static_cast<BufferReadEdge*>(edge);
+                if (pass->after(pass_iter) && pass->before(pending_pass))
+                {
+                    pass_iter = pass;
+                    result = read_edge->requested_state;
+                }
             }
-        }
-        else if (edge->type == ERelationshipType::PipelineBuffer)
-        {
-            auto ppl_edge = static_cast<PipelineBufferEdge*>(edge);
-            if (pass->after(pass_iter) && pass->before(pending_pass))
+            else if (edge->type == ERelationshipType::PipelineBuffer)
             {
-                pass_iter = pass;
-                result = ppl_edge->requested_state;
+                auto ppl_edge = static_cast<PipelineBufferEdge*>(edge);
+                if (pass->after(pass_iter) && pass->before(pending_pass))
+                {
+                    pass_iter = pass;
+                    result = ppl_edge->requested_state;
+                }
             }
-        }
-    });
+        });
     return result;
 }
 
@@ -373,7 +391,6 @@ void RenderGraph::add_before_execute_callback(const BeforeExecuteCallback& callb
 
 void RenderGraph::wait_frame(uint64_t frame_index) SKR_NOEXCEPT
 {
-
 }
 
 uint64_t RenderGraph::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
@@ -381,7 +398,7 @@ uint64_t RenderGraph::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
     for (auto callback : exec_callbacks)
         callback(*this);
     exec_callbacks.clear();
-    
+
     graph->clear();
     return frame_index++;
 }

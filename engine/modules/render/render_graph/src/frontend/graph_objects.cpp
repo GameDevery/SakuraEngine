@@ -115,40 +115,44 @@ RenderGraphEdge::RenderGraphEdge(ERelationshipType type)
 
 // 1.resource nodes
 
-ResourceNode::ResourceNode(EObjectType type) SKR_NOEXCEPT
+ResourceNode::ResourceNode(EObjectType type, uint64_t frame_index) SKR_NOEXCEPT
     : RenderGraphNode(type),
-      imported(false)
+      imported(false),
+      frame_index(frame_index)
 {
+    
 }
 
-TextureNode::TextureNode() SKR_NOEXCEPT
-    : ResourceNode(EObjectType::Texture)
+TextureNode::TextureNode(uint64_t frame_index) SKR_NOEXCEPT
+    : ResourceNode(EObjectType::Texture, frame_index)
 {
     descriptor.sample_count = CGPU_SAMPLE_COUNT_1;
 }
 
-BufferNode::BufferNode() SKR_NOEXCEPT
-    : ResourceNode(EObjectType::Buffer)
+BufferNode::BufferNode(uint64_t frame_index) SKR_NOEXCEPT
+    : ResourceNode(EObjectType::Buffer, frame_index)
 {
 }
 
-AccelerationStructureNode::AccelerationStructureNode() SKR_NOEXCEPT
-    : ResourceNode(EObjectType::AccelerationStructure)
+AccelerationStructureNode::AccelerationStructureNode(uint64_t frame_index) SKR_NOEXCEPT
+    : ResourceNode(EObjectType::AccelerationStructure, frame_index)
 {
 }
 
 // 2.pass nodes
 
-PassNode::PassNode(EPassType pass_type, uint32_t order)
+PassNode::PassNode(EPassType pass_type, uint32_t order, uint64_t frame_index)
     : RenderGraphNode(EObjectType::Pass)
+    , frame_index(frame_index)
     , pass_type(pass_type)
     , order(order)
+
 {
 }
 
 const PassHandle PassNode::get_handle() const
 {
-    return PassHandle(get_id());
+    return PassHandle(get_id(), frame_index);
 }
 
 const bool PassNode::before(const PassNode* other) const
@@ -226,23 +230,23 @@ void PassNode::foreach_acceleration_structures(skr::stl_function<void(Accelerati
         f(e->get_acceleration_structure_node(), e);
 }
 
-RenderPassNode::RenderPassNode(uint32_t order)
-    : PassNode(EPassType::Render, order)
+RenderPassNode::RenderPassNode(uint32_t order, uint64_t frame_index)
+    : PassNode(EPassType::Render, order, frame_index)
 {
 }
 
-ComputePassNode::ComputePassNode(uint32_t order)
-    : PassNode(EPassType::Compute, order)
+ComputePassNode::ComputePassNode(uint32_t order, uint64_t frame_index)
+    : PassNode(EPassType::Compute, order, frame_index)
 {
 }
 
-CopyPassNode::CopyPassNode(uint32_t order)
-    : PassNode(EPassType::Copy, order)
+CopyPassNode::CopyPassNode(uint32_t order, uint64_t frame_index)
+    : PassNode(EPassType::Copy, order, frame_index)
 {
 }
 
-PresentPassNode::PresentPassNode(uint32_t order)
-    : PassNode(EPassType::Present, order)
+PresentPassNode::PresentPassNode(uint32_t order, uint64_t frame_index)
+    : PassNode(EPassType::Present, order, frame_index)
 {
 }
 
