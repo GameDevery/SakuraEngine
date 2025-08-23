@@ -13,7 +13,7 @@ public static class SkrMeshCore
             .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/**.cpp")
             .AddMetaHeaders("include/**.hpp")
-            .Require("MeshOptimizer", new PackageConfig { Version = new Version(0, 1, 0) })
+            .Require("MeshOptimizer", new PackageConfig { Version = new Version(0, 25, 0) })
             .Depend(Visibility.Public, "MeshOptimizer@MeshOptimizer");
     }
 }

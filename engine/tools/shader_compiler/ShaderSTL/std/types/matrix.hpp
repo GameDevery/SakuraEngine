@@ -145,4 +145,8 @@ using float2x2 = matrix<2>;
 using float3x3 = matrix<3>;
 using float4x4 = matrix<4>;
 
+inline float2 mul(float2 v, float2x2 m) { return v * m; }
+inline float3 mul(float3 v, float3x3 m) { return v * m; }
+inline float4 mul(float4 v, float4x4 m) { return v * m; }
+
 }// namespace skr::shader

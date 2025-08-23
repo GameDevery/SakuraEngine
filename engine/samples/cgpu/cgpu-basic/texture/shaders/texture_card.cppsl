@@ -1,5 +1,4 @@
 #include <std/std.hpp>
-#include <std/resources/sampler.hpp>
 
 using namespace skr::shader;
 
@@ -61,5 +60,5 @@ void fragment(VSOut psIn, [[sv_render_target(0)]] float4& color)
         uv.x = 1 - uv.x;
     if(push_constants.bFlipUVY) 
         uv.y = 1 - uv.y;
-    color = texture_sampler.Sample(sampled_texture, uv);
+    color = sampled_texture.Sample(texture_sampler, uv);
 }
