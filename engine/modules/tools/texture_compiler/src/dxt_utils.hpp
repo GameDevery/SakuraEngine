@@ -10,8 +10,8 @@ inline SKR_CONSTEXPR uint64_t Util_DXBCCompressedSize(uint32_t width, uint32_t h
 {
     const auto alignedW = TEX_COMPRESS_ALIGN(width, 4);
     const auto alignedH = TEX_COMPRESS_ALIGN(height, 4);
-    const auto blocksW  = alignedW / block_width;
-    const auto blocksH  = alignedH / block_height;
+    const auto blocksW = alignedW / block_width;
+    const auto blocksH = alignedH / block_height;
     switch (format)
     {
     case CGPU_FORMAT_DXBC1_RGB_UNORM:
@@ -53,7 +53,7 @@ inline static skr::String Util_CompressedTypeString(ECGPUFormat format)
         return u8"bc4";
     case CGPU_FORMAT_DXBC6H_UFLOAT:
     case CGPU_FORMAT_DXBC6H_SFLOAT:
-        return u8"bc6";
+        return u8"bc6h";
     case CGPU_FORMAT_DXBC7_UNORM:
     case CGPU_FORMAT_DXBC7_SRGB:
         return u8"bc7";
@@ -65,12 +65,26 @@ inline static skr::String Util_CompressedTypeString(ECGPUFormat format)
 inline static skr::Vector<uint8_t> Util_DXTCompressWithImageCoder(skr::ImageDecoderId decoder, ECGPUFormat compressed_format)
 {
     // fetch RGBA data
-    const auto bit_depth      = decoder->get_bit_depth();
+    auto bit_depth = decoder->get_bit_depth();
     const auto encoded_format = decoder->get_color_format();
-    const auto raw_format     = (encoded_format == IMAGE_CODER_COLOR_FORMAT_BGRA) ? IMAGE_CODER_COLOR_FORMAT_RGBA : encoded_format;
-    bool       sucess         = decoder->decode(raw_format, bit_depth);
-    uint8_t*   rgba_data = rgba_data = decoder->get_data();
-    uint64_t   rgba_size             = decoder->get_size();
+    const auto image_type = decoder->get_image_format();
+    auto color_format = (encoded_format == IMAGE_CODER_COLOR_FORMAT_BGRA) ?
+        IMAGE_CODER_COLOR_FORMAT_RGBA :
+        encoded_format;
+
+    if (image_type == IMAGE_CODER_FORMAT_HDR)
+    {
+        color_format = IMAGE_CODER_COLOR_FORMAT_RGBAF;
+        bit_depth = 16; // half
+    } 
+    if (image_type == IMAGE_CODER_FORMAT_EXR)
+    {
+        bit_depth = 16;
+    }
+
+    bool sucess = decoder->decode(color_format, bit_depth);
+    uint8_t* rgba_data = rgba_data = decoder->get_data();
+    uint64_t rgba_size = decoder->get_size();
     (void)rgba_size;
     if (!sucess)
     {
@@ -79,25 +93,33 @@ inline static skr::Vector<uint8_t> Util_DXTCompressWithImageCoder(skr::ImageDeco
     }
     // compress
     rgba_surface rgba_surface = {};
-    const auto   image_width  = decoder->get_width();
-    const auto   image_height = decoder->get_height();
-    switch (raw_format)
+    const auto image_width = decoder->get_width();
+    const auto image_height = decoder->get_height();
+    const auto channel_byte_depth = bit_depth / 8;
+    switch (color_format)
     {
+    case IMAGE_CODER_COLOR_FORMAT_RGBAF:
     case IMAGE_CODER_COLOR_FORMAT_RGBA:
-    case IMAGE_CODER_COLOR_FORMAT_BGRA:
-        rgba_surface.stride = image_width * 4;
-        break;
+    case IMAGE_CODER_COLOR_FORMAT_BGRA: {
+        const auto channel_count = 4;
+        rgba_surface.stride = image_width * channel_byte_depth * channel_count;
+    }
+    break;
     case IMAGE_CODER_COLOR_FORMAT_Gray:
-    case IMAGE_CODER_COLOR_FORMAT_GrayF:
-        rgba_surface.stride = image_width;
-        break;
+    case IMAGE_CODER_COLOR_FORMAT_GrayF: {
+        const auto channel_count = 1;
+        rgba_surface.stride = image_width * channel_byte_depth * channel_count;
+    }
+    break;
+    case IMAGE_CODER_COLOR_FORMAT_BGRE:
     default:
+        SKR_ASSERT(0 && "unsupportted raw format for DXT Compression!");
         break;
     }
-    rgba_surface.ptr                     = rgba_data;
-    rgba_surface.width                   = image_width;
-    rgba_surface.height                  = image_height;
-    const auto           compressed_size = Util_DXBCCompressedSize(image_width, image_height, compressed_format);
+    rgba_surface.ptr = rgba_data;
+    rgba_surface.width = image_width;
+    rgba_surface.height = image_height;
+    const auto compressed_size = Util_DXBCCompressedSize(image_width, image_height, compressed_format);
     skr::Vector<uint8_t> compressed_data(compressed_size);
     switch (compressed_format)
     {
@@ -121,9 +143,9 @@ inline static skr::Vector<uint8_t> Util_DXTCompressWithImageCoder(skr::ImageDeco
         break;
     case CGPU_FORMAT_DXBC6H_UFLOAT:
     case CGPU_FORMAT_DXBC6H_SFLOAT: {
-        bc6h_enc_settings bc6_settings = {};
-        GetProfile_bc6h_basic(&bc6_settings);
-        CompressBlocksBC6H(&rgba_surface, compressed_data.data(), &bc6_settings);
+        bc6h_enc_settings bc6h_settings = {};
+        GetProfile_bc6h_basic(&bc6h_settings);
+        CompressBlocksBC6H(&rgba_surface, compressed_data.data(), &bc6h_settings);
     }
     break;
     case CGPU_FORMAT_DXBC7_UNORM:

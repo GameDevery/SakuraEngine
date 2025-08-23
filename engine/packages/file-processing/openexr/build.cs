@@ -15,6 +15,9 @@ public static class OpenEXR
                 Target.TargetType(TargetType.Static)
                     .CppVersion("20")
 
+                    .Require("LibDeflate", new PackageConfig { Version = new Version(1, 24, 0) })
+                    .Depend(Visibility.Private, "LibDeflate@LibDeflate")
+
                     .RTTI(true)
                     .SIMD(SIMDArchitecture.AVX)
                     .OptimizationLevel(OptimizationLevel.Fastest)
@@ -33,17 +36,20 @@ public static class OpenEXR
                     // .Defines(Visibility.Public, "OPENEXR_MISSING_ARM_VLD1")
 
                     .IncludeDirs(Visibility.Public, "./3.3.5/OpenEXR")
-                    .IncludeDirs(Visibility.Private, "./3.3.5/OpenEXR/Imath")
-                    .IncludeDirs(Visibility.Private, "./3.3.5/OpenEXR/Iex")
+                    .IncludeDirs(Visibility.Public, "./3.3.5/OpenEXR/OpenEXRCore")
+                    .IncludeDirs(Visibility.Public, "./3.3.5/OpenEXR/Iex")
+                    .IncludeDirs(Visibility.Public, "./3.3.5/OpenEXR/Imath")
                     .IncludeDirs(Visibility.Private, "./3.3.5/OpenEXR/IlmThread")
                     .IncludeDirs(Visibility.Private, "./3.3.5/OpenEXR/OpenEXR")
-                    .IncludeDirs(Visibility.Private, "./3.3.5/OpenEXR/OpenEXRCore")
                     .IncludeDirs(Visibility.Private, "./3.3.5/OpenEXR/OpenEXRUtil")
 
+                    .AddCFiles("./3.3.5/OpenEXR/**.c")
                     .AddCppFiles("./3.3.5/OpenEXR/**.cpp")
+
                     .Clang_CXFlags(Visibility.Private,
                         "-Wno-deprecated-declarations",
-                        "-Wno-parentheses"
+                        "-Wno-parentheses",
+                        "-Wno-pointer-sign"
                     );
             });
     }
