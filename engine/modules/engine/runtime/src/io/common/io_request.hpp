@@ -8,7 +8,7 @@
 #include "pool.hpp"
 #include "SkrProfile/profile.h"
 
-#ifdef SKR_COMPILER_CLANG
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Winconsistent-missing-override"
 #endif
@@ -240,6 +240,6 @@ using IORequestArray = skr::Vector<IORequestId>;
 } // namespace io
 } // namespace skr
 
-#ifdef SKR_COMPILER_CLANG
+#ifdef __clang__
 #pragma clang diagnostic pop
 #endif

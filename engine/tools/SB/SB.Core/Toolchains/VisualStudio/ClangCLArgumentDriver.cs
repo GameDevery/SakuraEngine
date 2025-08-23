@@ -18,6 +18,7 @@ namespace SB.Core
             // we use clang -xc/c++
             RawArguments.Remove("/TP");
             RawArguments.Remove("/TC");
+            RawArguments.Remove("/Zc:preprocessor");
         }
         public override string[] Source(string path) => BS.CheckFile(path, true) ? new string[] { GetLanguageArgString(), $"\"{path}\"" } : throw new TaskFatalError($"Source value {path} is not an existed absolute path!");
 
