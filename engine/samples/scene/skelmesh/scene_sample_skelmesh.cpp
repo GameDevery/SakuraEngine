@@ -59,6 +59,7 @@ const auto MeshAssetID = u8"01988203-c467-72ef-916b-c8a5db2ec18d"_guid;
 const auto SkelAssetID = u8"0198a7d5-6819-76e2-88c3-fad2f6c3d5d5"_guid;
 const auto AnimAssetID = u8"0198a890-b5f8-750e-8e4d-cb200eb53b0e"_guid;
 const auto SkinAssetID = u8"0198ab86-af53-72bd-be58-ef888ea9c023"_guid;
+const auto FloorAssetID = u8"0198d4c8-0e0b-7048-a51d-6e6c4d6df083"_guid;
 const auto BuiltinMeshID = u8"0198cfc4-9bfd-77fd-a9a0-553938b10314"_guid;
 
 // The Three-Triangle Example: simple mesh scene hierarchy
@@ -88,6 +89,7 @@ struct SceneSampleSkelMeshModule : public skr::IDynamicModule
     skr::SceneRenderer* scene_renderer = nullptr;
 
     skr::String gltf_path = u8"";
+    skr::String animation_name = u8"";
     skr::LocalResourceRegistry* registry = nullptr;
 
     skr::MeshFactory* mesh_factory = nullptr;
@@ -199,6 +201,7 @@ void SceneSampleSkelMeshModule::on_load(int argc, char8_t** argv)
 
     skr::cmd::parser parser(argc, (char**)argv);
     parser.add(u8"gltf", u8"gltf file path", u8"-g", false);
+    parser.add(u8"anim", u8"animation name", u8"-a", false);
     if (!parser.parse())
     {
         SKR_LOG_ERROR(u8"Failed to parse command line arguments.");
@@ -213,6 +216,17 @@ void SceneSampleSkelMeshModule::on_load(int argc, char8_t** argv)
     else
     {
         SKR_LOG_INFO(u8"No gltf file specified");
+    }
+
+    auto anim_name_opt = parser.get_optional<skr::String>(u8"anim");
+    if (anim_name_opt)
+    {
+        animation_name = *anim_name_opt;
+        SKR_LOG_INFO(u8"animation name set to: %s", animation_name.c_str());
+    }
+    else
+    {
+        SKR_LOG_INFO(u8"No animation name specified, will use the first animation in the gltf file");
     }
 
     scheduler.initialize({});
@@ -284,22 +298,32 @@ void SceneSampleSkelMeshModule::CookAndLoadGLTF()
     grid_metadata->x_size = 10.0f;
     grid_metadata->y_size = 10.0f;
     grid_metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; // GLTFVertexLayoutWithJointId
-    auto builtin_importer = skd::asset::ProceduralMeshImporter::Create<skd::asset::ProceduralMeshImporter>();
+
+    auto floor_importer = skd::asset::ProceduralMeshImporter::Create<skd::asset::ProceduralMeshImporter>();
     // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleTriangleMesh>();
     // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleCubeMesh>();
-    builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleGridMesh>();
+    floor_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleGridMesh>();
+    auto floor_asset = skr::RC<skd::asset::AssetMetaFile>::New(
+        u8"floor.meta",
+        FloorAssetID,
+        skr::type_id_of<skr::MeshResource>(),
+        skr::type_id_of<skd::asset::MeshCooker>());
+    cook_system.ImportAssetMeta(&project, floor_asset, floor_importer, grid_metadata);
+    auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
+    // metadata->vertexType = u8"1b357a40-83ff-471c-8903-23e99d95b273"_guid; // GLTFVertexLayoutWithoutTangentId
+    metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; // GLTFVertexLayoutWithJointId
+    auto builtin_importer = skd::asset::ProceduralMeshImporter::Create<skd::asset::ProceduralMeshImporter>();
+    // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleTriangleMesh>();
+    builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleCubeMesh>();
+    // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleGridMesh>();
     auto builtin_asset = skr::RC<skd::asset::AssetMetaFile>::New(
-        u8"simple_triangle.meta",
+        u8"simple_cube.meta",
         BuiltinMeshID,
         skr::type_id_of<skr::MeshResource>(),
         skr::type_id_of<skd::asset::MeshCooker>());
-    cook_system.ImportAssetMeta(&project, builtin_asset, builtin_importer, grid_metadata);
+    cook_system.ImportAssetMeta(&project, builtin_asset, builtin_importer, metadata);
 
     auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
-    auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
-
-    // metadata->vertexType = u8"1b357a40-83ff-471c-8903-23e99d95b273"_guid; // GLTFVertexLayoutWithoutTangentId
-    metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; // GLTFVertexLayoutWithJointId
 
     auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"girl.gltf.meta",
@@ -329,7 +353,7 @@ void SceneSampleSkelMeshModule::CookAndLoadGLTF()
         skr::type_id_of<skr::AnimResource>(),
         skr::type_id_of<skd::asset::AnimCooker>());
     animImporter->assetPath = gltf_path.c_str();
-    animImporter->animationName = u8"Take 001";
+    animImporter->animationName = animation_name.c_str();
 
     cook_system.ImportAssetMeta(&project, anim_asset, animImporter, animdata);
 
@@ -390,22 +414,31 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
     auto root = skr::Actor::GetRoot();
     auto actor1 = actor_manager.CreateActor<skr::SkelMeshActor>().cast_static<skr::SkelMeshActor>();
     auto actor2 = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
+    auto actor3 = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
     {
         actor1.lock()->SetDisplayName(u8"Actor 1");
         actor2.lock()->SetDisplayName(u8"Actor 2");
+        actor3.lock()->SetDisplayName(u8"Actor 3");
         root.lock()->CreateEntity();
         actor1.lock()->CreateEntity();
         actor2.lock()->CreateEntity();
+        actor3.lock()->CreateEntity();
         actor1.lock()->AttachTo(root);
         actor2.lock()->AttachTo(root);
+        actor3.lock()->AttachTo(actor2);
 
         root.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
         actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 1.0f, 10.0f });
         actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
         actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.8f, 0.0f });
+
         actor2.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
         actor2.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 1.f, 1.f, 1.0f });
         actor2.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
+
+        actor3.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 2.0f, 2.0f, 2.0f });
+        actor3.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 5.f, 5.f, 5.0f });
+        actor3.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
     }
 
     for (auto i = 0; i < hierarchy_count; ++i)
@@ -435,7 +468,9 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
     skr::ecs::TaskScheduler::Get()->sync_all();
 
     actor1.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = MeshAssetID;
-    actor2.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = BuiltinMeshID;
+    actor2.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = FloorAssetID;
+    actor3.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = BuiltinMeshID;
+
     for (auto& actor : hierarchy_actors)
     {
         actor.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = MeshAssetID;
