@@ -4,13 +4,10 @@ namespace skr::CppSL::HLSL
 const wchar_t* kHLSLBitCast = LR"__de___l___im__(
 #define BITCAST_16BIT_SUPPORTED 0
 #define BITCAST_AUX_BASE_TYPE 1
-
 template<typename TDst, typename TSrc>
 struct TBitCastTypeIsSame { static const bool Result = false; };
-
 template<typename T>
 struct TBitCastTypeIsSame<T, T> { static const bool Result = true; };
-
 template<typename T>
 struct TBitCastBaseTypeIs16Bit
 { 
@@ -22,7 +19,6 @@ struct TBitCastBaseTypeIs16Bit
     static const bool Result = false;
 #endif
 };
-
 template<typename T, int S>
 struct TBitCastBaseTypeIs16Bit<vector<T, S> >
 { 
@@ -34,7 +30,6 @@ struct TBitCastBaseTypeIs16Bit<vector<T, S> >
     static const bool Result = false;
 #endif
 };
-
 template<typename TDst, typename TSrc>
 struct TBitCastIfSupported;
 
@@ -119,7 +114,8 @@ struct TBitCastIfSupported;
     #undef BITCAST_SUPPORTED
 
 #endif /** BITCAST_16BIT_SUPPORTED && BITCAST_AUX_BASE_TYPE */
-
+)__de___l___im__"
+LR"__de___l___im__(
 template<typename TDst, 
          typename TSrc, 
          bool IsDstBase16Bit = TBitCastBaseTypeIs16Bit<TDst>::Result, 
@@ -131,7 +127,6 @@ struct TBitCastWidenOrShrinkIfSameBase
 {
     static TDst bit_cast(TSrc x) { return TBitCastWidenOrShrink<TDst, TSrc>::bit_cast(x); }
 };
-
 template<typename T, int SDst, int SSrc>
 struct TBitCastWidenOrShrinkIfSameBase<vector<T, SDst>, vector<T, SSrc> >
 {
@@ -150,19 +145,16 @@ struct TBitCastWidenOrShrinkIfSameBase<vector<T, SDst>, vector<T, SSrc> >
         return o;
     }
 };
-
 template<typename TDst, typename TSrc>
 struct TBitCastIfNotSame
 {
     static TDst bit_cast(TSrc x) { return TBitCastWidenOrShrinkIfSameBase<TDst, TSrc>::bit_cast(x); }
 };
-
 template<typename T>
 struct TBitCastIfNotSame<T, T>
 {
     static T bit_cast(T x) { return x; }
 };
-
 template<typename TDst, typename TSrc, int SDst, int SSrc, bool IsBase16BitOr32Bit>
 struct TBitCastWidenOrShrink<vector<TDst, SDst>, vector<TSrc, SSrc>, IsBase16BitOr32Bit, IsBase16BitOr32Bit>
 {
@@ -181,7 +173,6 @@ struct TBitCastWidenOrShrink<vector<TDst, SDst>, vector<TSrc, SSrc>, IsBase16Bit
         return TBitCastIfSupported< vector<TDst, SDst>, vector<TSrc, SDst> >::bit_cast(o);
     }
 };
-
 template<typename TDst, typename TSrc, int SDst, int SSrc>
 struct TBitCastWidenOrShrink<vector<TDst, SDst>, vector<TSrc, SSrc>, true, false>
 {
@@ -192,7 +183,6 @@ struct TBitCastWidenOrShrink<vector<TDst, SDst>, vector<TSrc, SSrc>, true, false
         return TBitCastIfNotSame<vector<TDst, SDst>, vector<TDst, 4> >::bit_cast(oaligned);
     }
 };
-
 template<typename TDst, typename TSrc, int SDst, int SSrc>
 struct TBitCastWidenOrShrink<vector<TDst, SDst>, vector<TSrc, SSrc>, false, true>
 {
@@ -209,28 +199,22 @@ struct TBitCastWidenOrShrink<vector<TDst, SDst>, vector<TSrc, SSrc>, false, true
         return TBitCastIfNotSame<vector<TDst, SDst>, vector<TDst, 2> >::bit_cast(oaligned);
     }
 };
-
 template<typename TDst, typename TSrc> struct TBitCastVectorizeSrc
 {
     static TDst bit_cast(TSrc x) { return TBitCastIfNotSame<TDst, vector<TSrc, 1> >::bit_cast(vector<TSrc, 1>(x)); }
 };
-
 template<typename TDst, typename TSrc, int SSrc> struct TBitCastVectorizeSrc<TDst, vector<TSrc, SSrc> >
 {
     static TDst bit_cast(vector<TSrc, SSrc> x) { return TBitCastIfNotSame<TDst, vector<TSrc, SSrc> >::bit_cast(x); }
 };
-
-
 template<typename TDst, typename TSrc> struct TBitCastVectorizeDst
 {
     static TDst bit_cast(TSrc x) { return TBitCastVectorizeSrc<vector<TDst, 1>, TSrc>::bit_cast(x).x; }
 };
-
 template<typename TDst, typename TSrc, int SDst> struct TBitCastVectorizeDst<vector<TDst, SDst>, TSrc>
 {
     static vector<TDst, SDst> bit_cast(TSrc x) { return TBitCastVectorizeSrc<vector<TDst, SDst>, TSrc>::bit_cast(x); }
 };
-
 template<typename TDstType, typename TSrcType>
 static TDstType bit_cast(TSrcType x)
 {
