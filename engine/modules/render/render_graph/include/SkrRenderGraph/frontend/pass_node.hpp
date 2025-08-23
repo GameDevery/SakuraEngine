@@ -59,13 +59,14 @@ public:
     bool has_flags(EPassFlags flags) const { return (static_cast<uint32_t>(hint_flags) & static_cast<uint32_t>(flags)) != 0; }
     EPassFlags get_flags() const { return hint_flags; }
 
+    const uint64_t frame_index;
     const EPassType pass_type = EPassType::None;
     const uint32_t order;
 
 protected:
     bool can_be_lone = false;
     EPassFlags hint_flags = EPassFlags::None;
-    PassNode(EPassType pass_type, uint32_t order);
+    PassNode(EPassType pass_type, uint32_t order, uint64_t frame_index);
     graph_edges_vector<TextureReadEdge*> in_texture_edges;
     graph_edges_vector<TextureRenderEdge*> out_texture_edges;
     graph_edges_vector<TextureReadWriteEdge*> inout_texture_edges;
@@ -84,7 +85,7 @@ public:
     friend class RenderGraphBackend;
     friend class PassExecutionPhase;
 
-    RenderPassNode(uint32_t order);
+    RenderPassNode(uint32_t order, uint64_t frame_index);
     CGPURootSignatureId get_root_signature() const { return root_signature; }
     
 protected:
@@ -107,7 +108,7 @@ public:
     friend class RenderGraphBackend;
     friend class PassExecutionPhase;
 
-    ComputePassNode(uint32_t order);
+    ComputePassNode(uint32_t order, uint64_t frame_index);
     CGPURootSignatureId get_root_signature() const { return root_signature; }
 
 protected:
@@ -123,7 +124,7 @@ public:
     friend class RenderGraphBackend;
     friend class PassExecutionPhase;
 
-    CopyPassNode(uint32_t order);
+    CopyPassNode(uint32_t order, uint64_t frame_index);
 protected:
     CopyPassExecuteFunction executor;
     graph_edges_vector<std::pair<TextureSubresourceHandle, TextureSubresourceHandle>, 2> t2ts;
@@ -148,7 +149,7 @@ public:
         return true;
     }
 
-    PresentPassNode(uint32_t order);
+    PresentPassNode(uint32_t order, uint64_t frame_index);
 protected:
     CGPUQueuePresentDescriptor descriptor;
 };

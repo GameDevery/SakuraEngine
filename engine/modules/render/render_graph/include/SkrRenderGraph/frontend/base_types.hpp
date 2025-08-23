@@ -38,7 +38,6 @@ using CopyPassExecuteFunction = skr::stl_function<void(class RenderGraph&, CopyP
 using ComputePassExecuteFunction = skr::stl_function<void(class RenderGraph&, ComputePassContext&)>;
 using RenderPassExecuteFunction = skr::stl_function<void(class RenderGraph&, RenderPassContext&)>;
 
-typedef uint64_t handle_t;
 enum class EObjectType : uint8_t
 {
     Pass,
@@ -87,56 +86,87 @@ enum class EPassFlags : uint32_t
     StreamingAccess = 0x800,          // 流式访问（绕过缓存）
 };
 
-inline constexpr handle_t kInvalidHandle = UINT64_MAX;
+struct HandleStorage
+{
+public:
+    HandleStorage() = default;
+    HandleStorage(uint64_t id, uint64_t frame_index)
+        : _id(id), _frame_index((uint32_t)frame_index)
+    {
+    }
+
+    uint64_t id() const { return _id; }
+    uint32_t frame_index() const { return _frame_index; }
+    
+    inline bool operator!=(const HandleStorage& other) const
+    {
+        return _id != other._id || _frame_index != other._frame_index;
+    }
+
+    inline bool operator==(const HandleStorage& other) const
+    {
+        return _id == other._id && _frame_index == other._frame_index;
+    }
+
+private:
+    uint64_t _id = UINT16_MAX;
+    uint32_t _frame_index = UINT32_MAX;
+    uint32_t _reserved = UINT16_MAX;
+};
+
+inline constexpr HandleStorage kInvalidHandle = HandleStorage();
 
 template <EObjectType type>
 struct SKR_RENDER_GRAPH_API ObjectHandle {
-    ObjectHandle(handle_t hdl)
+    ObjectHandle(uint64_t id, uint64_t frame_index)
+        : handle(id, frame_index)
+    {
+    }
+    ObjectHandle(HandleStorage hdl)
         : handle(hdl)
     {
     }
-    inline operator handle_t() const { return handle; }
+    inline operator HandleStorage() const { return handle; }
 
-private:
-    handle_t handle = kInvalidHandle;
+    const HandleStorage handle = kInvalidHandle;
 };
 
 template <>
 struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::Buffer> {
-    inline operator handle_t() const { return handle; }
+    inline operator HandleStorage() const { return handle; }
     struct ShaderReadHandle {
         friend struct ObjectHandle<EObjectType::Buffer>;
         friend class RenderGraph;
         friend class BufferReadEdge;
-        const handle_t _this;
+        const HandleStorage _this;
         inline operator ObjectHandle<EObjectType::Buffer>() const { return ObjectHandle<EObjectType::Buffer>(_this); }
 
     protected:
-        ShaderReadHandle(const handle_t _this);
+        ShaderReadHandle(const HandleStorage _this);
     };
     
     struct SKR_RENDER_GRAPH_API ShaderReadWriteHandle {
         friend struct ObjectHandle<EObjectType::Buffer>;
         friend class RenderGraph;
         friend class BufferReadWriteEdge;
-        const handle_t _this;
+        const HandleStorage _this;
         inline operator ObjectHandle<EObjectType::Buffer>() const { return ObjectHandle<EObjectType::Buffer>(_this); }
 
     protected:
-        ShaderReadWriteHandle(const handle_t _this);
+        ShaderReadWriteHandle(const HandleStorage _this);
     };
 
     struct SKR_RENDER_GRAPH_API RangeHandle {
         friend struct ObjectHandle<EObjectType::Buffer>;
         friend class RenderGraph;
         friend class BufferReadEdge;
-        const handle_t _this;
+        const HandleStorage _this;
         const uint64_t from;
         const uint64_t to;
         inline operator ObjectHandle<EObjectType::Buffer>() const { return ObjectHandle<EObjectType::Buffer>(_this); }
 
     protected:
-        inline RangeHandle(const handle_t _this, uint64_t from, uint64_t to)
+        inline RangeHandle(const HandleStorage _this, uint64_t from, uint64_t to)
             : _this(_this)
             , from(from)
             , to(to)
@@ -148,11 +178,11 @@ struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::Buffer> {
         friend struct ObjectHandle<EObjectType::Buffer>;
         friend class RenderGraph;
         friend class PipelineBufferEdge;
-        const handle_t _this;
+        const HandleStorage _this;
         inline operator ObjectHandle<EObjectType::Buffer>() const { return ObjectHandle<EObjectType::Buffer>(_this); }
 
     protected:
-        PipelineReferenceHandle(const handle_t _this);
+        PipelineReferenceHandle(const HandleStorage _this);
     };
     // read
     inline operator ShaderReadHandle() const { return ShaderReadHandle(handle); }
@@ -173,13 +203,18 @@ struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::Buffer> {
     ObjectHandle(){};
 
 protected:
-    ObjectHandle(handle_t hdl)
+    ObjectHandle(uint64_t id, uint64_t frame_index)
+        : handle(id, frame_index)
+    {
+    }
+
+    ObjectHandle(HandleStorage hdl)
         : handle(hdl)
     {
     }
 
 private:
-    handle_t handle = kInvalidHandle;
+    HandleStorage handle = kInvalidHandle;
 };
 using BufferHandle = ObjectHandle<EObjectType::Buffer>;
 using BufferCBVHandle = BufferHandle::ShaderReadHandle;
@@ -196,7 +231,7 @@ struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::Texture> {
         friend class TextureCopyEdge;
         inline operator ObjectHandle<EObjectType::Texture>() const { return ObjectHandle<EObjectType::Texture>(_this); }
 
-        SubresourceHandle(const handle_t _this);
+        SubresourceHandle(const HandleStorage _this);
 
         uint32_t get_mip_level() const { return mip_level; }
         uint32_t get_array_base() const { return array_base; }
@@ -204,7 +239,7 @@ struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::Texture> {
         CGPUTextureViewAspects get_aspects() const { return aspects; }
 
     protected:
-        handle_t _this = kInvalidHandle;
+        HandleStorage _this = kInvalidHandle;
         uint32_t mip_level = 0;
         uint32_t array_base = 0;
         uint32_t array_count = 1;
@@ -220,11 +255,11 @@ struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::Texture> {
         ShaderReadHandle dimension(ECGPUTextureDimension dim) const;
         inline operator ObjectHandle<EObjectType::Texture>() const { return ObjectHandle<EObjectType::Texture>(_this); }
 
-        ShaderReadHandle(const handle_t _this,
+        ShaderReadHandle(const HandleStorage _this,
             const uint32_t mip_base = 0, const uint32_t mip_count = 1,
             const uint32_t array_base = 0, const uint32_t array_count = 1);
     protected:
-        handle_t _this = kInvalidHandle;
+        HandleStorage _this = kInvalidHandle;
         uint32_t mip_base = 0;
         uint32_t mip_count = 1;
         uint32_t array_base = 0;
@@ -240,9 +275,9 @@ struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::Texture> {
         ShaderWriteHandle write_array(uint32_t base, uint32_t count) const;
         inline operator ObjectHandle<EObjectType::Texture>() const { return ObjectHandle<EObjectType::Texture>(_this); }
 
-        ShaderWriteHandle(const handle_t _this);            
+        ShaderWriteHandle(const HandleStorage _this);            
     protected:
-        handle_t _this = kInvalidHandle;
+        HandleStorage _this = kInvalidHandle;
         uint32_t mip_level = 0;
         uint32_t array_base = 0;
         uint32_t array_count = 1;
@@ -255,7 +290,7 @@ struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::Texture> {
 
         DepthStencilHandle clear_depth(float depth) const;
     protected:
-        inline DepthStencilHandle(const handle_t _this)
+        inline DepthStencilHandle(const HandleStorage _this)
             : ShaderWriteHandle(_this)
         {
         }
@@ -269,12 +304,12 @@ struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::Texture> {
         friend class TextureReadWriteEdge;
         inline operator ObjectHandle<EObjectType::Texture>() const { return ObjectHandle<EObjectType::Texture>(_this); }
 
-        ShaderReadWriteHandle(const handle_t _this);
+        ShaderReadWriteHandle(const HandleStorage _this);
     protected:
-        handle_t _this = kInvalidHandle;
+        HandleStorage _this = kInvalidHandle;
     };
 
-    inline operator handle_t() const { return handle; }
+    inline operator HandleStorage() const { return handle; }
     // read
     inline operator ShaderReadHandle() const { return ShaderReadHandle(handle); }
     ShaderReadHandle read_mip(uint32_t base, uint32_t count) const;
@@ -302,13 +337,17 @@ struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::Texture> {
     ObjectHandle(){};
 
 protected:
-    ObjectHandle(handle_t hdl)
+    ObjectHandle(HandleStorage hdl)
         : handle(hdl)
+    {
+    }
+    ObjectHandle(uint64_t id, uint64_t frame_index)
+        : handle(id, frame_index)
     {
     }
 
 private:
-    handle_t handle = kInvalidHandle;
+    HandleStorage handle = kInvalidHandle;
 }; // ObjectHandle<EObjectType::Texture>
 using PassHandle = ObjectHandle<EObjectType::Pass>;
 using TextureHandle = ObjectHandle<EObjectType::Texture>;
@@ -324,14 +363,14 @@ struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::AccelerationStructure> {
         friend struct ObjectHandle<EObjectType::AccelerationStructure>;
         friend class RenderGraph;
         friend class AccelerationStructureReadEdge;
-        const handle_t _this = kInvalidHandle;
+        const HandleStorage _this = kInvalidHandle;
         inline operator ObjectHandle<EObjectType::AccelerationStructure>() const { return ObjectHandle<EObjectType::AccelerationStructure>(_this); }
 
     protected:
-        ShaderReadHandle(const handle_t _this);
+        ShaderReadHandle(const HandleStorage _this);
     };
 
-    inline operator handle_t() const { return handle; }
+    inline operator HandleStorage() const { return handle; }
     // read access for raytracing shaders
     inline operator ShaderReadHandle() const { return ShaderReadHandle(handle); }
 
@@ -343,16 +382,26 @@ struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::AccelerationStructure> {
     ObjectHandle(){};
 
 protected:
-    ObjectHandle(handle_t hdl)
+    ObjectHandle(uint64_t id, uint64_t frame_index)
+        : handle(id, frame_index)
+    {
+    }
+    ObjectHandle(HandleStorage hdl)
         : handle(hdl)
     {
     }
 
 private:
-    handle_t handle = kInvalidHandle;
+    HandleStorage handle = kInvalidHandle;
 };
 using AccelerationStructureHandle = ObjectHandle<EObjectType::AccelerationStructure>;
 using AccelerationStructureSRVHandle = AccelerationStructureHandle::ShaderReadHandle;
+
+template <EObjectType Type>
+inline bool operator!=(const ObjectHandle<Type>& hdl, HandleStorage storage) { return HandleStorage(hdl) != storage; }
+
+template <EObjectType Type>
+inline bool operator==(const ObjectHandle<Type>& hdl, HandleStorage storage) { return HandleStorage(hdl) == storage; }
 
 struct RenderGraphNode : public DependencyGraphNode {
     RenderGraphNode(EObjectType type);
@@ -428,7 +477,7 @@ template<render_graph::EObjectType type>
 struct Hash<render_graph::ObjectHandle<type>>{
     inline size_t operator()(const render_graph::ObjectHandle<type>& handle) const SKR_NOEXCEPT
     {
-        return Hash<render_graph::handle_t>()(handle);
+        return Hash<render_graph::HandleStorage>()(handle);
     }
 };
 }
