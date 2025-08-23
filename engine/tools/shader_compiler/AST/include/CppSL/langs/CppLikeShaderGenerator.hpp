@@ -63,7 +63,12 @@ protected:
 private:
     void generate_array_helpers(SourceBuilderNew& sb, const AST& ast);
     void generate_namespace_declarations(SourceBuilderNew& sb, const AST& ast);
-    void generate_namespace_recursive(SourceBuilderNew& sb, const NamespaceDecl* ns, int indent_level);
+    enum class ForwardDeclareType
+    {
+        Type,
+        Function
+    };
+    void generate_namespace_recursive(SourceBuilderNew& sb, const NamespaceDecl* ns, int indent_level, ForwardDeclareType type);
     void build_type_namespace_map(const AST& ast);
     std::unordered_map<const TypeDecl*, String> type_namespace_map_;
     std::unordered_map<const FunctionDecl*, String> function_namespace_map_;

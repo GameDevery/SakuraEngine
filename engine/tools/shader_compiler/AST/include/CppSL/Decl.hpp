@@ -156,7 +156,7 @@ protected:
 struct VectorTypeDecl : public ValueTypeDecl
 {
 public:
-    const auto& element() const { return _element; }
+    const auto& element_type() const { return _element; }
     uint32_t count() const { return _count; }
 
 protected:
@@ -171,7 +171,7 @@ struct MatrixTypeDecl : public ValueTypeDecl
 public:
     const auto& columns() const { return _n; }
     const auto& rows() const { return _n; }
-    const auto& element() const { return _element; }
+    const auto& element_type() const { return _element; }
 
 protected:
     friend struct AST;
@@ -192,7 +192,7 @@ struct ArrayTypeDecl : public ValueTypeDecl
 {
 public:
     ArrayFlags flags() const { return _flags; }
-    const TypeDecl* element() const { return _element; }
+    const TypeDecl* element_type() const { return _element; }
     const auto count() const { return _count; }
 
 protected:
@@ -265,7 +265,7 @@ protected:
 struct StructuredBufferTypeDecl : public BufferTypeDecl
 {
 public:
-    const TypeDecl& element() const { return *_element; }
+    const TypeDecl& element_type() const { return *_element; }
     const Size element_size() const { return _element->size(); }
     const Size element_alignment() const { return _element->alignment(); }
 
@@ -278,7 +278,7 @@ protected:
 struct TextureTypeDecl : public ResourceTypeDecl
 {
 public:
-    const TypeDecl& element() const { return *_element; }
+    const TypeDecl& element_type() const { return *_element; }
     const auto flags() const { return _flags; }
 
 protected:
@@ -294,11 +294,32 @@ protected:
     Texture2DTypeDecl(AST& ast, const TypeDecl* element, TextureFlags flags);
 };
 
+struct Texture2DArrayTypeDecl : public TextureTypeDecl
+{
+protected:
+    friend struct AST;
+    Texture2DArrayTypeDecl(AST& ast, const TypeDecl* element, TextureFlags flags);
+};
+
 struct Texture3DTypeDecl : public TextureTypeDecl
 {
 protected:
     friend struct AST;
     Texture3DTypeDecl(AST& ast, const TypeDecl* element, TextureFlags flags);
+};
+
+struct Texture3DArrayTypeDecl : public TextureTypeDecl
+{
+protected:
+    friend struct AST;
+    Texture3DArrayTypeDecl(AST& ast, const TypeDecl* element, TextureFlags flags);
+};
+
+struct TextureCubeTypeDecl : public TextureTypeDecl
+{
+protected:
+    friend struct AST;
+    TextureCubeTypeDecl(AST& ast, const TypeDecl* element, TextureFlags flags);
 };
 
 struct GlobalVarDecl : public VarDecl

@@ -8,7 +8,7 @@ namespace skr::shader {
 
 template<concepts::arithmetic T, concepts::arithmetic U>
 	requires(sizeof(T) == sizeof(U))
-[[expr("bit_cast")]] extern T bit_cast(U v);
+[[callop("BIT_CAST")]] extern T bit_cast(U v);
 
 template<concepts::bool_family T>
 [[callop("ALL")]] extern bool all(const T& x);
@@ -136,7 +136,7 @@ template<concepts::float_family T>
 template<concepts::float_family T>
 [[callop("LOG10")]] extern T log10(const T& v);
 
-template<concepts::float_family T, concepts::float_family B>
+template<concepts::arithmetic T, concepts::arithmetic B>
 	requires(same_dim_v<T, B> || is_scalar_v<B>)
 [[callop("POW")]] extern T pow(const T& base, const B& rate);
 
