@@ -10,7 +10,6 @@ struct Upload
     uint32 data_size;  // Data size (bytes)
 };
 
-// External resource bindings
 ByteAddressBuffer upload_buffer;   // Source data buffer
 ByteAddressBuffer upload_operations; // Copy operations list
 RWByteAddressBuffer target_buffer;   // Target buffer (Core Data)

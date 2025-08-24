@@ -43,7 +43,7 @@ float4 mandelbrot(uint2 tid, uint2 tsize) {
     return float4(d + (e * cos(((f * t) + g) * 2.f * pi)), 1.0f);
 }
 
-extern Buffer<float4>& buf;
+Buffer<float4> buf;
 
 [[compute_shader("compute_main")]]
 [[kernel_2d(16, 16)]]

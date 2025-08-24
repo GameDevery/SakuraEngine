@@ -13,7 +13,7 @@ struct RootConstants
     float2 viewportOrigin;
 };
 [[push_constant]]
-extern ConstantBuffer<RootConstants>& push_constants;
+ConstantBuffer<RootConstants> push_constants;
 
 [[compute_shader("cs"), kernel_2d(16, 16)]]
 void compute([[sv_thread_id]] uint2 threadID)

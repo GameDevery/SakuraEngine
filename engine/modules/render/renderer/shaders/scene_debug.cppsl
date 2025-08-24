@@ -5,7 +5,6 @@
 using namespace skr::shader;
 using namespace skr;
 
-// External resource bindings
 RWTexture2D<float> output_texture;
 ByteAddressBuffer gpu_scene_buffer; // Core data buffer from GPUScene
 
