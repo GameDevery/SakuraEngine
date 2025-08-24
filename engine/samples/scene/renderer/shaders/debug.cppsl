@@ -22,7 +22,7 @@ struct RootConstants
 };
 
 [[push_constant]]
-extern ConstantBuffer<RootConstants>& push_constants;
+ConstantBuffer<RootConstants> push_constants;
 
 [[vertex_shader("vs")]]
 VSOut vs(const VSIn input, [[sv_position]] float4& position)
