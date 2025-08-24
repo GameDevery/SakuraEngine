@@ -260,6 +260,16 @@ void RenderGraphBackend::wait_frame(uint64_t to_wait) SKR_NOEXCEPT
     cgpu_wait_fences(&executors[executor_to_wait].exec_fence, 1);
 }
 
+bool RenderGraphBackend::check_frame(uint64_t to_check) SKR_NOEXCEPT
+{
+    SkrZoneScopedN("WaitFrame");
+    if (to_check > frame_index)
+        return false;
+    if (to_check < frame_index - RG_MAX_FRAME_IN_FLIGHT)
+        return true;
+    return to_check <= get_latest_finished_frame();
+}
+
 uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     for (auto callback : exec_callbacks)
