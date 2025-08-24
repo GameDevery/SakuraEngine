@@ -19,14 +19,9 @@ struct Constants
 [[push_constant]]
 extern ConstantBuffer<Constants>& push_constants;
 
-[[binding(0, 0)]]
-Texture2D<float> color_texture;
-
-[[binding(1, 0)]]
-Texture2D<float> mask_texture;
-
-[[binding(0, 1)]]
-extern Sampler& color_sampler;
+[[group(0)]] Texture2D<float> color_texture;
+[[group(0)]] Texture2D<float> mask_texture;
+[[group(1)]] SamplerState color_sampler;
 
 struct [[stage_inout]] VSIn
 {

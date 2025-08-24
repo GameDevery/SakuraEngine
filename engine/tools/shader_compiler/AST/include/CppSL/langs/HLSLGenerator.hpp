@@ -1,5 +1,6 @@
 #pragma once
 #include "CppLikeShaderGenerator.hpp"
+#include <unordered_map>
 
 namespace skr::CppSL::HLSL
 {
@@ -22,6 +23,15 @@ public:
     bool SupportConstructor() const override;
     
 private:
+    void GenerateSRTs(const AST& ast);
     void GenerateArrayHelpers(SourceBuilderNew& sb, const AST& ast);
+    struct BindingVal 
+    { 
+        uint32_t binding; 
+        uint32_t space; 
+        bool is_push; 
+        bool is_bindless; 
+    };
+    std::unordered_map<const skr::CppSL::VarDecl*, BindingVal> binding_table_;
 };
 } // namespace skr::CppSL::HLSL

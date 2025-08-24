@@ -3,6 +3,7 @@
 #define stage_inout clang::annotate("skr-shader", "stage_inout")
 #define push_constant clang::annotate("skr-shader", "push_constant")
 #define binding(binding, group) clang::annotate("skr-shader", "binding", (binding), (group))
+#define group(group) clang::annotate("skr-shader", "binding", 0xffffffffui32, (group))
 
 #define compute_shader(x) clang::annotate("skr-shader", "stage", "compute", (x))
 #define vertex_shader(x) clang::annotate("skr-shader", "stage", "vertex", (x))
