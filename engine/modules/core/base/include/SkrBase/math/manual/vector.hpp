@@ -1,6 +1,6 @@
 #pragma once
-#include "./rtm_conv.hpp"
-#include "../gen/misc/quat.hpp"
+#include "./rtm_conv.hpp" // IWYU pragma: export
+#include "../gen/misc/quat.hpp" // IWYU pragma: export
 
 namespace skr
 {

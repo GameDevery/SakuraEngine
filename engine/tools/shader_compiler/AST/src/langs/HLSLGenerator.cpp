@@ -534,6 +534,7 @@ static const skr::CppSL::String kHLSLHeader = LR"(
 using uint64 = uint64_t;
 
 template<typename T> T fract(T x){return x - floor(x);}
+template<typename T> float length_squared(T x) { return dot(x,x); }
 
 template <typename T, uint64_t N> struct array { T data[N]; };
 template <typename T> using Bindless = T[];

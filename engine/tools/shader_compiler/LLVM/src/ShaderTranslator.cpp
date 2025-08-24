@@ -305,7 +305,27 @@ inline void ShaderTranslator::ReportFatalError(const clang::Decl* decl, std::for
 // Helper function to generate unique names for variable template specializations
 std::string ShaderTranslator::GetVarName(const clang::VarDecl* var)
 {
+    // 仅当变量与模板变体有关时才做唯一化
+    auto IsTemplateRelated = [](const clang::VarDecl* v) -> bool {
+        using namespace clang;
+        // 变量模板特化
+        if (llvm::isa<VarTemplateSpecializationDecl>(v))
+            return true;
+        // 位于类模板（或其实例化）中的静态成员等
+        if (auto ctx = llvm::dyn_cast_or_null<CXXRecordDecl>(v->getDeclContext()))
+        {
+            if (llvm::isa<ClassTemplateSpecializationDecl>(ctx))
+                return true;
+            if (ctx->getDescribedClassTemplate() != nullptr)
+                return true;
+        }
+        return false;
+    };
+
     std::string base = var->getNameAsString();
+    if (!IsTemplateRelated(var))
+        return base;
+
     auto& bucket = var_names_[base];
     auto it = std::find(bucket.begin(), bucket.end(), var);
     size_t index = 0;
@@ -326,7 +346,30 @@ std::string ShaderTranslator::GetVarName(const clang::VarDecl* var)
 // Helper function to generate unique names for template specializations
 std::string ShaderTranslator::GetFunctionName(const clang::FunctionDecl* func)
 {
+    // 仅当函数与模板变体有关时才做唯一化
+    auto IsTemplateRelated = [](const clang::FunctionDecl* f) -> bool {
+        using namespace clang;
+        // 函数模板或特化
+        if (f->getDescribedFunctionTemplate() != nullptr)
+            return true;
+        if (f->getTemplateSpecializationInfo() != nullptr)
+            return true;
+        // 类模板实例中的方法
+        if (auto m = llvm::dyn_cast<CXXMethodDecl>(f))
+        {
+            auto parent = m->getParent();
+            if (llvm::isa<ClassTemplateSpecializationDecl>(parent))
+                return true;
+            if (parent->getDescribedClassTemplate() != nullptr)
+                return true;
+        }
+        return false;
+    };
+
     std::string base = func->getNameAsString();
+    if (!IsTemplateRelated(func))
+        return base;
+
     auto& bucket = func_names_[base];
     auto it = std::find(bucket.begin(), bucket.end(), func);
     size_t index = 0;

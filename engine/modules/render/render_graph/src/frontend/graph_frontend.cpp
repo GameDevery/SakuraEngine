@@ -393,6 +393,11 @@ void RenderGraph::wait_frame(uint64_t frame_index) SKR_NOEXCEPT
 {
 }
 
+bool RenderGraph::check_frame(uint64_t frame_index) SKR_NOEXCEPT
+{
+    return true;
+}
+
 uint64_t RenderGraph::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     for (auto callback : exec_callbacks)
