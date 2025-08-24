@@ -17,7 +17,7 @@ struct Constants
 };
 
 [[push_constant]]
-extern ConstantBuffer<Constants>& push_constants;
+ConstantBuffer<Constants> push_constants;
 
 [[group(0)]] Texture2D<float> color_texture;
 [[group(0)]] Texture2D<float> mask_texture;

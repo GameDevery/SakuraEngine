@@ -4,7 +4,6 @@
 
 using namespace skr::shader;
 
-// External resource bindings
 ByteAddressBuffer gpu_scene;
 RWTexture2D<float> output_texture;
 Accel scene_tlas;
@@ -18,7 +17,7 @@ struct CameraConstants
 };
 
 [[push_constant]]
-extern ConstantBuffer<CameraConstants>& camera_constants;
+ConstantBuffer<CameraConstants> camera_constants;
 
 // Ray tracing constants
 trait RayTracingConstants {
