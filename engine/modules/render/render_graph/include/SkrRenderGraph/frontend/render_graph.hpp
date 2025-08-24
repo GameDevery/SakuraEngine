@@ -1,5 +1,5 @@
 #pragma once
-#include "SkrRenderGraph/frontend/base_types.hpp"
+#include "SkrRenderGraph/frontend/resource_node.hpp"
 #include "SkrRenderGraph/frontend/blackboard.hpp"
 #include "SkrContainersDef/hashmap.hpp"
 
@@ -11,6 +11,7 @@ namespace skr
 {
 namespace render_graph
 {
+struct BarrierGenerationPhase;
 class SKR_RENDER_GRAPH_API RenderGraphProfiler
 {
 public:
@@ -31,6 +32,29 @@ struct SKR_RENDER_GRAPH_API IRenderGraphPhase
 
     skr::Vector<ResourceNode*>& get_resources(RenderGraph* graph) SKR_NOEXCEPT;
     skr::Vector<PassNode*>& get_passes(RenderGraph* graph) SKR_NOEXCEPT;
+};
+
+// track resource state from last render graph execution
+struct RenderGraphStateTracker
+{
+public:
+    RenderGraphStateTracker() = default;
+    inline RenderGraphStateTracker(ECGPUResourceState init_state)
+        : last_state(init_state)
+    {
+
+    }
+    RenderGraphStateTracker(const RenderGraphStateTracker&) = delete;
+    RenderGraphStateTracker& operator=(const RenderGraphStateTracker&) = delete;
+
+    inline ECGPUResourceState get_last_state() const
+    {
+        return last_state;
+    }
+
+private:
+    friend class BarrierGenerationPhase;
+    ECGPUResourceState last_state = ECGPUResourceState::CGPU_RESOURCE_STATE_COMMON;
 };
 
 class SKR_RENDER_GRAPH_API RenderGraph
@@ -281,6 +305,13 @@ public:
 
     // interfaces
     friend struct IRenderGraphPhase;
+
+    template <typename HANDLE>
+    inline void track_state(HANDLE handle, RenderGraphStateTracker& tracker) SKR_NOEXCEPT
+    {
+        auto node = resolve(handle);
+        node->trackers.add(&tracker);
+    }
     virtual void wait_frame(uint64_t frame_index) SKR_NOEXCEPT;
     virtual bool check_frame(uint64_t frame_index) SKR_NOEXCEPT;
 
@@ -297,6 +328,7 @@ public:
         skr::stl_function<void(PassNode* writer, TextureNode* tex, RenderGraphEdge* edge)>) const SKR_NOEXCEPT;
     uint32_t foreach_passes(BufferHandle buffer,
         skr::stl_function<void(PassNode* reader, BufferNode* buf, RenderGraphEdge* edge)>) const SKR_NOEXCEPT;
+    
     const skr::Vector<PassNode*>& get_passes() const SKR_NOEXCEPT { return passes; }
     const skr::Vector<ResourceNode*>& get_resources() const SKR_NOEXCEPT { return resources; }
 
