@@ -5,10 +5,14 @@ namespace skr
 {
 namespace render_graph
 {
+
+struct RenderGraphStateTracker;
+
 class ResourceNode : public RenderGraphNode
 {
 public:
     friend class RenderGraph;
+    friend class BarrierGenerationPhase;
     ResourceNode(EObjectType type, uint64_t frame_index) SKR_NOEXCEPT;
     virtual ~ResourceNode() SKR_NOEXCEPT = default;
     struct LifeSpan {
@@ -27,6 +31,7 @@ protected:
     const uint64_t frame_index;
     uint32_t tags = kRenderGraphInvalidResourceTag;
     mutable ECGPUResourceState init_state = CGPU_RESOURCE_STATE_UNDEFINED;
+    skr::InlineVector<RenderGraphStateTracker*, 1> trackers; 
 };
 
 class TextureNode : public ResourceNode
