@@ -62,6 +62,7 @@ class SKR_RENDER_GRAPH_API RenderGraphBackend : public RenderGraph
 
 public:
     void wait_frame(uint64_t frame_index) SKR_NOEXCEPT final;
+    bool check_frame(uint64_t frame_index) SKR_NOEXCEPT final;
     virtual uint64_t execute(RenderGraphProfiler* profiler = nullptr) SKR_NOEXCEPT final;
     virtual CGPUDeviceId get_backend_device() SKR_NOEXCEPT final;
     inline virtual CGPUQueueId get_gfx_queue() SKR_NOEXCEPT final { return gfx_queue; }
