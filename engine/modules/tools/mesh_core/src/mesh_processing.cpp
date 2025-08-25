@@ -134,6 +134,12 @@ void EmplaceRawPrimitiveIndexBuffer(const SRawPrimitive* primitve, skr::Vector<u
     index_buffer.index_count = (uint32_t)ib_view.size() / index_stride;
     index_buffer.stride = index_stride;
     buffer.append(ib_view.data(), ib_view.size());
+
+    // GPU needs to align 16 bytes
+    while (buffer.size() % 16 != 0)
+    {
+        buffer.add(0);
+    }
 }
 
 void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, ERawVertexStreamType type, uint32_t idx, skr::Vector<uint8_t>& buffer, VertexBufferEntry& out_vbv)
@@ -150,6 +156,18 @@ void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, ERa
     out_vbv.stride = attribute_stride;
     out_vbv.offset = attribute_stride ? (uint32_t)buffer.size() : 0u;
     buffer.append(vertex_attribtue_slice.data(), vertex_attribtue_slice.size());
+    out_vbv.vertex_count = 0u;
+    if (vertex_attribtue_slice.size() != 0)
+    {
+        out_vbv.vertex_count = vertex_attribtue_slice.size() / out_vbv.stride;
+        buffer.append(vertex_attribtue_slice.data(), vertex_attribtue_slice.size());
+    }
+    
+    // GPU needs to align 16 bytes
+    while (buffer.size() % 16 != 0)
+    {
+        buffer.add(0);
+    }
 }
 
 void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, const char* semantics, uint32_t idx, skr::Vector<uint8_t>& buffer, VertexBufferEntry& out_vbv)
@@ -166,7 +184,18 @@ void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, con
     out_vbv.buffer_index = 0;
     out_vbv.stride = attribute_stride;
     out_vbv.offset = attribute_stride ? (uint32_t)buffer.size() : 0u;
-    buffer.append(vertex_attribtue_slice.data(), vertex_attribtue_slice.size());
+    out_vbv.vertex_count = 0u;
+    if (vertex_attribtue_slice.size() != 0)
+    {
+        out_vbv.vertex_count = vertex_attribtue_slice.size() / out_vbv.stride;
+        buffer.append(vertex_attribtue_slice.data(), vertex_attribtue_slice.size());
+    }
+
+    // GPU needs to align 16 bytes
+    while (buffer.size() % 16 != 0)
+    {
+        buffer.add(0);
+    }
 }
 
 void EmplaceAllRawMeshIndices(const SRawMesh* mesh, skr::Vector<uint8_t>& buffer, skr::Vector<MeshPrimitive>& out_primitives)
@@ -192,7 +221,7 @@ void EmplaceRawMeshVerticesWithRange(skr::span<const EVertexAttribute> range, ui
             for (uint32_t j = 0; j < mesh->primitives.size(); j++)
             {
                 auto& prim = out_primitives[j];
-                prim.vertex_buffers.resize_default(shuffle_layout.attribute_count);
+                prim.vertex_buffers.reserve(shuffle_layout.attribute_count);
 
                 const auto& raw_primitive = mesh->primitives[j];
                 prim.vertex_count = (uint32_t)raw_primitive.vertex_streams[0].count;
@@ -212,8 +241,9 @@ void EmplaceRawMeshVerticesWithRange(skr::span<const EVertexAttribute> range, ui
                     }
                     if (within)
                     {
-                        EmplaceRawPrimitiveVertexBufferAttribute(&raw_primitive, (const char*)shuffle_attrib.semantic_name, k, buffer, prim.vertex_buffers[i]);
-                        prim.vertex_buffers[i].buffer_index = buffer_idx;
+                        auto& new_vb = prim.vertex_buffers.emplace().ref();
+                        EmplaceRawPrimitiveVertexBufferAttribute(&raw_primitive, (const char*)shuffle_attrib.semantic_name, k, buffer, new_vb);
+                        new_vb.buffer_index = buffer_idx;
                     }
                 }
             }

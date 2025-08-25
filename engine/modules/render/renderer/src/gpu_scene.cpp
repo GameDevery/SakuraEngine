@@ -31,6 +31,7 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
     {
         GPUSceneInstanceTask::build(builder);
         builder.read(&AddEntityToGPUScene::meshes);
+        builder.write(&AddEntityToGPUScene::geometries);
     }
 
     void run(skr::ecs::TaskContext& Context)
@@ -64,6 +65,31 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
                     mesh_resource->render_mesh->need_build_blas = false;
                 }
 
+                // record index/vertex buffers
+                auto& geometry = geometries[i];
+                for (uint32_t prim_id = 0; prim_id < mesh_resource->primitives.size(); prim_id++)
+                {
+                    const auto& primitive = mesh_resource->primitives[prim_id];
+                    for (const auto& vb : primitive.vertex_buffers)
+                    {
+                        const auto buffer_id = mesh_resource->render_mesh->buffer_ids[vb.buffer_index];
+                        if (vb.attribute == EVertexAttribute::POSITION)
+                            geometry.entries[prim_id].pos = { buffer_id, vb.offset };
+                        else if (vb.attribute == EVertexAttribute::TEXCOORD)
+                            geometry.entries[prim_id].uv = { buffer_id, vb.offset };
+                        else if (vb.attribute == EVertexAttribute::NORMAL)
+                            geometry.entries[prim_id].normal = { buffer_id, vb.offset };
+                        else if (vb.attribute == EVertexAttribute::TANGENT)
+                            geometry.entries[prim_id].tangent = { buffer_id, vb.offset };
+                    }
+                    {
+                        const auto& ib = primitive.index_buffer;
+                        const auto buffer_id = mesh_resource->render_mesh->buffer_ids[ib.buffer_index];
+                        const auto buffer_offset = ib.index_offset;
+                        geometry.entries[prim_id].index = { buffer_id, buffer_offset };
+                    }
+                }
+
                 // add tlas
                 auto& o2w = *(const GPUSceneObjectToWorld*)Context.read(sugoi_id_of<GPUSceneObjectToWorld>::get()).at(i);
                 auto& transform = o2w.matrix;
@@ -91,6 +117,7 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
         }
     }
     skr::ecs::ComponentView<const MeshComponent> meshes;
+    skr::ecs::ComponentView<GPUSceneGeometryBuffers> geometries;
 };
 
 struct ScanGPUScene : public GPUSceneInstanceTask
@@ -384,7 +411,7 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
     // Pass 1: GPUScene Data Upload
     {
         const uint64_t ops_size = skr::max(1ull, Lane.dirty_comp_count) * sizeof(Upload);
-        const uint32_t max_threads_per_op = 4;
+        const uint32_t max_threads_per_op = 1024;
         const uint32_t dispatch_groups = (Lane.dirty_comp_count * max_threads_per_op + 255) / 256;
 
         auto ops_buffer = graph->create_buffer(

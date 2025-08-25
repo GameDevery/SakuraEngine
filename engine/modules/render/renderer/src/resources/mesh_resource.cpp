@@ -1,6 +1,8 @@
 #include "SkrOS/thread.h"
 #include "SkrCore/memory/sp.hpp"
 #include "SkrGraphics/cgpux.hpp"
+#include "SkrGraphics/raytracing.h"
+#include "SkrContainersDef/sparse_vector.hpp"
 #include "SkrRT/io/vram_io.hpp"
 #include "SkrRT/resource/resource_system.h"
 #include "SkrRT/resource/resource_factory.h"
@@ -128,7 +130,7 @@ void skr_mesh_resource_register_vertex_layout(VertexLayoutId id, const char8_t* 
         return; // existed
     else if (auto layout = mesh_resource_util.HasVertexLayout(*in_vertex_layout))
         return; // existed
-    else // do register
+    else        // do register
     {
         auto result = mesh_resource_util.AddVertexLayout(id, name, *in_vertex_layout);
         SKR_ASSERT(result == id);
@@ -161,9 +163,18 @@ struct SKR_RENDERER_API MeshFactoryImpl : public MeshFactory
     {
         dstorage_root = skr::String::From(root.dstorage_root);
         this->root.dstorage_root = dstorage_root.c_str();
+
+        auto cgpu_device = root.render_device->get_cgpu_device();
+        desc_buffer.count = 512;
+        CGPUDescriptorBufferDescriptor bdls_desc = { .count = desc_buffer.count };
+        desc_buffer.descriptor_buffer = cgpu_create_descriptor_buffer(cgpu_device, &bdls_desc);
     }
 
-    ~MeshFactoryImpl() noexcept = default;
+    ~MeshFactoryImpl() noexcept
+    {
+        cgpu_free_descriptor_buffer(desc_buffer.descriptor_buffer);
+    }
+
     skr_guid_t GetResourceType() override;
     bool AsyncIO() override { return true; }
     bool Unload(SResourceRecord* record) override;
@@ -214,14 +225,32 @@ struct SKR_RENDERER_API MeshFactoryImpl : public MeshFactory
 
     ESkrInstallStatus InstallImpl(SResourceRecord* record);
 
+    void IniitializeRenderMesh(RenderMesh* render_mesh, MeshResource* mesh_resource);
+    void FreeRenderMesh(RenderMesh* render_mesh);
+    const bool UseRayTracing = true;
+
     Root root;
     skr::String dstorage_root;
     skr::FlatHashMap<MeshResource*, InstallType> mInstallTypes;
     skr::FlatHashMap<MeshResource*, SP<BufferRequest>> mRequests;
+
+    CGPUDescriptorBufferId descriptor_buffer() override
+    {
+        return desc_buffer.descriptor_buffer;
+    }
+
+    struct
+    {
+        CGPUDescriptorBufferId descriptor_buffer = nullptr;
+        uint32_t count = 0;
+        uint32_t next = 0;
+        skr::Vector<uint32_t> free_list;
+    } desc_buffer;
 };
 
 MeshFactory* MeshFactory::Create(const Root& root)
 {
+    auto cgpu_device = root.render_device->get_cgpu_device();
     return SkrNew<MeshFactoryImpl>(root);
 }
 
@@ -286,7 +315,7 @@ ESkrInstallStatus MeshFactoryImpl::InstallImpl(SResourceRecord* record)
                 auto&& thisFuture = dRequest->dFutures[i];
                 auto&& thisDestination = dRequest->dBuffers[i];
 
-                CGPUBufferUsages usages = CGPU_BUFFER_USAGE_NONE;
+                CGPUBufferUsages usages = CGPU_BUFFER_USAGE_SHADER_READWRITE;
                 usages |= thisBin.used_with_index ? CGPU_BUFFER_USAGE_INDEX_BUFFER : 0;
                 usages |= thisBin.used_with_vertex ? CGPU_BUFFER_USAGE_VERTEX_BUFFER : 0;
 
@@ -294,7 +323,7 @@ ESkrInstallStatus MeshFactoryImpl::InstallImpl(SResourceRecord* record)
                 bdesc.usages = usages;
                 bdesc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
                 bdesc.size = thisBin.byte_length;
-                bdesc.name = nullptr; // TODO: set name
+                bdesc.name = thisBin.used_with_index ? thisBin.used_with_vertex ? u8"IB | VB" : u8"IB" : u8"VB";
 
                 auto request = vram_service->open_buffer_request();
                 request->set_vfs(root.vfs);
@@ -348,7 +377,7 @@ ESkrInstallStatus MeshFactoryImpl::UpdateInstall(SResourceRecord* record)
                 auto pBuffer = dRequest->second->dBuffers[i]->get_buffer();
                 render_mesh->buffers[i] = pBuffer;
             }
-            skr_render_mesh_initialize(render_mesh, mesh_resource);
+            IniitializeRenderMesh(render_mesh, mesh_resource);
 
             mRequests.erase(mesh_resource);
             mInstallTypes.erase(mesh_resource);
@@ -360,6 +389,145 @@ ESkrInstallStatus MeshFactoryImpl::UpdateInstall(SResourceRecord* record)
         SKR_UNREACHABLE_CODE();
     }
     return ESkrInstallStatus::SKR_INSTALL_STATUS_INPROGRESS;
+}
+
+void MeshFactoryImpl::IniitializeRenderMesh(RenderMesh* render_mesh, MeshResource* mesh_resource)
+{
+    uint32_t ibv_c = 0;
+    uint32_t vbv_c = 0;
+    // 1. calculate the number of index buffer views and vertex buffer views
+    for (uint32_t prim_idx = 0; prim_idx < mesh_resource->primitives.size(); prim_idx++)
+    {
+        auto& prim = mesh_resource->primitives[prim_idx];
+        vbv_c += (uint32_t)prim.vertex_buffers.size();
+        ibv_c++;
+    }
+
+    // 2. do early reserve
+    render_mesh->mesh_resource = mesh_resource;
+    render_mesh->index_buffer_views.reserve(ibv_c);
+    render_mesh->vertex_buffer_views.reserve(vbv_c);
+
+    // 3. fill sections
+    for (uint32_t prim_idx = 0; prim_idx < mesh_resource->primitives.size(); prim_idx++)
+    {
+        const auto& prim = mesh_resource->primitives[prim_idx];
+        SKR_ASSERT(render_mesh->index_buffer_views.capacity() >= render_mesh->index_buffer_views.size());
+        SKR_ASSERT(render_mesh->vertex_buffer_views.capacity() >= render_mesh->vertex_buffer_views.size());
+        auto& draw_cmd = render_mesh->primitive_commands.add_default().ref();
+        auto& mesh_ibv = render_mesh->index_buffer_views.add_default().ref();
+        auto vbv_start = render_mesh->vertex_buffer_views.size();
+        // 3.1 fill vbvs
+        for (uint32_t j = 0; j < prim.vertex_buffers.size(); j++)
+        {
+            const auto& prim_vb = prim.vertex_buffers[j];
+            auto& mesh_vbv = render_mesh->vertex_buffer_views.add_default().ref();
+            const auto buffer_index = prim_vb.buffer_index;
+            mesh_vbv.buffer = render_mesh->buffers[buffer_index];
+            mesh_vbv.offset = prim_vb.offset;
+            mesh_vbv.vertex_count = prim_vb.vertex_count;
+            mesh_vbv.stride = prim_vb.stride;
+            mesh_vbv.primitive_index = prim_idx;
+            mesh_vbv.index_in_prim = j;
+            // SKR_LOG_INFO(u8"Mesh VBV %d: buffer %p, offset %d, stride %d", j, mesh_vbv.buffer, mesh_vbv.offset, mesh_vbv.stride);
+        }
+        // 3.2 fill ibv
+        const auto buffer_index = prim.index_buffer.buffer_index;
+        mesh_ibv.buffer = render_mesh->buffers[buffer_index];
+        mesh_ibv.offset = prim.index_buffer.index_offset;
+        mesh_ibv.stride = prim.index_buffer.stride;
+        mesh_ibv.index_count = prim.index_buffer.index_count;
+        mesh_ibv.first_index = prim.index_buffer.first_index;
+        mesh_ibv.primitive_index = prim_idx;
+
+        draw_cmd.ibv = &mesh_ibv;
+        draw_cmd.vbvs = { render_mesh->vertex_buffer_views.data() + vbv_start, prim.vertex_buffers.size() };
+        draw_cmd.primitive_index = prim_idx;
+        draw_cmd.material_index = prim.material_index;
+    }
+
+    // 4. construct blas
+    if (UseRayTracing && (mesh_resource->primitives.size() > 0))
+    {
+        skr::InlineVector<CGPUAccelerationStructureGeometryDesc, 4> geoms;
+        for (const auto& primitive : mesh_resource->primitives)
+        {
+            auto pos_vb = primitive.vertex_buffers.find_if(
+                                                      [](auto prim) { return prim.attribute == EVertexAttribute::POSITION; })
+                              .ptr();
+            if (!pos_vb) continue;
+
+            CGPUAccelerationStructureGeometryDesc geom = {};
+            geom.flags = CGPU_ACCELERATION_STRUCTURE_GEOMETRY_FLAG_OPAQUE;
+            geom.vertex_buffer = render_mesh->buffers[pos_vb->buffer_index];
+            geom.vertex_offset = pos_vb->offset;
+            geom.vertex_count = primitive.vertex_count;
+            geom.vertex_stride = pos_vb->stride;
+            geom.vertex_format = CGPU_FORMAT_R32G32B32_SFLOAT;
+            geom.index_buffer = render_mesh->buffers[primitive.index_buffer.buffer_index];
+            geom.index_offset = primitive.index_buffer.index_offset;
+            geom.index_count = primitive.index_buffer.index_count;
+            // D3D12 expects index_stride to be 2 (uint16) or 4 (uint32)
+            // primitive.index_buffer.stride should already be 2 or 4, but let's ensure it
+            geom.index_stride = (primitive.index_buffer.stride == 2) ? sizeof(uint16_t) : sizeof(uint32_t);
+            geoms.add(geom);
+        }
+
+        CGPUAccelerationStructureDescriptor blas_desc = {};
+        blas_desc.type = CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+        blas_desc.bottom.geometries = geoms.data();
+        blas_desc.bottom.count = geoms.size();
+        render_mesh->blas = cgpu_create_acceleration_structure(geoms[0].vertex_buffer->device, &blas_desc);
+    }
+
+    // 5. add to bindless array
+    if (UseRayTracing)
+    {
+        render_mesh->buffers.reserve(render_mesh->buffers.size());
+        for (auto buffer : render_mesh->buffers)
+        {
+            uint32_t free_id = 0;
+            if (!desc_buffer.free_list.is_empty())
+                free_id = desc_buffer.free_list.pop_back_get();
+            else
+                free_id = desc_buffer.next++;
+            render_mesh->buffer_ids.add(free_id);
+
+            CGPUBufferViewDescriptor ibv_desc = {
+                .name = u8"IB/VB",
+                .buffer = buffer,
+                .view_usages = CGPU_BUFFER_VIEW_USAGE_SRV_RAW,
+                .offset = 0,
+                .size = (uint32_t)buffer->info->size
+            };
+            auto device = buffer->device;
+            CGPUDescriptorBufferElement elem = {};
+            elem.index = free_id;
+            elem.resource_type = CGPU_RESOURCE_TYPE2_BUFFER;
+            elem.buffer = ibv_desc;
+            cgpu_update_descriptor_buffer(desc_buffer.descriptor_buffer, &elem, 1);
+        }
+    }
+}
+
+void MeshFactoryImpl::FreeRenderMesh(RenderMesh* render_mesh)
+{
+    for (auto id : render_mesh->buffer_ids)
+    {
+        desc_buffer.free_list.add(id);
+    }
+
+    if (UseRayTracing && render_mesh->blas)
+    {
+        cgpu_free_acceleration_structure(render_mesh->blas);
+    }
+
+    for (auto&& buffer : render_mesh->buffers)
+    {
+        cgpu_free_buffer(buffer);
+    }
+
+    SkrDelete(render_mesh);
 }
 
 bool MeshFactoryImpl::Unload(SResourceRecord* record)
@@ -376,7 +544,7 @@ bool MeshFactoryImpl::Uninstall(SResourceRecord* record)
     {
         mesh_resource->bins.clear();
     }
-    skr_render_mesh_free(mesh_resource->render_mesh);
+    FreeRenderMesh(mesh_resource->render_mesh);
     mesh_resource->render_mesh = nullptr;
     return true;
 }

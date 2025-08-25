@@ -15,6 +15,9 @@ typedef struct skr_vertex_buffer_view_t
     uint32_t offset;
     // in bytes
     uint32_t stride;
+    uint32_t vertex_count;
+    uint32_t primitive_index;
+    uint32_t index_in_prim;
 } skr_vertex_buffer_view_t;
 
 typedef struct skr_index_buffer_view_t
@@ -26,6 +29,7 @@ typedef struct skr_index_buffer_view_t
     uint32_t stride;
     uint32_t index_count;
     uint32_t first_index;
+    uint32_t primitive_index;
 } skr_index_buffer_view_t;
 
 typedef struct skr_primitive_draw_t

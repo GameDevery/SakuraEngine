@@ -18,6 +18,7 @@ struct DMA_Allocator;
 struct DMA_Pool;
 struct DMA_Allocation;
 struct D3D12Util_DescriptorHeap;
+typedef struct CGPURootSignature_D3D12 CGPURootSignature_D3D12;
 typedef struct CGPUAccelerationStructure_D3D12 CGPUAccelerationStructure_D3D12;
 
 CGPU_API const CGPUProcTable* CGPU_D3D12ProcTable();
@@ -140,6 +141,7 @@ CGPU_API void cgpu_cmd_end_d3d12(CGPUCommandBufferId cmd);
 // Compute CMDs
 CGPU_API CGPUComputePassEncoderId cgpu_cmd_begin_compute_pass_d3d12(CGPUCommandBufferId cmd, const struct CGPUComputePassDescriptor* desc);
 CGPU_API void cgpu_compute_encoder_bind_descriptor_set_d3d12(CGPUComputePassEncoderId encoder, CGPUDescriptorSetId set);
+CGPU_API void cgpu_compute_encoder_bind_descriptor_buffer_d3d12(CGPUComputePassEncoderId encoder, CGPUDescriptorBufferId args, const char8_t* set_name);
 CGPU_API void cgpu_compute_encoder_push_constants_d3d12(CGPUComputePassEncoderId encoder, CGPURootSignatureId rs, const char8_t* name, const void* data);
 CGPU_API void cgpu_compute_encoder_bind_pipeline_d3d12(CGPUComputePassEncoderId encoder, CGPUComputePipelineId pipeline);
 CGPU_API void cgpu_compute_encoder_dispatch_d3d12(CGPUComputePassEncoderId encoder, uint32_t X, uint32_t Y, uint32_t Z);
@@ -149,6 +151,7 @@ CGPU_API void cgpu_cmd_end_compute_pass_d3d12(CGPUCommandBufferId cmd, CGPUCompu
 CGPU_API CGPURenderPassEncoderId cgpu_cmd_begin_render_pass_d3d12(CGPUCommandBufferId cmd, const struct CGPURenderPassDescriptor* desc);
 CGPU_API void cgpu_render_encoder_set_shading_rate_d3d12(CGPURenderPassEncoderId encoder, ECGPUShadingRate shading_rate, ECGPUShadingRateCombiner post_rasterizer_rate, ECGPUShadingRateCombiner final_rate);
 CGPU_API void cgpu_render_encoder_bind_descriptor_set_d3d12(CGPURenderPassEncoderId encoder, CGPUDescriptorSetId set);
+CGPU_API void cgpu_render_encoder_bind_descriptor_buffer_d3d12(CGPURenderPassEncoderId encoder, CGPUDescriptorBufferId args, const char8_t* set_name);
 CGPU_API void cgpu_render_encoder_set_viewport_d3d12(CGPURenderPassEncoderId encoder, float x, float y, float width, float height, float min_depth, float max_depth);
 CGPU_API void cgpu_render_encoder_set_scissor_d3d12(CGPURenderPassEncoderId encoder, uint32_t x, uint32_t y, uint32_t width, uint32_t height);
 CGPU_API void cgpu_render_encoder_bind_pipeline_d3d12(CGPURenderPassEncoderId encoder, CGPURenderPipelineId pipeline);
@@ -286,7 +289,7 @@ typedef struct CGPUCommandBuffer_D3D12 {
     struct D3D12Util_DescriptorHeap* pBoundHeaps[2]; // pCbvSrvUavHeaps, pSamplerHeaps
     D3D12_GPU_DESCRIPTOR_HANDLE mBoundHeapStartHandles[2];
     // Command buffer state
-    const ID3D12RootSignature* pBoundRootSignature;
+    const CGPURootSignature_D3D12* pBoundRootSignature;
     uint32_t mNodeIndex : 4;
     uint32_t mType : 3;
     CGPUCommandPool_D3D12* pCmdPool;
