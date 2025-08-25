@@ -264,6 +264,14 @@ namespace SB.Core
                     }
                 }
             }
+
+            var WindowsSDKVersion = VCEnvVariables["WindowsSDKVersion"]!.Replace('\\', ' ');
+            var WindowsSDKLibVersion = VCEnvVariables["WindowsSDKLibVersion"]!.Replace('\\', ' ');
+            var UCRTVersion = VCEnvVariables["UCRTVersion"]!.Replace('\\', ' ');
+            Log.Information("WindowsSDKVersion version ... {WindowsSDKVersion}", WindowsSDKVersion);
+            Log.Verbose("WindowsSDKLibVersion version ... {WindowsSDKLibVersion}", WindowsSDKLibVersion);
+            Log.Verbose("UCRTVersion version ... {UCRTVersion}", UCRTVersion);
+
             if (!string.IsNullOrEmpty(CLCCPath))
                 CLCC = new CLCompiler(CLCCPath!, VCEnvVariables);
             if (!string.IsNullOrEmpty(LINKPath))
