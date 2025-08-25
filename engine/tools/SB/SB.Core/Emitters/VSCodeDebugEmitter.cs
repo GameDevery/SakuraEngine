@@ -10,6 +10,11 @@ using System.Collections.Generic;
 using System.IO;
 using Serilog;
 
+// Reference:
+//  - https://code.visualstudio.com/docs/debugtest/tasks
+//  - https://code.visualstudio.com/docs/cpp/launch-json-reference#_processid
+
+
 namespace SB
 {
     using BS = BuildSystem;
