@@ -7,6 +7,7 @@
 #include "SkrToolCore/cook_system/importer.hpp"
 #include "SkrToolCore/cook_system/cooker.hpp"
 #include "SkrToolCore/cook_system/asset_meta.hpp"
+#include <SkrContainers/function_ref.hpp>
 
 SKR_DECLARE_TYPE_ID_FWD(skr::io, IRAMService, skr_io_ram_service);
 
