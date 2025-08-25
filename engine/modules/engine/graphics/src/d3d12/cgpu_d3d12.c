@@ -2082,16 +2082,16 @@ void cgpu_cmd_end_d3d12(CGPUCommandBufferId cmd)
     CHECK_HRESULT(COM_CALL(Close, Cmd->pDxCmdList));
 }
 
-inline static bool D3D12Util_ResetRootSignature(CGPUCommandBuffer_D3D12* pCmd, ECGPUPipelineType type, ID3D12RootSignature* pRootSignature)
+inline static bool D3D12Util_ResetRootSignature(CGPUCommandBuffer_D3D12* pCmd, ECGPUPipelineType type, const CGPURootSignature_D3D12* pRootSignature)
 {
     // Set root signature if the current one differs from pRootSignature
     if (pCmd->pBoundRootSignature != pRootSignature)
     {
         pCmd->pBoundRootSignature = pRootSignature;
         if (type == CGPU_PIPELINE_TYPE_GRAPHICS)
-            COM_CALL(SetGraphicsRootSignature, pCmd->pDxCmdList, pRootSignature);
+            COM_CALL(SetGraphicsRootSignature, pCmd->pDxCmdList, pRootSignature->pDxRootSignature);
         else
-            COM_CALL(SetComputeRootSignature, pCmd->pDxCmdList, pRootSignature);
+            COM_CALL(SetComputeRootSignature, pCmd->pDxCmdList, pRootSignature->pDxRootSignature);
     }
     return true;
 }
@@ -2142,11 +2142,37 @@ void cgpu_compute_encoder_bind_descriptor_set_d3d12(CGPUComputePassEncoderId enc
     }
 }
 
+void cgpu_compute_encoder_bind_descriptor_buffer_d3d12(CGPUComputePassEncoderId encoder, CGPUDescriptorBufferId args, const char8_t* set_name)
+{
+    CGPUCommandBuffer_D3D12* Cmd = (CGPUCommandBuffer_D3D12*)encoder;
+    const CGPUDescriptorBufferBase_D3D12* Args = (CGPUDescriptorBufferBase_D3D12*)args;
+    D3D12Util_SyncDescriptorBuffer(args);
+    uint64_t hash = skr_hash_of(set_name, strlen(set_name), SKR_DEFAULT_HASH_SEED);
+    uint32_t set_index = UINT32_MAX;
+    for (uint32_t i = 0; i < Cmd->pBoundRootSignature->super.table_count; i++)
+    {
+        CGPUParameterTable* pTable = Cmd->pBoundRootSignature->super.tables + i;
+        for (uint32_t j = 0; j < pTable->resources_count; j++)
+        {
+            if (pTable->resources[j].name_hash == hash && 
+                (strcmp(pTable->resources[j].name, set_name) == 0))
+            {
+                set_index = pTable->resources[j].set;
+            }
+        }
+    }
+    if (set_index != UINT32_MAX)
+    {
+        D3D12_GPU_DESCRIPTOR_HANDLE HeapToBind = D3D12Util_DescriptorIdToGpuHandle(Cmd->pBoundHeaps[0], Args->mGpuStartId);
+        COM_CALL(SetComputeRootDescriptorTable, Cmd->pDxCmdList, set_index - 1, HeapToBind);
+    }
+}
+
 void cgpu_compute_encoder_bind_pipeline_d3d12(CGPUComputePassEncoderId encoder, CGPUComputePipelineId pipeline)
 {
     CGPUCommandBuffer_D3D12*   Cmd = (CGPUCommandBuffer_D3D12*)encoder;
     CGPUComputePipeline_D3D12* PPL = (CGPUComputePipeline_D3D12*)pipeline;
-    D3D12Util_ResetRootSignature(Cmd, CGPU_PIPELINE_TYPE_COMPUTE, PPL->pRootSignature);
+    D3D12Util_ResetRootSignature(Cmd, CGPU_PIPELINE_TYPE_COMPUTE, (const CGPURootSignature_D3D12*)pipeline->root_signature);
     COM_CALL(SetPipelineState, Cmd->pDxCmdList, PPL->pDxPipelineState);
 }
 
@@ -2154,7 +2180,7 @@ void cgpu_compute_encoder_push_constants_d3d12(CGPUComputePassEncoderId encoder,
 {
     CGPUCommandBuffer_D3D12* Cmd = (CGPUCommandBuffer_D3D12*)encoder;
     CGPURootSignature_D3D12* RS  = (CGPURootSignature_D3D12*)rs;
-    D3D12Util_ResetRootSignature(Cmd, CGPU_PIPELINE_TYPE_GRAPHICS, RS->pDxRootSignature);
+    D3D12Util_ResetRootSignature(Cmd, CGPU_PIPELINE_TYPE_GRAPHICS, RS);
     if (RS->super.pipeline_type == CGPU_PIPELINE_TYPE_GRAPHICS)
     {
         COM_CALL(SetGraphicsRoot32BitConstants, Cmd->pDxCmdList,
@@ -2387,7 +2413,7 @@ void cgpu_render_encoder_bind_descriptor_set_d3d12(CGPURenderPassEncoderId encod
     const CGPUDescriptorSet_D3D12* Set = (CGPUDescriptorSet_D3D12*)set;
     CGPURootSignature_D3D12*       RS  = (CGPURootSignature_D3D12*)Set->super.root_signature;
     SKR_ASSERT(RS);
-    D3D12Util_ResetRootSignature(Cmd, CGPU_PIPELINE_TYPE_GRAPHICS, RS->pDxRootSignature);
+    D3D12Util_ResetRootSignature(Cmd, CGPU_PIPELINE_TYPE_GRAPHICS, RS);
     D3D12Util_UseAccel(&Cmd->super, Set);
     if (Set->mCbvSrvUavHandle != D3D12_DESCRIPTOR_ID_NONE)
     {
@@ -2398,6 +2424,32 @@ void cgpu_render_encoder_bind_descriptor_set_d3d12(CGPURenderPassEncoderId encod
     {
         D3D12_GPU_DESCRIPTOR_HANDLE HeapToBind = D3D12Util_DescriptorIdToGpuHandle(Cmd->pBoundHeaps[1], Set->mSamplerHandle);
         COM_CALL(SetGraphicsRootDescriptorTable, Cmd->pDxCmdList, set->index, HeapToBind);
+    }
+}
+
+void cgpu_render_encoder_bind_descriptor_buffer_d3d12(CGPURenderPassEncoderId encoder, CGPUDescriptorBufferId args, const char8_t* set_name)
+{
+    CGPUCommandBuffer_D3D12* Cmd = (CGPUCommandBuffer_D3D12*)encoder;
+    const CGPUDescriptorBufferBase_D3D12* Args = (CGPUDescriptorBufferBase_D3D12*)args;
+    D3D12Util_SyncDescriptorBuffer(args);
+    uint64_t hash = skr_hash_of(set_name, strlen(set_name), SKR_DEFAULT_HASH_SEED);
+    uint32_t set_index = UINT32_MAX;
+    for (uint32_t i = 0; i < Cmd->pBoundRootSignature->super.table_count; i++)
+    {
+        CGPUParameterTable* pTable = Cmd->pBoundRootSignature->super.tables + i;
+        for (uint32_t j = 0; j < pTable->resources_count; j++)
+        {
+            if (pTable->resources[j].name_hash == hash && 
+                (strcmp(pTable->resources[j].name, set_name) == 0))
+            {
+                set_index = pTable->resources[j].set;
+            }
+        }
+    }
+    if (set_index != UINT32_MAX)
+    {
+        D3D12_GPU_DESCRIPTOR_HANDLE HeapToBind = D3D12Util_DescriptorIdToGpuHandle(Cmd->pBoundHeaps[0], Args->mGpuStartId);
+        COM_CALL(SetGraphicsRootDescriptorTable, Cmd->pDxCmdList, set_index - 1, HeapToBind);
     }
 }
 
@@ -2429,7 +2481,7 @@ void cgpu_render_encoder_bind_pipeline_d3d12(CGPURenderPassEncoderId encoder, CG
 {
     CGPUCommandBuffer_D3D12*  Cmd = (CGPUCommandBuffer_D3D12*)encoder;
     CGPURenderPipeline_D3D12* PPL = (CGPURenderPipeline_D3D12*)pipeline;
-    D3D12Util_ResetRootSignature(Cmd, CGPU_PIPELINE_TYPE_GRAPHICS, PPL->pRootSignature);
+    D3D12Util_ResetRootSignature(Cmd, CGPU_PIPELINE_TYPE_GRAPHICS, (const CGPURootSignature_D3D12*)pipeline->root_signature);
     COM_CALL(IASetPrimitiveTopology, Cmd->pDxCmdList, PPL->mDxPrimitiveTopology);
     COM_CALL(SetPipelineState, Cmd->pDxCmdList, PPL->pDxPipelineState);
 }
@@ -2438,7 +2490,7 @@ void cgpu_render_encoder_push_constants_d3d12(CGPURenderPassEncoderId encoder, C
 {
     CGPUCommandBuffer_D3D12* Cmd = (CGPUCommandBuffer_D3D12*)encoder;
     CGPURootSignature_D3D12* RS  = (CGPURootSignature_D3D12*)rs;
-    D3D12Util_ResetRootSignature(Cmd, CGPU_PIPELINE_TYPE_GRAPHICS, RS->pDxRootSignature);
+    D3D12Util_ResetRootSignature(Cmd, CGPU_PIPELINE_TYPE_GRAPHICS, RS);
     if (RS->super.pipeline_type == CGPU_PIPELINE_TYPE_GRAPHICS)
     {
         COM_CALL(SetGraphicsRoot32BitConstants, Cmd->pDxCmdList, 

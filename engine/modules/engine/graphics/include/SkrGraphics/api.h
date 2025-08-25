@@ -366,6 +366,8 @@ CGPU_API CGPUComputePassEncoderId cgpu_cmd_begin_compute_pass(CGPUCommandBufferI
 typedef CGPUComputePassEncoderId (*CGPUProcCmdBeginComputePass)(CGPUCommandBufferId cmd, const struct CGPUComputePassDescriptor* desc);
 CGPU_API void cgpu_compute_encoder_bind_descriptor_set(CGPUComputePassEncoderId encoder, CGPUDescriptorSetId set);
 typedef void (*CGPUProcComputeEncoderBindDescriptorSet)(CGPUComputePassEncoderId encoder, CGPUDescriptorSetId set);
+CGPU_API void cgpu_compute_encoder_bind_descriptor_buffer(CGPUComputePassEncoderId encoder, CGPUDescriptorBufferId args, const char8_t* set_name);
+typedef void (*CGPUProcComputeEncoderBindDescriptorBuffer)(CGPUComputePassEncoderId encoder, CGPUDescriptorBufferId args, const char8_t* set_name);
 CGPU_API void cgpu_compute_encoder_bind_pipeline(CGPUComputePassEncoderId encoder, CGPUComputePipelineId pipeline);
 typedef void (*CGPUProcComputeEncoderBindPipeline)(CGPUComputePassEncoderId encoder, CGPUComputePipelineId pipeline);
 CGPU_API void cgpu_compute_encoder_dispatch(CGPUComputePassEncoderId encoder, uint32_t X, uint32_t Y, uint32_t Z);
@@ -673,6 +675,7 @@ typedef struct CGPUProcTable {
     // Compute CMDs
     const CGPUProcCmdBeginComputePass cmd_begin_compute_pass;
     const CGPUProcComputeEncoderBindDescriptorSet compute_encoder_bind_descriptor_set;
+    const CGPUProcComputeEncoderBindDescriptorBuffer compute_encoder_bind_descriptor_buffer;
     const CGPUProcComputeEncoderPushConstants compute_encoder_push_constants;
     const CGPUProcComputeEncoderBindPipeline compute_encoder_bind_pipeline;
     const CGPUProcComputeEncoderDispatch compute_encoder_dispatch;

@@ -60,14 +60,15 @@ struct TriangleHit
 {
 public:
 	TriangleHit() = default;
-	TriangleHit(uint32 inst, uint32 prim, float2 bary, float ray_t)
-		: inst(inst), prim(prim), bary(bary), ray_t(ray_t)
+	TriangleHit(uint32 inst, uint32 prim, uint32 geom, float2 bary, float ray_t)
+		: inst(inst), prim(prim), geom(geom), bary(bary), ray_t(ray_t)
 	{
 
 	}
 
 	const uint32 inst = max_uint32;
 	const uint32 prim = max_uint32;
+	const uint32 geom = max_uint32;
 	const float2 bary = float2();
 	const float ray_t = 0.f;
 

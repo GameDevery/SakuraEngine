@@ -8,6 +8,7 @@ RayDesc create_ray(float3 origin, float3 dir, float tmin, float tmax) { RayDesc 
 
 #define ray_query_committed_status(q) (q).CommittedStatus()
 #define ray_query_committed_triangle_bary(q) (q).CommittedTriangleBarycentrics()
+#define ray_query_committed_geometry_index(q) (q).CommittedGeometryIndex()
 #define ray_query_committed_primitive_index(q) (q).CommittedPrimitiveIndex()
 #define ray_query_committed_instance_id(q) (q).CommittedInstanceID()
 #define ray_query_committed_procedual_distance(q) (q).CommittedRayProcedualDistance()
@@ -15,6 +16,7 @@ RayDesc create_ray(float3 origin, float3 dir, float tmin, float tmax) { RayDesc 
 
 #define ray_query_candidate_status(q) ((q).CandidateType() + 1)
 #define ray_query_candidate_triangle_bary(q) (q).CandidateTriangleBarycentrics()
+#define ray_query_candidate_geometry_index(q) (q).CandidateGeometryIndex()
 #define ray_query_candidate_primitive_index(q) (q).CandidatePrimitiveIndex()
 #define ray_query_candidate_instance_id(q) (q).CandidateInstanceID()
 #define ray_query_candidate_procedual_distance(q) (q).CandidateRayProcedualDistance()

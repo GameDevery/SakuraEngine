@@ -1070,6 +1070,7 @@ void AST::DeclareIntrinsics()
     _intrinsics["RAY_QUERY_COMMITTED_STATUS"] = DeclareTemplateFunction(L"ray_query_committed_status", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS"] = DeclareTemplateFunction(L"ray_query_committed_triangle_bary", Float2Type, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_PRIMIVE_INDEX"] = DeclareTemplateFunction(L"ray_query_committed_primitive_index", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_COMMITTED_GEOMETRY_INDEX"] = DeclareTemplateFunction(L"ray_query_committed_geometry_index", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_INSTANCE_ID"] = DeclareTemplateFunction(L"ray_query_committed_instance_id", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_PROCEDURAL_DISTANCE"] = DeclareTemplateFunction(L"ray_query_committed_procedual_distance", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_RAY_T"] = DeclareTemplateFunction(L"ray_query_committed_ray_t", FloatType, RayQueryProceedParams);
@@ -1077,6 +1078,7 @@ void AST::DeclareIntrinsics()
     _intrinsics["RAY_QUERY_CANDIDATE_STATUS"] = DeclareTemplateFunction(L"ray_query_candidate_status", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_CANDIDATE_TRIANGLE_BARYCENTRICS"] = DeclareTemplateFunction(L"ray_query_candidate_triangle_bary", Float2Type, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_CANDIDATE_PRIMIVE_INDEX"] = DeclareTemplateFunction(L"ray_query_candidate_primitive_index", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_CANDIDATE_GEOMETRY_INDEX"] = DeclareTemplateFunction(L"ray_query_candidate_geometry_index", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_CANDIDATE_INSTANCE_ID"] = DeclareTemplateFunction(L"ray_query_candidate_instance_id", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_CANDIDATE_PROCEDURAL_DISTANCE"] = DeclareTemplateFunction(L"ray_query_candidate_procedual_distance", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_CANDIDATE_TRIANGLE_RAY_T"] = DeclareTemplateFunction(L"ray_query_candidate_triangle_ray_t", FloatType, RayQueryProceedParams);
