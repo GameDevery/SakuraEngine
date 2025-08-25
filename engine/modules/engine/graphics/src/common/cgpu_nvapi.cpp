@@ -1,6 +1,6 @@
 #include "SkrGraphics/api.h"
 #ifdef CGPU_USE_D3D12
-    #include <d3d12.h>
+    #include "d3d12-agility/d3d12.h"
     #include <dxgi.h>
 #endif
 #include "SkrGraphics/driver-extensions/cgpu_nvapi.h"
