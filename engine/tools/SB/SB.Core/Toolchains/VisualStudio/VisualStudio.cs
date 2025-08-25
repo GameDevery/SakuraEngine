@@ -6,6 +6,19 @@ using System.Runtime.InteropServices;
 
 namespace SB.Core
 {
+    public enum WindowsSDKStrategy
+    {
+        Default,
+        FindLatest,
+        UserSpecified
+    };
+    
+    public partial class VisualStudio : IToolchain
+    {
+        public static bool UseClangCl = true;
+        public static WindowsSDKStrategy WindowsSDKStrategy = WindowsSDKStrategy.Default;
+    }
+
     [Setup<VisualStudioSetup>]
     public partial class VisualStudio : IToolchain
     {
@@ -19,7 +32,6 @@ namespace SB.Core
             this.TargetArch = TargetArch ?? HostInformation.HostArch;
         }
 
-        public static bool UseClangCl = true;
         public string Name => UseClangCl ? "clang-cl" : "msvc";
         public Version Version => new Version(VSVersion, 0);
         public ICompiler Compiler => UseClangCl ? ClangCLCC! : CLCC!;
