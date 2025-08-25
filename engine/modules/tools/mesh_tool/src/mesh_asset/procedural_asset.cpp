@@ -7,6 +7,7 @@
 #include "SkrMeshTool/mesh_asset.hpp"
 #include "SkrMeshTool/mesh_processing.hpp"
 #include "MeshOpt/meshoptimizer.h"
+#include <SkrRTTR/type_registry.hpp>
 
 #include "SkrProfile/profile.h"
 #include "SkrRTTR/type.hpp"
