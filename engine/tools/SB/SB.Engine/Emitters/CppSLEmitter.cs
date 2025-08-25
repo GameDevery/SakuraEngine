@@ -24,6 +24,9 @@ namespace SB
                 .MergeArguments(FileOptions?.Arguments, true)
                 .CalculateArguments();
             var Arguments = CompilerArgsDict.Values.SelectMany(x => x).Select(x => $"--extra-arg={x}").ToList();
+            // Add OutputDirectory To Arguments
+            var DependArgs = Arguments.ToList();
+            DependArgs.Add($"-I{OutputDirectory}");
             bool Changed = Engine.ShaderCompileDepend.OnChanged(Target.Name, SourceFile, "CPPSL", (Depend depend) =>
             {
                 var _Args = new string[]
@@ -59,7 +62,7 @@ namespace SB
                     .Concat(Directory.GetFiles(OutputDirectory, $"{SourceName}.*.*.metal"))
                     .ToArray();
                 depend.ExternalFiles.AddRange(OutputFiles);
-            }, new string[] { Executable, SourceFile }, Arguments);
+            }, new string[] { Executable, SourceFile }, DependArgs);
 
             if (BuildSystem.TargetOS == OSPlatform.Windows)
             {
