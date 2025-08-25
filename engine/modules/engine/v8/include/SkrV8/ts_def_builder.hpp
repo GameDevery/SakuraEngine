@@ -4,7 +4,7 @@
 
 namespace skr
 {
-struct SKR_V8_NEW_API TSDefBuilder {
+struct SKR_V8_API TSDefBuilder {
     // codegen tools
     inline void $line()
     {

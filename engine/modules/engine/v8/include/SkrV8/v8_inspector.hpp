@@ -2,6 +2,7 @@
 #include "SkrCore/delegate/event.hpp"
 #include "v8-inspector.h"
 #include "hv/WebSocketServer.h"
+#include <SkrV8/v8_fwd.hpp>
 
 namespace skr
 {
@@ -27,9 +28,6 @@ public:
     Event<void(StringView)> on_message_received;
 
 private:
-    // callback
-    // static int _callback_server(struct lws* wsi, enum lws_callback_reasons reason, void* user, void* in, size_t len);
-
     // json response
     void _combine_json_response();
 
@@ -61,6 +59,7 @@ struct SKR_V8_API V8InspectorChannel : v8_inspector::V8Inspector::Channel {
 // inspector client
 struct SKR_V8_API V8InspectorClient : v8_inspector::V8InspectorClient {
     friend struct V8Isolate;
+
 private:
     // init & shutdown
     void init(V8Isolate* isolate);

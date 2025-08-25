@@ -1,7 +1,6 @@
 #pragma once
+#include <SkrV8/v8_fwd.hpp>
 #include <SkrRTTR/script/scriptble_object.hpp>
-#include <SkrRTTR/script/script_binder.hpp>
-#include <SkrRTTR/script/script_tools.hpp>
 #include <SkrRTTR/script/stack_proxy.hpp>
 
 // v8 includes
@@ -11,8 +10,6 @@
 
 namespace skr
 {
-struct V8Isolate;
-
 struct V8MethodMatchResult {
     bool    matched     = false;
     int32_t match_score = 0;
@@ -43,46 +40,6 @@ struct V8Bind {
 
     // enum convert
     static v8::Local<v8::Value> to_v8(EnumValue value);
-
-    // match type
-    static V8MethodMatchResult match(
-        ScriptBinderRoot     binder,
-        v8::Local<v8::Value> v8_value
-    );
-    static V8MethodMatchResult match(
-        const ScriptBinderParam& binder,
-        v8::Local<v8::Value>     v8_value
-    );
-    static V8MethodMatchResult match(
-        const ScriptBinderReturn& binder,
-        v8::Local<v8::Value>      v8_value
-    );
-    static V8MethodMatchResult match(
-        const ScriptBinderField& binder,
-        v8::Local<v8::Value>     v8_value
-    );
-    static V8MethodMatchResult match(
-        const ScriptBinderStaticField& binder,
-        v8::Local<v8::Value>           v8_value
-    );
-    static V8MethodMatchResult match(
-        const Vector<ScriptBinderParam>&               param_binders,
-        uint32_t                                       solved_param_count,
-        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
-    );
-
-    // namespace helper
-    static v8::Local<v8::Value> export_namespace_node(
-        const ScriptNamespaceNode* node,
-        V8Isolate*                 skr_isolate
-    );
-
-private:
-    // match helper
-    static V8MethodMatchResult _match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8::Value> v8_value);
-    static V8MethodMatchResult _match_mapping(const ScriptBinderMapping& binder, v8::Local<v8::Value> v8_value);
-    static V8MethodMatchResult _match_object(const ScriptBinderObject& binder, v8::Local<v8::Value> v8_value);
-    static V8MethodMatchResult _match_value(const ScriptBinderValue& binder, v8::Local<v8::Value> v8_value);
 };
 } // namespace skr
 
