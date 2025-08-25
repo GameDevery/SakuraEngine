@@ -354,7 +354,7 @@ public class VSCodeCommand : CommandBase
         Engine.RunBuild();
 
         // Generate the debug configurations
-        VSCodeDebugEmitter.GenerateDebugConfigurations();
+        VSCodeDebugEmitter.GenerateDebugConfigurations(Toolchain);
         
         Log.Information("VSCode debug configurations generated in: {Path}", Path.GetFullPath(Path.Combine(VSCodeDebugEmitter.WorkspaceRoot, ".vscode")));
     }
