@@ -411,8 +411,6 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
     // Pass 1: GPUScene Data Upload
     {
         const uint64_t ops_size = skr::max(1ull, Lane.dirty_comp_count) * sizeof(Upload);
-        const uint32_t max_threads_per_op = 1024;
-        const uint32_t dispatch_groups = (Lane.dirty_comp_count * max_threads_per_op + 255) / 256;
 
         auto ops_buffer = graph->create_buffer(
             [=](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
@@ -432,7 +430,7 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
                     .read(u8"upload_operations", ops_buffer)
                     .readwrite(u8"target_buffer", frame_ctx.scene_handle);
             },
-            [this, dispatch_groups, ops_size, ops_buffer](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
+            [this, ops_size, ops_buffer](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
                 SkrZoneScopedN("GPUScene::SparseUploadScene");
                 auto& upload_ctx = upload_ctxs.get(ctx.graph);
                 upload_ctx.add_finish.wait(true);
@@ -485,13 +483,10 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
                     struct SparseUploadConstants
                     {
                         uint32_t num_operations;
-                        uint32_t max_threads_per_op;
-                        uint32_t alignment = 16;
-                        uint32_t padding0 = 0;
                     } constants;
                     constants.num_operations = static_cast<uint32_t>(actual_uploads);
-                    constants.max_threads_per_op = max_threads_per_op;
 
+                    const uint32_t dispatch_groups = (constants.num_operations + 255u) / 256u;
                     cgpu_compute_encoder_push_constants(ctx.encoder, sparse_upload_root_signature, u8"constants", &constants);
                     cgpu_compute_encoder_dispatch(ctx.encoder, dispatch_groups, 1, 1);
                 }

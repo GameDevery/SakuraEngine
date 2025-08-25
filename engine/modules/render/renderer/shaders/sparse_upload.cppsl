@@ -18,9 +18,6 @@ RWByteAddressBuffer target_buffer;   // Target buffer (Core Data)
 struct SparseUploadConstants
 {
     uint num_operations;     // Number of operations
-    uint max_threads_per_op; // Max threads per operation
-    uint alignment;          // Memory alignment requirement (16 bytes)
-    uint padding0;           // Struct alignment
 };
 
 [[push_constant]]
@@ -30,63 +27,53 @@ ConstantBuffer<SparseUploadConstants> constants;
 [[compute_shader("sparse_upload"), kernel_1d(256), dump]]
 void sparse_upload_main([[sv_thread_id]] uint3 thread_id)
 {
-    uint global_thread_id = thread_id.x;
-
-    // Calculate operation index and local thread ID
-    uint operation_index = global_thread_id / constants.max_threads_per_op;
-    uint local_thread_id = global_thread_id % constants.max_threads_per_op;
-
-    // Boundary check
+    uint operation_index = thread_id.x;
     if (operation_index >= constants.num_operations)
     {
         return;
     }
 
-    // Load the operation
+    // Load the operation handled by this thread
     Upload op = upload_operations.Load<Upload>(operation_index * sizeof(Upload));
 
-    // Calculate 16-byte chunks for this operation
-    uint total_chunks = (op.data_size + 15) / 16;
+    uint src = op.src_offset;
+    uint dst = op.dst_offset;
+    uint remaining = op.data_size;
 
-    // Each thread processes one 16-byte chunk
-    if (local_thread_id >= total_chunks)
+    // Copy 16-byte blocks
+    while (remaining >= 16)
     {
-        return; // Thread has no work
+        uint4 v16 = upload_buffer.Load4(src);
+        target_buffer.Store4(dst, v16);
+        src += 16; dst += 16; remaining -= 16;
     }
 
-    // Calculate offsets for this thread's chunk
-    uint chunk_offset = local_thread_id * 16;
-    uint src_offset = op.src_offset + chunk_offset;
-    uint dst_offset = op.dst_offset + chunk_offset;
-    uint remaining_bytes = min(16u, op.data_size - chunk_offset);
+    // Copy 8-byte block if present
+    if (remaining >= 8)
+    {
+        uint2 v8 = upload_buffer.Load2(src);
+        target_buffer.Store2(dst, v8);
+        src += 8; dst += 8; remaining -= 8;
+    }
 
-    // Copy data in one optimized block per thread
-    if (remaining_bytes >= 16)
+    // Copy 4-byte block if present
+    if (remaining >= 4)
     {
-        // Full 16-byte chunk
-        uint4 data = upload_buffer.Load4(src_offset);
-        target_buffer.Store4(dst_offset, data);
+        uint v4 = upload_buffer.Load(src);
+        target_buffer.Store(dst, v4);
+        src += 4; dst += 4; remaining -= 4;
     }
-    else if (remaining_bytes >= 8)
+
+    // Copy tail 1..3 bytes if present, via read-modify-write on destination word
+    if (remaining > 0)
     {
-        // 8-12 byte chunk
-        uint2 data = upload_buffer.Load2(src_offset);
-        target_buffer.Store2(dst_offset, data);
-        if (remaining_bytes >= 12)
-        {
-            uint extra = upload_buffer.Load(src_offset + 8);
-            target_buffer.Store(dst_offset + 8, extra);
-        }
-    }
-    else if (remaining_bytes >= 4)
-    {
-        // 4-7 byte chunk
-        uint data = upload_buffer.Load(src_offset);
-        target_buffer.Store(dst_offset, data);
-        if (remaining_bytes >= 8)
-        {
-            uint extra = upload_buffer.Load(src_offset + 4);
-            target_buffer.Store(dst_offset + 4, extra);
-        }
+        // Read source and destination 32-bit words (assumes 4-byte alignment of offsets)
+        uint src_word = upload_buffer.Load(src);
+        uint dst_word = target_buffer.Load(dst);
+
+        // Create mask for lower 'remaining' bytes
+        uint mask = (remaining == 1) ? 0x000000FFu : (remaining == 2) ? 0x0000FFFFu : 0x00FFFFFFu;
+        uint new_word = (dst_word & ~mask) | (src_word & mask);
+        target_buffer.Store(dst, new_word);
     }
 }
