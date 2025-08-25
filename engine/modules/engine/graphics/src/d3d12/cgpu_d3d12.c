@@ -5,12 +5,6 @@
 #include "../common/common_utils.h"
 #include "d3d12_utils.h"
 
-#if !defined(XBOX)
-    #pragma comment(lib, "d3d12.lib")
-    #pragma comment(lib, "dxgi.lib")
-    #pragma comment(lib, "dxguid.lib")
-#endif
-
 inline static D3D12_QUERY_TYPE D3D12Util_ToD3D12QueryType(ECGPUQueryType type);
 inline static D3D12_QUERY_HEAP_TYPE D3D12Util_ToD3D12QueryHeapType(ECGPUQueryType type);
 

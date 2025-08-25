@@ -12,7 +12,7 @@
 #pragma once
 
 #include <unknwn.h>
-#include <d3d12.h>
+#include "d3d12-agility/d3d12.h"
 #include "dstorageerr.h"
 
 #define DSTORAGE_SDK_VERSION 203

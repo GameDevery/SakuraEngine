@@ -6,6 +6,9 @@ public static class NvAftermath
 {
     static NvAftermath()
     {
+        if (BuildSystem.TargetOS != OSPlatform.Windows)
+            return;
+
         // TODO: WE NEED TO ENABLE SETUP IN PACKAGE SCOPE
         BuildSystem.AddSetup<NvAftermathSetup>();
 

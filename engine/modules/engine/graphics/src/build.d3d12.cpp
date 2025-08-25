@@ -5,6 +5,12 @@
     #endif
 #endif
 
+#if !defined(XBOX)
+    #pragma comment(lib, "d3d12.lib")
+    #pragma comment(lib, "dxgi.lib")
+    #pragma comment(lib, "dxguid.lib")
+#endif
+
 #ifdef CGPU_USE_D3D12
     #include <comdef.h>
     #include "d3d12/d3d12_utils.cpp"
