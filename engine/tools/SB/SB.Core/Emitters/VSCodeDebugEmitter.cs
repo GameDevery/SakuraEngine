@@ -239,10 +239,10 @@ namespace SB
             return null;
         }
 
-        public static void GenerateDebugConfigurations()
+        public static void GenerateDebugConfigurations(IToolchain toolchain)
         {
             GenerateLaunchJson();
-            GenerateTasksJson();
+            GenerateTasksJson(toolchain);
         }
 
         private DebugConfigurationBase CreateDebugConfiguration(Target target, string buildType)
@@ -310,7 +310,7 @@ namespace SB
             Log.Information($"Generated VSCode launch.json with {launchJson.Configurations.Count} configurations");
         }
 
-        private static void GenerateTasksJson()
+        private static void GenerateTasksJson(IToolchain toolchain)
         {
             var path = Path.Combine(WorkspaceRoot, VSCodeDirectory, "tasks.json");
             var tasksJson = LoadOrCreateTasksJson(path);
@@ -350,7 +350,7 @@ namespace SB
                     }
 
                     // Create the build task
-                    var buildTask = CreateBuildTask(targetName, buildType, config.PreLaunchTask!);
+                    var buildTask = CreateBuildTask(targetName, buildType, config.PreLaunchTask!, toolchain.Name);
                     if (dependencies.Count > 0)
                     {
                         buildTask.DependsOn = dependencies;
@@ -377,11 +377,11 @@ namespace SB
             _ => "RelWithDebInfo"
         };
 
-        private static TaskConfiguration CreateBuildTask(string targetName, string buildType, string label) => new()
+        private static TaskConfiguration CreateBuildTask(string targetName, string buildType, string label, string toolchain) => new()
         {
             Label = label,
             Command = "dotnet",
-            Args = new List<string> { "run", "SB", "--", "build", "--target", targetName, "--mode", buildType.ToLower() },
+            Args = new List<string> { "run", "SB", "--", "build", "--target", targetName, "--mode", buildType.ToLower(), "--toolchain", toolchain },
             Group = new TaskGroup { Kind = "build", IsDefault = buildType == "Debug" }
         };
 
