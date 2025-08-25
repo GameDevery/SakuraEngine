@@ -123,6 +123,10 @@ String HLSLGenerator::GetTypeName(const TypeDecl* type)
     }
     else if (auto array = dynamic_cast<const ArrayTypeDecl*>(type))
     {
+        if (array->element_type()->is_resource() && (array->count() == 0))
+        {
+            return std::format(L"Bindless<{}>", GetQualifiedTypeName(array->element_type()));
+        }
         return std::format(L"array<{}, {}>", GetQualifiedTypeName(array->element_type()), array->count());
     }
     else if (auto cbuffer = dynamic_cast<const ConstantBufferTypeDecl*>(type))
@@ -178,7 +182,11 @@ void HLSLGenerator::VisitAccessExpr(SourceBuilderNew& sb, const AccessExpr* expr
         sb.append(L".data");
 
     sb.append(L"[");
+    if (asBdlsResource)
+        sb.append(L"NonUniformResourceIndex(");
     visitStmt(sb, index);
+    if (asBdlsResource)
+        sb.append(L")");
     sb.append(L"]");
 }
 

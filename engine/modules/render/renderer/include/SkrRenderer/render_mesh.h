@@ -19,6 +19,7 @@ struct RenderMesh
     };
     MeshResource* mesh_resource;
     skr::Vector<CGPUBufferId> buffers;
+    skr::Vector<uint32_t> buffer_ids;
     skr::Vector<skr_vertex_buffer_view_t> vertex_buffer_views;
     skr::Vector<skr_index_buffer_view_t> index_buffer_views;
     skr::Vector<PrimitiveCommand> primitive_commands;

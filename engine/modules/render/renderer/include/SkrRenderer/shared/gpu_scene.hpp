@@ -25,10 +25,30 @@ GPUSceneInstanceEmission
     data_layout::float4 color;
 };
 
+struct BufferEntry
+{
+    skr::data_layout::uint32 buffer = ~0;
+    skr::data_layout::uint32 offset = ~0;
+};
+
+sreflect_managed_component(guid = "a434196c-7a99-4dee-8715-e422124288e2")
+GPUSceneGeometryBuffers
+{
+    struct Group
+    {
+        BufferEntry index;
+        BufferEntry pos;
+        BufferEntry uv;
+        BufferEntry normal;
+        BufferEntry tangent;
+    } entries[16];
+};
+
 using DefaultGPUSceneLayout = PagedLayout<16384, // 16K instances per page
     GPUSceneObjectToWorld,
     GPUSceneInstanceColor,
-    GPUSceneInstanceEmission
+    GPUSceneInstanceEmission,
+    GPUSceneGeometryBuffers
 >;
 
 } // namespace skr

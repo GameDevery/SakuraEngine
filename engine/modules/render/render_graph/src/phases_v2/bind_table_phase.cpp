@@ -127,27 +127,29 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
     {
         auto& read_edge = buf_read_edges[e_idx];
         
-        const auto& resource = *find_shader_resource(read_edge->get_name(), read_edge->name_hash, root_sig);
-        bind_table_keys.append(read_edge->get_name() ? read_edge->get_name() : resource.name);
-        bind_table_keys.append(u8";");
-        bindTableValueNames.emplace(resource.name);
-        
-        auto buffer_readed = read_edge->get_buffer_node();
-        CGPUDescriptorData update = {};
-        update.count = 1;
-        update.by_name.name = resource.name;
+        if (const auto resource = find_shader_resource(read_edge->get_name(), read_edge->name_hash, root_sig))
+        {
+            bind_table_keys.append(read_edge->get_name() ? read_edge->get_name() : resource->name);
+            bind_table_keys.append(u8";");
+            bindTableValueNames.emplace(resource->name);
+            
+            auto buffer_readed = read_edge->get_buffer_node();
+            CGPUDescriptorData update = {};
+            update.count = 1;
+            update.by_name.name = resource->name;
 
-        CGPUBufferViewDescriptor view_desc = {};
-        view_desc.buffer = resource_allocation_phase_.get_resource(buffer_readed);
-        view_desc.view_usages = resource.view_usages;
-        view_desc.offset = read_edge->get_handle().from;
-        view_desc.size = std::min(buffer_readed->get_desc().size, read_edge->get_handle().to) - read_edge->get_handle().from;
-        view_desc.structure.element_stride = buffer_readed->get_view_desc().structure.element_stride;
-        buf_reads[e_idx] = graph->get_buffer_view_pool().allocate(view_desc, graph->get_frame_index());
-        update.buffers = &buf_reads[e_idx];
-        desc_set_updates.emplace(update);
-        
-        buffer_count++;
+            CGPUBufferViewDescriptor view_desc = {};
+            view_desc.buffer = resource_allocation_phase_.get_resource(buffer_readed);
+            view_desc.view_usages = resource->view_usages;
+            view_desc.offset = read_edge->get_handle().from;
+            view_desc.size = std::min(buffer_readed->get_desc().size, read_edge->get_handle().to) - read_edge->get_handle().from;
+            view_desc.structure.element_stride = buffer_readed->get_view_desc().structure.element_stride;
+            buf_reads[e_idx] = graph->get_buffer_view_pool().allocate(view_desc, graph->get_frame_index());
+            update.buffers = &buf_reads[e_idx];
+            desc_set_updates.emplace(update);
+            
+            buffer_count++;
+        }
     }
     
     auto buf_write_edges = pass->buf_readwrite_edges();

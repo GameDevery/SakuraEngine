@@ -1,6 +1,6 @@
 #pragma once
-#include "SkrBase/config.h"
 #include "SkrBase/meta.h"
+#include "SkrGraphics/api.h"
 #include "SkrCore/blob.hpp"
 #include "SkrContainers/string.hpp"
 #include "SkrContainers/vector.hpp"
@@ -32,6 +32,7 @@ VertexBufferEntry
     EVertexAttribute attribute;
     uint32_t attribute_index;
     uint32_t buffer_index;
+    uint32_t vertex_count;
     uint32_t stride;
     uint32_t offset;
 };
@@ -108,6 +109,8 @@ struct SKR_RENDERER_API MeshFactory : public ResourceFactory
         skr_io_vram_service_t* vram_service = nullptr;
         SRenderDeviceId render_device = nullptr;
     };
+    
+    virtual CGPUDescriptorBufferId descriptor_buffer() = 0;
 
     float AsyncSerdeLoadFactor() override { return 2.5f; }
     [[nodiscard]] static MeshFactory* Create(const Root& root);
