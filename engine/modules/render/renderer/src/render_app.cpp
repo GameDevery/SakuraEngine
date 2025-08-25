@@ -228,7 +228,7 @@ void RenderApp::SwapchainManager::recreate_swapchain(skr::SystemWindow* window)
     chain_desc.width = phys_size.x;
     chain_desc.height = phys_size.y;
     chain_desc.image_count = 3;
-    chain_desc.enable_vsync = false;
+    chain_desc.enable_vsync = true;
     chain_desc.format = _app._backbuffer_format;
     auto swapchain = cgpu_create_swapchain(cgpu_device, &chain_desc);
     _swapchains.add(window, SwapChain{ ._surface = surface, ._swapchain = swapchain, ._semaphore = cgpu_create_semaphore(cgpu_device), ._size = phys_size, ._current_index = 0 });

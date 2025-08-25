@@ -250,8 +250,8 @@ void create_render_pipeline()
     // Shaders
     uint32_t *vs_bytes, vs_length;
     uint32_t *fs_bytes, fs_length;
-    read_shader_bytes("cgpu-texture/texture_cast.vs", &vs_bytes, &vs_length, App.backend);
-    read_shader_bytes("cgpu-texture/texture_cast.fs", &fs_bytes, &fs_length, App.backend);
+    read_shader_bytes("cgpu-texture/texture_card.vs", &vs_bytes, &vs_length, App.backend);
+    read_shader_bytes("cgpu-texture/texture_card.fs", &fs_bytes, &fs_length, App.backend);
     CGPUShaderLibraryDescriptor vs_desc = {
         .name = "VertexShaderLibrary",
         .code = vs_bytes,

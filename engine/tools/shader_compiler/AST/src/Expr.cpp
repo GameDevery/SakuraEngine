@@ -8,16 +8,16 @@ inline static const skr::CppSL::TypeDecl* GetElementType(const TypeDecl* type)
 {
     if (auto array_type = dynamic_cast<const ArrayTypeDecl*>(type))
     {
-        return array_type->element();
+        return array_type->element_type();
     }
     else if (auto vector_type = dynamic_cast<const VectorTypeDecl*>(type))
     {
-        return vector_type->element();
+        return vector_type->element_type();
     }
     else if (auto matrix_type = dynamic_cast<const MatrixTypeDecl*>(type))
     {
         const auto n = matrix_type->columns();
-        const auto element = matrix_type->element();
+        const auto element = matrix_type->element_type();
         return const_cast<AST&>(type->ast()).VectorType(element, n);
     }
     return nullptr;

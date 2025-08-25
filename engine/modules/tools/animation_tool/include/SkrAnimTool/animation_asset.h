@@ -1,4 +1,5 @@
 #pragma once
+#include "SkrContainers/vector.hpp" // IWYU pragma: keep
 #include "SkrAnim/resources/skeleton_resource.hpp"
 #include "SkrToolCore/cook_system/importer.hpp"
 #include "SkrToolCore/cook_system/cooker.hpp"

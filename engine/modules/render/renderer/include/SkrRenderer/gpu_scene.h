@@ -1,13 +1,12 @@
 #pragma once
 #include "SkrContainersDef/map.hpp"
-#include "SkrGraphics/api.h"
 #include "SkrGraphics/raytracing.h"
 #include "SkrRT/ecs/world.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderGraph/frame_resource.hpp"
-#include "SkrRenderer/fwd_types.h"
 #include "SkrRenderer/render_device.h"
-#include "SkrRenderer/allocators/soa_segment.hpp"
+#include "SkrRenderer/graphics/soa_segment.hpp"
+#include "SkrRenderer/graphics/tlas_manager.hpp"
 #include "SkrRenderer/shared/soa_layout.hpp"
 #ifndef __meta__
     #include "SkrRenderer/gpu_scene.generated.h" // IWYU pragma: export
@@ -64,7 +63,7 @@ struct GPUSceneConfig
     };
     
     skr::ecs::World* world = nullptr;
-    skr::RendererDevice* render_device = nullptr;
+    skr::RenderDevice* render_device = nullptr;
     skr::Vector<ComponentInfo> components;  // 保留组件映射信息
     float resize_growth_factor = 1.5f;
 };
@@ -77,7 +76,7 @@ public:
         config_.world = w;
         return *this;
     }
-    GPUSceneBuilder& with_device(skr::RendererDevice* d)
+    GPUSceneBuilder& with_device(skr::RenderDevice* d)
     {
         config_.render_device = d;
         // 重新构造 soa_builder_ 以设置正确的 device
@@ -119,11 +118,13 @@ public:
     const GPUSceneComponentType* GetComponentType(SOAIndex local_id) const;
 
     inline skr::ecs::World* GetECSWorld() const { return ecs_world; }
-    inline skr::render_graph::BufferHandle GetSceneBuffer() const { return scene_buffer; }
+    inline skr::render_graph::BufferHandle GetSceneBuffer(skr::render_graph::RenderGraph* graph) const 
+    {
+        return frame_ctxs.get(graph).scene_handle;
+    }
     skr::render_graph::AccelerationStructureHandle GetTLAS(skr::render_graph::RenderGraph* graph) const 
     { 
-        // Return the current frame's TLAS handle
-        return tlas_ctx.get(graph).tlas_handle;
+        return frame_ctxs.get(graph).tlas_handle;
     }
     inline uint32_t GetInstanceCount() const { return instance_count; }
 
@@ -140,7 +141,7 @@ private:
     };
     void CreateSparseUploadPipeline(CGPUDeviceId device);
     void PrepareUploadBuffer(skr::render_graph::RenderGraph* graph);
-    void DispatchSparseUpload(skr::render_graph::RenderGraph* graph, skr::Vector<Upload>&& core_uploads);
+    void DispatchSparseUpload(skr::render_graph::RenderGraph* graph);
 
     friend struct GPUSceneInstanceTask;
     friend struct AddEntityToGPUScene;
@@ -149,44 +150,15 @@ private:
 
     GPUSceneConfig config;
     skr::ecs::World* ecs_world = nullptr;
-    skr::RendererDevice* render_device = nullptr;
+    skr::RenderDevice* render_device = nullptr;
 
     // TLAS
+    std::atomic_bool tlas_dirty = false;
     skr::ConcurrentQueue<CGPUAccelerationStructureId> dirty_blases;
     skr::Vector<CGPUAccelerationStructureInstanceDesc> tlas_instances;
     
-    // TLAS with FrameResource for automatic lifecycle management
-    struct TLASContext
-    {
-        CGPUAccelerationStructureId tlas = nullptr;
-        skr::render_graph::AccelerationStructureHandle tlas_handle;
-        uint32_t instance_count = 0; // Track instance count for this TLAS
-        
-        // Single TLAS to discard when this frame comes around again
-        CGPUAccelerationStructureId tlas_to_discard = nullptr;
-        
-        ~TLASContext()
-        {
-            // Cleanup any remaining TLAS when context is destroyed
-            if (tlas_to_discard) cgpu_free_acceleration_structure(tlas_to_discard);
-            if (tlas) cgpu_free_acceleration_structure(tlas);
-        }
-    };
-    skr::render_graph::FrameResource<TLASContext> tlas_ctx;
-    
-    // Buffer with FrameResource for deferred destruction
-    struct BufferContext
-    {
-        // Single buffer to discard when this frame comes around again
-        CGPUBufferId buffer_to_discard = nullptr;
-        
-        ~BufferContext()
-        {
-            // Cleanup any remaining buffer when context is destroyed
-            if (buffer_to_discard) cgpu_free_buffer(buffer_to_discard);
-        }
-    };
-    skr::render_graph::FrameResource<BufferContext> buffer_ctx;
+    // TLAS with for automatic lifecycle management
+    TLASManager* tlas_manager = nullptr;
 
     // type registry
     skr::Map<CPUTypeID, SOAIndex> type_registry;
@@ -201,7 +173,6 @@ private:
 
     // core data 的 graph handle
     SOASegmentBuffer soa_segments;
-    skr::render_graph::BufferHandle scene_buffer; 
 
 private:
     static constexpr uint32_t kLaneCount = 2;
@@ -219,7 +190,7 @@ private:
         std::atomic<uint64_t> dirty_comp_count = 0;
         
         skr::Map<skr::ecs::Entity, skr::InlineVector<CPUTypeID, 4>> dirties;
-        uint64_t dirty_buffer_size;
+        uint64_t dirty_buffer_size = 0;
     } lanes[kLaneCount];
     std::atomic_uint32_t front_lane = 0;
 
@@ -233,9 +204,39 @@ private:
         CGPUBufferId upload_buffer = nullptr;
         skr::Vector<Upload> soa_segments_uploads; 
         skr::Vector<uint8_t> DRAMCache;
-        std::atomic<uint64_t> upload_cursor = 0; // upload_buffer 中的当前写入位置
+        std::atomic_uint32_t upload_counter = 0;
+        std::atomic<uint64_t> upload_cursor = 0;
+        skr::task::event_t add_finish = skr::task::event_t(true);
+        skr::task::event_t scan_finish = skr::task::event_t(true);
     };
-    skr::render_graph::FrameResource<UploadContext> upload_ctx;
+    skr::render_graph::FrameResource<UploadContext> upload_ctxs;
+
+    // Buffer with FrameResource for deferred destruction
+    struct FrameContext
+    {
+        FrameContext() = default;
+
+        // Delete copies.
+        FrameContext(FrameContext const&) = delete;
+        FrameContext& operator=(FrameContext const&) = delete;
+
+        // Single buffer to discard when this frame comes around again
+        CGPUBufferId buffer_to_discard = nullptr;
+        TLASHandle frame_tlas;
+        skr::render_graph::AccelerationStructureHandle tlas_handle;
+        skr::render_graph::BufferHandle scene_handle; 
+        
+        ~FrameContext()
+        {
+            // Cleanup any remaining buffer when context is destroyed
+            if (buffer_to_discard) 
+            {
+                cgpu_free_buffer(buffer_to_discard);
+                buffer_to_discard = nullptr;
+            }
+        }
+    };
+    skr::render_graph::FrameResource<FrameContext> frame_ctxs;
 
     // SparseUpload compute pipeline resources
     CGPUShaderLibraryId sparse_upload_shader = nullptr;

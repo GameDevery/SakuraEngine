@@ -2,13 +2,13 @@
 #include "./../attributes.hpp"
 #include "./../type_traits.hpp"
 #include "./../types/vec.hpp"
-#include "./../types/matrix.hpp"
+#include "./../numeric/constants.hpp"
 
 namespace skr::shader {
 
 template<concepts::arithmetic T, concepts::arithmetic U>
 	requires(sizeof(T) == sizeof(U))
-[[expr("bit_cast")]] extern T bit_cast(U v);
+[[callop("BIT_CAST")]] extern T bit_cast(U v);
 
 template<concepts::bool_family T>
 [[callop("ALL")]] extern bool all(const T& x);
@@ -136,7 +136,7 @@ template<concepts::float_family T>
 template<concepts::float_family T>
 [[callop("LOG10")]] extern T log10(const T& v);
 
-template<concepts::float_family T, concepts::float_family B>
+template<concepts::arithmetic T, concepts::arithmetic B>
 	requires(same_dim_v<T, B> || is_scalar_v<B>)
 [[callop("POW")]] extern T pow(const T& base, const B& rate);
 
@@ -213,16 +213,56 @@ template<concepts::float_vec_family T>
 [[callop("NORMALIZE")]] extern T normalize(const T& v);
 
 template<concepts::arithmetic_vec T>
-[[callop("REDUCE_SUM")]] extern scalar_type<T> reduce_sum(const T& v);
+scalar_type<T> reduce_sum(const T& v)
+{
+	if constexpr (vec_dim_v<T> == 1)
+		return v;
+	else if constexpr (vec_dim_v<T> == 2)
+		return v.x + v.y;
+	else if constexpr (vec_dim_v<T> == 3)
+		return v.x + v.y + v.z;
+	else if constexpr (vec_dim_v<T> == 4)
+		return v.x + v.y + v.z + v.w;
+}
 
 template<concepts::arithmetic_vec T>
-[[callop("REDUCE_PRODUCT")]] extern scalar_type<T> reduce_product(const T& v);
+scalar_type<T> reduce_product(const T& v)
+{
+	if constexpr (vec_dim_v<T> == 1)
+		return v.x;
+	else if constexpr (vec_dim_v<T> == 2)
+		return v.x * v.y;
+	else if constexpr (vec_dim_v<T> == 3)
+		return v.x * v.y * v.z;
+	else if constexpr (vec_dim_v<T> == 4)
+		return v.x * v.y * v.z * v.w;
+}
 
 template<concepts::arithmetic_vec T>
-[[callop("REDUCE_MIN")]] extern scalar_type<T> reduce_min(const T& v);
+scalar_type<T> reduce_min(const T& v)
+{
+	if constexpr (vec_dim_v<T> == 1)
+		return v.x;
+	else if constexpr (vec_dim_v<T> == 2)
+		return min(v.x, v.y);
+	else if constexpr (vec_dim_v<T> == 3)
+		return min(min(v.x, v.y), v.z);
+	else if constexpr (vec_dim_v<T> == 4)
+		return min(min(min(v.x, v.y), v.z), v.w);
+}
 
 template<concepts::arithmetic_vec T>
-[[callop("REDUCE_MAX")]] extern scalar_type<T> reduce_max(const T& v);
+scalar_type<T> reduce_max(const T& v)
+{
+	if constexpr (vec_dim_v<T> == 1)
+		return v.x;
+	else if constexpr (vec_dim_v<T> == 2)
+		return max(v.x, v.y);
+	else if constexpr (vec_dim_v<T> == 3)
+		return max(max(v.x, v.y), v.z);
+	else if constexpr (vec_dim_v<T> == 4)
+		return max(max(max(v.x, v.y), v.z), v.w);
+}
 
 template<concepts::matrix T>
 [[callop("DETERMINANT")]] extern T determinant(const T& v);

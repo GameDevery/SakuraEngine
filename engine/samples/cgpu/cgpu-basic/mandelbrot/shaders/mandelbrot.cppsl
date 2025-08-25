@@ -1,5 +1,4 @@
 #include <std/std.hpp>
-#include <std2/attributes.hpp>
 
 using namespace skr::shader;
 

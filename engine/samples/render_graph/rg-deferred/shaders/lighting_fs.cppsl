@@ -1,6 +1,4 @@
 #include <std/std.hpp>
-#include <std2/constant_buffer.hpp>
-#include <std2/sampler.hpp>
 
 using namespace skr::shader;
 
@@ -18,29 +16,22 @@ struct RootConstants
 [[push_constant]]
 ConstantBuffer<RootConstants> push_constants;
 
-[[binding(0, 0)]]
-Texture2D<float> gbuffer_color;
-
-[[binding(1, 0)]]
-Texture2D<float> gbuffer_normal;
-
-[[binding(2, 0)]]
-Texture2D<float> gbuffer_depth;
-
-[[binding(0, 1)]]
-extern Sampler& texture_sampler;
+[[group(0)]] Texture2D<float> gbuffer_color;
+[[group(0)]] Texture2D<float> gbuffer_normal;
+[[group(0)]] Texture2D<float> gbuffer_depth;
+[[group(1)]] SamplerState texture_sampler;
 
 [[fragment_shader("fs")]]
 void fs(VSOut psIn, [[sv_render_target(0)]] float4 out_color)
 {
     float2 uv = psIn.uv;
-    if (push_constants.bFlipUVX) 
+    if (push_constants.bFlipUVX)
         uv.x = 1 - uv.x;
-    if (push_constants.bFlipUVY) 
+    if (push_constants.bFlipUVY)
         uv.y = 1 - uv.y;
-    
-    float4 gbufferColor = texture_sampler.Sample(gbuffer_color, uv);
-    float4 gbufferNormal = texture_sampler.Sample(gbuffer_normal, uv);
+
+    float4 gbufferColor = gbuffer_color.Sample(texture_sampler, uv);
+    float4 gbufferNormal = gbuffer_normal.Sample(texture_sampler, uv);
     out_color = gbufferColor * 0.5f + abs(gbufferNormal) * 0.5f;
-    out_color *= texture_sampler.Sample(gbuffer_depth, uv).rrrr;
+    out_color *= gbuffer_depth.Sample(texture_sampler, uv).rrrr;
 }

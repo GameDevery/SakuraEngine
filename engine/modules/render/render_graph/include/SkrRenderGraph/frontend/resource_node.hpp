@@ -5,11 +5,15 @@ namespace skr
 {
 namespace render_graph
 {
+
+struct RenderGraphStateTracker;
+
 class ResourceNode : public RenderGraphNode
 {
 public:
     friend class RenderGraph;
-    ResourceNode(EObjectType type) SKR_NOEXCEPT;
+    friend class BarrierGenerationPhase;
+    ResourceNode(EObjectType type, uint64_t frame_index) SKR_NOEXCEPT;
     virtual ~ResourceNode() SKR_NOEXCEPT = default;
     struct LifeSpan {
         uint32_t from;
@@ -24,8 +28,10 @@ public:
 protected:
     bool imported = false;
     bool canbe_lone = false;
+    const uint64_t frame_index;
     uint32_t tags = kRenderGraphInvalidResourceTag;
     mutable ECGPUResourceState init_state = CGPU_RESOURCE_STATE_UNDEFINED;
+    skr::InlineVector<RenderGraphStateTracker*, 1> trackers; 
 };
 
 class TextureNode : public ResourceNode
@@ -34,14 +40,14 @@ public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
 
-    TextureNode() SKR_NOEXCEPT;
+    TextureNode(uint64_t frame_index) SKR_NOEXCEPT;
     inline bool reimport(CGPUTextureId texture)
     {
         if (!imported) return false;
         imported_texture = texture;
         return true;
     }
-    inline const TextureHandle get_handle() const SKR_NOEXCEPT { return TextureHandle(get_id()); }
+    inline const TextureHandle get_handle() const SKR_NOEXCEPT { return TextureHandle(get_id(), frame_index); }
     inline const CGPUTextureDescriptor& get_desc() const SKR_NOEXCEPT { return descriptor; }
     inline const uint64_t get_size() const SKR_NOEXCEPT
     {
@@ -74,7 +80,7 @@ public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
 
-    BufferNode() SKR_NOEXCEPT;
+    BufferNode(uint64_t frame_index) SKR_NOEXCEPT;
 
     inline bool reimport(CGPUBufferId buffer)
     {
@@ -82,7 +88,7 @@ public:
         imported_buffer = buffer;
         return true;
     }
-    inline const BufferHandle get_handle() const SKR_NOEXCEPT { return BufferHandle(get_id()); }
+    inline const BufferHandle get_handle() const SKR_NOEXCEPT { return BufferHandle(get_id(), frame_index); }
     inline const CGPUBufferDescriptor& get_desc() const SKR_NOEXCEPT { return descriptor; }
     inline const CGPUBufferViewDescriptor& get_view_desc() const SKR_NOEXCEPT { return view_desc; }
     EObjectType get_type() const SKR_NOEXCEPT override;
@@ -108,7 +114,7 @@ public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
 
-    AccelerationStructureNode() SKR_NOEXCEPT;
+    AccelerationStructureNode(uint64_t frame_index) SKR_NOEXCEPT;
 
     inline bool reimport(CGPUAccelerationStructureId acceleration_structure)
     {
@@ -116,7 +122,7 @@ public:
         imported_as = acceleration_structure;
         return true;
     }
-    inline const AccelerationStructureHandle get_handle() const SKR_NOEXCEPT { return AccelerationStructureHandle(get_id()); }
+    inline const AccelerationStructureHandle get_handle() const SKR_NOEXCEPT { return AccelerationStructureHandle(get_id(), frame_index); }
     EObjectType get_type() const SKR_NOEXCEPT override;
     CGPUAccelerationStructureId get_imported() const SKR_NOEXCEPT
     {

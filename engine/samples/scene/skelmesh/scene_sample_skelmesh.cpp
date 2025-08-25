@@ -30,15 +30,14 @@
 #include "SkrMeshCore/mesh_processing.hpp"
 #include "SkrToolCore/project/project.hpp"
 #include "SkrToolCore/cook_system/cook_system.hpp"
-#include "SkrGLTFTool/mesh_asset.hpp"
+#include "SkrMeshTool/mesh_asset.hpp"
 
 #include "SkrScene/actor.h"
 
 #include "SkrSceneCore/transform_system.h"
 
 #include "scene_renderer.hpp"
-// #include "scene_render_system.h"
-#include "anim_render_system.h"
+#include "scene_render_system.h"
 
 #include "helper.hpp"
 
@@ -60,6 +59,8 @@ const auto MeshAssetID = u8"01988203-c467-72ef-916b-c8a5db2ec18d"_guid;
 const auto SkelAssetID = u8"0198a7d5-6819-76e2-88c3-fad2f6c3d5d5"_guid;
 const auto AnimAssetID = u8"0198a890-b5f8-750e-8e4d-cb200eb53b0e"_guid;
 const auto SkinAssetID = u8"0198ab86-af53-72bd-be58-ef888ea9c023"_guid;
+const auto FloorAssetID = u8"0198d4c8-0e0b-7048-a51d-6e6c4d6df083"_guid;
+const auto BuiltinMeshID = u8"0198cfc4-9bfd-77fd-a9a0-553938b10314"_guid;
 
 // The Three-Triangle Example: simple mesh scene hierarchy
 struct SceneSampleSkelMeshModule : public skr::IDynamicModule
@@ -88,6 +89,7 @@ struct SceneSampleSkelMeshModule : public skr::IDynamicModule
     skr::SceneRenderer* scene_renderer = nullptr;
 
     skr::String gltf_path = u8"";
+    skr::String animation_name = u8"";
     skr::LocalResourceRegistry* registry = nullptr;
 
     skr::MeshFactory* mesh_factory = nullptr;
@@ -98,8 +100,7 @@ struct SceneSampleSkelMeshModule : public skr::IDynamicModule
     skd::SProject project;
     skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
     skr::TransformSystem* transform_system = nullptr;
-    // skr::scene::SceneRenderSystem* scene_render_system = nullptr;
-    skr::scene::AnimRenderSystem* anim_render_system = nullptr;
+    skr::scene::SceneRenderSystem* scene_render_system = nullptr;
 };
 
 IMPLEMENT_DYNAMIC_MODULE(SceneSampleSkelMeshModule, SceneSample_SkelMesh);
@@ -200,6 +201,7 @@ void SceneSampleSkelMeshModule::on_load(int argc, char8_t** argv)
 
     skr::cmd::parser parser(argc, (char**)argv);
     parser.add(u8"gltf", u8"gltf file path", u8"-g", false);
+    parser.add(u8"anim", u8"animation name", u8"-a", false);
     if (!parser.parse())
     {
         SKR_LOG_ERROR(u8"Failed to parse command line arguments.");
@@ -216,13 +218,24 @@ void SceneSampleSkelMeshModule::on_load(int argc, char8_t** argv)
         SKR_LOG_INFO(u8"No gltf file specified");
     }
 
+    auto anim_name_opt = parser.get_optional<skr::String>(u8"anim");
+    if (anim_name_opt)
+    {
+        animation_name = *anim_name_opt;
+        SKR_LOG_INFO(u8"animation name set to: %s", animation_name.c_str());
+    }
+    else
+    {
+        SKR_LOG_INFO(u8"No animation name specified, will use the first animation in the gltf file");
+    }
+
     scheduler.initialize({});
     scheduler.bind();
     world.initialize();
     actor_manager.initialize(&world);
     transform_system = skr_transform_system_create(&world);
-    // scene_render_system = skr_scene_render_system_create(&world);
-    anim_render_system = skr::scene::AnimRenderSystem::Create(&world);
+
+    scene_render_system = skr::scene::SceneRenderSystem::Create(&world);
     render_device = SkrRendererModule::Get()->get_render_device();
 
     auto resourceRoot = (skr::fs::current_directory() / u8"../resources");
@@ -253,8 +266,7 @@ void SceneSampleSkelMeshModule::on_load(int argc, char8_t** argv)
     }
     scene_renderer = skr::SceneRenderer::Create();
     scene_renderer->initialize(render_device, &world, resource_vfs);
-    // scene_render_system->bind_renderer(scene_renderer);
-    anim_render_system->bind_renderer(scene_renderer);
+    scene_render_system->bind_renderer(scene_renderer);
 }
 
 void SceneSampleSkelMeshModule::on_unload()
@@ -268,7 +280,7 @@ void SceneSampleSkelMeshModule::on_unload()
         DestroyResourceSystem();
     }
     skr_transform_system_destroy(transform_system);
-    skr::scene::AnimRenderSystem::Destroy(anim_render_system);
+    skr::scene::SceneRenderSystem::Destroy(scene_render_system);
 
     actor_manager.finalize();
     world.finalize();
@@ -279,11 +291,39 @@ void SceneSampleSkelMeshModule::on_unload()
 void SceneSampleSkelMeshModule::CookAndLoadGLTF()
 {
     auto& cook_system = *skd::asset::GetCookSystem();
-    auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
-    auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
 
+    auto grid_metadata = skd::asset::SimpleGridMeshAsset::Create<skd::asset::SimpleGridMeshAsset>();
+    grid_metadata->x_segments = 10;
+    grid_metadata->y_segments = 10;
+    grid_metadata->x_size = 10.0f;
+    grid_metadata->y_size = 10.0f;
+    grid_metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; // GLTFVertexLayoutWithJointId
+
+    auto floor_importer = skd::asset::ProceduralMeshImporter::Create<skd::asset::ProceduralMeshImporter>();
+    // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleTriangleMesh>();
+    // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleCubeMesh>();
+    floor_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleGridMesh>();
+    auto floor_asset = skr::RC<skd::asset::AssetMetaFile>::New(
+        u8"floor.meta",
+        FloorAssetID,
+        skr::type_id_of<skr::MeshResource>(),
+        skr::type_id_of<skd::asset::MeshCooker>());
+    cook_system.ImportAssetMeta(&project, floor_asset, floor_importer, grid_metadata);
+    auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
     // metadata->vertexType = u8"1b357a40-83ff-471c-8903-23e99d95b273"_guid; // GLTFVertexLayoutWithoutTangentId
     metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; // GLTFVertexLayoutWithJointId
+    auto builtin_importer = skd::asset::ProceduralMeshImporter::Create<skd::asset::ProceduralMeshImporter>();
+    // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleTriangleMesh>();
+    builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleCubeMesh>();
+    // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleGridMesh>();
+    auto builtin_asset = skr::RC<skd::asset::AssetMetaFile>::New(
+        u8"simple_cube.meta",
+        BuiltinMeshID,
+        skr::type_id_of<skr::MeshResource>(),
+        skr::type_id_of<skd::asset::MeshCooker>());
+    cook_system.ImportAssetMeta(&project, builtin_asset, builtin_importer, metadata);
+
+    auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
 
     auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"girl.gltf.meta",
@@ -313,7 +353,7 @@ void SceneSampleSkelMeshModule::CookAndLoadGLTF()
         skr::type_id_of<skr::AnimResource>(),
         skr::type_id_of<skd::asset::AnimCooker>());
     animImporter->assetPath = gltf_path.c_str();
-    animImporter->animationName = u8"Take 001";
+    animImporter->animationName = animation_name.c_str();
 
     cook_system.ImportAssetMeta(&project, anim_asset, animImporter, animdata);
 
@@ -369,52 +409,72 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
     auto gfx_queue = render_device->get_gfx_queue();
 
     skr::Vector<skr::RCWeak<skr::SkelMeshActor>> hierarchy_actors;
-    constexpr int hierarchy_count = 3; // Number of actors in the hierarchy
+    constexpr int hierarchy_count = 4; // Number of actors in the hierarchy
 
     auto root = skr::Actor::GetRoot();
     auto actor1 = actor_manager.CreateActor<skr::SkelMeshActor>().cast_static<skr::SkelMeshActor>();
+    auto actor2 = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
+    auto actor3 = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
+    {
+        actor1.lock()->SetDisplayName(u8"Actor 1");
+        actor2.lock()->SetDisplayName(u8"Actor 2");
+        actor3.lock()->SetDisplayName(u8"Actor 3");
+        root.lock()->CreateEntity();
+        actor1.lock()->CreateEntity();
+        actor2.lock()->CreateEntity();
+        actor3.lock()->CreateEntity();
+        actor1.lock()->AttachTo(root);
+        actor2.lock()->AttachTo(root);
+        actor3.lock()->AttachTo(actor2);
 
-    actor1.lock()->SetDisplayName(u8"Actor 1");
+        root.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
+        actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 1.0f, 10.0f });
+        actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
+        actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.8f, 0.0f });
 
-    root.lock()->CreateEntity();
-    actor1.lock()->CreateEntity();
+        actor2.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
+        actor2.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 1.f, 1.f, 1.0f });
+        actor2.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
-    actor1.lock()->AttachTo(root);
+        actor3.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 2.0f, 2.0f, 2.0f });
+        actor3.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 5.f, 5.f, 5.0f });
+        actor3.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
+    }
 
-    root.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
+    for (auto i = 0; i < hierarchy_count; ++i)
+    {
+        auto actor = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
+        hierarchy_actors.push_back(actor);
 
-    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, -5.0f, 10.0f });
-    actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
-    actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.8f, 0.0f });
+        actor.lock()->SetDisplayName(skr::format(u8"HActor {}", i).c_str());
+        actor.lock()->CreateEntity();
 
-    // for (auto i = 0; i < hierarchy_count; ++i)
-    // {
-    //     auto actor = actor_manager.CreateActor<skr::SkelMeshActor>().cast_static<skr::SkelMeshActor>();
-    //     hierarchy_actors.push_back(actor);
+        if (i == 0)
+        {
+            actor.lock()->AttachTo(actor2);
+            actor.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
+        }
+        else
+        {
+            actor.lock()->AttachTo(hierarchy_actors[i - 1]);
+            actor.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .5f, .5f, .5f });
+            actor.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, (float)i * 0.5f });
+        }
 
-    //     actor.lock()->SetDisplayName(skr::format(u8"Actor {}", i + 2).c_str());
-    //     actor.lock()->CreateEntity();
-    //     if (i == 0)
-    //     {
-    //         actor.lock()->AttachTo(actor1);
-    //     }
-    //     else
-    //     {
-    //         actor.lock()->AttachTo(hierarchy_actors[i - 1]);
-    //     }
-
-    //     actor.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, (float)(i + 1) * 5.0f });
-    //     actor.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .8f, .8f, .8f });
-    // }
+        actor.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, (float)(i + 1) * 5.0f, (float)(i + 1) * 5.0f });
+    }
 
     transform_system->update();
     skr::ecs::TaskScheduler::Get()->sync_all();
 
     actor1.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = MeshAssetID;
-    // for (auto& actor : hierarchy_actors)
-    // {
-    //     actor.lock()->GetMeshComponent()->mesh_resource = MeshAssetID;
-    // }
+    actor2.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = FloorAssetID;
+    actor3.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = BuiltinMeshID;
+
+    for (auto& actor : hierarchy_actors)
+    {
+        actor.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = MeshAssetID;
+    }
 
     CookAndLoadGLTF();
 
@@ -450,8 +510,9 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
     actor1.lock()->GetComponent<skr::SkinComponent>()->skin_resource = SkinAssetID;
 
     skr::AsyncResource<skr::AnimResource> anim_resource_handle = AnimAssetID;
-    // actor1.lock()->GetComponent<skr::AnimComponent>()->use_dynamic_buffer = true; // use CPU/GPU dynamic buffer for simplicity
     ozz::animation::SamplingJob::Context context_;
+
+    bool controlling_actor = false;
 
     while (!imgui_app->want_exit().comsume())
     {
@@ -461,12 +522,44 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
             imgui_app->pump_message();
         }
         {
+            // if left mouse button is pressed, toggle controlling actor
+            SkrZoneScopedN("InputControl");
+            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            {
+                // Move Actor 1 with WASD keys
+                if (ImGui::IsKeyDown(ImGuiKey_W))
+                {
+                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
+                    pos.z -= 0.1f;
+                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
+                }
+                if (ImGui::IsKeyDown(ImGuiKey_S))
+                {
+                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
+                    pos.z += 0.1f;
+                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
+                }
+                if (ImGui::IsKeyDown(ImGuiKey_A))
+                {
+                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
+                    pos.x -= 0.1f;
+                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
+                }
+                if (ImGui::IsKeyDown(ImGuiKey_D))
+                {
+                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
+                    pos.x += 0.1f;
+                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
+                }
+            }
+        }
+
+        {
             // ResourceSystem Update
             resource_system->Update();
         }
 
         {
-
             auto* mesh_comp = actor1.lock()->GetComponent<skr::MeshComponent>();
             auto* skel_comp = actor1.lock()->GetComponent<skr::SkeletonComponent>();
             auto* skin_comp = actor1.lock()->GetComponent<skr::SkinComponent>();
@@ -482,14 +575,10 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
                 anim_resource_handle.is_resolved())
 
             {
-
                 auto* skeleton_resource = skel_comp->skeleton_resource.get_resolved(true);
                 auto* skin_resource = skin_comp->skin_resource.get_resolved(true);
                 auto* anim = anim_resource_handle.get_resolved(true);
                 auto* mesh_resource = mesh_comp->mesh_resource.get_resolved(true);
-                // SKR_LOG_INFO(u8"Skeleton has %d joints", skeleton_resource->skeleton.num_joints());
-                // SKR_LOG_INFO(u8"Animation has %d tracks", anim->animation.num_tracks());
-                // SKR_LOG_INFO(u8"Skin has %d poses", skin_resource->inverse_bind_poses.size());
                 auto* runtime_anim_component = actor1.lock()->GetComponent<skr::AnimComponent>();
 
                 if (skeleton_resource && skin_resource && anim && runtime_anim_component && mesh_resource && mesh_resource->render_mesh)
@@ -524,7 +613,6 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
 
                     ozz::animation::LocalToModelJob ltm_job;
                     ltm_job.skeleton = &skeleton_resource->skeleton;
-                    // ltm_job.input = skeleton_resource->skeleton.joint_rest_poses();
                     ltm_job.input = ozz::make_span(locals_);
                     ltm_job.output = ozz::span{ runtime_anim_component->joint_matrices.data(), runtime_anim_component->joint_matrices.size() };
                     if (!ltm_job.Run())
@@ -651,10 +739,25 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
         };
         {
             SkrZoneScopedN("AnimRenderJob");
-            anim_render_system->update();
-            skr::ecs::TaskScheduler::Get()->sync_all();
-            scene_renderer->draw_primitives(render_graph,
-                anim_render_system->get_drawcalls());
+            transform_system->get_context()->update_finish.wait(true); // wait for transform system to finish updating
+            scene_render_system->update();
+
+            // skr::ecs::TaskScheduler::Get()->sync_all();
+            scene_render_system->get_context()->update_finish.wait(true);
+
+            auto backbuffer = render_graph->get_texture(u8"backbuffer");
+            const auto back_desc = render_graph->resolve_descriptor(backbuffer);
+            auto depthbuffer = render_graph->create_texture(
+                [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::TextureBuilder& builder) {
+                    builder.set_name(SKR_UTF8("render_depth"))
+                        .extent(back_desc->width, back_desc->height)
+                        .format(CGPU_FORMAT_D32_SFLOAT)
+                        .sample_count(CGPU_SAMPLE_COUNT_1)
+                        .allow_depth_stencil();
+                    if (back_desc->width > 2048) builder.allocate_dedicated();
+                });
+
+            scene_renderer->draw_primitives(render_graph, scene_render_system->get_drawcalls());
         }
 
         {

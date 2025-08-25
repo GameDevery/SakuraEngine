@@ -18,6 +18,6 @@ public:
 
     static SkrRendererModule* Get();
 protected:
-    skr::RendererDevice* render_device;
+    skr::RenderDevice* render_device;
 };
 #endif

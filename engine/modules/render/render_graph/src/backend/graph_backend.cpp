@@ -32,7 +32,9 @@ void RenderGraphFrameExecutor::initialize(CGPUQueueId gfx_queue, CGPUDeviceId de
         u8"RenderGraphCmdPool"
     };
     gfx_cmd_pool = cgpu_create_command_pool(gfx_queue, &pool_desc);
-    CGPUCommandBufferDescriptor cmd_desc = {};
+    CGPUCommandBufferDescriptor cmd_desc = {
+        .name = u8"CommandBuffer-RenderGraphMain"
+    };
     cmd_desc.is_secondary = false;
     gfx_cmd_buf = cgpu_create_command_buffer(gfx_cmd_pool, &cmd_desc);
     exec_fence = cgpu_create_fence(device);
@@ -247,6 +249,27 @@ uint64_t RenderGraphBackend::get_latest_finished_frame() SKR_NOEXCEPT
     return result;
 }
 
+void RenderGraphBackend::wait_frame(uint64_t to_wait) SKR_NOEXCEPT
+{
+    SkrZoneScopedN("WaitFrame");
+    if (to_wait > frame_index)
+        return;
+    if (to_wait < frame_index - RG_MAX_FRAME_IN_FLIGHT)
+        return;
+    const auto executor_to_wait = to_wait % RG_MAX_FRAME_IN_FLIGHT;
+    cgpu_wait_fences(&executors[executor_to_wait].exec_fence, 1);
+}
+
+bool RenderGraphBackend::check_frame(uint64_t to_check) SKR_NOEXCEPT
+{
+    SkrZoneScopedN("WaitFrame");
+    if (to_check > frame_index)
+        return false;
+    if (to_check < frame_index - RG_MAX_FRAME_IN_FLIGHT)
+        return true;
+    return to_check <= get_latest_finished_frame();
+}
+
 uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     for (auto callback : exec_callbacks)
@@ -259,7 +282,6 @@ uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
     // Wait for executor to be available
     {
         SkrZoneScopedN("AcquireExecutor");
-        cgpu_wait_fences(&executors[executor_index].exec_fence, 1);
         if (profiler) profiler->on_acquire_executor(*this, executors[executor_index]);
     }
     
@@ -338,6 +360,16 @@ uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 
         graph->clear();
         blackboard->clear();
+        imported_textures.clear();
+        imported_buffers.clear();
+        imported_acceleration_structures.clear();
+    }
+
+    // early acquire then CPU logics will not race with GPU resource (N - MAX_FRAMES_IN_FLIGHT)
+    {
+        SkrZoneScopedN("AcquireNextExecutor");
+        const auto next_executor = (frame_index + 1) % RG_MAX_FRAME_IN_FLIGHT;
+        cgpu_wait_fences(&executors[next_executor].exec_fence, 1);
     }
     return frame_index++;
 }
@@ -401,6 +433,7 @@ uint32_t RenderGraphBackend::collect_buffer_garbage(uint64_t critical_frame, uin
         {
             if (pooled.mark.frame_index <= critical_frame && (pooled.mark.tags & with_tags) && !(pooled.mark.tags & without_tags))
             {
+                buffer_view_pool.erase(pooled.buffer);
                 cgpu_free_buffer(pooled.buffer);
                 pooled.buffer = nullptr;
             }

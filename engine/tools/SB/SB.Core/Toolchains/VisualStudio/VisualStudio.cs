@@ -6,6 +6,19 @@ using System.Runtime.InteropServices;
 
 namespace SB.Core
 {
+    public enum WindowsSDKStrategy
+    {
+        Default,
+        FindLatest,
+        UserSpecified
+    };
+    
+    public partial class VisualStudio : IToolchain
+    {
+        public static bool UseClangCl = true;
+        public static WindowsSDKStrategy WindowsSDKStrategy = WindowsSDKStrategy.Default;
+    }
+
     [Setup<VisualStudioSetup>]
     public partial class VisualStudio : IToolchain
     {
@@ -19,7 +32,6 @@ namespace SB.Core
             this.TargetArch = TargetArch ?? HostInformation.HostArch;
         }
 
-        public static bool UseClangCl = true;
         public string Name => UseClangCl ? "clang-cl" : "msvc";
         public Version Version => new Version(VSVersion, 0);
         public ICompiler Compiler => UseClangCl ? ClangCLCC! : CLCC!;
@@ -240,9 +252,9 @@ namespace SB.Core
 
                     foreach (var file in Directory.EnumerateFiles(path))
                     {
-                        if (Path.GetFileName(file) == "cl.exe")
+                        if (Path.GetFileName(file) == "cl.exe" && file.Contains("MSVC"))
                             CLCCPath = file;
-                        if (Path.GetFileName(file) == "link.exe")
+                        if (Path.GetFileName(file) == "link.exe" && file.Contains("MSVC"))
                             LINKPath = file;
                         if (Path.GetFileName(file) == "clang-cl.exe")
                             ClangCLPath = file;
@@ -264,6 +276,14 @@ namespace SB.Core
                     }
                 }
             }
+
+            var WindowsSDKVersion = VCEnvVariables["WindowsSDKVersion"]!.Replace('\\', ' ');
+            var WindowsSDKLibVersion = VCEnvVariables["WindowsSDKLibVersion"]!.Replace('\\', ' ');
+            var UCRTVersion = VCEnvVariables["UCRTVersion"]!.Replace('\\', ' ');
+            Log.Information("WindowsSDKVersion version ... {WindowsSDKVersion}", WindowsSDKVersion);
+            Log.Verbose("WindowsSDKLibVersion version ... {WindowsSDKLibVersion}", WindowsSDKLibVersion);
+            Log.Verbose("UCRTVersion version ... {UCRTVersion}", UCRTVersion);
+
             if (!string.IsNullOrEmpty(CLCCPath))
                 CLCC = new CLCompiler(CLCCPath!, VCEnvVariables);
             if (!string.IsNullOrEmpty(LINKPath))

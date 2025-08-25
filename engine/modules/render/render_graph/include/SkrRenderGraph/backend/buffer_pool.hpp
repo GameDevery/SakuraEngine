@@ -37,7 +37,7 @@ public:
         ECGPUMemoryUsage memory_usage = CGPU_MEM_USAGE_UNKNOWN;
         ECGPUFormat format = CGPU_FORMAT_UNDEFINED;
         CGPUBufferFlags flags = 0;
-        uint64_t padding = 0;
+        CGPUMemoryPoolId pool = 0;
         uint64_t padding0 = 0;
         uint64_t padding1 = 0;
         uint64_t padding2 = 0;

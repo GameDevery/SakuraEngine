@@ -87,9 +87,11 @@ public:
     TemplateCallableDecl* DeclareTemplateMethod(TypeDecl* owner, const Name& name, const TypeDecl* return_type, std::span<const VarConceptDecl* const> param_concepts);
     TemplateCallableDecl* DeclareTemplateMethod(TypeDecl* owner, const Name& name, TemplateCallableDecl::ReturnTypeSpecializer ret_spec, std::span<const VarConceptDecl* const> param_concepts);
     
-    const TemplateCallableDecl* FindIntrinsic(const char* name) const;
     SpecializedFunctionDecl* SpecializeTemplateFunction(const TemplateCallableDecl* template_decl, std::span<const TypeDecl* const> arg_types, std::span<const EVariableQualifier> arg_qualifiers, const TypeDecl* ret_spec = nullptr);
     SpecializedMethodDecl* SpecializeTemplateMethod(const TemplateCallableDecl* template_decl, std::span<const TypeDecl* const> arg_types, std::span<const EVariableQualifier> arg_qualifiers, const TypeDecl* ret_spec = nullptr);
+
+    const TemplateCallableDecl* FindIntrinsic(const char* name) const;
+    bool IsIntrinsic(const FunctionDecl* function) const;
 
     const VectorTypeDecl* VectorType(const TypeDecl* element, uint32_t count);
     const MatrixTypeDecl* MatrixType(const TypeDecl* element, uint32_t n);
@@ -99,9 +101,13 @@ public:
     ByteBufferTypeDecl* ByteBuffer(BufferFlags flags);
     ConstantBufferTypeDecl* ConstantBuffer(const TypeDecl* element);
     StructuredBufferTypeDecl* StructuredBuffer(const TypeDecl* element, BufferFlags flags);
+    
     SamplerDecl* Sampler();
     Texture2DTypeDecl* Texture2D(const TypeDecl* element, TextureFlags flags);
     Texture3DTypeDecl* Texture3D(const TypeDecl* element, TextureFlags flags);
+    TextureCubeTypeDecl* TextureCube(const TypeDecl* element, TextureFlags flags);
+    Texture2DArrayTypeDecl* Texture2DArray(const TypeDecl* element, TextureFlags flags);
+    Texture3DArrayTypeDecl* Texture3DArray(const TypeDecl* element, TextureFlags flags);
 
     template <typename ATTR, typename... Args>
     inline ATTR* DeclareAttr(Args&&... args) {
@@ -175,8 +181,11 @@ private:
     std::map<std::pair<const TypeDecl*, uint32_t>, ArrayTypeDecl*> _arrs;
     std::map<std::pair<const TypeDecl*, BufferFlags>, BufferTypeDecl*> _buffers;
     std::map<const TypeDecl*, BufferTypeDecl*> _cbuffers;
-    std::map<std::pair<const TypeDecl*, TextureFlags>, Texture2DTypeDecl*> _texture2ds;
-    std::map<std::pair<const TypeDecl*, TextureFlags>, Texture3DTypeDecl*> _texture3ds;
+    std::map<std::pair<const TypeDecl*, TextureFlags>, Texture2DTypeDecl*> _texture_2ds;
+    std::map<std::pair<const TypeDecl*, TextureFlags>, Texture2DArrayTypeDecl*> _texture_2das;
+    std::map<std::pair<const TypeDecl*, TextureFlags>, Texture3DTypeDecl*> _texture_3ds;
+    std::map<std::pair<const TypeDecl*, TextureFlags>, Texture3DArrayTypeDecl*> _texture_3das;
+    std::map<std::pair<const TypeDecl*, TextureFlags>, TextureCubeTypeDecl*> _texture_cubes;
     std::vector<TypeDecl*> _types;
     std::vector<GlobalVarDecl*> _globals;
     std::vector<FunctionDecl*> _funcs;
@@ -188,6 +197,7 @@ private:
     
     // Template and specialized declarations
     std::map<std::string, TemplateCallableDecl*> _intrinsics;
+    std::set<const TemplateCallableDecl*> _intrinsics_set;
 
 public:
     void DeclareIntrinsics();

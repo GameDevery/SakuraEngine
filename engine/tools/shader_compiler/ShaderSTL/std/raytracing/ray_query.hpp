@@ -32,41 +32,61 @@ struct [[builtin("ray_query")]] RayQuery {
     RayQuery operator =(RayQuery&) = delete;
 
     [[callop("RAY_QUERY_PROCEED")]] 
-    bool proceed();
+    bool Proceed();
     
+    [[callop("RAY_QUERY_CANDIDATE_STATUS")]] 
+    HitType CandidateStatus();
+    
+    [[callop("RAY_QUERY_CANDIDATE_TRIANGLE_BARYCENTRICS")]] 
+    float2 CandidateTriangleBarycentrics();
+    
+    [[callop("RAY_QUERY_CANDIDATE_INSTANCE_ID")]] 
+    uint CandidateInstanceID();
+
+    [[callop("RAY_QUERY_CANDIDATE_PRIMIVE_INDEX")]] 
+    uint CandidatePrimitiveIndex();
+
+    [[callop("RAY_QUERY_CANDIDATE_PROCEDURAL_DISTANCE")]] 
+    float CandidateProceduralDistance();
+    
+    [[callop("RAY_QUERY_CANDIDATE_TRIANGLE_RAY_T")]] 
+    float CandidateTriangleRayT();
+    
+
     [[callop("RAY_QUERY_COMMITTED_STATUS")]] 
-    HitType committed_status();
+    HitType CommittedStatus();
     
     [[callop("RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS")]] 
-    float2 committed_triangle_barycentrics();
+    float2 CommittedTriangleBarycentrics();
     
     [[callop("RAY_QUERY_COMMITTED_INSTANCE_ID")]] 
-    uint committed_instance_id();
+    uint CommittedInstanceID();
+    
+    [[callop("RAY_QUERY_COMMITTED_PRIMIVE_INDEX")]] 
+    uint CommittedPrimitiveIndex();
     
     [[callop("RAY_QUERY_COMMITTED_PROCEDURAL_DISTANCE")]] 
-    float committed_procedural_distance();
+    float CommittedProceduralDistance();
     
     [[callop("RAY_QUERY_COMMITTED_RAY_T")]] 
-    float committed_ray_t();
+    float CommittedRayT();
+
 
     [[callop("RAY_QUERY_WORLD_RAY_ORIGIN")]] 
-    float3 world_ray_origin();
+    float3 WorldRayOrigin();
     
     [[callop("RAY_QUERY_WORLD_RAY_DIRECTION")]] 
-    float3 world_ray_direction();
+    float3 WorldRayDirection();
+    
 
     [[callop("RAY_QUERY_TRACE_RAY_INLINE")]] 
-    void trace_ray_inline(Accel& AS, uint32 mask, const Ray& ray);
+    void TraceRayInline(const Accel& AS, uint32 mask, const Ray& ray);
 
-    // [[callop("RAY_QUERY_IS_TRIANGLE_CANDIDATE")]] bool is_triangle_candidate();
-    // [[callop("RAY_QUERY_IS_PROCEDURAL_CANDIDATE")]] bool is_procedural_candidate();
-    // [[callop("RAY_QUERY_WORLD_SPACE_RAY")]] Ray world_ray();
-    // [[callop("RAY_QUERY_PROCEDURAL_CANDIDATE_HIT")]] ProceduralHit procedural_candidate();
-    // [[callop("RAY_QUERY_TRIANGLE_CANDIDATE_HIT")]] TriangleHit triangle_candidate();
-    // [[callop("RAY_QUERY_COMMITTED_HIT")]] CommittedHit committed_hit();
-    // [[callop("RAY_QUERY_COMMIT_TRIANGLE")]] void commit_triangle();
-    // [[callop("RAY_QUERY_COMMIT_PROCEDURAL")]] void commit_procedural(float distance);
-    // [[callop("RAY_QUERY_TERMINATE")]] void terminate();
+    [[callop("RAY_QUERY_COMMIT_TRIANGLE")]]
+    void CommitTriangle();
+
+    [[callop("RAY_QUERY_TERMINATE")]] 
+    void Terminate();
 };
 
 using RayQueryAll = RayQuery<RayQueryFlags::None>;

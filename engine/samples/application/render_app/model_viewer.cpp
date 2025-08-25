@@ -24,7 +24,7 @@
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrRenderer/render_mesh.h"
 #include "SkrMeshCore/mesh_processing.hpp"
-#include "SkrGLTFTool/mesh_asset.hpp"
+#include "SkrMeshTool/mesh_asset.hpp"
 #include "common/utils.h"
 
 using namespace skr::literals;
@@ -378,10 +378,10 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
         render_app->get_event_queue()->pump_messages();
         render_app->acquire_frames();
 
-        if (frame_index < 1'000'000)
+        if (frame_index < 1'000'000 && (frame_index % 100 == 0))
         {
-            CreateEntities(4);
-            DestroyRandomEntities(1);
+            CreateEntities(400);
+            // DestroyRandomEntities(1);
         }
 
         auto render_graph = render_app->render_graph();
@@ -427,14 +427,15 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
 
         // Add raytracing compute pass (write to intermediate texture)
         auto TLASHandle = GPUScene.GetTLAS(render_graph);
-        if (TLASHandle != skr::render_graph::kInvalidHandle)
+        auto GPUSceneHandle = GPUScene.GetSceneBuffer(render_graph);
+        if (TLASHandle != skr::render_graph::kInvalidHandle && GPUSceneHandle != skr::render_graph::kInvalidHandle)
         {
             render_graph->add_compute_pass(
                 [=, this](render_graph::RenderGraph& g, render_graph::ComputePassBuilder& builder) {
                     builder.set_name(u8"RayTracingPass")
                         .set_pipeline(compute_pipeline)
-                        .read(u8"scene_tlas", GPUScene.GetTLAS(render_graph))
-                        .read(u8"gpu_scene", GPUScene.GetSceneBuffer())
+                        .read(u8"scene_tlas", TLASHandle)
+                        .read(u8"gpu_scene", GPUSceneHandle)
                         .readwrite(u8"output_texture", render_target_handle);
                 },
                 [=, this](render_graph::RenderGraph& g, render_graph::ComputePassContext& ctx) {
@@ -489,13 +490,13 @@ void ModelViewerModule::CookAndLoadGLTF()
         metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid;
 
         auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
-            u8"girl.model.meta",                            // virtual uri for this asset in the project
-            MeshAssetID,                                    // guid for this asset
-            skr::type_id_of<skr::MeshResource>(), // output resource is a mesh resource
-            skr::type_id_of<skd::asset::MeshCooker>()       // this cooker cooks t he raw mesh data to mesh resource
+            u8"girl.model.meta",                      // virtual uri for this asset in the project
+            MeshAssetID,                              // guid for this asset
+            skr::type_id_of<skr::MeshResource>(),     // output resource is a mesh resource
+            skr::type_id_of<skd::asset::MeshCooker>() // this cooker cooks t he raw mesh data to mesh resource
         );
         // source file
-        importer->assetPath = u8"C:/Code/SakuraEngine/samples/application/game/assets/sketchfab/loli/scene.gltf";
+        importer->assetPath = u8"C:/Code/SakuraEngine/engine/samples/assets/sketchfab/loli/scene.gltf";
         CookSystem.ImportAssetMeta(&project, asset, importer, metadata);
 
         // save

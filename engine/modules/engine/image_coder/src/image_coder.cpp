@@ -1,11 +1,12 @@
 #include "SkrCore/log.h"
 #include "SkrBase/misc/defer.hpp"
-#include "SkrCore/memory/memory.h"
 #include "SkrBase/misc/debug.h" 
 #include "SkrImageCoder/skr_image_coder.h"
 #include "image_coder_png.hpp"
 #include "image_coder_jpeg.hpp"
 #include "image_coder_bmp.hpp"
+#include "image_coder_exr.hpp"
+#include "image_coder_hdr.hpp"
 
 namespace skr
 {
@@ -22,9 +23,11 @@ skr::RC<IImageEncoder> IImageEncoder::Create(EImageCoderFormat format) SKR_NOEXC
     case IMAGE_CODER_FORMAT_BMP:
     case IMAGE_CODER_FORMAT_ICO:
     case IMAGE_CODER_FORMAT_EXR:
+        return RC<skr::EXRImageEncoder>::New();
     case IMAGE_CODER_FORMAT_ICNS:
     case IMAGE_CODER_FORMAT_TGA:
     case IMAGE_CODER_FORMAT_HDR:
+        return RC<skr::HDRImageEncoder>::New();
     case IMAGE_CODER_FORMAT_TIFF:
     default:
         SKR_UNIMPLEMENTED_FUNCTION()
@@ -45,9 +48,11 @@ skr::RC<IImageDecoder> IImageDecoder::Create(EImageCoderFormat format) SKR_NOEXC
     case IMAGE_CODER_FORMAT_GrayScaleJPEG:
     case IMAGE_CODER_FORMAT_ICO:
     case IMAGE_CODER_FORMAT_EXR:
+        return RC<skr::EXRImageDecoder>::New();
     case IMAGE_CODER_FORMAT_ICNS:
     case IMAGE_CODER_FORMAT_TGA:
     case IMAGE_CODER_FORMAT_HDR:
+        return RC<skr::HDRImageDecoder>::New();
     case IMAGE_CODER_FORMAT_TIFF:
     default:
         SKR_UNIMPLEMENTED_FUNCTION()
@@ -65,6 +70,8 @@ namespace
 	static const uint8_t IMAGE_MAGIC_ICO[]  = {0x00, 0x00, 0x01, 0x00};
 	static const uint8_t IMAGE_MAGIC_EXR[]  = {0x76, 0x2F, 0x31, 0x01};
 	static const uint8_t IMAGE_MAGIC_ICNS[] = {0x69, 0x63, 0x6E, 0x73};
+	static const uint8_t IMAGE_MAGIC_HDR[]  = {0x23, 0x3f, 0x52, 0x41, 0x44, 0x49, 0x41, 0x4e, 0x43, 0x45, 0x0a};
+	static const uint8_t IMAGE_MAGIC_HDR2[] = {0x23, 0x3f, 0x52, 0x47, 0x42, 0x45 };
 
     template <int32_t MagicCount> 
     bool StartsWith(const uint8_t* Content, int64_t ContentSize, const uint8_t (&Magic)[MagicCount])
@@ -112,6 +119,14 @@ EImageCoderFormat skr_image_coder_detect_format(const uint8_t* encoded_data, uin
     else if (::StartsWith(encoded_data, size, ::IMAGE_MAGIC_ICNS))
     {
         format = IMAGE_CODER_FORMAT_ICNS;
+    }
+    else if (::StartsWith(encoded_data, size, ::IMAGE_MAGIC_HDR))
+    {
+        format = IMAGE_CODER_FORMAT_HDR;
+    }
+    else if (::StartsWith(encoded_data, size, ::IMAGE_MAGIC_HDR2))
+    {
+        format = IMAGE_CODER_FORMAT_HDR;
     }
     return format;
 }

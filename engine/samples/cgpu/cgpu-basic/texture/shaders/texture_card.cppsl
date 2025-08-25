@@ -1,6 +1,4 @@
 #include <std/std.hpp>
-#include <std2/sampler.hpp>
-#include <std2/constant_buffer.hpp>
 
 using namespace skr::shader;
 
@@ -13,11 +11,9 @@ struct RootConstants
 
 [[push_constant]]
 ConstantBuffer<RootConstants> push_constants;
-
-[[binding(0, 0)]]
+[[group(0)]]
 Texture2D<float> sampled_texture;
-
-[[binding(0, 1)]]
+[[group(1)]]
 Sampler texture_sampler;
 
 struct [[stage_inout]] VSOut
@@ -62,5 +58,5 @@ void fragment(VSOut psIn, [[sv_render_target(0)]] float4& color)
         uv.x = 1 - uv.x;
     if(push_constants.bFlipUVY) 
         uv.y = 1 - uv.y;
-    color = texture_sampler.Sample(sampled_texture, uv);
+    color = sampled_texture.Sample(texture_sampler, uv);
 }

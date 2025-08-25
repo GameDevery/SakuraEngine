@@ -99,10 +99,6 @@ String MSLGenerator::GetTypeName(const TypeDecl* type)
     {
         return L"metal::" + asMatrix->name();
     }
-    else if (auto asCB = dynamic_cast<const ConstantBufferTypeDecl*>(type))
-    {
-        return type->name();
-    }
     return type->name();
 }
 
@@ -171,6 +167,9 @@ void MSLGenerator::VisitParameter(SourceBuilderNew& sb, const skr::CppSL::Functi
     case EVariableQualifier::None:
         prefix = L"";
         break;
+    case EVariableQualifier::GroupShared:
+        prefix = L"metal_group_shared";
+        break;
     }
     String content = prefix + GetQualifiedTypeName(&param->type()) + postfix + L" " + param->name();
     sb.append(content);
@@ -225,7 +224,7 @@ void MSLGenerator::VisitConstructExpr(SourceBuilderNew& sb, const ConstructExpr*
 
     if (auto AsArray = dynamic_cast<const ArrayTypeDecl*>(ctorExpr->type()))
     {
-        const auto N = AsArray->size() / AsArray->element()->size();
+        const auto N = AsArray->size() / AsArray->element_type()->size();
         sb.append(GetTypeName(AsArray) + L"{");
         ;
         for (size_t i = 0; i < ctorExpr->args().size(); i++)
@@ -340,7 +339,7 @@ template<typename T> auto length_squared(T v) { return metal::dot(v, v); }
 
 // Texture functions
 template<typename T>
-metal::vec<T, 4> sample2d(SamplerState sampler, Texture2D<T, metal::access::sample> texture, float2 uv) { 
+metal::vec<T, 4> texture_sample(Texture2D<T, metal::access::sample> texture, SamplerState sampler, float2 uv) { 
     return texture.cgpu_texture.sample(sampler.cgpu_sampler, uv); 
 }
 

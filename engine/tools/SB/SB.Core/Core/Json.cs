@@ -12,6 +12,7 @@ namespace SB.Core
     [JsonSerializable(typeof(Depend))]
     [JsonSerializable(typeof(SB.Core.OptimizationLevel))]
     [JsonSerializable(typeof(SB.Core.TargetType))]
+    [JsonSerializable(typeof(SB.Core.SIMDArchitecture))]
     [JsonSerializable(typeof(SB.Core.FpModel))]
     [JsonSerializable(typeof(CLDependenciesData))]
     [JsonSerializable(typeof(CLDependencies))]

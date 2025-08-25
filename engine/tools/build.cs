@@ -33,6 +33,7 @@ public static class LLVMTools
             .Depend(Visibility.Public, "CppSLAst")
             .IncludeDirs(Visibility.Public, "shader_compiler/LLVM/include")
             .AddCppFiles("shader_compiler/LLVM/src/**.cpp")
+            .UsePrivatePCH("shader_compiler/LLVM/src/LLVM.pch.hpp")
             .LinkAgainstLLVM();
 
         BuildSystem.Target("CppSLCompiler")
@@ -51,7 +52,8 @@ public static class LLVMTools
         var LibDir = Path.Combine(Engine.DownloadDirectory, "llvm-" + LLVMDownloader.Version, "lib");
         @this.RTTI(false)
             .IncludeDirs(Visibility.Private, Path.Combine(Engine.DownloadDirectory, "llvm-" + LLVMDownloader.Version, "include"))
-            .LinkDirs(Visibility.Public, LibDir);
+            .LinkDirs(Visibility.Public, LibDir)
+            .Defines(Visibility.Public, "CLANG_BUILD_STATIC");
 
         var libs = new List<string>();
         if (BuildSystem.HostOS == OSPlatform.OSX)
@@ -86,7 +88,7 @@ public static class LLVMTools
             libs.Remove("Remarks");
             @this.Link(Visibility.Private, libs.ToArray());
 
-            @this.Link(Visibility.Private, "Ws2_32", "Version");
+            @this.Link(Visibility.Private, "Ws2_32", "Version", "ntdll");
         }
         return @this;
     }
@@ -94,7 +96,7 @@ public static class LLVMTools
 
 public class LLVMDownloader
 {
-    public static string Version = "18.1.6";
+    public static string Version = "20.1.8";
     public static bool Download()
     {
         string URL = "";

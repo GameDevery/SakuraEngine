@@ -1,12 +1,9 @@
 #include <std/std.hpp>
-#include <std2/attributes.hpp>
-#include <std2/constant_buffer.hpp>
 
 using namespace skr::shader;
 
-// External resource bindings
-extern RWTexture2D<float>& output_texture;
-extern Accel& scene_tlas;
+RWTexture2D<float> output_texture;
+Accel scene_tlas;
 
 // Push constants - camera parameters
 struct CameraConstants 
@@ -17,7 +14,7 @@ struct CameraConstants
 };
 
 [[push_constant]]
-extern ConstantBuffer<CameraConstants>& camera_constants;
+ConstantBuffer<CameraConstants> camera_constants;
 
 // Ray tracing constants
 trait RayTracingConstants {
@@ -60,7 +57,7 @@ Ray generate_camera_ray(uint2 pixel_coord, uint2 screen_size)
 float4 shade_sphere_hit(RayQuery<RayQueryFlags::AcceptFirstAndEndSearch>& query) 
 {
     // Get instance ID (corresponding to sphere index)
-    uint instance_id = query.committed_instance_id();
+    uint instance_id = query.CommittedInstanceID();
     
     // Generate colors uniformly distributed in RGB space
     uint hash = instance_id * 12345u + 67890u;
@@ -97,10 +94,10 @@ float4 trace_scene(uint2 pixel_coord, uint2 screen_size)
     if (pixel_coord.x < 50 && pixel_coord.y < 50) {
         // Try a simple ray straight down from above origin to test TLAS binding
         Ray debug_ray = Ray(float3(0.0f, 1000.0f, 0.0f), float3(0.0f, -1.0f, 0.0f), 0.1f, 2000.0f);
-        query.trace_ray_inline(scene_tlas, 0xff, debug_ray);
-        query.proceed();
+        query.TraceRayInline(scene_tlas, 0xff, debug_ray);
+        query.Proceed();
         
-        if (query.committed_status() == HitType::HitTriangle) {
+        if (query.CommittedStatus() == HitType::HitTriangle) {
             // TLAS working - green corner
             return float4(0.0f, 1.0f, 0.0f, 1.0f);
         } else {
@@ -110,11 +107,11 @@ float4 trace_scene(uint2 pixel_coord, uint2 screen_size)
     }
     
     // Normal ray tracing
-    query.trace_ray_inline(scene_tlas, 0xff, primary_ray);
-    query.proceed();
+    query.TraceRayInline(scene_tlas, 0xff, primary_ray);
+    query.Proceed();
     
     // Check hit status
-    if (query.committed_status() == HitType::HitTriangle) {
+    if (query.CommittedStatus() == HitType::HitTriangle) {
         // Hit sphere, perform shading
         return shade_sphere_hit(query);
     } else {
@@ -145,5 +142,5 @@ void compute_main([[sv_thread_id]] uint3 thread_id)
     
     // Execute ray tracing and write directly to output texture
     float4 pixel_color = trace_scene(pixel_coord, screen_size);
-    output_texture.store(pixel_coord, pixel_color);
+    output_texture.Store(pixel_coord, pixel_color);
 }

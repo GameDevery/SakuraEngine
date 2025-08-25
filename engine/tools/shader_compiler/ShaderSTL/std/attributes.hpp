@@ -13,6 +13,7 @@
 #define kernel_1d(x) clang::annotate("skr-shader", "kernel", (x), (1), (1))
 #define kernel_2d(x, y) clang::annotate("skr-shader", "kernel", (x), (y), (1))
 #define kernel_3d(x, y, z) clang::annotate("skr-shader", "kernel", (x), (y), (z))
+#define numthreads(x, y, z) clang::annotate("skr-shader", "kernel", (x), (y), (z))
 
 #endif
 

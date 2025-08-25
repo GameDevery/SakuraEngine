@@ -5,12 +5,6 @@
 #include "../common/common_utils.h"
 #include "d3d12_utils.h"
 
-#if !defined(XBOX)
-    #pragma comment(lib, "d3d12.lib")
-    #pragma comment(lib, "dxgi.lib")
-    #pragma comment(lib, "dxguid.lib")
-#endif
-
 inline static D3D12_QUERY_TYPE D3D12Util_ToD3D12QueryType(ECGPUQueryType type);
 inline static D3D12_QUERY_HEAP_TYPE D3D12Util_ToD3D12QueryHeapType(ECGPUQueryType type);
 
@@ -141,11 +135,6 @@ CGPUDeviceId cgpu_create_device_d3d12(CGPUAdapterId adapter, const CGPUDeviceDes
     {
         cgpu_assert("[D3D12 Fatal]: Create D3D12Device Failed!");
     }
-    
-#ifdef _WIN32
-    // Initialize NSight Aftermath for DX12 with shader debug info generation
-    cgpu_nsight_initialize_dx12_aftermath(A->super.instance, D->pDxDevice);
-#endif
 
     // Create Requested Queues.
     for (uint32_t i = 0u; i < desc->queue_group_count; i++)
@@ -400,6 +389,11 @@ CGPUFenceId cgpu_create_fence_d3d12(CGPUDeviceId device)
 
     CHECK_HRESULT(COM_CALL(CreateFence, D->pDxDevice, 0, D3D12_FENCE_FLAG_NONE, IID_ARGS(ID3D12Fence, &F->pDxFence)));
     F->mFenceValue = 1;
+
+    // sometimes debug-layey or PIX or other development tools create their fences
+    // this name differs from the name of the fence in the debug-layer
+    if (D->super.adapter->instance->enable_set_name && F->pDxFence->lpVtbl->SetName)
+        F->pDxFence->lpVtbl->SetName(F->pDxFence, L"CGPUFence");
 
     F->pDxWaitIdleFenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
     return &F->super;
@@ -1709,6 +1703,13 @@ CGPUCommandBufferId cgpu_create_command_buffer_d3d12(CGPUCommandPoolId pool, con
     ID3D12PipelineState* initialState = NULL;
     CHECK_HRESULT(COM_CALL(CreateCommandList, D->pDxDevice, 
         nodeMask, gDx12CmdTypeTranslator[Cmd->mType], P->pDxCmdAlloc, initialState, IID_ARGS(ID3D12CommandList, &Cmd->pDxCmdList)));
+
+    if (desc->name && D->super.adapter->instance->enable_set_name)
+    {
+        wchar_t debugName[MAX_GPU_DEBUG_NAME_LENGTH] = {};
+        mbstowcs(debugName, (const char*)desc->name, MAX_GPU_DEBUG_NAME_LENGTH);
+        COM_CALL(SetName, Cmd->pDxCmdList, debugName);
+    }
 
     // Command lists are addd in the recording state, but there is nothing
     // to record yet. The main loop expects it to be closed, so close it now.

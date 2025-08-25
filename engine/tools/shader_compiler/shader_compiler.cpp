@@ -17,6 +17,7 @@ int main(int argc, const char **argv)
     args.emplace_back("-D__CPPSL__");
     // swizzle uses reference member in union
     args.emplace_back("-fms-extensions");
+    args.emplace_back("-fms-compatibility-version=17.1.1");
     args.emplace_back("-Wno-microsoft-union-member-reference");
 
     std::vector<const char*> args_ptr(args.size());

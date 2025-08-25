@@ -2,7 +2,7 @@
 #include "SkrBase/misc/defer.hpp"
 #include "SkrGraphics/containers.hpp"
 #include "SkrGraphics/backend/d3d12/cgpu_d3d12.h"
-#include "SkrGraphics/drivers/cgpu_nvapi.h"
+#include "SkrGraphics/driver-extensions/cgpu_nvapi.h"
 
 #include "d3d12_utils.h"
 #include <dxcapi.h>
@@ -1203,7 +1203,10 @@ CGPUTextureId cgpu_create_texture_d3d12(CGPUDeviceId device, const struct CGPUTe
         resDesc.DepthOrArraySize = (UINT16)(desc->array_size != 1 ? desc->array_size : desc->depth);
         resDesc.MipLevels = (UINT16)desc->mip_levels;
         resDesc.Dimension = D3D12Util_CalculateTextureDimension(desc);
-        resDesc.Format = DXGIUtil_FormatToTypeless(dxFormat);
+        if (desc->usages & CGPU_TEXTURE_USAGE_SHADER_READWRITE)
+            resDesc.Format = dxFormat;
+        else
+            resDesc.Format = DXGIUtil_FormatToTypeless(dxFormat);
 #if defined(XBOX)
         if (desc->flags & CGPU_TEXTURE_FLAG_ALLOW_DISPLAY_TARGET)
         {

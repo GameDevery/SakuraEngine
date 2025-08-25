@@ -1,6 +1,4 @@
 #include <std/std.hpp>
-#include <std2/sampler.hpp>
-#include <std2/constant_buffer.hpp>
 
 using namespace skr::shader;
 
@@ -39,6 +37,6 @@ VSOut vs(VSIn input, [[sv_position]] float4& position)
 [[fragment_shader("fs")]]
 float4 fs(VSOut input)
 {
-    float4 font_color = sampler0.Sample(texture0, input.uv);
+    float4 font_color = texture0.Sample(sampler0, input.uv);
     return font_color * input.color;
 }

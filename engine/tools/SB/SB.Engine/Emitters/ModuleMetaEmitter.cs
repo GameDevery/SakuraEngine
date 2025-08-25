@@ -20,6 +20,7 @@ namespace SB
             var DepArgs = ModuleDependencies.ToList();
             DepArgs.Add(Target.Name);
             DepArgs.Add(Target.GetTargetType()?.ToString() ?? "none");
+            DepArgs.Add(GenFileName);
             bool Changed = Engine.CodegenDepend.OnChanged(Target.Name, "GeneratedModuleInfo", Name, (Depend depend) =>
             {
                 string DependenciesArray = "[" + String.Join(",", ModuleDependencies.Select(D => FormatDependency(D))) + "]";

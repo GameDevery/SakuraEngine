@@ -1,6 +1,4 @@
 #include <std/std.hpp>
-#include <std2/sampler.hpp>
-#include <std2/constant_buffer.hpp>
 
 using namespace skr::shader;
 
@@ -10,15 +8,14 @@ struct RootConstants
     float ColorMultiplier;
 };
 
-[[push_constant]]
-ConstantBuffer<RootConstants> push_constants;
-
 // Bindless texture array - length 0 means unbounded/bindless
-[[binding(0, 0)]]
 Texture2D<float> sampled_textures[0];
 
-[[binding(0, 1)]]
+[[group(1)]]
 Sampler texture_sampler;
+
+[[push_constant]]
+ConstantBuffer<RootConstants> push_constants;
 
 struct [[stage_inout]] VSOut
 {
@@ -59,7 +56,7 @@ void fragment(VSOut psIn, [[sv_render_target(0)]] float4& color)
 {
     // Access texture from bindless array using dynamic index
     uint texture_index = push_constants.TextureIndex;
-    float4 sampled_color = texture_sampler.Sample(sampled_textures[texture_index], psIn.uv);
+    float4 sampled_color = sampled_textures[texture_index].Sample(texture_sampler, psIn.uv);
     
     // Apply color multiplier
     color = sampled_color * push_constants.ColorMultiplier;

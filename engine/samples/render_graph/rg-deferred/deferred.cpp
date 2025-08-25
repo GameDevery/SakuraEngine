@@ -7,6 +7,7 @@
 #include "SkrProfile/profile.h"
 #include "SkrOS/thread.h"
 #include "SkrOS/filesystem.hpp"
+#include "SkrCore/memory/sp.hpp"
 #include "SkrCore/module/module_manager.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderer/skr_renderer.h"
@@ -165,12 +166,14 @@ void finalize()
     cgpu_free_sampler(static_sampler);
 }
 
-struct LightingPushConstants {
+struct LightingPushConstants
+{
     int bFlipUVX = 0;
     int bFlipUVY = 0;
 };
 static LightingPushConstants lighting_data = {};
-struct LightingCSPushConstants {
+struct LightingCSPushConstants
+{
     skr_float2_t viewportSize = { BACK_BUFFER_WIDTH, BACK_BUFFER_HEIGHT };
     skr_float2_t viewportOrigin = { 0, 0 };
 };
@@ -181,7 +184,8 @@ bool DPIAware = false;
 
 #include "SkrRT/runtime_module.h"
 
-struct RenderGraphDeferredModule : public skr::IDynamicModule {
+struct RenderGraphDeferredModule : public skr::IDynamicModule
+{
     virtual void on_load(int argc, char8_t** argv) override;
     virtual int main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
@@ -292,22 +296,21 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
             ImGui::End();
         }
 
+        {
+            imgui_app->acquire_frames();
+        }
+
         // rendering
-        auto native_backbuffer = imgui_app->get_backbuffer(imgui_app->get_main_window());
+        auto backbuffer = graph->get_texture(u8"backbuffer");
         imgui_app->set_load_action(CGPU_LOAD_ACTION_LOAD);
         {
             SkrZoneScopedN("GraphSetup");
-            // render graph setup & compile & exec
-            auto back_buffer = graph->create_texture(
-                [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
-                    builder.set_name(u8"backbuffer")
-                        .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
-                        .allow_render_target();
-                });
+
+            const auto back_desc = graph->resolve_descriptor(backbuffer);
             render_graph::TextureHandle composite_buffer = graph->create_texture(
                 [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
                     builder.set_name(u8"composite_buffer")
-                        .extent(native_backbuffer->info->width, native_backbuffer->info->height)
+                        .extent(back_desc->width, back_desc->height)
                         .format(CGPU_FORMAT_R8G8B8A8_UNORM)
                         .allocate_dedicated()
                         .allow_render_target();
@@ -315,7 +318,7 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
             auto gbuffer_color = graph->create_texture(
                 [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
                     builder.set_name(u8"gbuffer_color")
-                        .extent(native_backbuffer->info->width, native_backbuffer->info->height)
+                        .extent(back_desc->width, back_desc->height)
                         .format(gbuffer_formats[0])
                         .allocate_dedicated()
                         .allow_render_target();
@@ -323,7 +326,7 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
             auto gbuffer_depth = graph->create_texture(
                 [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
                     builder.set_name(u8"gbuffer_depth")
-                        .extent(native_backbuffer->info->width, native_backbuffer->info->height)
+                        .extent(back_desc->width, back_desc->height)
                         .format(gbuffer_depth_format)
                         .allocate_dedicated()
                         .allow_depth_stencil();
@@ -331,7 +334,7 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
             auto gbuffer_normal = graph->create_texture(
                 [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
                     builder.set_name(u8"gbuffer_normal")
-                        .extent(native_backbuffer->info->width, native_backbuffer->info->height)
+                        .extent(back_desc->width, back_desc->height)
                         .format(gbuffer_formats[1])
                         .allocate_dedicated()
                         .allow_render_target();
@@ -339,7 +342,7 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
             auto lighting_buffer = graph->create_texture(
                 [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
                     builder.set_name(u8"lighting_buffer")
-                        .extent(native_backbuffer->info->width, native_backbuffer->info->height)
+                        .extent(back_desc->width, back_desc->height)
                         .format(lighting_buffer_format)
                         .allocate_dedicated()
                         .allow_readwrite();
@@ -364,8 +367,8 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
                         .set_depth_stencil(gbuffer_depth.clear_depth(1.f));
                 },
                 [=](render_graph::RenderGraph& g, render_graph::RenderPassContext& stack) {
-                    cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)native_backbuffer->info->width, (float)native_backbuffer->info->height, 0.f, 1.f);
-                    cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, native_backbuffer->info->width, native_backbuffer->info->height);
+                    cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)back_desc->width, (float)back_desc->height, 0.f, 1.f);
+                    cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, back_desc->width, back_desc->height);
                     CGPUBufferId vertex_buffers[5] = {
                         vertex_buffer, vertex_buffer, vertex_buffer, vertex_buffer, instance_buffer
                     };
@@ -392,8 +395,8 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
                             .write(0, composite_buffer, CGPU_LOAD_ACTION_CLEAR);
                     },
                     [=](render_graph::RenderGraph& g, render_graph::RenderPassContext& stack) {
-                        cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)native_backbuffer->info->width, (float)native_backbuffer->info->height, 0.f, 1.f);
-                        cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, native_backbuffer->info->width, native_backbuffer->info->height);
+                        cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)back_desc->width, (float)back_desc->height, 0.f, 1.f);
+                        cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, back_desc->width, back_desc->height);
                         cgpu_render_encoder_push_constants(stack.encoder, lighting_pipeline->root_signature, u8"push_constants", &lighting_data);
                         cgpu_render_encoder_draw(stack.encoder, 3, 0);
                     });
@@ -421,8 +424,8 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
                             .write(0, composite_buffer, CGPU_LOAD_ACTION_CLEAR);
                     },
                     [=](render_graph::RenderGraph& g, render_graph::RenderPassContext& stack) {
-                        cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)native_backbuffer->info->width, (float)native_backbuffer->info->height, 0.f, 1.f);
-                        cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, native_backbuffer->info->width, native_backbuffer->info->height);
+                        cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)back_desc->width, (float)back_desc->height, 0.f, 1.f);
+                        cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, back_desc->width, back_desc->height);
                         cgpu_render_encoder_draw(stack.encoder, 3, 0);
                     });
             }
@@ -431,11 +434,11 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
                     builder.set_name(u8"final_blit")
                         .set_pipeline(blit_pipeline)
                         .read(u8"input_color", composite_buffer)
-                        .write(0, back_buffer, CGPU_LOAD_ACTION_CLEAR);
+                        .write(0, backbuffer, CGPU_LOAD_ACTION_CLEAR);
                 },
                 [=](render_graph::RenderGraph& g, render_graph::RenderPassContext& stack) {
-                    cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)native_backbuffer->info->width, (float)native_backbuffer->info->height, 0.f, 1.f);
-                    cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, native_backbuffer->info->width, native_backbuffer->info->height);
+                    cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)back_desc->width, (float)back_desc->height, 0.f, 1.f);
+                    cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, back_desc->width, back_desc->height);
                     cgpu_render_encoder_draw(stack.encoder, 3, 0);
                 });
             imgui_app->render_imgui();

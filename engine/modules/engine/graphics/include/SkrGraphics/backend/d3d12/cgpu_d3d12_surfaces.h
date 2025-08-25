@@ -1,8 +1,7 @@
 #pragma once
 #include "SkrGraphics/api.h"
-#include <d3d12.h>
+#include "d3d12-agility/d3d12.h"
 #include <dxgi1_6.h>
-#include <dxgidebug.h>
 
 #ifdef __cplusplus
 extern "C" {

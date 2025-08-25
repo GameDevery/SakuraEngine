@@ -2,7 +2,6 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/node_and_edge_factory.hpp"
-#include "SkrContainers/string.hpp"
 
 namespace skr
 {
@@ -62,7 +61,7 @@ PassHandle RenderGraph::add_render_pass(const RenderPassSetupFunction& setup, co
     SkrZoneScopedN("CopyPassBuilder::add_render_pass");
 
     const uint32_t passes_size = static_cast<uint32_t>(passes.size());
-    auto newPass = node_factory->Allocate<RenderPassNode>(passes_size);
+    auto newPass = node_factory->Allocate<RenderPassNode>(passes_size, frame_index);
     passes.add(newPass);
     graph->insert(newPass);
     // build up
@@ -85,18 +84,22 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::set_name(const c
 
 RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::read(const char8_t* name, TextureSRVHandle handle) SKR_NOEXCEPT
 {
+    if (handle._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: texture is not alive in the current frame");
     auto allocated = graph.node_factory->Allocate<TextureReadEdge>(name, handle, CGPU_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     auto&& edge = node.in_texture_edges.emplace(allocated).ref();
-    graph.graph->link(graph.graph->access_node(handle._this), &node, edge);
+    graph.graph->link(graph.graph->access_node(handle._this.id()), &node, edge);
     return *this;
 }
 
 RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::write(
     uint32_t mrt_index, TextureRTVHandle handle, ECGPULoadAction load_action, CGPUClearValue clear_color, ECGPUStoreAction store_action) SKR_NOEXCEPT
 {
+    if (handle._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: render target is not alive in the current frame");
     auto allocated = graph.node_factory->Allocate<TextureRenderEdge>(mrt_index, handle._this, clear_color);
     auto&& edge = node.out_texture_edges.emplace(allocated).ref();
-    graph.graph->link(&node, graph.graph->access_node(handle._this), edge);
+    graph.graph->link(&node, graph.graph->access_node(handle._this.id()), edge);
     node.load_actions[mrt_index] = load_action;
     node.store_actions[mrt_index] = store_action;
     return *this;
@@ -107,10 +110,12 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::write(
 // CGPU_MAX_MRT_COUNT + 1 .. 2 * CGPU_MAX_MRT_COUNT ResolveTargets
 RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::resolve_msaa(uint32_t mrt_index, TextureSubresourceHandle handle)
 {
+    if (handle._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: resolve target is not alive in the current frame");
     auto allocated = graph.node_factory->Allocate<TextureRenderEdge>(
         CGPU_MAX_MRT_COUNT + 1 + mrt_index, handle._this, fastclear_0000, CGPU_RESOURCE_STATE_RESOLVE_DEST);
     auto&& edge = node.out_texture_edges.emplace(allocated).ref();
-    graph.graph->link(&node, graph.graph->access_node(handle._this), edge);
+    graph.graph->link(&node, graph.graph->access_node(handle._this.id()), edge);
     return *this;
 }
 
@@ -120,10 +125,12 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::set_depth_stenci
     ECGPULoadAction sload_action,
     ECGPUStoreAction sstore_action) SKR_NOEXCEPT
 {
+    if (handle._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: depth-stencil is not alive in the current frame");
     auto allocated = graph.node_factory->Allocate<TextureRenderEdge>(
         CGPU_MAX_MRT_COUNT, handle._this, fastclear_0000, CGPU_RESOURCE_STATE_DEPTH_WRITE);
     auto&& edge = node.out_texture_edges.emplace(allocated).ref();
-    graph.graph->link(&node, graph.graph->access_node(handle._this), edge);
+    graph.graph->link(&node, graph.graph->access_node(handle._this.id()), edge);
     node.depth_load_action = dload_action;
     node.depth_store_action = dstore_action;
     node.stencil_load_action = sload_action;
@@ -134,9 +141,11 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::set_depth_stenci
 
 RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::read(const char8_t* name, BufferRangeHandle handle) SKR_NOEXCEPT
 {
+    if (handle._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: buffer is not alive in the current frame");
     auto allocated = graph.node_factory->Allocate<BufferReadEdge>(name, handle, CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
     auto&& edge = node.in_buffer_edges.emplace(allocated).ref();
-    graph.graph->link(graph.graph->access_node(handle._this), &node, edge);
+    graph.graph->link(graph.graph->access_node(handle._this.id()), &node, edge);
     return *this;
 }
 
@@ -148,9 +157,11 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::write(const char
 
 RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::use_buffer(PipelineBufferHandle buffer, ECGPUResourceState requested_state) SKR_NOEXCEPT
 {
+    if (buffer._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: pipeline buffer is not alive in the current frame");
     auto allocated = graph.node_factory->Allocate<PipelineBufferEdge>(buffer, requested_state);
     auto&& edge = node.ppl_buffer_edges.emplace(allocated).ref();
-    graph.graph->link(graph.graph->access_node(buffer._this), &node, edge);
+    graph.graph->link(graph.graph->access_node(buffer._this.id()), &node, edge);
     return *this;
 }
 
@@ -192,57 +203,71 @@ RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::set_name(const
 
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::read(const char8_t* name, TextureSRVHandle handle) SKR_NOEXCEPT
 {
+    if (handle._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: texture is not alive in the current frame");
     auto allocated = graph.node_factory->Allocate<TextureReadEdge>(name, handle, CGPU_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     auto&& edge = node.in_texture_edges.emplace(allocated).ref();
-    graph.graph->link(graph.graph->access_node(handle._this), &node, edge);
+    graph.graph->link(graph.graph->access_node(handle._this.id()), &node, edge);
     return *this;
 }
 
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::readwrite(const char8_t* name, TextureUAVHandle handle) SKR_NOEXCEPT
 {
+    if (handle._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: texture is not alive in the current frame");
     auto allocated = graph.node_factory->Allocate<TextureReadWriteEdge>(name, handle);
     auto&& edge = node.inout_texture_edges.emplace(allocated).ref();
-    graph.graph->link(&node, graph.graph->access_node(handle._this), edge);
+    graph.graph->link(&node, graph.graph->access_node(handle._this.id()), edge);
     return *this;
 }
 
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::read(const char8_t* name, BufferRangeHandle handle) SKR_NOEXCEPT
 {
+    if (handle._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: buffer is not alive in the current frame");
     auto allocated = graph.node_factory->Allocate<BufferReadEdge>(name, handle, CGPU_RESOURCE_STATE_SHADER_RESOURCE);
     auto&& edge = node.in_buffer_edges.emplace(allocated).ref();
-    graph.graph->link(graph.graph->access_node(handle._this), &node, edge);
+    graph.graph->link(graph.graph->access_node(handle._this.id()), &node, edge);
     return *this;
 }
 
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::read(const char8_t* name, BufferHandle handle) SKR_NOEXCEPT
 {
+    if (((HandleStorage)handle).frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: buffer is not alive in the current frame");
     auto allocated = graph.node_factory->Allocate<BufferReadEdge>(name, handle.range(0, ~0), CGPU_RESOURCE_STATE_SHADER_RESOURCE);
     auto&& edge = node.in_buffer_edges.emplace(allocated).ref();
-    graph.graph->link(graph.graph->access_node(handle), &node, edge);
+    graph.graph->link(graph.graph->access_node(((HandleStorage)handle).id()), &node, edge);
     return *this;
 }
 
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::readwrite(const char8_t* name, BufferHandle handle) SKR_NOEXCEPT
 {
+    if (((HandleStorage)handle).frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: buffer is not alive in the current frame");
     auto allocated = graph.node_factory->Allocate<BufferReadWriteEdge>(name, handle.range(0, ~0), CGPU_RESOURCE_STATE_UNORDERED_ACCESS);
     auto&& edge = node.out_buffer_edges.emplace(allocated).ref();
-    graph.graph->link(&node, graph.graph->access_node(handle), edge);
+    graph.graph->link(&node, graph.graph->access_node(((HandleStorage)handle).id()), edge);
     return *this;
 }
 
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::readwrite(const char8_t* name, BufferRangeHandle handle) SKR_NOEXCEPT
 {
+    if (handle._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: buffer is not alive in the current frame");
     auto allocated = graph.node_factory->Allocate<BufferReadWriteEdge>(name, handle, CGPU_RESOURCE_STATE_UNORDERED_ACCESS);
     auto&& edge = node.out_buffer_edges.emplace(allocated).ref();
-    graph.graph->link(&node, graph.graph->access_node(handle._this), edge);
+    graph.graph->link(&node, graph.graph->access_node(handle._this.id()), edge);
     return *this;
 }
 
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::read(const char8_t* name, AccelerationStructureSRVHandle handle) SKR_NOEXCEPT
 {
+    if (handle._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: acceleration structure is not alive in the current frame");
     auto allocated = graph.node_factory->Allocate<AccelerationStructureReadEdge>(name, handle);
     auto&& edge = node.in_acceleration_structure_edges.emplace(allocated).ref();
-    graph.graph->link(graph.graph->access_node(handle._this), &node, edge);
+    graph.graph->link(graph.graph->access_node(handle._this.id()), &node, edge);
     return *this;
 }
 
@@ -268,7 +293,7 @@ RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::with_flags(EPa
 PassHandle RenderGraph::add_compute_pass(const ComputePassSetupFunction& setup, const ComputePassExecuteFunction& executor) SKR_NOEXCEPT
 {
     const uint32_t passes_size = static_cast<uint32_t>(passes.size());
-    auto newPass = node_factory->Allocate<ComputePassNode>(passes_size);
+    auto newPass = node_factory->Allocate<ComputePassNode>(passes_size, frame_index);
     passes.add(newPass);
     graph->insert(newPass);
     // build up
@@ -305,12 +330,17 @@ RenderGraph::CopyPassBuilder& RenderGraph::CopyPassBuilder::buffer_to_buffer(Buf
 {
     SkrZoneScopedN("CopyPassBuilder::buffer_to_buffer");
 
+    if (src._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: src buffer is not alive in the current frame");
+    if (dst._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: dst buffer is not alive in the current frame");
+
     auto allocated_in = graph.node_factory->Allocate<BufferReadEdge>(u8"CopySrc", src, CGPU_RESOURCE_STATE_COPY_SOURCE);
     auto allocated_out = graph.node_factory->Allocate<BufferReadWriteEdge>(u8"CopyDst", dst, CGPU_RESOURCE_STATE_COPY_DEST);
     auto&& in_edge = node.in_buffer_edges.emplace(allocated_in).ref();
     auto&& out_edge = node.out_buffer_edges.emplace(allocated_out).ref();
-    graph.graph->link(graph.graph->access_node(src._this), &node, in_edge);
-    graph.graph->link(&node, graph.graph->access_node(dst._this), out_edge);
+    graph.graph->link(graph.graph->access_node(src._this.id()), &node, in_edge);
+    graph.graph->link(&node, graph.graph->access_node(dst._this.id()), out_edge);
     node.b2bs.emplace(src, dst);
     if (out_state != CGPU_RESOURCE_STATE_COPY_DEST)
     {
@@ -323,12 +353,17 @@ RenderGraph::CopyPassBuilder& RenderGraph::CopyPassBuilder::buffer_to_texture(Bu
 {
     SkrZoneScopedN("CopyPassBuilder::buffer_to_texture");
 
+    if (src._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: src buffer is not alive in the current frame");
+    if (dst._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: dst texture is not alive in the current frame");
+
     auto allocated_in = graph.node_factory->Allocate<BufferReadEdge>(u8"CopySrc", src, CGPU_RESOURCE_STATE_COPY_SOURCE);
     auto allocated_out = graph.node_factory->Allocate<TextureRenderEdge>(0u, dst._this, fastclear_0000, CGPU_RESOURCE_STATE_COPY_DEST);
     auto&& in_edge = node.in_buffer_edges.emplace(allocated_in).ref();
     auto&& out_edge = node.out_texture_edges.emplace(allocated_out).ref();
-    graph.graph->link(graph.graph->access_node(src._this), &node, in_edge);
-    graph.graph->link(&node, graph.graph->access_node(dst._this), out_edge);
+    graph.graph->link(graph.graph->access_node(src._this.id()), &node, in_edge);
+    graph.graph->link(&node, graph.graph->access_node(dst._this.id()), out_edge);
     node.b2ts.emplace(src, dst);
     if (out_state != CGPU_RESOURCE_STATE_COPY_DEST)
     {
@@ -341,12 +376,17 @@ RenderGraph::CopyPassBuilder& RenderGraph::CopyPassBuilder::texture_to_texture(T
 {
     SkrZoneScopedN("CopyPassBuilder::texture_to_texture");
 
+    if (src._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: src texture is not alive in the current frame");
+    if (dst._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: dst texture is not alive in the current frame");
+
     auto allocated_in = graph.node_factory->Allocate<TextureReadEdge>(u8"CopySrc", src._this, CGPU_RESOURCE_STATE_COPY_SOURCE);
     auto allocated_out = graph.node_factory->Allocate<TextureRenderEdge>(0u, dst._this, fastclear_0000, CGPU_RESOURCE_STATE_COPY_DEST);
     auto&& in_edge = node.in_texture_edges.emplace(allocated_in).ref();
     auto&& out_edge = node.out_texture_edges.emplace(allocated_out).ref();
-    graph.graph->link(graph.graph->access_node(src._this), &node, in_edge);
-    graph.graph->link(&node, graph.graph->access_node(dst._this), out_edge);
+    graph.graph->link(graph.graph->access_node(src._this.id()), &node, in_edge);
+    graph.graph->link(&node, graph.graph->access_node(dst._this.id()), out_edge);
     node.t2ts.emplace(src, dst);
     if (out_state != CGPU_RESOURCE_STATE_COPY_DEST)
     {
@@ -359,9 +399,12 @@ RenderGraph::CopyPassBuilder& RenderGraph::CopyPassBuilder::from_buffer(BufferRa
 {
     SkrZoneScopedN("CopyPassBuilder::from_buffer");
 
+    if (src._this.frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: src buffer is not alive in the current frame");
+
     auto allocated_in = graph.node_factory->Allocate<BufferReadEdge>(u8"CopySrc", src, CGPU_RESOURCE_STATE_COPY_SOURCE);
     auto&& in_edge = node.in_buffer_edges.emplace(allocated_in).ref();
-    graph.graph->link(graph.graph->access_node(src._this), &node, in_edge);
+    graph.graph->link(graph.graph->access_node(src._this.id()), &node, in_edge);
     return *this;
 }
 
@@ -374,7 +417,7 @@ RenderGraph::CopyPassBuilder& RenderGraph::CopyPassBuilder::with_flags(EPassFlag
 PassHandle RenderGraph::add_copy_pass(const CopyPassSetupFunction& setup, const CopyPassExecuteFunction& executor) SKR_NOEXCEPT
 {
     const uint32_t passes_size = static_cast<uint32_t>(passes.size());
-    auto newPass = node_factory->Allocate<CopyPassNode>(passes_size);
+    auto newPass = node_factory->Allocate<CopyPassNode>(passes_size, frame_index);
     passes.add(newPass);
     graph->insert(newPass);
     // build up
@@ -411,16 +454,18 @@ RenderGraph::PresentPassBuilder& RenderGraph::PresentPassBuilder::swapchain(CGPU
 RenderGraph::PresentPassBuilder& RenderGraph::PresentPassBuilder::texture(TextureHandle handle, bool is_backbuffer) SKR_NOEXCEPT
 {
     assert(is_backbuffer && "blit to screen mode not supported!");
+    if (((HandleStorage)handle).frame_index() != graph.frame_index)
+        SKR_LOG_FATAL(u8"lifetime leak detected: present texture is not alive in the current frame");
     auto allocated = graph.node_factory->Allocate<TextureReadEdge>(u8"PresentSrc", handle, CGPU_RESOURCE_STATE_PRESENT);
     auto&& edge = node.in_texture_edges.emplace(allocated).ref();
-    graph.graph->link(graph.graph->access_node(handle), &node, edge);
+    graph.graph->link(graph.graph->access_node(((HandleStorage)handle).id()), &node, edge);
     return *this;
 }
 
 PassHandle RenderGraph::add_present_pass(const PresentPassSetupFunction& setup) SKR_NOEXCEPT
 {
     const uint32_t passes_size = static_cast<uint32_t>(passes.size());
-    auto newPass = node_factory->Allocate<PresentPassNode>(passes_size);
+    auto newPass = node_factory->Allocate<PresentPassNode>(passes_size, frame_index);
     passes.add(newPass);
     graph->insert(newPass);
     // build up
@@ -456,13 +501,13 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::with_tags(uint32_t tags)
 
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::import(CGPUBufferId buffer, ECGPUResourceState init_state) SKR_NOEXCEPT
 {
-    node.imported = buffer;
+    node.imported = true;
     node.imported_buffer = buffer;
     node.init_state = init_state;
     node.descriptor.usages = buffer->info->usages;
     node.descriptor.size = buffer->info->size;
     node.descriptor.memory_usage = (ECGPUMemoryUsage)buffer->info->memory_usage;
-    graph.imported_buffers[buffer] = node.get_handle();
+    graph.imported_buffers.emplace(buffer, node.get_handle());
     return *this;
 }
 
@@ -555,7 +600,7 @@ BufferHandle RenderGraph::create_buffer(const BufferSetupFunction& setup) SKR_NO
 {
     SkrZoneScopedN("RenderGraph::create_buffer(handle)");
 
-    auto newBuf = node_factory->Allocate<BufferNode>();
+    auto newBuf = node_factory->Allocate<BufferNode>(frame_index);
     resources.add(newBuf);
     graph->insert(newBuf);
     BufferBuilder builder(*this, *newBuf);
@@ -571,7 +616,7 @@ BufferHandle RenderGraph::get_buffer(const char8_t* name) SKR_NOEXCEPT
     {
         return buffer->get_handle();
     }
-    return UINT64_MAX;
+    return BufferHandle();
 }
 
 BufferHandle RenderGraph::get_imported(CGPUBufferId buffer) SKR_NOEXCEPT
@@ -580,7 +625,7 @@ BufferHandle RenderGraph::get_imported(CGPUBufferId buffer) SKR_NOEXCEPT
     {
         return it->second;
     }
-    return UINT64_MAX;
+    return BufferHandle();
 }
 
 // texture builder
@@ -629,7 +674,7 @@ RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::import(CGPUTextureId t
     node.init_state = init_state;
     node.imported = true;
     node.imported_texture = texture;
-    graph.imported_textures[texture] = node.get_handle();
+    graph.imported_textures.emplace(texture, node.get_handle());
     return *this;
 }
 
@@ -696,13 +741,14 @@ TextureHandle RenderGraph::create_texture(const TextureSetupFunction& setup) SKR
 {
     SkrZoneScopedN("RenderGraph::create_texture(handle)");
 
-    auto newTex = node_factory->Allocate<TextureNode>();
+    auto newTex = node_factory->Allocate<TextureNode>(frame_index);
     resources.add(newTex);
     graph->insert(newTex);
     TextureBuilder builder(*this, *newTex);
     setup(*this, builder);
     // set default gc tag
-    if (newTex->tags == kRenderGraphInvalidResourceTag) newTex->tags |= kRenderGraphDefaultResourceTag;
+    if (newTex->tags == kRenderGraphInvalidResourceTag) 
+        newTex->tags |= kRenderGraphDefaultResourceTag;
     return newTex->get_handle();
 }
 
@@ -712,7 +758,7 @@ TextureHandle RenderGraph::get_texture(const char8_t* name) SKR_NOEXCEPT
     {
         return texture->get_handle();
     }
-    return UINT64_MAX;
+    return TextureHandle();
 }
 
 TextureHandle RenderGraph::get_imported(CGPUTextureId texture) SKR_NOEXCEPT
@@ -721,7 +767,7 @@ TextureHandle RenderGraph::get_imported(CGPUTextureId texture) SKR_NOEXCEPT
     {
         return it->second;
     }
-    return UINT64_MAX;
+    return TextureHandle();
 }
 
 // acceleration structure builder
@@ -745,7 +791,7 @@ RenderGraph::AccelerationStructureBuilder& RenderGraph::AccelerationStructureBui
     node.imported = true;
     node.imported_as = acceleration_structure;
     node.init_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_READ;
-    graph.imported_acceleration_structures[acceleration_structure] = node.get_handle();
+    graph.imported_acceleration_structures.emplace(acceleration_structure, node.get_handle());
     return *this;
 }
 
@@ -753,7 +799,7 @@ AccelerationStructureHandle RenderGraph::create_acceleration_structure(const Acc
 {
     SkrZoneScopedN("RenderGraph::create_acceleration_structure(handle)");
 
-    auto newAS = node_factory->Allocate<AccelerationStructureNode>();
+    auto newAS = node_factory->Allocate<AccelerationStructureNode>(frame_index);
     resources.add(newAS);
     graph->insert(newAS);
     AccelerationStructureBuilder builder(*this, *newAS);
@@ -769,7 +815,7 @@ AccelerationStructureHandle RenderGraph::get_acceleration_structure(const char8_
     {
         return acceleration_structure->get_handle();
     }
-    return UINT64_MAX;
+    return AccelerationStructureHandle();
 }
 
 AccelerationStructureHandle RenderGraph::get_imported(CGPUAccelerationStructureId acceleration_structure) SKR_NOEXCEPT
@@ -778,7 +824,7 @@ AccelerationStructureHandle RenderGraph::get_imported(CGPUAccelerationStructureI
     {
         return it->second;
     }
-    return UINT64_MAX;
+    return AccelerationStructureHandle();
 }
 
 } // namespace render_graph

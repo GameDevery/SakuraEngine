@@ -1,6 +1,4 @@
 #include <std/std.hpp>
-#include <std2/constant_buffer.hpp>
-#include <std2/sampler.hpp>
 
 using namespace skr::shader;
 
@@ -29,7 +27,7 @@ struct RootConstants
 };
 
 [[push_constant]]
-extern ConstantBuffer<RootConstants>& push_constants;
+ConstantBuffer<RootConstants> push_constants;
 
 [[vertex_shader("vs")]]
 VSOut vertex(const VSIn input, [[sv_position]] float4& position)

@@ -1,4 +1,4 @@
 #pragma once
-#include "resources/buffer.hpp"
-#include "resources/texture.hpp"
-#include "resources/accel.hpp"
+#include "resources/buffer.hpp"  // IWYU pragma: export
+#include "resources/texture.hpp" // IWYU pragma: export
+#include "resources/accel.hpp"   // IWYU pragma: export

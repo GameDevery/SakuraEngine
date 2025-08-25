@@ -1,12 +1,9 @@
 #include <std/std.hpp>
-#include <std2/attributes.hpp>
-#include <std2/constant_buffer.hpp>
 #include "SkrRenderer/shared/soa_layout.hpp"
 #include "SkrRenderer/shared/gpu_scene.hpp"
 
 using namespace skr::shader;
 
-// External resource bindings
 ByteAddressBuffer gpu_scene;
 RWTexture2D<float> output_texture;
 Accel scene_tlas;
@@ -20,7 +17,7 @@ struct CameraConstants
 };
 
 [[push_constant]]
-extern ConstantBuffer<CameraConstants>& camera_constants;
+ConstantBuffer<CameraConstants> camera_constants;
 
 // Ray tracing constants
 trait RayTracingConstants {
@@ -63,7 +60,7 @@ Ray generate_camera_ray(uint2 pixel_coord, uint2 screen_size)
 float4 shade_hit(RayQuery<RayQueryFlags::AcceptFirstAndEndSearch>& query) 
 {
     using Layout = skr::DefaultGPUSceneLayout;
-    uint instance_id = query.committed_instance_id();
+    uint instance_id = query.CommittedInstanceID();
     const auto offset = Layout::component_location<skr::GPUSceneInstanceColor>(instance_id);
     const auto color = gpu_scene.Load<skr::GPUSceneInstanceColor>(offset);
     return color.color;
@@ -79,11 +76,11 @@ float4 trace_scene(uint2 pixel_coord, uint2 screen_size)
     RayQuery<RayQueryFlags::AcceptFirstAndEndSearch> query;
     
     // Normal ray tracing
-    query.trace_ray_inline(scene_tlas, 0xff, primary_ray);
-    query.proceed();
+    query.TraceRayInline(scene_tlas, 0xff, primary_ray);
+    query.Proceed();
     
     // Check hit status
-    if (query.committed_status() == HitType::HitTriangle) {
+    if (query.CommittedStatus() == HitType::HitTriangle) {
         // Hit sphere, perform shading
         return shade_hit(query);
     } else {
@@ -114,5 +111,5 @@ void compute_main([[sv_thread_id]] uint3 thread_id)
     
     // Execute ray tracing and write directly to output texture
     float4 pixel_color = trace_scene(pixel_coord, screen_size);
-    output_texture.store(pixel_coord, pixel_color);
+    output_texture.Store(pixel_coord, pixel_color);
 }

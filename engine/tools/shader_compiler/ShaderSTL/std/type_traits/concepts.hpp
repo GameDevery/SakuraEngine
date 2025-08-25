@@ -119,6 +119,9 @@ static constexpr bool is_signed_arithmetic_v = is_float_family_v<T> || is_sint_f
 template<typename T>
 static constexpr bool is_arithmetic_scalar_v = is_arithmetic_v<T> && !is_vec_v<T>;
 
+template<typename T>
+static constexpr bool is_arithmetic_vec_v = is_arithmetic_v<T> && is_vec_v<T>;
+
 namespace concepts {
 
 template<typename T>
@@ -180,6 +183,12 @@ concept signed_arithmetic = is_signed_arithmetic_v<T>;
 
 template<typename T>
 concept arithmetic_scalar = is_arithmetic_scalar_v<T>;
+
+template<typename T>
+concept arithmetic_scalar_or_vec = is_arithmetic_scalar_v<T> || is_arithmetic_vec_v<T>;
+
+template<typename T>
+concept struct_type = __is_class(T) && !__is_union(T) && !__is_enum(T) && !is_vec_or_matrix_v<T> && !is_arithmetic_v<T>;
 
 template<typename T>
 concept primitive = is_arithmetic_v<T> || is_vec_or_matrix_v<T>;

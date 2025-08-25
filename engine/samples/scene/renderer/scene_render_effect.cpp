@@ -23,7 +23,7 @@ struct SceneRendererImpl : public skr::SceneRenderer
     CGPURenderPipelineId pipeline = nullptr;
     CGPUVertexLayout vertex_layout = {};
     CGPURasterizerStateDescriptor rs_state = {};
-    CGPUDepthStateDescriptor depth_state = {};
+    CGPUDepthStateDescriptor ds_desc = {};
     // temp push_constants
     struct push_constants
     {
@@ -31,14 +31,14 @@ struct SceneRendererImpl : public skr::SceneRenderer
         skr_float4x4_t view_proj = skr_float4x4_t::identity();
     } push_constants_data;
 
-    virtual void initialize(skr::RendererDevice* render_device, skr::ecs::World* world, struct skr_vfs_t* resource_vfs) override
+    virtual void initialize(skr::RenderDevice* render_device, skr::ecs::World* world, struct skr_vfs_t* resource_vfs) override
     {
         this->resource_vfs = resource_vfs;
         prepare_pipeline_settings();
         prepare_pipeline(render_device);
     }
 
-    virtual void finalize(skr::RendererDevice* renderer) override
+    virtual void finalize(skr::RenderDevice* renderer) override
     {
         free_pipeline(renderer);
     }
@@ -64,10 +64,13 @@ struct SceneRendererImpl : public skr::SceneRenderer
 
         auto backbuffer = render_graph->get_texture(u8"backbuffer");
         const auto back_desc = render_graph->resolve_descriptor(backbuffer);
+        auto depthbuffer = render_graph->get_texture(u8"render_depth");
+
         render_graph->add_render_pass(
-            [this, backbuffer](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
+            [this, backbuffer, depthbuffer](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
                 builder.set_name(u8"scene_render_pass")
                     .set_pipeline(pipeline) // captured this->pipeline
+                    .set_depth_stencil(depthbuffer.clear_depth(100.0f))
                     .write(0, backbuffer, CGPU_LOAD_ACTION_CLEAR);
             },
             [back_desc, drawcalls](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& context) {
@@ -98,8 +101,8 @@ struct SceneRendererImpl : public skr::SceneRenderer
     }
 
     void prepare_pipeline_settings();
-    void prepare_pipeline(skr::RendererDevice* render_device);
-    void free_pipeline(skr::RendererDevice* renderer);
+    void prepare_pipeline(skr::RenderDevice* render_device);
+    void free_pipeline(skr::RenderDevice* renderer);
 };
 
 // SceneRendererImpl* scene_effect = SkrNew<SceneRendererImpl>();
@@ -130,11 +133,13 @@ void SceneRendererImpl::prepare_pipeline_settings()
     rs_state.fill_mode = CGPU_FILL_MODE_SOLID;
     rs_state.front_face = CGPU_FRONT_FACE_CCW;
 
-    depth_state.depth_write = true;
-    depth_state.depth_test = true;
+    ds_desc.depth_func = CGPU_CMP_LEQUAL;
+    // ds_desc.depth_func = CGPU_CMP_GEQUAL;
+    ds_desc.depth_write = true;
+    ds_desc.depth_test = true;
 }
 
-void SceneRendererImpl::prepare_pipeline(skr::RendererDevice* render_device)
+void SceneRendererImpl::prepare_pipeline(skr::RenderDevice* render_device)
 {
     const auto cgpu_device = render_device->get_cgpu_device();
     CGPUShaderLibraryId vs = utils::create_shader_library(render_device, resource_vfs, u8"shaders/scene/debug.vs", CGPU_SHADER_STAGE_VERT);
@@ -166,15 +171,17 @@ void SceneRendererImpl::prepare_pipeline(skr::RendererDevice* render_device)
     rp_desc.fragment_shader = &ppl_fs;
     rp_desc.render_target_count = 1;
     rp_desc.color_formats = &color_format;
+    rp_desc.depth_stencil_format = depth_format;
 
     rp_desc.rasterizer_state = &rs_state;
+    rp_desc.depth_state = &ds_desc;
     pipeline = cgpu_create_render_pipeline(cgpu_device, &rp_desc);
 
     cgpu_free_shader_library(fs);
     cgpu_free_shader_library(vs);
 }
 
-void SceneRendererImpl::free_pipeline(skr::RendererDevice* renderer)
+void SceneRendererImpl::free_pipeline(skr::RenderDevice* renderer)
 {
     auto sig_to_free = pipeline->root_signature;
     cgpu_free_render_pipeline(pipeline);

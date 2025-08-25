@@ -1,4 +1,7 @@
 #include "CppSL/langs/HLSLGenerator.hpp"
+#include <unordered_set>
+#include <unordered_map>
+#include <tuple>
 
 namespace skr::CppSL::HLSL
 {
@@ -81,6 +84,8 @@ inline wchar_t GetResourceRegisterCharacter(const ResourceTypeDecl* type)
         return has_flag(asTexture->flags(), TextureFlags::ReadWrite) ? L'u' : L't';
     else if (auto asSampler = dynamic_cast<const SamplerDecl*>(type))
         return L's';
+    else if (auto asAS = dynamic_cast<const AccelTypeDecl*>(type))
+        return L't';
     return L'0';
 }
 
@@ -116,6 +121,14 @@ String HLSLGenerator::GetTypeName(const TypeDecl* type)
             return result;
         }
     }
+    else if (auto array = dynamic_cast<const ArrayTypeDecl*>(type))
+    {
+        return std::format(L"array<{}, {}>", GetQualifiedTypeName(array->element_type()), array->count());
+    }
+    else if (auto cbuffer = dynamic_cast<const ConstantBufferTypeDecl*>(type))
+    {
+        return L"ConstantBuffer<" + GetQualifiedTypeName(cbuffer->element_type()) + L">";
+    }
     else if (auto asRayQuery = dynamic_cast<const RayQueryTypeDecl*>(type))
     {
         const auto flags = asRayQuery->flags();
@@ -140,6 +153,13 @@ String HLSLGenerator::GetTypeName(const TypeDecl* type)
             FlagText += L" | RAY_FLAG_CULL_PROCEDURAL_PRIMITIVES";
         return L"RayQuery<" + FlagText + L">";
     }
+    else if (auto asArray = dynamic_cast<const ArrayTypeDecl*>(type))
+    {
+        if (auto asBdlsArray = asArray->element_type()->is_resource())
+        {
+            return L"Bindless<" + GetTypeName(asArray->element_type()) + L">";
+        }
+    }
     return type->name();
 }
 
@@ -150,8 +170,11 @@ void HLSLGenerator::VisitAccessExpr(SourceBuilderNew& sb, const AccessExpr* expr
     visitStmt(sb, to_access);
 
     auto asRef = dynamic_cast<const DeclRefExpr*>(to_access);
+    const auto asArray = dynamic_cast<const ArrayTypeDecl*>(to_access->type());
+
     const bool isGlobalResourceBind = asRef && FindAttr<ResourceBindAttr>(asRef->decl()->attrs());
-    if (!isGlobalResourceBind && to_access->type()->is_array())
+    const auto asBdlsResource = asArray && asArray->element_type()->is_resource() && (asArray->count() == 0);
+    if ((!asBdlsResource && !isGlobalResourceBind) && to_access->type()->is_array())
         sb.append(L".data");
 
     sb.append(L"[");
@@ -170,7 +193,7 @@ void HLSLGenerator::VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::
     while (auto asArray = dynamic_cast<const ArrayTypeDecl*>(asResource))
     {
         // Get the element type
-        asResource = asArray->element();
+        asResource = asArray->element_type();
 
         // Collect array dimensions for C-style syntax
         if (asArray->count() > 0)
@@ -186,7 +209,8 @@ void HLSLGenerator::VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::
     }
     String content = typeName + L" " + varName + arrayDimensions;
 
-    if (const auto pushConstant = FindAttr<PushConstantAttr>(var->attrs()))
+    const auto asPushConstant = FindAttr<PushConstantAttr>(var->attrs());
+    if (asPushConstant)
     {
         sb.append(L"[[vk::push_constant]]");
         sb.endline();
@@ -194,27 +218,20 @@ void HLSLGenerator::VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::
 
     String vk_binding = L"";
     String reg_info = L"";
-    if (const auto resourceBind = FindAttr<ResourceBindAttr>(var->attrs()))
+    // 使用 GenerateSRTs 生成的结果（所有全局资源必须已收录）
+    if (auto it = binding_table_.find(var); it != binding_table_.end())
     {
+        const auto& b = it->second;
         const auto R = GetResourceRegisterCharacter(dynamic_cast<const ResourceTypeDecl*>(asResource));
-        const uint32_t binding = resourceBind->binding();
-        const uint32_t group = resourceBind->group();
-        if (binding != ~0)
-        {
-            if (group != ~0)
-            {
-                vk_binding = std::format(L"[[vk::binding({}, {})]]", binding, group);
-                reg_info = std::format(L"register({}{}, space{})", R, binding, group);
-            }
-            else
-            {
-                vk_binding = std::format(L"[[vk::binding({}, {})]]", binding, 0);
-                reg_info = std::format(L"register({}{})", R, binding);
-            }
-        }
+        vk_binding = std::format(L"[[vk::binding({}, {})]]", b.binding, b.space);
+        reg_info = std::format(L"register({}{}, space{})", R, b.binding, b.space);
+    }
+    else
+    {
+        var->ast().ReportFatalError(L"Internal: missing binding in table for global resource '" + var->name() + L"'");
     }
 
-    if (!vk_binding.empty())
+    if (!asPushConstant && !vk_binding.empty())
     {
         sb.append(vk_binding);
         sb.endline();
@@ -263,8 +280,8 @@ void HLSLGenerator::VisitConstructExpr(SourceBuilderNew& sb, const ConstructExpr
     }
     else if (auto AsArray = dynamic_cast<const ArrayTypeDecl*>(ctorExpr->type()))
     {
-        const auto N = AsArray->size() / AsArray->element()->size();
-        sb.append(L"make_array" + std::to_wstring(N) + L"<" + GetQualifiedTypeName(AsArray->element()) + L", " + std::to_wstring(N) + L">(");
+        const auto N = AsArray->size() / AsArray->element_type()->size();
+        sb.append(L"make_array" + std::to_wstring(N) + L"<" + GetQualifiedTypeName(AsArray->element_type()) + L", " + std::to_wstring(N) + L">(");
         ;
         for (size_t i = 0; i < ctorExpr->args().size(); i++)
         {
@@ -343,7 +360,11 @@ void HLSLGenerator::VisitVariable(SourceBuilderNew& sb, const skr::CppSL::VarDec
     if (varDecl->qualifier() == EVariableQualifier::Const)
         sb.append(isGlobal ? L"static const " : L"const ");
     else if (varDecl->qualifier() == EVariableQualifier::Inout)
-        sb.append(L"inout ");
+    {
+        // buffer/texture/... can't pass with inout arg
+        if (!varDecl->type().is_resource())
+            sb.append(L"inout ");
+    }
     else if (varDecl->qualifier() == EVariableQualifier::GroupShared)
         sb.append(L"groupshared ");
 
@@ -399,8 +420,12 @@ void HLSLGenerator::VisitParameter(SourceBuilderNew& sb, const skr::CppSL::Funct
         prefix = L"out ";
         break;
     case EVariableQualifier::Inout:
-        prefix = L"inout ";
-        break;
+    {
+        // buffer/texture/... can't pass with inout arg
+        if (!param->type().is_resource())
+            prefix = L"inout ";
+    }
+    break;
     case EVariableQualifier::GroupShared:
         prefix = L"groupshared ";
         break;
@@ -506,64 +531,55 @@ bool HLSLGenerator::SupportConstructor() const
 }
 
 static const skr::CppSL::String kHLSLHeader = LR"(
+using uint64 = uint64_t;
+
 template<typename T> T fract(T x){return x - floor(x);}
+template<typename T> float length_squared(T x) { return dot(x,x); }
 
 template <typename T, uint64_t N> struct array { T data[N]; };
-
-template <typename T> void buffer_write(RWStructuredBuffer<T> buffer, uint index, T value) { buffer[index] = value; }
-template <typename T> T buffer_read(RWStructuredBuffer<T> buffer, uint index) { return buffer[index]; }
-template <typename T> T buffer_read(StructuredBuffer<T> buffer, uint index) { return buffer[index]; }
-
-#define byte_buffer_load(b, i)  (b).Load((i))
-#define byte_buffer_load2(b, i) (b).Load2((i))
-#define byte_buffer_load3(b, i) (b).Load3((i))
-#define byte_buffer_load4(b, i) (b).Load4((i))
-
-#define byte_buffer_store(b, i, v)  (b).Store((i), (v))
-#define byte_buffer_store2(b, i, v) (b).Store2((i), (v))
-#define byte_buffer_store3(b, i, v) (b).Store3((i), (v))
-#define byte_buffer_store4(b, i, v) (b).Store4((i), (v))
-
-template <typename T> T byte_buffer_read(ByteAddressBuffer b, uint i) { return b.Load<T>(i); }
-template <typename T> T byte_buffer_read(RWByteAddressBuffer b, uint i) { return b.Load<T>(i); }
-template <typename T> void byte_buffer_write(RWByteAddressBuffer b, uint i, T v) { b.Store<T>(i, v); }
+template <typename T> using Bindless = T[];
 
 template <typename B, typename T> T atomic_fetch_add(B buffer, uint offset, T value) { T prev = 0; InterlockedAdd(buffer[offset], value, prev); return prev; }
 template <typename G, typename T> T atomic_fetch_add(inout G shared_v, T value) { T prev = 0; InterlockedAdd(shared_v, value, prev); return prev; }
 
 // template <typename TEX> float4 texture2d_sample(TEX tex, uint2 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
 // template <typename TEX> float4 texture3d_sample(TEX tex, uint3 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
-
-template <typename T> T texture_read(Texture2D<T> tex, uint2 loc) { return tex.Load(uint3(loc, 0)); }
-template <typename T> T texture_read(RWTexture2D<T> tex, uint2 loc) { return tex.Load(uint3(loc, 0)); }
-template <typename T> T texture_read(Texture2D<T> tex, uint3 loc_and_mip) { return tex.Load(loc_and_mip); }
-template <typename T> T texture_read(RWTexture2D<T> tex, uint3 loc_and_mip) { return tex.Load(loc_and_mip); }
-template <typename T> T texture_write(RWTexture2D<T> tex, uint2 uv, T v) { return tex[uv] = v; }
-
-template <typename T> uint2 texture_size(Texture2D<T> tex) { uint Width, Height, Mips; tex.GetDimensions(0, Width, Height, Mips); return uint2(Width, Height); }
-template <typename T> uint2 texture_size(RWTexture2D<T> tex) { uint Width, Height; tex.GetDimensions(Width, Height); return uint2(Width, Height); }
-template <typename T> uint3 texture_size(Texture3D<T> tex) { uint Width, Height, Depth, Mips; tex.GetDimensions(0, Width, Height, Depth, Mips); return uint3(Width, Height, Depth); }
-template <typename T> uint3 texture_size(RWTexture3D<T> tex) { uint Width, Height, Depth; tex.GetDimensions(Width, Height, Depth); return uint3(Width, Height, Depth); }
-
-float4 sample2d(SamplerState s, Texture2D t, float2 uv) { return t.Sample(s, uv); }
-
-using AccelerationStructure = RaytracingAccelerationStructure;
-using uint64 = uint64_t;
-
-RayDesc create_ray(float3 origin, float3 dir, float tmin, float tmax) { RayDesc r; r.Origin = origin; r.Direction = dir; r.TMin = tmin; r.TMax = tmax; return r; }
-#define ray_query_trace_ray_inline(q, as, mask, ray) (q).TraceRayInline((as), RAY_FLAG_NONE, (mask), create_ray((ray).origin(), (ray).dir(), (ray).tmin(), (ray).tmax()))
-#define ray_query_proceed(q) (q).Proceed()
-#define ray_query_committed_status(q) (q).CommittedStatus()
-#define ray_query_committed_triangle_bary(q) (q).CommittedTriangleBarycentrics()
-#define ray_query_committed_instance_id(q) (q).CommittedInstanceID()
-#define ray_query_committed_ray_t(q) (q).CommittedRayT()
-#define ray_query_world_ray_origin(q) (q).WorldRayOrigin()
-#define ray_query_world_ray_direction(q) (q).WorldRayDirection()
 )";
+
+extern const wchar_t* kHLSLBitCast;
+extern const wchar_t* kHLSLBufferIntrinsics;
+extern const wchar_t* kHLSLTextureIntrinsics;
+extern const wchar_t* kHLSLRayIntrinsics;
 
 void HLSLGenerator::RecordBuiltinHeader(SourceBuilderNew& sb, const AST& ast)
 {
+    GenerateSRTs(ast);
+
+    bool HasBitCast = false;
+
+    for (auto stmt : ast.stmts())
+    {
+        if (auto as_call = dynamic_cast<CppSL::CallExpr*>(stmt))
+        {
+            auto called_function = dynamic_cast<const FunctionDecl*>(as_call->callee()->decl());
+            if (called_function && ast.IsIntrinsic(called_function))
+            {
+                if (called_function->name().starts_with(L"bit_cast"))
+                {
+                    HasBitCast = true;
+                }
+            }    
+        }
+    }
+
+    if (HasBitCast)
+    {
+        sb.append(kHLSLBitCast);
+    }
     sb.append(kHLSLHeader);
+    sb.append(kHLSLBufferIntrinsics);
+    sb.append(kHLSLTextureIntrinsics);
+    sb.append(kHLSLRayIntrinsics);
     sb.endline();
 
     GenerateArrayHelpers(sb, ast);
@@ -609,4 +625,255 @@ void HLSLGenerator::GenerateArrayHelpers(SourceBuilderNew& sb, const AST& ast)
         sb.append_line();
     }
 }
+
+struct SparseSequence {
+    std::set<uint32_t> used_numbers;
+    
+    bool TryAllocate(uint32_t number) {
+        auto [it, inserted] = used_numbers.insert(number);
+        return inserted; // 如果成功插入返回 true，否则返回 false
+    }
+    
+    uint32_t Allocate() {
+        uint32_t candidate = 0;
+        for (uint32_t used : used_numbers) {
+            if (used > candidate) {
+                break; // 找到了空隙
+            }
+            candidate = used + 1;
+        }
+        used_numbers.insert(candidate);
+        return candidate;
+    }
+    
+    bool IsUsed(uint32_t number) const {
+        return used_numbers.find(number) != used_numbers.end();
+    }
+};
+
+struct BindTable {
+    SparseSequence space_allocator;
+    std::map<uint32_t, SparseSequence> register_allocators;
+    uint32_t shared_space = UINT32_MAX; // 用于非 unique_space 的共享 space
+    
+    bool RegisterBinding(uint32_t space, uint32_t reg) 
+    {
+        // 1. 处理 space 分配
+        if (space != UINT32_MAX && reg != UINT32_MAX) {
+            // 1. 用户完全指定了 space 和 register
+            bool success1 = space_allocator.TryAllocate(space);
+            bool success2 = register_allocators[space].TryAllocate(reg);
+            return success1 && success2;
+        }
+        return false;
+    }
+
+    std::pair<uint32_t, uint32_t> AllocateBinding(bool unique_space, uint32_t space, uint32_t reg) {
+        uint32_t final_space = space;
+        uint32_t final_register = reg;
+        
+        // 2. 自动分配 space
+        if (space == UINT32_MAX) {
+            reg = UINT32_MAX;
+            if (unique_space) {
+                // 2.1 unique_space: 每次分配新的 space
+                final_space = space_allocator.Allocate();
+            } else {
+                // 2.1 非 unique_space: 使用共享 space
+                if (shared_space == UINT32_MAX) {
+                    // 第一次分配共享 space
+                    shared_space = space_allocator.Allocate();
+                }
+                final_space = shared_space;
+            }
+        } else {
+            // space 已指定，确保它被占用
+            space_allocator.TryAllocate(space);
+            final_space = space;
+        }
+        
+        // 2.2 自动分配 register
+        if (reg == UINT32_MAX) {
+            final_register = register_allocators[final_space].Allocate();
+        } else {
+            // register 已指定，在对应 space 中占用
+            register_allocators[final_space].TryAllocate(reg);
+            final_register = reg;
+        }
+        
+        return {final_space, final_register};
+    }
+};
+
+void HLSLGenerator::GenerateSRTs(const AST& ast)
+{
+    // 清空绑定表
+    binding_table_.clear();
+    
+    BindTable alloc_table;
+    
+    // 用于存储待分配的资源
+    std::vector<const VarDecl*> regular_resources;
+    std::vector<const VarDecl*> push_resources;
+    std::vector<const VarDecl*> bindless_resources;
+    std::map<const VarDecl*, std::pair<uint32_t, uint32_t>> fixed_bindings; // var -> (space, binding)
+    std::map<const VarDecl*, std::pair<uint32_t, uint32_t>> auto_bindings; // var -> (space, binding)
+    
+    // 第一遍：收集所有全局资源并分类
+    for (auto var : ast.global_vars())
+    {
+        const TypeDecl* varType = &var->type();
+        if (auto asResource = varType->is_resource())
+        {
+            bool is_bindless = false;
+            bool is_push = false;
+            if (auto asArray = dynamic_cast<const ArrayTypeDecl*>(varType))
+            {
+                if (asArray->count() == 0 && dynamic_cast<const ResourceTypeDecl*>(asArray->element_type()))
+                    is_bindless = true;
+            }
+            is_push = FindAttr<PushConstantAttr>(var->attrs());
+            if (const auto resourceBind = FindAttr<ResourceBindAttr>(var->attrs()))
+            {
+                if (is_push)
+                    push_resources.push_back(var);
+                else if (is_bindless)
+                    bindless_resources.push_back(var);
+                else
+                    regular_resources.push_back(var);
+
+                uint32_t space = resourceBind->group();
+                uint32_t binding = resourceBind->binding();
+                
+                // 检查是否有固定槽位
+                if (space != ~0 && binding != ~0)
+                {
+                    alloc_table.RegisterBinding(space, binding);
+                    fixed_bindings[var] = {space, binding};
+                }
+                else
+                {
+                    auto_bindings[var] = { space, binding };
+                }
+            }
+        }
+
+    }
+    
+    // 第一步：处理有固定槽位的资源
+    for (const auto& [var, slot] : fixed_bindings)
+    {
+        binding_table_[var] = {slot.second, slot.first, false, false};
+    }
+    
+    // 第二步：分配常规资源
+    for (auto var : regular_resources)
+    {
+        if (const auto resourceBind = FindAttr<ResourceBindAttr>(var->attrs()))
+        {
+            uint32_t space = resourceBind->group();
+            uint32_t binding = resourceBind->binding();
+            if ((space != UINT32_MAX) || (binding == UINT32_MAX))
+            {
+                auto [new_space, new_binding] = alloc_table.AllocateBinding(false, space, binding);
+                binding_table_[var] = {new_binding, new_space, false, false};
+            }
+        }
+    }
+    
+    // 3.1 分配 bindless 资源
+    for (auto var : bindless_resources)
+    {
+        if (const auto resourceBind = FindAttr<ResourceBindAttr>(var->attrs()))
+        {
+            uint32_t space = resourceBind->group();
+            uint32_t binding = resourceBind->binding();
+            if ((space != UINT32_MAX) || (binding == UINT32_MAX))
+            {
+                auto [new_space, new_binding] = alloc_table.AllocateBinding(true, space, binding);
+                binding_table_[var] = {new_binding, new_space, false, true};
+            }
+        }
+    }
+    
+    // 3.2 分配 push constant
+    for (auto var : push_resources)
+    {
+        if (const auto resourceBind = FindAttr<ResourceBindAttr>(var->attrs()))
+        {
+            uint32_t space = resourceBind->group();
+            uint32_t binding = resourceBind->binding();
+            if ((space != UINT32_MAX) || (binding == UINT32_MAX))
+            {
+                auto [new_space, new_binding] = alloc_table.AllocateBinding(true, space, binding);
+                binding_table_[var] = {new_binding, new_space, true, false};
+            }
+        }
+    }
+
+    // 第四步：检查 push 和 bindless 的 space 中是否有其他资源
+    // 收集每个 space 中的资源
+    std::map<uint32_t, std::vector<const VarDecl*>> space_resources;
+    std::map<uint32_t, const VarDecl*> push_spaces;      // space -> push resource
+    std::map<uint32_t, const VarDecl*> bindless_spaces;  // space -> bindless resource
+    
+    for (const auto& [var, binding_info] : binding_table_)
+    {
+        space_resources[binding_info.space].push_back(var);
+        
+        // 记录 push 和 bindless 占用的 space
+        if (binding_info.is_push)
+        {
+            push_spaces[binding_info.space] = var;
+        }
+        else if (binding_info.is_bindless)
+        {
+            bindless_spaces[binding_info.space] = var;
+        }
+    }
+    
+    // 检查 push constant space 中是否有其他资源
+    for (const auto& [space, push_var] : push_spaces)
+    {
+        const auto& resources_in_space = space_resources[space];
+        if (resources_in_space.size() > 1)
+        {
+            // Push constant 的 space 中有其他资源，报错
+            String error_msg = L"Push constant '" + push_var->name() + 
+                             L"' at space " + std::to_wstring(space) + 
+                             L" conflicts with other resources: ";
+            for (auto res : resources_in_space)
+            {
+                if (res != push_var)
+                {
+                    error_msg += L"'" + res->name() + L"' ";
+                }
+            }
+            ast.ReportFatalError(error_msg);
+        }
+    }
+    
+    // 检查 bindless resource space 中是否有其他资源
+    for (const auto& [space, bindless_var] : bindless_spaces)
+    {
+        const auto& resources_in_space = space_resources[space];
+        if (resources_in_space.size() > 1)
+        {
+            // Bindless resource 的 space 中有其他资源，报错
+            String error_msg = L"Bindless resource '" + bindless_var->name() + 
+                             L"' at space " + std::to_wstring(space) + 
+                             L" conflicts with other resources: ";
+            for (auto res : resources_in_space)
+            {
+                if (res != bindless_var)
+                {
+                    error_msg += L"'" + res->name() + L"' ";
+                }
+            }
+            ast.ReportFatalError(error_msg);
+        }
+    }
+
+}
+
 } // namespace skr::CppSL::HLSL

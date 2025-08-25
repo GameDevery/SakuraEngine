@@ -218,6 +218,12 @@ void BarrierGenerationPhase::generate_resource_transition_barriers(RenderGraph* 
             last_access.last_level = current_level;
         }
     }
+
+    for (auto& [node, access] : resource_last_access)
+    {
+        for (auto tracker : node->trackers)
+            tracker->last_state = access.last_state;
+    }
     
     BARRIER_GENERATION_LOG(u8"BarrierGenerationPhase: Generated resource transitions for %zu resources", all_resources.size());
 }

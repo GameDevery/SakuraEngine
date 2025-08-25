@@ -1,10 +1,9 @@
 #include "SkrGraphics/api.h"
 #ifdef CGPU_USE_D3D12
-    #include <d3d12.h>
+    #include "d3d12-agility/d3d12.h"
     #include <dxgi.h>
 #endif
-#include "SkrGraphics/drivers/cgpu_nvapi.h"
-#include "common_utils.h"
+#include "SkrGraphics/driver-extensions/cgpu_nvapi.h"
 
 // NVAPI
 ECGPUNvAPI_Status cgpu_nvapi_init(CGPUInstanceId Inst)

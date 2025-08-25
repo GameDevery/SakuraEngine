@@ -1223,10 +1223,9 @@ typedef struct CGPUCommandPoolDescriptor {
 } CGPUCommandPoolDescriptor;
 
 typedef struct CGPUCommandBufferDescriptor {
-#if defined(PROSPERO) || defined(ORBIS)
-    uint32_t max_size; // AGC CommandBuffer Size
-#endif
-    bool is_secondary : 1;
+    const char8_t* name;
+    bool is_secondary;
+    uint32_t max_size;
 } CGPUCommandBufferDescriptor;
 
 typedef struct CGPUShaderEntryDescriptor {

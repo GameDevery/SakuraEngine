@@ -107,7 +107,7 @@ bool TypeDecl::is_matrix() const
 bool TypeDecl::is_resource() const
 {
     if (auto as_array = dynamic_cast<const ArrayTypeDecl*>(this))
-        return as_array->element()->is_resource();
+        return as_array->element_type()->is_resource();
     else
         return dynamic_cast<const ResourceTypeDecl*>(this) != nullptr;
 }
@@ -260,8 +260,26 @@ Texture2DTypeDecl::Texture2DTypeDecl(AST& ast, const TypeDecl* element, TextureF
 
 }
 
+Texture2DArrayTypeDecl::Texture2DArrayTypeDecl(AST& ast, const TypeDecl* element, TextureFlags flags)
+    : TextureTypeDecl(ast, std::format(L"{}Texture2DArray<{}>", has_flag(flags, TextureFlags::ReadWrite) ? L"RW" : L"", element->name()), element, flags)
+{
+
+}
+
 Texture3DTypeDecl::Texture3DTypeDecl(AST& ast, const TypeDecl* element, TextureFlags flags)
     : TextureTypeDecl(ast, std::format(L"{}Texture3D<{}>", has_flag(flags, TextureFlags::ReadWrite) ? L"RW" : L"", element->name()), element, flags)
+{
+
+}
+
+Texture3DArrayTypeDecl::Texture3DArrayTypeDecl(AST& ast, const TypeDecl* element, TextureFlags flags)
+    : TextureTypeDecl(ast, std::format(L"{}Texture3DArray<{}>", has_flag(flags, TextureFlags::ReadWrite) ? L"RW" : L"", element->name()), element, flags)
+{
+
+}
+
+TextureCubeTypeDecl::TextureCubeTypeDecl(AST& ast, const TypeDecl* element, TextureFlags flags)
+    : TextureTypeDecl(ast, std::format(L"{}TextureCube<{}>", has_flag(flags, TextureFlags::ReadWrite) ? L"RW" : L"", element->name()), element, flags)
 {
 
 }

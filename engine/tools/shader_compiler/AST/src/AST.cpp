@@ -551,28 +551,70 @@ SamplerDecl* AST::Sampler()
 Texture2DTypeDecl* AST::Texture2D(const TypeDecl* element, TextureFlags flags)
 {
     const std::pair<const TypeDecl*, TextureFlags> key = { element, flags };
-    auto&& iter = _texture2ds.find(key);
-    if (iter != _texture2ds.end())
+    auto&& iter = _texture_2ds.find(key);
+    if (iter != _texture_2ds.end())
         return dynamic_cast<Texture2DTypeDecl*>(iter->second);
 
     auto new_type = new Texture2DTypeDecl(*this, element, flags);
     _types.emplace_back(new_type);
     emplace_decl(new_type);
-    _texture2ds[key] = new_type;
+    _texture_2ds[key] = new_type;
     return new_type;
 }
 
 Texture3DTypeDecl* AST::Texture3D(const TypeDecl* element, TextureFlags flags)
 {
     const std::pair<const TypeDecl*, TextureFlags> key = { element, flags };
-    auto&& iter = _texture3ds.find(key);
-    if (iter != _texture3ds.end())
+    auto&& iter = _texture_3ds.find(key);
+    if (iter != _texture_3ds.end())
         return dynamic_cast<Texture3DTypeDecl*>(iter->second);
 
     auto new_type = new Texture3DTypeDecl(*this, element, flags);
     _types.emplace_back(new_type);
     emplace_decl(new_type);
-    _texture3ds[key] = new_type;
+    _texture_3ds[key] = new_type;
+    return new_type;
+}
+
+TextureCubeTypeDecl* AST::TextureCube(const TypeDecl* element, TextureFlags flags)
+{
+    const std::pair<const TypeDecl*, TextureFlags> key = { element, flags };
+    auto&& iter = _texture_cubes.find(key);
+    if (iter != _texture_cubes.end())
+        return dynamic_cast<TextureCubeTypeDecl*>(iter->second);
+
+    auto new_type = new TextureCubeTypeDecl(*this, element, flags);
+    _types.emplace_back(new_type);
+    emplace_decl(new_type);
+    _texture_cubes[key] = new_type;
+    return new_type;
+}
+
+Texture2DArrayTypeDecl* AST::Texture2DArray(const TypeDecl* element, TextureFlags flags)
+{
+    const std::pair<const TypeDecl*, TextureFlags> key = { element, flags };
+    auto&& iter = _texture_2das.find(key);
+    if (iter != _texture_2das.end())
+        return dynamic_cast<Texture2DArrayTypeDecl*>(iter->second);
+
+    auto new_type = new Texture2DArrayTypeDecl(*this, element, flags);
+    _types.emplace_back(new_type);
+    emplace_decl(new_type);
+    _texture_2das[key] = new_type;
+    return new_type;
+}
+
+Texture3DArrayTypeDecl* AST::Texture3DArray(const TypeDecl* element, TextureFlags flags)
+{
+    const std::pair<const TypeDecl*, TextureFlags> key = { element, flags };
+    auto&& iter = _texture_3das.find(key);
+    if (iter != _texture_3das.end())
+        return dynamic_cast<Texture3DArrayTypeDecl*>(iter->second);
+
+    auto new_type = new Texture3DArrayTypeDecl(*this, element, flags);
+    _types.emplace_back(new_type);
+    emplace_decl(new_type);
+    _texture_3das[key] = new_type;
     return new_type;
 }
 
@@ -636,6 +678,16 @@ const TemplateCallableDecl* AST::FindIntrinsic(const char* name) const
     if (it != _intrinsics.end())
         return it->second;
     return nullptr;
+}
+
+bool AST::IsIntrinsic(const FunctionDecl* function) const
+{
+    if (auto as_spec = dynamic_cast<const SpecializedFunctionDecl*>(function))
+    {
+        auto prototype = as_spec->template_decl();
+        return _intrinsics_set.contains(prototype);
+    }
+    return false;
 }
 
 SpecializedMethodDecl* AST::SpecializeTemplateMethod(const TemplateCallableDecl* template_decl, std::span<const TypeDecl* const> arg_types, std::span<const EVariableQualifier> arg_qualifiers, const TypeDecl* ret_spec)
@@ -784,15 +836,15 @@ void AST::DeclareIntrinsics()
     auto IntBufferFamily = DeclareVarConcept(L"IntBufferFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
             auto t = dynamic_cast<const skr::CppSL::StructuredBufferTypeDecl*>(type);
-            return (t != nullptr) && ((&t->element() == IntType) || (&t->element() == UIntType) || 
-                                      (&t->element() == I64Type) || (&t->element() == U64Type));
+            return (t != nullptr) && ((&t->element_type() == IntType) || (&t->element_type() == UIntType) || 
+                                      (&t->element_type() == I64Type) || (&t->element_type() == U64Type));
         });
     auto IntSharedArrayFamily = DeclareVarConcept(L"IntSharedArrayFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
             auto t = dynamic_cast<const skr::CppSL::ArrayTypeDecl*>(type);
             return (t != nullptr) && (has_flag(t->flags(), ArrayFlags::Shared)) && (
-                    (t->element() == IntType) || (t->element() == UIntType) || 
-                    (t->element() == I64Type) || (t->element() == U64Type));
+                    (t->element_type() == IntType) || (t->element_type() == UIntType) || 
+                    (t->element_type() == I64Type) || (t->element_type() == U64Type));
         });
     auto AtomicOperableFamily = DeclareVarConcept(L"AtomicOperableFamily",
         [this, IntBufferFamily, IntSharedArrayFamily](EVariableQualifier qualifier, const TypeDecl* type) {
@@ -814,12 +866,12 @@ void AST::DeclareIntrinsics()
     auto FloatTexture2DFamily = DeclareVarConcept(L"FloatTextureFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
             auto t = dynamic_cast<const skr::CppSL::Texture2DTypeDecl*>(type);
-            return (t != nullptr) && (&t->element() == FloatType);
+            return (t != nullptr) && (&t->element_type() == FloatType);
         });
     auto FloatTexture3DFamily = DeclareVarConcept(L"FloatTexture3DFamily",
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
             auto t = dynamic_cast<const skr::CppSL::Texture3DTypeDecl*>(type);
-            return (t != nullptr) && (&t->element() == FloatType);
+            return (t != nullptr) && (&t->element_type() == FloatType);
         });
 
     auto ReturnFirstArgType = [=](auto pts){ return pts[0]; };
@@ -834,6 +886,8 @@ void AST::DeclareIntrinsics()
     std::array<VarConceptDecl*, 1> OneValue = { ValueFamily };
     std::array<VarConceptDecl*, 1> OneArithmetic = { ArthmeticFamily };
     _intrinsics["ABS"] = DeclareTemplateFunction(L"abs", ReturnFirstArgType, OneArithmetic);
+    // bit_cast<T> will be override when is called
+    _intrinsics["BIT_CAST"] = DeclareTemplateFunction(L"bit_cast", VoidType, OneArithmetic);
 
     std::array<VarConceptDecl*, 2> TwoArithmetic = { ArthmeticFamily, ArthmeticFamily };
     _intrinsics["MIN"] = DeclareTemplateFunction(L"min", ReturnFirstArgType, TwoArithmetic);
@@ -844,10 +898,6 @@ void AST::DeclareIntrinsics()
     _intrinsics["LERP"] = DeclareTemplateFunction(L"lerp", ReturnFirstArgType, ThreeArithmetic);
 
     std::array<VarConceptDecl*, 1> OneArithmeticVec = { ArthmeticVectorFamily };
-    _intrinsics["REDUCE_SUM"] = DeclareTemplateFunction(L"reduce_sum", FloatType, OneArithmeticVec);
-    _intrinsics["REDUCE_PRODUCT"] = DeclareTemplateFunction(L"reduce_product", FloatType, OneArithmeticVec);
-    _intrinsics["REDUCE_MIN"] = DeclareTemplateFunction(L"reduce_min", FloatType, OneArithmeticVec);
-    _intrinsics["REDUCE_MAX"] = DeclareTemplateFunction(L"reduce_max", FloatType, OneArithmeticVec);
 
     std::array<VarConceptDecl*, 1> OneBoolFamily = { BoolFamily };
     _intrinsics["ALL"] = DeclareTemplateFunction(L"all", BoolType, OneBoolFamily);
@@ -893,7 +943,7 @@ void AST::DeclareIntrinsics()
     _intrinsics["ISNAN"] = DeclareTemplateFunction(L"is_nan", ReturnBoolVecWithSameDim, OneFloatFamily);
 
     std::array<VarConceptDecl*, 2> TwoFloatFamily = { FloatFamily, FloatFamily };
-    _intrinsics["POW"] = DeclareTemplateFunction(L"pow", ReturnFirstArgType, TwoFloatFamily);
+    _intrinsics["POW"] = DeclareTemplateFunction(L"pow", ReturnFirstArgType, TwoArithmetic);
     _intrinsics["COPYSIGN"] = DeclareTemplateFunction(L"copysign", ReturnFirstArgType, TwoFloatFamily);
     _intrinsics["ATAN2"] = DeclareTemplateFunction(L"atan2", ReturnFirstArgType, TwoFloatFamily);
     _intrinsics["STEP"] = DeclareTemplateFunction(L"step", ReturnFirstArgType, TwoFloatFamily);
@@ -926,7 +976,7 @@ void AST::DeclareIntrinsics()
     std::array<VarConceptDecl*, 2> BufferReadParams = { BufferFamily, IntScalar };
     _intrinsics["BUFFER_READ"] = DeclareTemplateFunction(L"buffer_read", 
         [=](auto pts) { 
-            return &dynamic_cast<const StructuredBufferTypeDecl*>(pts[0])->element(); 
+            return &dynamic_cast<const StructuredBufferTypeDecl*>(pts[0])->element_type(); 
         }, BufferReadParams);
 
     std::array<VarConceptDecl*, 3> BufferWriteParams = { BufferFamily, IntScalar, ValueFamily };
@@ -951,7 +1001,7 @@ void AST::DeclareIntrinsics()
     
     auto AtomicReturnSpec = [=](auto pts) {
         if (auto bufferType = dynamic_cast<const StructuredBufferTypeDecl*>(pts[0])) 
-            return &bufferType->element();
+            return &bufferType->element_type();
         else
             return pts[0];
         return pts[0];
@@ -972,7 +1022,7 @@ void AST::DeclareIntrinsics()
     std::array<VarConceptDecl*, 2> TextureReadParams = { TextureFamily, IntVector };
     _intrinsics["TEXTURE_READ"] = DeclareTemplateFunction(L"texture_read", 
         [=](auto pts) { 
-            return &dynamic_cast<const TextureTypeDecl*>(pts[0])->element(); 
+            return &dynamic_cast<const TextureTypeDecl*>(pts[0])->element_type(); 
         }, TextureReadParams);
     
     std::array<VarConceptDecl*, 3> TextureWriteParams = { TextureFamily, IntVector, Vector4D };
@@ -980,16 +1030,27 @@ void AST::DeclareIntrinsics()
     std::array<VarConceptDecl*, 1> TextureSizeParams = { TextureFamily };
     _intrinsics["TEXTURE_SIZE"] = DeclareTemplateFunction(L"texture_size", UInt3Type, TextureSizeParams);
 
-    std::array<VarConceptDecl*, 3> Sample2DParams = { SamplerFamily, Texture2DFamily, FloatVector };
-    _intrinsics["SAMPLE2D"] = DeclareTemplateFunction(L"sample2d", [this](auto pts) {
-        auto pt = &dynamic_cast<const Texture2DTypeDecl*>(pts[1])->element();
+    std::array<VarConceptDecl*, 3> SampleParams = { TextureFamily, SamplerFamily, FloatVector };
+    _intrinsics["TEXTURE_SAMPLE"] = DeclareTemplateFunction(L"texture_sample", [this](auto pts) {
+        auto pt = &dynamic_cast<const Texture2DTypeDecl*>(pts[1])->element_type();
         if (pt == FloatType) return Float4Type;
         if (pt == HalfType) return Half4Type;
         if (pt == IntType) return Int4Type;
         if (pt == UIntType) return UInt4Type;
         if (pt == BoolType) return Bool4Type;
         return (const TypeDecl*)nullptr;
-    }, Sample2DParams);
+    }, SampleParams);
+
+    std::array<VarConceptDecl*, 4> SampleLevelParams = { TextureFamily, SamplerFamily, FloatVector, IntScalar };
+    _intrinsics["TEXTURE_SAMPLE_LEVEL"] = DeclareTemplateFunction(L"texture_sample_level", [this](auto pts) {
+        auto pt = &dynamic_cast<const Texture2DTypeDecl*>(pts[1])->element_type();
+        if (pt == FloatType) return Float4Type;
+        if (pt == HalfType) return Half4Type;
+        if (pt == IntType) return Int4Type;
+        if (pt == UIntType) return UInt4Type;
+        if (pt == BoolType) return Bool4Type;
+        return (const TypeDecl*)nullptr;
+    }, SampleLevelParams);
 
     // RayQuery family concept
     auto RayQueryFamily = DeclareVarConcept(L"RayQueryFamily", 
@@ -1005,13 +1066,27 @@ void AST::DeclareIntrinsics()
 
     std::array<VarConceptDecl*, 1> RayQueryProceedParams = { RayQueryFamily };
     _intrinsics["RAY_QUERY_PROCEED"] = DeclareTemplateFunction(L"ray_query_proceed", BoolType, RayQueryProceedParams);
+    
     _intrinsics["RAY_QUERY_COMMITTED_STATUS"] = DeclareTemplateFunction(L"ray_query_committed_status", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS"] = DeclareTemplateFunction(L"ray_query_committed_triangle_bary", Float2Type, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_COMMITTED_PRIMIVE_INDEX"] = DeclareTemplateFunction(L"ray_query_committed_primitive_index", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_INSTANCE_ID"] = DeclareTemplateFunction(L"ray_query_committed_instance_id", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_COMMITTED_PROCEDURAL_DISTANCE"] = DeclareTemplateFunction(L"ray_query_committed_procedual_distance", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_RAY_T"] = DeclareTemplateFunction(L"ray_query_committed_ray_t", FloatType, RayQueryProceedParams);
+    
+    _intrinsics["RAY_QUERY_CANDIDATE_STATUS"] = DeclareTemplateFunction(L"ray_query_candidate_status", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_CANDIDATE_TRIANGLE_BARYCENTRICS"] = DeclareTemplateFunction(L"ray_query_candidate_triangle_bary", Float2Type, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_CANDIDATE_PRIMIVE_INDEX"] = DeclareTemplateFunction(L"ray_query_candidate_primitive_index", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_CANDIDATE_INSTANCE_ID"] = DeclareTemplateFunction(L"ray_query_candidate_instance_id", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_CANDIDATE_PROCEDURAL_DISTANCE"] = DeclareTemplateFunction(L"ray_query_candidate_procedual_distance", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_CANDIDATE_TRIANGLE_RAY_T"] = DeclareTemplateFunction(L"ray_query_candidate_triangle_ray_t", FloatType, RayQueryProceedParams);
+    
     _intrinsics["RAY_QUERY_WORLD_RAY_ORIGIN"] = DeclareTemplateFunction(L"ray_query_world_ray_origin", Float3Type, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_WORLD_RAY_DIRECTION"] = DeclareTemplateFunction(L"ray_query_world_ray_direction", Float3Type, RayQueryProceedParams);
     
+    _intrinsics["RAY_QUERY_COMMIT_TRIANGLE"] = DeclareTemplateFunction(L"ray_query_commit_triangle", BoolType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_TERMINATE"] = DeclareTemplateFunction(L"ray_query_terminate", BoolType, RayQueryProceedParams);
+
     // void trace_ray_inline(Accel& AS, uint32 mask, Trait<Ray> ray);
     std::array<VarConceptDecl*, 4> TraceRayInlineParams = { RayQueryFamily, AccelFamily, IntScalar, ValueFamily };
     _intrinsics["RAY_QUERY_TRACE_RAY_INLINE"] = DeclareTemplateFunction(L"ray_query_trace_ray_inline", VoidType, TraceRayInlineParams);
@@ -1023,7 +1098,10 @@ void AST::DeclareIntrinsics()
     // SM 5.1
     _intrinsics["AllMemoryBarrier"] = DeclareTemplateFunction(L"AllMemoryBarrier", VoidType, {});
     _intrinsics["AllMemoryBarrierWithGroupSync"] = DeclareTemplateFunction(L"AllMemoryBarrierWithGroupSync", VoidType, {});
-
+    _intrinsics["GroupMemoryBarrier"] = DeclareTemplateFunction(L"GroupMemoryBarrier", VoidType, {});
+    _intrinsics["GroupMemoryBarrierWithGroupSync"] = DeclareTemplateFunction(L"GroupMemoryBarrierWithGroupSync", VoidType, {});
+    _intrinsics["DeviceMemoryBarrier"] = DeclareTemplateFunction(L"DeviceMemoryBarrier", VoidType, {});
+    _intrinsics["DeviceMemoryBarrierWithGroupSync"] = DeclareTemplateFunction(L"DeviceMemoryBarrierWithGroupSync", VoidType, {});
 
     // SM 6.1 Wave Intrinstics
     std::array<VarConceptDecl*, 2> ReadLaneAtArgs = { ValueFamily, IntScalar };
@@ -1053,6 +1131,9 @@ void AST::DeclareIntrinsics()
     // WaveReadLaneFirst<T> will be override when is called
     _intrinsics["WaveReadLaneFirst"] = DeclareTemplateFunction(L"WaveReadLaneFirst", VoidType, {});
     _intrinsics["WaveReadLaneAt"] = DeclareTemplateFunction(L"WaveReadLaneAt", VoidType, OneIntFamily);
+
+    for (auto&& [name, intrin] : _intrinsics)
+        _intrinsics_set.insert(intrin);
 }
 
 ASTDatabase::~ASTDatabase()

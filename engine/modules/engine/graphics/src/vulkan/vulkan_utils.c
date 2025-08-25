@@ -1,8 +1,7 @@
 #include "vulkan_utils.h"
 #include "SkrGraphics/backend/vulkan/cgpu_vulkan.h"
-#include "SkrGraphics/drivers/cgpu_ags.h"
-#include "SkrGraphics/drivers/cgpu_nvapi.h"
-#include "SkrGraphics/flags.h"
+#include "SkrGraphics/driver-extensions/cgpu_ags.h"
+#include "SkrGraphics/driver-extensions/cgpu_nvapi.h"
 #include "vulkan/vulkan_core.h"
 #ifdef CGPU_THREAD_SAFETY
     #include "SkrOS/thread.h"

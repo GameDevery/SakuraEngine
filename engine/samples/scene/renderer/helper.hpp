@@ -11,7 +11,7 @@
 namespace utils
 {
 
-inline uint32_t* read_shader_bytes(skr::RendererDevice* render_device, skr_vfs_t* resource_vfs, const char8_t* name, uint32_t* out_length)
+inline uint32_t* read_shader_bytes(skr::RenderDevice* render_device, skr_vfs_t* resource_vfs, const char8_t* name, uint32_t* out_length)
 {
     const auto cgpu_device = render_device->get_cgpu_device();
     const auto backend = cgpu_device->adapter->instance->backend;
@@ -26,7 +26,7 @@ inline uint32_t* read_shader_bytes(skr::RendererDevice* render_device, skr_vfs_t
     return shader_bytes;
 }
 
-inline CGPUShaderLibraryId create_shader_library(skr::RendererDevice* render_device, skr_vfs_t* resource_vfs, const char8_t* name, ECGPUShaderStage stage)
+inline CGPUShaderLibraryId create_shader_library(skr::RenderDevice* render_device, skr_vfs_t* resource_vfs, const char8_t* name, ECGPUShaderStage stage)
 {
     const auto cgpu_device = render_device->get_cgpu_device();
     uint32_t shader_length = 0;
@@ -40,82 +40,17 @@ inline CGPUShaderLibraryId create_shader_library(skr::RendererDevice* render_dev
     return shader;
 }
 
-class SCENE_RENDERER_API SimpleMesh
-{
-protected:
-    // for editing mesh data, can be used to generate mesh resource
-    skr::Vector<skr_float3_t> c_positions;
-    skr::Vector<skr_float2_t> c_uvs;
-    skr::Vector<skr_float3_t> c_normals;
-    skr::Vector<uint32_t> c_indices;
-    // raw data for mesh processing, can be used to generate mesh resource
-    uint8_t* raw_data = nullptr;
-    // GPU resources
-    CGPUBufferId vertex_buffer = nullptr;
-    CGPUBufferId index_buffer = nullptr;
-    skr::Vector<skr_vertex_buffer_view_t> vbvs;
-    skr_index_buffer_view_t ibv;
-    skr::Vector<skr::PrimitiveCommand> primitive_commands;
-
-public:
-    virtual void init() SKR_NOEXCEPT = 0;    // init instance, allocate CPU resources
-    virtual void destroy() SKR_NOEXCEPT = 0; // destroy all CPU and GPU resources
-    // void generate_mesh_resource(skr::RendererDevice* render_device, RenderMesh* render_mesh) SKR_NOEXCEPT; // generate render mesh, allocate GPU resources
-    void generate_render_mesh(skr::RendererDevice* render_device, skr::RenderMesh* render_mesh) SKR_NOEXCEPT; // generate render mesh, allocate GPU resources
-};
-
-class SCENE_RENDERER_API TriangleMesh : public SimpleMesh
-{
-public:
-    virtual void init() SKR_NOEXCEPT override;
-    virtual void destroy() SKR_NOEXCEPT override;
-};
-
-class SCENE_RENDERER_API CubeMesh : public SimpleMesh
-{
-    float size = 1.0f;
-
-public:
-    virtual void init() SKR_NOEXCEPT override;
-    virtual void destroy() SKR_NOEXCEPT override;
-    void set_size(float new_size) { size = new_size; }
-    float get_size() const { return size; }
-};
-
 struct Camera
 {
-    skr_float3_t position = { 0.0f, 0.0f, -1.0f }; // camera position
-    skr_float3_t front = skr_float3_t::forward();  // camera front vector
-    skr_float3_t up = skr_float3_t::up();          // camera up vector
-    skr_float3_t right = skr_float3_t::right();    // camera right vector
+    skr_float3_t position = { 5.0f, 10.0f, -10.0f }; // camera position
+    skr_float3_t front = skr_float3_t::forward();    // camera front vector
+    skr_float3_t up = skr_float3_t::up();            // camera up vector
+    skr_float3_t right = skr_float3_t::right();      // camera right vector
 
     float fov = 3.1415926f / 2.f; // fov_x
     float aspect = 1.0;           // aspect ratio
     float near_plane = 0.1;       // near plane distance
     float far_plane = 1000.0;     // far plane distance
-};
-
-// a tiled grid 2D mesh
-class SCENE_RENDERER_API Grid2DMesh : public SimpleMesh
-{
-    int num_tiles_width = 2;
-    int num_tiles_height = 2;
-    float tile_size_width = 1.0f;
-    float tile_size_height = 1.0f;
-
-public:
-    virtual void init() SKR_NOEXCEPT override;
-    virtual void destroy() SKR_NOEXCEPT override;
-
-    // get and set methods for grid properties
-    int get_num_tiles_width() const { return num_tiles_width; }
-    int get_num_tiles_height() const { return num_tiles_height; }
-    float get_tile_size_width() const { return tile_size_width; }
-    float get_tile_size_height() const { return tile_size_height; }
-    void set_num_tiles_width(int width) { num_tiles_width = width; }
-    void set_num_tiles_height(int height) { num_tiles_height = height; }
-    void set_tile_size_width(float size) { tile_size_width = size; }
-    void set_tile_size_height(float size) { tile_size_height = size; }
 };
 
 class SCENE_RENDERER_API CameraController

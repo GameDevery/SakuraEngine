@@ -36,14 +36,14 @@ namespace SB
             return ToolDirectory;
         }
 
-        public static async Task SDK(string Name, Dictionary<string, string>? DirectoryMappings = null)
+        public static async Task SDK(string Name, Dictionary<string, string>? DirectoryMappings = null, bool PlatPostfix = true)
         {
             var IntermediateDirectory = Path.Combine(Engine.DownloadDirectory, "SDKs", Name);
 
             await DownloadDepend.OnChanged("Install.SDK.Download", Name, "Install.SDKs", async (Depend depend) =>
             {
                 Directory.CreateDirectory(IntermediateDirectory);
-                var ZipFile = await Download.DownloadFile(Name + GetPlatPostfix());
+                var ZipFile = await Download.DownloadFile(PlatPostfix ? Name + GetPlatPostfix() : Name + ".zip");
                 using (Profiler.BeginZone($"Install.SDKs | {Name} | Download", color: (uint)Profiler.ColorType.Pink1))
                 {
                     if (!OperatingSystem.IsWindows())
@@ -61,9 +61,9 @@ namespace SB
             {
                 using (Profiler.BeginZone($"Install.SDKs | {Name} | Copy", color: (uint)Profiler.ColorType.Pink1))
                 {
+                    var BuildDirectory = Path.Combine(BS.BuildPath, $"{BS.TargetOS}-{BS.TargetArch}-{BS.GlobalConfiguration}");
                     SDKDepend.OnChanged("Install.SDK.Copy", Name, "Install.SDKs", (Depend depend) =>
                     {
-                        var BuildDirectory = Path.Combine(BS.BuildPath, $"{BS.TargetOS}-{BS.TargetArch}-{BS.GlobalConfiguration}");
                         Directory.CreateDirectory(BuildDirectory);
 
                         depend.ExternalFiles.AddRange(Directory.GetFiles(IntermediateDirectory, "*", SearchOption.AllDirectories));
@@ -84,7 +84,7 @@ namespace SB
                                 depend.ExternalFiles.AddRange(DirectoryCopy(Source, Destination, true));
                             }
                         }
-                    }, null, new string[] { BS.GlobalConfiguration });
+                    }, null, new string[] { IntermediateDirectory, BuildDirectory });
                 }
             }
         }
@@ -120,7 +120,7 @@ namespace SB
                 
                 depend.ExternalFiles.Add(downloadedFile);
                 depend.ExternalFiles.Add(finalDestination);
-            }, null, new[] { BS.GlobalConfiguration });
+            }, null, new[] { finalDestination });
             
             return finalDestination;
         }

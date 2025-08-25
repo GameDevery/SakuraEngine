@@ -1,6 +1,4 @@
 #include <std/std.hpp>
-#include <std2/constant_buffer.hpp>
-#include <std2/sampler.hpp>
 
 using namespace skr::shader;
 
@@ -19,16 +17,11 @@ struct Constants
 };
 
 [[push_constant]]
-extern ConstantBuffer<Constants>& push_constants;
+ConstantBuffer<Constants> push_constants;
 
-[[binding(0, 0)]]
-Texture2D<float> color_texture;
-
-[[binding(1, 0)]]
-Texture2D<float> mask_texture;
-
-[[binding(0, 1)]]
-extern Sampler& color_sampler;
+[[group(0)]] Texture2D<float> color_texture;
+[[group(0)]] Texture2D<float> mask_texture;
+[[group(1)]] SamplerState color_sampler;
 
 struct [[stage_inout]] VSIn
 {
@@ -62,13 +55,13 @@ float4 mask_fs(VSOut input)
         * step(input.clip_pos.x / input.clip_pos.w, base_color.z)
         * step(input.clip_pos.y / input.clip_pos.w, base_color.w);
 
-    return push_constants.channel_flag * color_sampler.Sample(color_texture, input.uv).a * isInside;
+    return push_constants.channel_flag * color_texture.Sample(color_sampler, input.uv).a * isInside;
 }
 
 [[fragment_shader("model_fs")]]
 void model_fs(VSOut input, [[sv_render_target(0)]] float4& output_color)
 {
-    float4 tex_color = color_sampler.Sample(color_texture, input.uv);
+    float4 tex_color = color_texture.Sample(color_sampler, input.uv);
     tex_color.rgb = tex_color.rgb * push_constants.multiply_color.rgb;
     const float3 _a = tex_color.rgb + push_constants.screen_color.rgb; 
     const float3 _m = tex_color.rgb * push_constants.screen_color.rgb; 
@@ -80,7 +73,7 @@ void model_fs(VSOut input, [[sv_render_target(0)]] float4& output_color)
     {
         float2 mask_uv = input.clip_pos.xy / input.clip_pos.w;
         
-        float4 clip_mask = (float4(1.f, 1.f, 1.f, 1.f) - color_sampler.Sample(mask_texture, mask_uv)) * push_constants.channel_flag;
+        float4 clip_mask = (float4(1.f, 1.f, 1.f, 1.f) - mask_texture.Sample(color_sampler, mask_uv)) * push_constants.channel_flag;
         float mask_value = clip_mask.r + clip_mask.g + clip_mask.b + clip_mask.a;
         output_color = output_color * mask_value;
     }

@@ -1,4 +1,5 @@
 #include "SkrRenderer/render_mesh.h"
+#include "SkrSceneCore/scene_components.h"
 #include "SkrScene/actor.h"
 
 namespace skr

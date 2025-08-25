@@ -217,14 +217,40 @@ template <typename T>
 template <typename U>
 inline Optional<T>& Optional<T>::operator=(U&& value)
 {
-    if (_has_value)
+    using DecayedU = std::decay_t<U>;
+    // Check if U is Optional<T>
+    if constexpr (std::is_same_v<DecayedU, Optional<T>>)
     {
-        ::skr::memory::move_assign(_data_ptr(), &value);
+        // Handle Optional<T> assignment
+        if (value.has_value())
+        {
+            if (_has_value)
+            {
+                ::skr::memory::move_assign(_data_ptr(), value._data_ptr());
+            }
+            else
+            {
+                ::skr::memory::move(_data_ptr(), value._data_ptr());
+                _has_value = true;
+            }
+        }
+        else
+        {
+            reset();
+        }
     }
     else
     {
-        ::skr::memory::move(_data_ptr(), &value);
-        _has_value = true;
+        // Handle regular value assignment
+        if (_has_value)
+        {
+            ::skr::memory::move_assign(_data_ptr(), &value);
+        }
+        else
+        {
+            ::skr::memory::move(_data_ptr(), &value);
+            _has_value = true;
+        }
     }
     return *this;
 }

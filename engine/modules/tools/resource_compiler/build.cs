@@ -11,7 +11,7 @@ public static class SkrResourceCompiler
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrToolCore")
             .Depend(Visibility.Public, "SkrTextureCompiler")
-            .Depend(Visibility.Public, "SkrShaderCompiler", "SkrGLTFTool")
+            .Depend(Visibility.Public, "SkrShaderCompiler", "SkrMeshTool")
             .Depend(Visibility.Public, "SkrAnimTool")
             .AddCppFiles("**.cpp");
     }

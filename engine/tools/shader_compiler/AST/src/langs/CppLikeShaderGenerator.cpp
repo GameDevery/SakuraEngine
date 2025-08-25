@@ -1,5 +1,8 @@
 #include "CppSL/langs/CppLikeShaderGenerator.hpp"
 #include <functional>
+#include <sstream>
+#include <iomanip>
+#include <cmath>
 
 namespace skr::CppSL
 {
@@ -89,7 +92,10 @@ void CppLikeShaderGenerator::visitStmt(SourceBuilderNew& sb, const skr::CppSL::S
             auto func_name = GetQualifiedFunctionName(callee_decl);
             
             // TODO: Implement REAL TEMPLATE CALL (CallWithTypeArgs)
-            if (callee_decl->name() == L"byte_buffer_read")
+            const bool ByteBufferReadTyped = callee_decl->name() == L"byte_buffer_read";
+            const bool WaveReadLaneFirst = callee_decl->name() == L"WaveReadLaneFirst";
+            const bool bit_cast = callee_decl->name() == L"bit_cast";
+            if (ByteBufferReadTyped || WaveReadLaneFirst || bit_cast)
             {
                 func_name = func_name + L"<" + GetQualifiedTypeName(callee_decl->return_type()) + L">";
             }
@@ -164,7 +170,54 @@ void CppLikeShaderGenerator::visitStmt(SourceBuilderNew& sb, const skr::CppSL::S
         }
         else if (auto f = std::get_if<FloatValue>(&constant->value))
         {
-            sb.append(std::to_wstring(f->ieee.value()));
+            // Use hexfloat for exact precision
+            double value = f->ieee.value();
+            
+            // Format as hexfloat
+            std::wostringstream hexstream;
+            hexstream << std::hexfloat << value;
+            sb.append(hexstream.str());
+            
+            // Add readable comment - avoid scientific notation for readability
+            std::wostringstream decstream;
+            decstream << std::fixed; // Use fixed-point notation
+            
+            // Choose appropriate precision based on value magnitude
+            double abs_value = std::abs(value);
+            if (abs_value == 0.0) {
+                decstream << std::setprecision(1) << value;
+            }
+            else if (abs_value >= 1e6 || abs_value < 1e-6) {
+                // For very large or very small numbers, use scientific notation
+                decstream << std::scientific << std::setprecision(6) << value;
+            }
+            else if (abs_value >= 1.0) {
+                // For numbers >= 1, show up to 6 decimal places
+                decstream << std::setprecision(6) << value;
+            }
+            else {
+                // For small numbers, show more precision
+                decstream << std::setprecision(9) << value;
+            }
+            
+            std::wstring decstr = decstream.str();
+            
+            // Remove trailing zeros after decimal point
+            size_t dot_pos = decstr.find(L'.');
+            if (dot_pos != std::wstring::npos) {
+                size_t last_nonzero = decstr.find_last_not_of(L'0');
+                if (last_nonzero != std::wstring::npos && last_nonzero > dot_pos) {
+                    decstr.erase(last_nonzero + 1);
+                }
+                // Remove decimal point if no fractional part remains
+                if (decstr.back() == L'.') {
+                    decstr.pop_back();
+                }
+            }
+            
+            sb.append(L"/*");
+            sb.append(decstr);
+            sb.append(L"*/");
         }
         else
         {
@@ -814,7 +867,19 @@ void CppLikeShaderGenerator::generate_namespace_declarations(SourceBuilderNew& s
     {
         if (ns->parent() == nullptr) // Only process root namespaces
         {
-            generate_namespace_recursive(sb, ns, 0);
+            generate_namespace_recursive(sb, ns, 0, ForwardDeclareType::Type);
+            has_output = true;
+        }
+    }
+    if (has_output)
+        sb.endline();
+
+    has_output = false;
+    for (const auto& ns : ast.namespaces())
+    {
+        if (ns->parent() == nullptr) // Only process root namespaces
+        {
+            generate_namespace_recursive(sb, ns, 0, ForwardDeclareType::Function);
             has_output = true;
         }
     }
@@ -823,7 +888,7 @@ void CppLikeShaderGenerator::generate_namespace_declarations(SourceBuilderNew& s
         sb.endline();
 }
 
-void CppLikeShaderGenerator::generate_namespace_recursive(SourceBuilderNew& sb, const NamespaceDecl* ns, int indent_level)
+void CppLikeShaderGenerator::generate_namespace_recursive(SourceBuilderNew& sb, const NamespaceDecl* ns, int indent_level, ForwardDeclareType type)
 {
     // Skip empty namespaces
     if (!ns->has_content())
@@ -834,27 +899,32 @@ void CppLikeShaderGenerator::generate_namespace_recursive(SourceBuilderNew& sb, 
 
     // Generate forward declarations for types in this namespace
     bool has_declarations = false;
-    for (const auto& type : ns->types())
+    if (type == ForwardDeclareType::Type)
     {
-        if (!type->is_builtin())
+        for (const auto& type : ns->types())
         {
-            sb.append(L"struct " + type->name() + L"; ");
-            has_declarations = true;
+            if (!type->is_builtin())
+            {
+                sb.append(L"struct " + type->name() + L"; ");
+                has_declarations = true;
+            }
         }
     }
-
-    // Generate forward declarations for functions in this namespace
-    for (const auto& func : ns->functions())
+    else if (type == ForwardDeclareType::Function)
     {
-        visit(sb, func, FunctionStyle::SignatureOnly);
-        sb.append(L"; ");
-        has_declarations = true;
+        // Generate forward declarations for functions in this namespace
+        for (const auto& func : ns->functions())
+        {
+            visit(sb, func, FunctionStyle::SignatureOnly);
+            sb.append(L"; ");
+            has_declarations = true;
+        }
     }
 
     // Recursively generate nested namespaces
     for (const auto& nested : ns->nested())
     {
-        generate_namespace_recursive(sb, nested, indent_level + 1);
+        generate_namespace_recursive(sb, nested, indent_level + 1, type);
     }
 
     // Generate namespace closing

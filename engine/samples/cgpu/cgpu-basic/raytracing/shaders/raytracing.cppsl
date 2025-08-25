@@ -1,6 +1,4 @@
 #include "std/std.hpp"
-#include "std2/attributes.hpp"
-#include "std2/constant_buffer.hpp"
 
 using namespace skr::shader;
 
@@ -27,15 +25,15 @@ float4 trace(uint2 tid, uint2 tsize) {
 
     // 创建 RayQuery（使用接受第一个命中并结束搜索的标志）
     RayQuery<RayQueryFlags::AcceptFirstAndEndSearch> query;
-    query.trace_ray_inline(AS, 0xff, ray);
+    query.TraceRayInline(AS, 0xff, ray);
 
     // 执行光线追踪
-    query.proceed();
+    query.Proceed();
 
     // 检查交点状态
-    if (query.committed_status() == HitType::HitTriangle) {
+    if (query.CommittedStatus() == HitType::HitTriangle) {
         // 返回重心坐标作为颜色
-        float2 barycentrics = query.committed_triangle_barycentrics();
+        float2 barycentrics = query.CommittedTriangleBarycentrics();
         return float4(barycentrics.x, barycentrics.y, 1.0f, 1.0f);
     } else {
         // 未命中，返回黑色

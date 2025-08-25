@@ -245,7 +245,7 @@ public class CleanCommand : CommandBase
                 Engine.MiscDepend.ClearDatabase();
             if (all || Database == "codegen")
                 Engine.CodegenDepend.ClearDatabase();
-            if (all || Database == "sdks")
+            if (Database == "sdks")
             {
                 Install.DownloadDepend.ClearDatabase();
                 Install.SDKDepend.ClearDatabase();
@@ -354,7 +354,7 @@ public class VSCodeCommand : CommandBase
         Engine.RunBuild();
 
         // Generate the debug configurations
-        VSCodeDebugEmitter.GenerateDebugConfigurations();
+        VSCodeDebugEmitter.GenerateDebugConfigurations(Toolchain);
         
         Log.Information("VSCode debug configurations generated in: {Path}", Path.GetFullPath(Path.Combine(VSCodeDebugEmitter.WorkspaceRoot, ".vscode")));
     }
