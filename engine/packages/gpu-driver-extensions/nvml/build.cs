@@ -6,6 +6,9 @@ public static class NvML
 {
     static NvML()
     {
+        if (BuildSystem.TargetOS != OSPlatform.Windows)
+            return;
+
         BuildSystem.Package("NvML")
             .AddTarget("NvML", (Target Target, PackageConfig Config) =>
             {

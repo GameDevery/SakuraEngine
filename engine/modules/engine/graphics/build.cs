@@ -42,8 +42,9 @@ public static class SkrGraphics
 
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
-            SkrGraphics
-                .Defines(Visibility.Private, "UNICODE")
+            SkrGraphics.Defines(Visibility.Private, "UNICODE")
+                .Require("D3D12Agility", new PackageConfig { Version = new Version(1, 616, 1) })
+                .Depend(Visibility.Public, "D3D12Agility@D3D12Agility")
 
                 .Require("WinPixEventRuntime", new PackageConfig { Version = new Version(1, 0, 240308001) })
                 .Depend(Visibility.Private, "WinPixEventRuntime@WinPixEventRuntime")
