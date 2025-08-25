@@ -61,9 +61,9 @@ namespace SB
             {
                 using (Profiler.BeginZone($"Install.SDKs | {Name} | Copy", color: (uint)Profiler.ColorType.Pink1))
                 {
+                    var BuildDirectory = Path.Combine(BS.BuildPath, $"{BS.TargetOS}-{BS.TargetArch}-{BS.GlobalConfiguration}");
                     SDKDepend.OnChanged("Install.SDK.Copy", Name, "Install.SDKs", (Depend depend) =>
                     {
-                        var BuildDirectory = Path.Combine(BS.BuildPath, $"{BS.TargetOS}-{BS.TargetArch}-{BS.GlobalConfiguration}");
                         Directory.CreateDirectory(BuildDirectory);
 
                         depend.ExternalFiles.AddRange(Directory.GetFiles(IntermediateDirectory, "*", SearchOption.AllDirectories));
@@ -84,7 +84,7 @@ namespace SB
                                 depend.ExternalFiles.AddRange(DirectoryCopy(Source, Destination, true));
                             }
                         }
-                    }, null, new string[] { BS.GlobalConfiguration });
+                    }, null, new string[] { IntermediateDirectory, BuildDirectory });
                 }
             }
         }
@@ -120,7 +120,7 @@ namespace SB
                 
                 depend.ExternalFiles.Add(downloadedFile);
                 depend.ExternalFiles.Add(finalDestination);
-            }, null, new[] { BS.GlobalConfiguration });
+            }, null, new[] { finalDestination });
             
             return finalDestination;
         }
