@@ -1,8 +1,8 @@
 #pragma once
 #ifdef __CPPSL__
-    #include "detail/type_usings.hppsl"
+    #include "detail/type_usings.hppsl" // IWYU pragma: export
 #else
-    #include "detail/type_usings.hpp"
+    #include "detail/type_usings.hpp" // IWYU pragma: export
 #endif
 
 namespace skr

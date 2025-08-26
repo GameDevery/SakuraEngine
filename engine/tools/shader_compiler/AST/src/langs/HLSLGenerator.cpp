@@ -125,7 +125,7 @@ String HLSLGenerator::GetTypeName(const TypeDecl* type)
     {
         if (array->element_type()->is_resource() && (array->count() == 0))
         {
-            return std::format(L"Bindless<{}>", GetQualifiedTypeName(array->element_type()));
+            return std::format(L"Bindless< {} >", GetQualifiedTypeName(array->element_type()));
         }
         return std::format(L"array<{}, {}>", GetQualifiedTypeName(array->element_type()), array->count());
     }
@@ -190,7 +190,7 @@ void HLSLGenerator::VisitAccessExpr(SourceBuilderNew& sb, const AccessExpr* expr
     sb.append(L"]");
 }
 
-void HLSLGenerator::VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var)
+void HLSLGenerator::VisitShaderResource(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var)
 {
     // Handle array of resources - need C-style array syntax
     String typeName = GetTypeName(&var->type());
@@ -236,7 +236,6 @@ void HLSLGenerator::VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::
     }
     else
     {
-        var->ast().ReportFatalError(L"Internal: missing binding in table for global resource '" + var->name() + L"'");
     }
 
     if (!asPushConstant && !vk_binding.empty())
