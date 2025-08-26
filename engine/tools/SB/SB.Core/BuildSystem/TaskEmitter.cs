@@ -17,6 +17,12 @@ namespace SB
             return this;
         }
 
+        public TaskEmitter AddTargetDependency(string TargetName, string EmitterName)
+        {
+            TargetDependencies.Add(new KeyValuePair<string, string>(TargetName, EmitterName));
+            return this;
+        }
+
         public virtual bool EnableEmitter(Target Target) => false;
 
         public virtual bool EmitTargetTask(Target Target) => false;
@@ -29,5 +35,6 @@ namespace SB
 
         internal string SelfName = "";
         internal HashSet<KeyValuePair<string, DependencyModel>> Dependencies { get; } = new();
+        internal HashSet<KeyValuePair<string, string>> TargetDependencies { get; } = new();
     }
 }

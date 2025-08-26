@@ -86,6 +86,9 @@ namespace SB
             Engine.AddTaskEmitter("Cpp.Link", new CppLinkEmitter(Toolchain))
                 .AddDependency("Cpp.Link", DependencyModel.ExternalTarget)
                 .AddDependency("Cpp.Compile", DependencyModel.PerTarget);
+            
+            Engine.AddTaskEmitter("Install.Artifact", new InstallArtifactEmitter())
+                .AddDependency("Cpp.Link", DependencyModel.PerTarget);
         }
 
         public static void AddCompileCommandsEmitter(IToolchain Toolchain)
@@ -109,7 +112,8 @@ namespace SB
             {
                 Engine.AddTaskEmitter("MSL.Compile", new MSLEmitter());
             }
-            Engine.AddTaskEmitter("CppSL.Compile", new CppSLEmitter());
+            Engine.AddTaskEmitter("CppSL.Compile", new CppSLEmitter())
+                .AddTargetDependency("CppSLCompiler", "Install.Artifact");  // 依赖 CppSLCompiler 目标的链接步骤
         }
 
         public static new void RunBuild(string? singleTargetName = null)
