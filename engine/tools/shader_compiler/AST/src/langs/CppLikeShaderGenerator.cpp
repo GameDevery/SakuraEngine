@@ -628,7 +628,7 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
                 auto param = funcDecl->parameters()[i];
                 if (auto asResource = dynamic_cast<const ResourceTypeDecl*>(&param->type()))
                 {
-                    VisitGlobalResource(sb, param);
+                    VisitShaderResource(sb, param);
                     params.erase(std::find(params.begin(), params.end(), param));
                 }
             }
@@ -758,7 +758,7 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::VarDe
     const auto isGlobal = dynamic_cast<const skr::CppSL::GlobalVarDecl*>(varDecl);
     if (varDecl->type().is_resource())
     {
-        VisitGlobalResource(sb, varDecl);
+        VisitShaderResource(sb, varDecl);
     }
     else
     {

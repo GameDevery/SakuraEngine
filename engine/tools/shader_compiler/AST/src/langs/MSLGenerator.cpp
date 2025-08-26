@@ -111,7 +111,7 @@ String MSLGenerator::GetFunctionName(const FunctionDecl* funcDecl)
     return funcDecl->name();
 }
 
-void MSLGenerator::VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var)
+void MSLGenerator::VisitShaderResource(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var)
 {
     // null option
     // since we have already extract and dumped SRT data as builtin header

@@ -9,6 +9,9 @@ using uint32 = unsigned int;
 using uint = uint32;
 using uint64 = unsigned long long;
 
+#pragma clang diagnostic ignored "-Winvalid-offsetof"
+#define offsetof(Type, member) uint(__builtin_offsetof(Type, member))
+
 namespace std
 {
 template<typename F>
