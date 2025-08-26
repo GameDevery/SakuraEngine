@@ -82,15 +82,9 @@ namespace SB
                 {
                     installDir = Path.Combine(BS.TempPath, "tools");
                 }
-                else if (Target.IsCategory(TargetCategory.Runtime))
-                {
-                    installDir = Path.Combine(BS.BuildPath, "bin");
-                }
                 else
                 {
-                    // Skip installation for other categories unless explicitly configured
-                    Log.Verbose("No installation directory specified for target {TargetName}, skipping", Target.Name);
-                    return null;
+                    installDir = Path.Combine(BS.BuildPath, $"{BS.TargetOS}-{BS.TargetArch}-{BS.GlobalConfiguration}");
                 }
             }
             

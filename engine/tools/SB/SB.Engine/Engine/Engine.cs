@@ -135,6 +135,10 @@ namespace SB
                 {
                     Target.RuntimeLibrary("MD");
                 }
+                if (Target.IsFromPackage)
+                {
+                    Target.InstallArtifact();
+                }
             };
 
             var Assemblies = AppDomain.CurrentDomain.GetAssemblies();
