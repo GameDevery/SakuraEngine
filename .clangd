@@ -33,3 +33,4 @@ If:
   PathMatch: .*/.*.hppsl
 CompileFlags:
   CompilationDatabase: .sb/compile_commands/shaders/
+  Add: [ -x, c++-header ]
