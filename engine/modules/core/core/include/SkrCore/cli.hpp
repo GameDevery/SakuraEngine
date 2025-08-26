@@ -16,8 +16,8 @@ sreflect_struct(guid = "5ec06e6b-ca62-45ca-aa35-d39e1aba88a4")
 CmdOption {
     // clang-format on
 
-    String    name        = {};
     skr_char8 short_name  = {};
+    String    name        = {};
     String    help        = {};
     bool      is_required = true;
 };
