@@ -41,4 +41,7 @@ struct V8BPObject;
 
 // dumper
 struct TSDefBuilder;
+
+// vfs
+struct IV8VFS;
 } // namespace skr

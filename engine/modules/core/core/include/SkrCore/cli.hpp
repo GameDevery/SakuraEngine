@@ -4,6 +4,7 @@
 #include "SkrContainersDef/set.hpp"
 #include "SkrContainersDef/string.hpp"
 #include "SkrRTTR/type.hpp"
+#include <SkrRTTR/type_registry.hpp>
 #ifndef __meta__
     #include "SkrCore/cli.generated.h"
 #endif
@@ -15,7 +16,6 @@ namespace skr::attr
 sreflect_struct(guid = "5ec06e6b-ca62-45ca-aa35-d39e1aba88a4")
 CmdOption {
     // clang-format on
-
     skr_char8 short_name  = {};
     String    name        = {};
     String    help        = {};
@@ -31,10 +31,10 @@ sreflect_struct(guid = "098c17f7-d906-45ea-86d2-180d73a1cb40")
 CmdSub {
     // clang-format on
 
-    String    name       = {};
+    String name = {};
     skr_char8 short_name = {};
-    String    help       = {};
-    String    usage      = {};
+    String help = {};
+    String usage = {};
 };
 } // namespace skr::attr
 
@@ -46,25 +46,26 @@ namespace cli_style
 static const char* clear = "\033[0m";
 
 // style
-static const char* bold         = "\033[1m";
-static const char* no_bold      = "\033[22m";
-static const char* underline    = "\033[4m";
+static const char* bold = "\033[1m";
+static const char* no_bold = "\033[22m";
+static const char* underline = "\033[4m";
 static const char* no_underline = "\033[24m";
-static const char* reverse      = "\033[7m";
-static const char* no_reverse   = "\033[27m";
+static const char* reverse = "\033[7m";
+static const char* no_reverse = "\033[27m";
 
 // front color
-static const char* front_gray    = "\033[30m";
-static const char* front_red     = "\033[31m";
-static const char* front_green   = "\033[32m";
-static const char* front_yellow  = "\033[33m";
-static const char* front_blue    = "\033[34m";
+static const char* front_gray = "\033[30m";
+static const char* front_red = "\033[31m";
+static const char* front_green = "\033[32m";
+static const char* front_yellow = "\033[33m";
+static const char* front_blue = "\033[34m";
 static const char* front_magenta = "\033[35m";
-static const char* front_cyan    = "\033[36m";
-static const char* front_white   = "\033[37m";
+static const char* front_cyan = "\033[36m";
+static const char* front_white = "\033[37m";
 } // namespace cli_style
 
-struct CliOutputBuilder {
+struct CliOutputBuilder
+{
     // style
     inline CliOutputBuilder& style_clear()
     {
@@ -167,7 +168,7 @@ struct CliOutputBuilder {
     template <typename... Args>
     inline CliOutputBuilder& write_indent(StringView fmt, Args... args)
     {
-        String   str = format(fmt, std::forward<Args>(args)...);
+        String str = format(fmt, std::forward<Args>(args)...);
         uint64_t new_indent;
         _solve_indent(str, new_indent);
         if (_indent_cache > 0)
@@ -185,7 +186,7 @@ struct CliOutputBuilder {
     // dump
     inline void dump()
     {
-        printf( content.c_str_raw());
+        printf(content.c_str_raw());
     }
 
     String content;
@@ -209,7 +210,8 @@ private:
 
 namespace skr
 {
-struct CmdToken {
+struct CmdToken
+{
     enum class Type
     {
         Option,
@@ -221,17 +223,17 @@ struct CmdToken {
     {
         if (arg.starts_with(u8"--"))
         {
-            type  = Type::Option;
+            type = Type::Option;
             token = arg.subview(2);
         }
         else if (arg.starts_with(u8"-"))
         {
-            type  = Type::ShortOption;
+            type = Type::ShortOption;
             token = arg.subview(1);
         }
         else
         {
-            type  = Type::Name;
+            type = Type::Name;
             token = arg;
         }
         return true;
@@ -269,10 +271,11 @@ struct CmdToken {
         return result;
     }
 
-    Type   type;
+    Type type;
     String token;
 };
-struct SKR_CORE_API CmdOptionData {
+struct SKR_CORE_API CmdOptionData
+{
     enum class EKind
     {
         None,
@@ -294,17 +297,17 @@ struct SKR_CORE_API CmdOptionData {
     bool init(attr::CmdOption config, TypeSignatureView type_sig, void* memory);
 
     // getter
-    inline EKind                  kind() const { return _kind; }
-    inline bool                   is_optional() const { return _is_optional; }
+    inline EKind kind() const { return _kind; }
+    inline bool is_optional() const { return _is_optional; }
     inline const attr::CmdOption& config() const { return _config; }
-    inline bool                   is_bool() const { return _kind == EKind::Bool; }
-    inline bool                   is_uint() const { return _kind >= EKind::UInt8 && _kind <= EKind::UInt64; }
-    inline bool                   is_int() const { return _kind >= EKind::Int8 && _kind <= EKind::Int64; }
-    inline bool                   is_float() const { return _kind == EKind::Float || _kind == EKind::Double; }
-    inline bool                   is_string() const { return _kind == EKind::String; }
-    inline bool                   is_string_vector() const { return _kind == EKind::StringVector; }
-    inline bool                   is_required() const { return _config.is_required && !_is_optional; }
-    inline String                 dump_type_name() const
+    inline bool is_bool() const { return _kind == EKind::Bool; }
+    inline bool is_uint() const { return _kind >= EKind::UInt8 && _kind <= EKind::UInt64; }
+    inline bool is_int() const { return _kind >= EKind::Int8 && _kind <= EKind::Int64; }
+    inline bool is_float() const { return _kind == EKind::Float || _kind == EKind::Double; }
+    inline bool is_string() const { return _kind == EKind::String; }
+    inline bool is_string_vector() const { return _kind == EKind::StringVector; }
+    inline bool is_required() const { return _config.is_required && !_is_optional; }
+    inline String dump_type_name() const
     {
         switch (_kind)
         {
@@ -380,18 +383,19 @@ private:
     attr::CmdOption _config = {};
 
     // native info
-    EKind _kind        = EKind::None;
-    bool  _is_optional = false;
-    void* _memory      = nullptr;
+    EKind _kind = EKind::None;
+    bool _is_optional = false;
+    void* _memory = nullptr;
 };
-struct SKR_CORE_API CmdNode {
+struct SKR_CORE_API CmdNode
+{
     // basic info
-    attr::CmdSub    config = {};
-    const RTTRType* type   = nullptr;
-    void*           object = nullptr;
+    attr::CmdSub config = {};
+    const RTTRType* type = nullptr;
+    void* object = nullptr;
 
     // options & invoke info
-    Vector<CmdOptionData>       options     = {};
+    Vector<CmdOptionData> options = {};
     ExportMethodInvoker<void()> exec_method = {};
 
     // sub command info
@@ -406,7 +410,8 @@ struct SKR_CORE_API CmdNode {
     bool check_sub_commands();
     void print_help();
 };
-struct SKR_CORE_API CmdParser {
+struct SKR_CORE_API CmdParser
+{
     // ctor & dtor
     CmdParser();
     ~CmdParser();
@@ -434,17 +439,16 @@ private:
     // helper
     static span<const CmdToken> _find_option_param_pack(const Vector<CmdToken>& args, uint64_t option_idx);
     static span<const CmdToken> _find_rest_params_pack(const Vector<CmdToken>& args, uint64_t name_idx);
-    static void                 _error_require_params(CliOutputBuilder& builder, const CmdToken& arg);
-    static void                 _error_parse_params(CliOutputBuilder& builder, const CmdToken& arg, StringView param, StringView type);
-    static void                 _error_unknown_option(CliOutputBuilder& builder, const CmdToken& arg);
-    static bool                 _process_option(
-                        CmdOptionData*       found_option,
-                        uint32_t&            current_idx,
-                        const CmdToken&      arg,
-                        span<const CmdToken> params,
-                        CliOutputBuilder&    builder,
-                        Set<CmdOptionData*>& required_options
-                    );
+    static void _error_require_params(CliOutputBuilder& builder, const CmdToken& arg);
+    static void _error_parse_params(CliOutputBuilder& builder, const CmdToken& arg, StringView param, StringView type);
+    static void _error_unknown_option(CliOutputBuilder& builder, const CmdToken& arg);
+    static bool _process_option(
+        CmdOptionData* found_option,
+        uint32_t& current_idx,
+        const CmdToken& arg,
+        span<const CmdToken> params,
+        CliOutputBuilder& builder,
+        Set<CmdOptionData*>& required_options);
 
 private:
     CmdNode _root_cmd = {};

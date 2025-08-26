@@ -1,6 +1,9 @@
 #pragma once
 #include <type_traits>
 #include <memory>
+#include <SkrBase/template/concepts.hpp>
+#include <SkrRTTR/script/stack_proxy.hpp>
+#include <SkrContainersDef/span.hpp>
 
 namespace skr
 {
@@ -15,107 +18,197 @@ namespace skr
 ///
 /// foo([](int i) { return i*2; });
 template <class F>
-class FunctionRef;
+struct FunctionRef;
+
+enum class EFunctionRefKind
+{
+    Empty,
+    Caller,
+    StackProxy
+};
 
 /// Specialization for function types.
 template <class R, class... Args>
-class FunctionRef<R(Args...)>
+struct FunctionRef<R(Args...)>
 {
-public:
-    constexpr FunctionRef() noexcept = delete;
-    constexpr FunctionRef(std::nullptr_t) noexcept {}
+    using FuncType = R(Args...);
+    using CallerType = R(void*, Args...);
+    using StackProxyCallerType = void(void* payload,span<const StackProxy> params, StackProxy return_value);
 
-    /// Creates a `FunctionRef` which refers to the same callable as `rhs`.
-    constexpr FunctionRef(const FunctionRef<R(Args...)>& rhs) noexcept = default;
-
-    /// Constructs a `FunctionRef` referring to `f`.
-    ///
-    /// \synopsis template <typename F> constexpr FunctionRef(F &&f) noexcept
-    template <typename F,
-    std::enable_if_t<
-    !std::is_same<std::decay_t<F>, FunctionRef>::value &&
-    std::is_invocable_r<R, F&&, Args...>::value>* = nullptr>
-    constexpr FunctionRef(F&& f) noexcept
-        : obj_(const_cast<void*>(reinterpret_cast<const void*>(std::addressof(f))))
+    // ctor & dtor
+    inline FunctionRef() noexcept = default;
+    inline FunctionRef(std::nullptr_t) noexcept {}
+    template <concepts::InvocableR<R, Args...> Func>
+    inline FunctionRef(Func&& f) noexcept
+        : _kind(EFunctionRefKind::Caller)
+        , _payload(const_cast<void*>(reinterpret_cast<const void*>(std::addressof(f))))
     {
-        callback_ = [](void* obj, Args... args) -> R {
+        _caller = (void*)+[](void* obj, Args... args) -> R {
             return std::invoke(
-            *reinterpret_cast<typename std::add_pointer<F>::type>(obj),
-            std::forward<Args>(args)...);
+                *reinterpret_cast<typename std::add_pointer_t<Func>>(obj),
+                std::forward<Args>(args)...);
         };
     }
+    inline ~FunctionRef() noexcept = default;
 
-    /// Makes `*this` refer to the same callable as `rhs`.
-    constexpr FunctionRef<R(Args...)>&
-    operator=(const FunctionRef<R(Args...)>& rhs) noexcept = default;
+    // copy & move
+    inline FunctionRef(const FunctionRef& rhs) noexcept = default;
+    inline FunctionRef(FunctionRef&& rhs) noexcept = default;
 
-    explicit operator bool() const noexcept { return callback_ != nullptr; }
-
-    /// Makes `*this` refer to `f`.
-    ///
-    /// \synopsis template <typename F> constexpr FunctionRef &operator=(F &&f) noexcept;
-    template <typename F,
-    std::enable_if_t<std::is_invocable_r<R, F&&, Args...>::value>* = nullptr>
-    constexpr FunctionRef<R(Args...)>& operator=(F&& f) noexcept
+    // assign & move assign
+    inline FunctionRef& operator=(const FunctionRef& rhs) noexcept = default;
+    inline FunctionRef& operator=(FunctionRef&& rhs) noexcept = default;
+    template <concepts::InvocableR<R, Args...> Func>
+    inline FunctionRef& operator=(Func&& f)
     {
-        obj_ = reinterpret_cast<void*>(std::addressof(f));
-        callback_ = [](void* obj, Args... args) {
-            return std::invoke(
-            *reinterpret_cast<typename std::add_pointer<F>::type>(obj),
-            std::forward<Args>(args)...);
-        };
-
+        bind_functor(std::forward<Func>(f));
         return *this;
     }
 
-    /// Swaps the referred callables of `*this` and `rhs`.
-    constexpr void swap(FunctionRef<R(Args...)>& rhs) noexcept
+    // bind
+    template <concepts::InvocableR<R, Args...> Func>
+    inline void bind_functor(Func&& f)
     {
-        std::swap(obj_, rhs.obj_);
-        std::swap(callback_, rhs.callback_);
+        _kind = EFunctionRefKind::Caller;
+        _payload = const_cast<void*>(reinterpret_cast<const void*>(std::addressof(f)));
+        _caller = (void*)+[](void* obj, Args... args) -> R {
+            return std::invoke(
+                *reinterpret_cast<typename std::add_pointer_t<Func>>(obj),
+                std::forward<Args>(args)...);
+        };
+    }
+    template <concepts::Invocable<span<const StackProxy>, StackProxy> Func>
+    inline void bind_stack_proxy(Func&& f)
+    {
+        _kind = EFunctionRefKind::StackProxy;
+        _payload = const_cast<void*>(reinterpret_cast<const void*>(std::addressof(f)));
+        _caller = (void*)+[](void* obj, span<const StackProxy> params, StackProxy return_value) {
+            std::invoke(
+                *reinterpret_cast<typename std::add_pointer_t<Func>>(obj),
+                params,
+                return_value);
+        };
+    }
+    inline void reset() noexcept
+    {
+        _kind = EFunctionRefKind::Empty;
+        _payload = nullptr;
+        _caller = nullptr;
+    }
+
+    // validate
+    inline bool is_valid() const noexcept
+    {
+        return _caller != nullptr;
+    }
+    inline bool is_empty() const noexcept
+    {
+        return !is_valid();
+    }
+    inline explicit operator bool() const noexcept
+    {
+        return is_valid();
+    }
+
+    // swap
+    inline void swap(FunctionRef<R(Args...)>& rhs) noexcept
+    {
+        std::swap(_payload, rhs._payload);
+        std::swap(_caller, rhs._caller);
     }
 
     /// Call the stored callable with the given arguments.
-    R operator()(Args... args) const
+    inline R operator()(Args... args) const
     {
-        return callback_(obj_, std::forward<Args>(args)...);
+        switch (_kind)
+        {
+        case EFunctionRefKind::Empty:
+            SKR_ASSERT(false && "FunctionRef is empty");
+            // return {};
+        case EFunctionRefKind::Caller:
+            return reinterpret_cast<CallerType*>(_caller)(
+                reinterpret_cast<void*>(_payload),
+                std::forward<Args>(args)...);
+        case EFunctionRefKind::StackProxy: {
+            if constexpr (concepts::WithTypeSignatureTraits<FuncType>)
+            {
+                if constexpr (std::is_same_v<R, void>)
+                {
+                    reinterpret_cast<StackProxyCallerType*>(_caller)(
+                        _payload,
+                        { StackProxyMaker<Args>::Make(std::forward<Args>(args))... },
+                        {});
+                }
+                else
+                {
+                    Placeholder<R> result;
+                    reinterpret_cast<StackProxyCallerType*>(_caller)(
+                        _payload,
+                        { StackProxyMaker<Args>::Make(std::forward<Args>(args))... },
+                        { .data = result.data(), .signature = type_signature_of<R>() });
+                    return std::move(*result.data_typed());
+                }
+            }
+            else
+            {
+                SKR_ASSERT(false && "cannot use stack proxy function ref without type signature support");
+                // return {};
+            }
+        }
+        }
     }
 
 private:
-    void* obj_ = nullptr;
-    R (*callback_)(void*, Args...) = nullptr;
+    EFunctionRefKind _kind = EFunctionRefKind::Empty;
+    void* _payload = nullptr;
+    void* _caller = nullptr;
+};
+
+struct FunctionRefMemory
+{
+    EFunctionRefKind _kind = EFunctionRefKind::Empty;
+    void* _payload = nullptr;
+    void* _caller = nullptr;
 };
 
 template <class F, class = void>
-struct FunctionTrait : public FunctionTrait<decltype(&F::operator())> {};
-
-template <class R, class... Args>
-struct FunctionTrait<R(Args...)> {
-    using raw = R(Args...);
-};
-
-template <class T, class R, class... Args>
-struct FunctionTrait<R (T::*)(Args...)> {
-    using raw = R(Args...);
-};
-
-template <class T, class R, class... Args>
-struct FunctionTrait<R (T::*)(Args...) noexcept(true)> {
-    using raw = R(Args...);
-};
-
-template <class T, class R, class... Args>
-struct FunctionTrait<R (T::*)(Args...) const> {
-    using raw = R(Args...);
-};
-
-template <class T, class R, class... Args>
-struct FunctionTrait<R (T::*)(Args...) const noexcept(true)> {
-    using raw = R(Args...);
+struct FunctionTrait : public FunctionTrait<decltype(&F::operator())>
+{
 };
 
 template <class R, class... Args>
-struct FunctionTrait<R (*)(Args...)> {
+struct FunctionTrait<R(Args...)>
+{
+    using raw = R(Args...);
+};
+
+template <class T, class R, class... Args>
+struct FunctionTrait<R (T::*)(Args...)>
+{
+    using raw = R(Args...);
+};
+
+template <class T, class R, class... Args>
+struct FunctionTrait<R (T::*)(Args...) noexcept(true)>
+{
+    using raw = R(Args...);
+};
+
+template <class T, class R, class... Args>
+struct FunctionTrait<R (T::*)(Args...) const>
+{
+    using raw = R(Args...);
+};
+
+template <class T, class R, class... Args>
+struct FunctionTrait<R (T::*)(Args...) const noexcept(true)>
+{
+    using raw = R(Args...);
+};
+
+template <class R, class... Args>
+struct FunctionTrait<R (*)(Args...)>
+{
     using raw = R(Args...);
 };
 

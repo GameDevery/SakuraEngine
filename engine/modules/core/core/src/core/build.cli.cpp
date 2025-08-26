@@ -4,6 +4,7 @@
 #include <SkrCore/cli.hpp>
 #include <SkrCore/log.hpp>
 #include <SkrContainers/optional.hpp>
+#include <SkrRTTR/type_registry.hpp>
 
 // cmd option
 namespace skr
@@ -45,7 +46,7 @@ bool CmdOptionData::init(attr::CmdOption config, TypeSignatureView type_sig, voi
         }
 
         // get generic id
-        GUID     generic_id;
+        GUID generic_id;
         uint32_t generic_param_count;
         type_sig.jump_modifier();
         type_sig = type_sig.read_generic_type_id(generic_id, generic_param_count);
@@ -278,10 +279,10 @@ bool CmdNode::solve()
         {
             // solve config
             attr::CmdOption option_attr = found_option_attr_ref.ref().as<attr::CmdOption>();
-            option_attr.name            = (!option_attr.name.is_empty()) ? option_attr.name : field->name;
+            option_attr.name = (!option_attr.name.is_empty()) ? option_attr.name : field->name;
 
             // get field address
-            void* owner_obj     = type->cast_to_base(owner_type->type_id(), object);
+            void* owner_obj = type->cast_to_base(owner_type->type_id(), object);
             void* field_address = field->get_address(owner_obj);
 
             // add option
@@ -296,8 +297,8 @@ bool CmdNode::solve()
         {
             // solve config
             attr::CmdSub sub_cmd_attr = found_sub_cmd_attr_ref.ref().as<attr::CmdSub>();
-            sub_cmd_attr.name         = (!sub_cmd_attr.name.is_empty()) ? sub_cmd_attr.name : field->name;
-            auto field_type_sig       = field->type.view();
+            sub_cmd_attr.name = (!sub_cmd_attr.name.is_empty()) ? sub_cmd_attr.name : field->name;
+            auto field_type_sig = field->type.view();
 
             // check signature
             if (!field_type_sig.is_type())
@@ -323,7 +324,7 @@ bool CmdNode::solve()
             }
 
             // get field address
-            void* owner_obj     = type->cast_to_base(owner_type->type_id(), object);
+            void* owner_obj = type->cast_to_base(owner_type->type_id(), object);
             void* field_address = field->get_address(owner_obj);
 
             // create sub command
@@ -331,7 +332,7 @@ bool CmdNode::solve()
 
             // setup basic info
             sub_cmd->config = std::move(sub_cmd_attr);
-            sub_cmd->type   = sub_cmd_type;
+            sub_cmd->type = sub_cmd_type;
             sub_cmd->object = field_address;
 
             // solve sub cmd
@@ -373,9 +374,9 @@ bool CmdNode::solve()
 }
 bool CmdNode::check_options()
 {
-    Map<String, CmdOptionData*>    seen_options;
+    Map<String, CmdOptionData*> seen_options;
     Map<skr_char8, CmdOptionData*> seen_short_options;
-    bool                           no_error = true;
+    bool no_error = true;
 
     for (auto& option : options)
     {
@@ -403,7 +404,7 @@ bool CmdNode::check_options()
 }
 bool CmdNode::check_sub_commands()
 {
-    Map<String, CmdNode*>    sub_cmd_map;
+    Map<String, CmdNode*> sub_cmd_map;
     Map<skr_char8, CmdNode*> sub_cmd_short_map;
 
     bool no_error = true;
@@ -559,16 +560,16 @@ void CmdParser::main_cmd(const RTTRType* type, void* object, attr::CmdSub config
 
     // fill main command info
     _root_cmd.config = config;
-    _root_cmd.type   = type;
+    _root_cmd.type = type;
     _root_cmd.object = object;
     _root_cmd.solve();
 }
 void CmdParser::sub_cmd(const RTTRType* type, void* object, attr::CmdSub config)
 {
     // fill sub command info
-    auto* sub_cmd   = SkrNew<CmdNode>();
+    auto* sub_cmd = SkrNew<CmdNode>();
     sub_cmd->config = config;
-    sub_cmd->type   = type;
+    sub_cmd->type = type;
     sub_cmd->object = object;
     sub_cmd->solve();
     _root_cmd.sub_cmds.push_back(sub_cmd);
@@ -579,12 +580,12 @@ void CmdParser::sub_cmd(const RTTRType* type, void* object, attr::CmdSub config)
 void CmdParser::parse(int argc, char* argv[])
 {
     // parse args
-    String           program_name = String::From(argv[0]);
-    Vector<CmdToken> args         = {};
+    String program_name = String::From(argv[0]);
+    Vector<CmdToken> args = {};
     args.reserve(argc);
     {
         CliOutputBuilder builder;
-        bool             any_error = false;
+        bool any_error = false;
         for (int i = 1; i < argc; ++i)
         {
             auto& arg = args.add_default().ref();
@@ -605,7 +606,7 @@ void CmdParser::parse(int argc, char* argv[])
     while (current_idx < args.size() && args[current_idx].type == CmdToken::Type::Name)
     {
         const auto& token = args[current_idx].token;
-        auto        found = current_cmd->sub_cmds.find_if([&](const CmdNode* cmd) {
+        auto found = current_cmd->sub_cmds.find_if([&](const CmdNode* cmd) {
             String short_name;
             short_name.add(cmd->config.short_name);
             return short_name == token || cmd->config.name == token;
@@ -638,7 +639,7 @@ void CmdParser::parse(int argc, char* argv[])
     {
         auto found = args.find_if([&](const CmdToken& token) {
             return (token.type == CmdToken::Type::ShortOption && token.token == u8"h") ||
-                   (token.type == CmdToken::Type::Option && token.token == u8"help");
+                (token.type == CmdToken::Type::Option && token.token == u8"help");
         });
 
         if (found)
@@ -663,8 +664,8 @@ void CmdParser::parse(int argc, char* argv[])
     }
 
     // collect options info
-    Set<CmdOptionData*>            required_options;
-    Map<String, CmdOptionData*>    options_map;
+    Set<CmdOptionData*> required_options;
+    Map<String, CmdOptionData*> options_map;
     Map<skr_char8, CmdOptionData*> short_options_map;
     for (auto& option : current_cmd->options)
     {
@@ -681,7 +682,7 @@ void CmdParser::parse(int argc, char* argv[])
 
     // parse options
     CliOutputBuilder builder;
-    bool             any_error = false;
+    bool any_error = false;
     while (current_idx < args.size())
     {
         const auto& arg = args[current_idx];
@@ -707,8 +708,7 @@ void CmdParser::parse(int argc, char* argv[])
                     arg,
                     params,
                     builder,
-                    required_options
-                );
+                    required_options);
             }
             else if (arg.is_short_option())
             {
@@ -729,14 +729,13 @@ void CmdParser::parse(int argc, char* argv[])
                         arg,
                         params,
                         builder,
-                        required_options
-                    );
+                        required_options);
                 }
                 else
                 { // process compound short options
                     for (uint32_t i = 0; i < arg.token.length_buffer(); ++i)
                     {
-                        auto  short_name   = arg.token.at_buffer(i);
+                        auto short_name = arg.token.at_buffer(i);
                         auto* found_option = short_options_map.find(short_name).value_or(nullptr);
                         if (!found_option)
                         {
@@ -773,8 +772,7 @@ void CmdParser::parse(int argc, char* argv[])
                             CmdToken{ CmdToken::Type::ShortOption, short_name },
                             params,
                             builder,
-                            required_options
-                        );
+                            required_options);
                     }
 
                     current_idx += 1; // skip short option
@@ -1008,13 +1006,12 @@ void CmdParser::_error_unknown_option(CliOutputBuilder& builder, const CmdToken&
         .next_line();
 }
 bool CmdParser::_process_option(
-    CmdOptionData*       found_option,
-    uint32_t&            current_idx,
-    const CmdToken&      arg,
+    CmdOptionData* found_option,
+    uint32_t& current_idx,
+    const CmdToken& arg,
     span<const CmdToken> params,
-    CliOutputBuilder&    builder,
-    Set<CmdOptionData*>& required_options
-)
+    CliOutputBuilder& builder,
+    Set<CmdOptionData*>& required_options)
 {
     // check option type
     if (found_option->is_bool())

@@ -1,10 +1,13 @@
 #pragma once
 #include <SkrCore/memory/rc.hpp>
-#include <SkrRTTR/script/script_binder.hpp>
+#include <SkrRTTR/script/scriptble_object.hpp>
 #include <SkrRTTR/script/stack_proxy.hpp>
+#include <SkrCore/error_collector.hpp>
+#include <SkrV8/v8_fwd.hpp>
+#include <SkrV8/bind_template/v8_bind_template.hpp>
+#include <SkrContainers/set.hpp>
+#include <SkrV8/v8_bind_proxy.hpp>
 #include <SkrV8/v8_inspector.hpp>
-#include <SkrV8/v8_bind_data.hpp>
-#include <SkrV8/v8_script_loader.hpp>
 
 // v8 includes
 #include <v8-isolate.h>
@@ -16,27 +19,67 @@
 
 namespace skr
 {
-struct V8Context;
-struct V8Module;
+struct V8BindProxyPool {
+    inline V8BindProxyPool() = default;
+    inline ~V8BindProxyPool()
+    {
+        release();
+    }
+
+    template <std::derived_from<V8BindProxy> T>
+    inline T* alloc()
+    {
+        auto* pooled = try_alloc();
+        if (pooled) { return static_cast<T*>(pooled); }
+        auto* result = SkrNew<T>();
+        _used_proxies.push_back(result);
+        return result;
+    }
+    inline V8BindProxy* try_alloc()
+    {
+        if (_free_proxies.is_empty()) { return nullptr; }
+        auto result = _free_proxies.pop_back_get();
+        _used_proxies.push_back(result);
+        return result;
+    }
+    inline void take_back(V8BindProxy* proxy)
+    {
+        bool done_remove = _used_proxies.remove_swap(proxy);
+        SKR_ASSERT(done_remove);
+        _free_proxies.push_back(proxy);
+    }
+    inline void release()
+    {
+        for (auto* proxy : _used_proxies)
+        {
+            SkrDelete(proxy);
+        }
+        for (auto* proxy : _free_proxies)
+        {
+            SkrDelete(proxy);
+        }
+
+        _used_proxies.clear();
+        _free_proxies.clear();
+    }
+
+private:
+    Vector<V8BindProxy*> _free_proxies = {};
+    Vector<V8BindProxy*> _used_proxies = {};
+};
 
 // clang-format off
-sreflect_struct(guid = "8aea5942-6e5c-4711-9502-83f252faa231")
-SKR_V8_API V8Isolate: IScriptMixinCore {
+sreflect_struct(
+    guid = "921187d2-4d38-42b5-81b1-cc79d5739cef"
+)
+SKR_V8_API V8Isolate : IScriptMixinCore {
     // clang-format on
     SKR_GENERATE_BODY(V8Isolate)
-
-    // friend struct V8Context;
-    friend struct V8Value;
+    SKR_DELETE_COPY_MOVE(V8Isolate)
 
     // ctor & dtor
     V8Isolate();
     ~V8Isolate();
-
-    // delate copy & move
-    V8Isolate(const V8Isolate&)            = delete;
-    V8Isolate(V8Isolate&&)                 = delete;
-    V8Isolate& operator=(const V8Isolate&) = delete;
-    V8Isolate& operator=(V8Isolate&&)      = delete;
 
     // init & shutdown
     void init();
@@ -47,311 +90,115 @@ SKR_V8_API V8Isolate: IScriptMixinCore {
     void pump_message_loop();
     void gc(bool full = true);
 
-    // context
+    // context management
     V8Context* main_context() const;
     V8Context* create_context(String name = {});
     void       destroy_context(V8Context* context);
 
-    // cpp module
-    V8Module* add_cpp_module(StringView name);
-    void      remove_cpp_module(V8Module* module);
-    void      register_cpp_module_id(V8Module* module, int v8_module_id);
-    void      unregister_cpp_module_id(V8Module* module, int v8_module_id);
-    V8Module* find_cpp_module(StringView name) const;
-    V8Module* find_cpp_module(int v8_module_id) const;
-
-    // script loader & file modules
-
-    // debugger
-    void init_debugger(int port);
-    void shutdown_debugger();
-    bool is_debugger_init() const;
-    void pump_debugger_messages();
-    void wait_for_debugger_connected(uint64_t timeout_ms = std::numeric_limits<uint64_t>::max());
-    bool any_debugger_connected() const;
-
     // getter
-    inline v8::Isolate*               v8_isolate() const { return _isolate; }
-    inline ScriptBinderManager&       script_binder_manger() { return _binder_mgr; }
-    inline const ScriptBinderManager& script_binder_manger() const { return _binder_mgr; }
+    inline v8::Isolate* v8_isolate() const { return _isolate; }
 
-    // bind object
-    V8BindCoreObject* translate_object(::skr::ScriptbleObject* obj);
-    void              mark_object_deleted(::skr::ScriptbleObject* obj);
-
-    // bind value
-    V8BindCoreValue* create_value(const RTTRType* type, const void* source_data = nullptr);
-    V8BindCoreValue* translate_value_field(const RTTRType* type, const void* data, V8BindCoreRecordBase* owner);
-    V8BindCoreValue* translate_value_temporal(const RTTRType* type, const void* data, V8BindCoreValue::ESource source);
-
-    // query template
-    v8::Local<v8::ObjectTemplate>   get_or_add_enum_template(const RTTRType* type);
-    v8::Local<v8::FunctionTemplate> get_or_add_record_template(const RTTRType* type);
-
-    // clean up bind data
-    void cleanup_templates();
-    void cleanup_bind_cores();
-
-    // convert
-    v8::Local<v8::Value> to_v8(TypeSignatureView sig_view, const void* data);
-    bool                 to_native(TypeSignatureView sig_view, void* data, v8::Local<v8::Value> v8_value, bool is_init);
-
-    // invoke script
+    // invoke helper
     bool invoke_v8(
         v8::Local<v8::Value>    v8_this,
         v8::Local<v8::Function> v8_func,
         span<const StackProxy>  params,
         StackProxy              return_value
     );
-    bool invoke_v8_mixin(
-        v8::Local<v8::Value>      v8_this,
-        v8::Local<v8::Function>   v8_func,
-        const ScriptBinderMethod& mixin_data,
-        span<const StackProxy>    params,
-        StackProxy                return_value
+
+    //==> IScriptMixinCore API
+    void on_object_destroyed(
+        ScriptbleObject* obj
+    ) override;
+    bool try_invoke_mixin(
+        ScriptbleObject*             obj,
+        StringView                   name,
+        const span<const StackProxy> args,
+        StackProxy                   result
+    ) override;
+    //==> IScriptMixinCore API
+
+    // bind proxy management
+    V8BindTemplate* solve_bind_tp(
+        TypeSignatureView signature
     );
-
-    // => IScriptMixinCore API
-    void on_object_destroyed(ScriptbleObject* obj) override;
-    bool try_invoke_mixin(ScriptbleObject* obj, StringView name, const span<const StackProxy> params, StackProxy ret) override;
-    // => IScriptMixinCore API
-
-private:
-    // template helper
-    v8::Local<v8::FunctionTemplate> _make_template_object(ScriptBinderObject* object_binder);
-    v8::Local<v8::FunctionTemplate> _make_template_value(ScriptBinderValue* value_binder);
-
-    void _fill_record_template(
-        ScriptBinderRecordBase*         binder,
-        V8BindDataRecordBase*           bind_data,
-        v8::Local<v8::FunctionTemplate> ctor_template
+    V8BindTemplate* solve_bind_tp(
+        const GUID& type_id
     );
-
-    // module callback
-    static v8::MaybeLocal<v8::Promise> _dynamic_import_module(
-        v8::Local<v8::Context>    context,
-        v8::Local<v8::Data>       host_defined_options,
-        v8::Local<v8::Value>      resource_name,
-        v8::Local<v8::String>     specifier,
-        v8::Local<v8::FixedArray> import_assertions
-    );
-
-    // uniform new
     template <typename T>
-    inline T* _new_bind_data()
+    inline T* solve_bind_tp_as(const GUID& type_id)
     {
-        auto* result    = SkrNew<T>();
-        result->manager = this;
-        return result;
-    }
-    template <typename T>
-    inline T* _new_bind_core()
-    {
-        auto* result        = SkrNew<T>();
-        result->skr_isolate = this;
-        return result;
+        return solve_bind_tp(type_id)->as<T>();
     }
 
-    // bind methods
-    static void _gc_callback(const ::v8::WeakCallbackInfo<V8BindCoreRecordBase>& data);
-    static void _call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _get_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _set_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _get_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _set_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _enum_to_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _enum_from_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    template <typename T>
+    inline T* solve_bind_tp_as(TypeSignatureView type_id)
+    {
+        return solve_bind_tp(type_id)->as<T>();
+    }
 
-    // convert helper
-    v8::Local<v8::Value> _to_v8(
-        ScriptBinderRoot binder,
-        void*            native_data
+    // bind proxy pool
+    template <std::derived_from<V8BindProxy> T>
+    inline T* create_bind_proxy()
+    {
+        V8BindProxyPool& pool = _bind_proxy_pools.try_add_default(type_id_of<T>()).value();
+        return pool.alloc<T>();
+    }
+    void destroy_bind_proxy(V8BindProxy* bind_proxy);
+
+    // bind proxy management
+    void register_bind_proxy(
+        void*        native_ptr,
+        V8BindProxy* bind_proxy
     );
-    bool _to_native(
-        ScriptBinderRoot     binder,
-        void*                native_data,
-        v8::Local<v8::Value> v8_value,
-        bool                 is_init
+    void unregister_bind_proxy(
+        void*        native_ptr,
+        V8BindProxy* bind_proxy
     );
-    v8::Local<v8::Value> _to_v8_primitive(
-        const ScriptBinderPrimitive& binder,
-        void*                        native_data
-    );
-    void _init_primitive(
-        const ScriptBinderPrimitive& binder,
-        void*                        native_data
-    );
-    bool _to_native_primitive(
-        const ScriptBinderPrimitive& binder,
-        v8::Local<v8::Value>         v8_value,
-        void*                        native_data,
-        bool                         is_init
-    );
-    v8::Local<v8::Value> _to_v8_mapping(
-        const ScriptBinderMapping& binder,
-        void*                      obj
-    );
-    bool _to_native_mapping(
-        const ScriptBinderMapping& binder,
-        v8::Local<v8::Value>       v8_value,
-        void*                      native_data,
-        bool                       is_init
-    );
-    v8::Local<v8::Value> _to_v8_object(
-        const ScriptBinderObject& binder,
-        void*                     native_data
-    );
-    bool _to_native_object(
-        const ScriptBinderObject& binder,
-        v8::Local<v8::Value>      v8_value,
-        void*                     native_data,
-        bool                      is_init
-    );
-    v8::Local<v8::Value> _to_v8_value(
-        const ScriptBinderValue& binder,
-        void*                    native_data
-    );
-    bool _to_native_value(
-        const ScriptBinderValue& binder,
-        v8::Local<v8::Value>     v8_value,
-        void*                    native_data,
-        bool                     is_init
+    V8BindProxy* map_bind_proxy(
+        void* native_ptr
+    ) const;
+
+    // 用于缓存调用期间为参数创建的临时 bind proxy
+    void push_param_scope();
+    void pop_param_scope();
+    void push_param_proxy(
+        V8BindProxy* bind_proxy
     );
 
-    // field convert helper
-    static void* _get_field_address(
-        const RTTRFieldData* field,
-        const RTTRType*      field_owner,
-        const RTTRType*      obj_type,
-        void*                obj
-    );
-    bool _set_field_value_or_object(
-        const ScriptBinderField& binder,
-        v8::Local<v8::Value>     v8_value,
-        V8BindCoreRecordBase*    bind_core
-    );
-    bool _set_field_mapping(
-        const ScriptBinderField& binder,
-        v8::Local<v8::Value>     v8_value,
-        void*                    obj,
-        const RTTRType*          obj_type
-    );
-    v8::Local<v8::Value> _get_field_value_or_object(
-        const ScriptBinderField& binder,
-        V8BindCoreRecordBase*    bind_core
-    );
-    v8::Local<v8::Value> _get_field_mapping(
-        const ScriptBinderField& binder,
-        const void*              obj,
-        const RTTRType*          obj_type
-    );
-    bool _set_static_field(
-        const ScriptBinderStaticField& binder,
-        v8::Local<v8::Value>           v8_value
-    );
-    v8::Local<v8::Value> _get_static_field(
-        const ScriptBinderStaticField& binder
-    );
+    // debugger
+    void init_debugger(int port = 9229);
+    void shutdown_debugger();
+    bool is_debugger_init() const;
+    void pump_debugger_messages();
+    void wait_for_debugger_connected(uint64_t timeout_ms = std::numeric_limits<uint64_t>::max());
+    bool any_debugger_connected() const;
 
-    // param & return convert helper
-    void _push_param(
-        DynamicStack&            stack,
-        const ScriptBinderParam& param_binder,
-        v8::Local<v8::Value>     v8_value
-    );
-    void _push_param_pure_out(
-        DynamicStack&            stack,
-        const ScriptBinderParam& param_binder
-    );
-    v8::Local<v8::Value> _read_return(
-        DynamicStack&                    stack,
-        const Vector<ScriptBinderParam>& params_binder,
-        const ScriptBinderReturn&        return_binder,
-        uint32_t                         solved_return_count
-    );
-    v8::Local<v8::Value> _read_return(
-        DynamicStack&             stack,
-        const ScriptBinderReturn& return_binder
-    );
-    v8::Local<v8::Value> _read_return_from_out_param(
-        DynamicStack&            stack,
-        const ScriptBinderParam& param_binder
-    );
-
-    // call native helper
-    v8::Local<v8::Value> _make_v8_param(
-        const ScriptBinderParam& param_binder,
-        void*                    native_data
-    );
-    bool _read_v8_return(
-        span<const StackProxy>           params,
-        StackProxy                       return_value,
-        const Vector<ScriptBinderParam>& params_binder,
-        const ScriptBinderReturn&        return_binder,
-        uint32_t                         solved_return_count,
-        v8::MaybeLocal<v8::Value>        v8_return_value
-    );
-    void _cleanup_value_param(
-        span<const StackProxy>           params,
-        const Vector<ScriptBinderParam>& params_binder
-    );
-
-    // invoke helper
-    bool _call_native(
-        const ScriptBinderCtor&                        binder,
-        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-        void*                                          obj
-    );
-    bool _call_native(
-        const ScriptBinderMethod&                      binder,
-        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-        void*                                          obj,
-        const RTTRType*                                obj_type
-    );
-    bool _call_native(
-        const ScriptBinderStaticMethod&                binder,
-        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
-    );
+public:
+    RC<IV8VFS> vfs = {};
 
 private:
     // isolate data
     v8::Isolate*              _isolate               = nullptr;
     v8::Isolate::CreateParams _isolate_create_params = {};
 
-    // binder manager
-    ScriptBinderManager _binder_mgr = {};
+    // bind tp cache
+    Map<GUID, V8BindTemplate*>          _bind_tp_map         = {};
+    Map<TypeSignature, V8BindTemplate*> _bind_tp_map_generic = {};
 
-    // template & bind data
-    Map<const RTTRType*, V8BindDataRecordBase*> _record_templates = {};
-    Map<const RTTRType*, V8BindDataEnum*>       _enum_templates   = {};
+    // bind proxy pool
+    Map<GUID, V8BindProxyPool> _bind_proxy_pools = {};
 
-    // bind cores & objects
-    Map<ScriptbleObject*, V8BindCoreObject*> _alive_objects         = {};
-    Vector<V8BindCoreObject*>                _deleted_objects       = {};
-    Map<void*, V8BindCoreValue*>             _script_created_values = {};
-    Map<void*, V8BindCoreValue*>             _static_field_values   = {};
-    Map<void*, V8BindCoreValue*>             _temporal_values       = {};
+    // bind proxy cache
+    Map<void*, V8BindProxy*> _bind_proxy_map = {};
 
     // context manage
-    RCUnique<V8Context>         _main_context = nullptr;
-    Vector<RCUnique<V8Context>> _contexts     = {};
+    V8Context*              _main_context = nullptr;
+    Map<String, V8Context*> _contexts     = {};
 
-    // modules manage
-    Map<String, RCUnique<V8Module>> _cpp_modules    = {};
-    Map<int, V8Module*>             _cpp_modules_id = {};
-
-    // script file loader
-    RCUnique<IV8ScriptLoader> _script_loader = nullptr;
-
-    // file module cache
-    Map<String, v8::Global<v8::Module>> _file_module_cache    = {};
-    Map<int, v8::Global<v8::Module>>    _file_module_cache_id = {};
+    // call v8 bind proxy manage
+    Vector<V8BindProxy*> _call_v8_param_proxy       = {};
+    Vector<uint64_t>     _call_v8_param_proxy_stack = {};
 
     // debugger
     V8WebSocketServer _websocket_server = {};

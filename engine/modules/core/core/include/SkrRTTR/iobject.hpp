@@ -2,6 +2,7 @@
 #include "SkrRTTR/rttr_traits.hpp"
 #include "SkrRTTR/type.hpp"
 #include "SkrRTTR/rttr_traits.hpp"
+#include <SkrRTTR/type_registry.hpp>
 #ifndef __meta__
     #include "SkrRTTR/iobject.generated.h"
 #endif
@@ -15,11 +16,12 @@
 namespace skr
 {
 sreflect_struct(guid = "3740620f-714d-4d78-b47e-095f256ba4a7")
-    SKR_CORE_API IObject {
+SKR_CORE_API IObject
+{
     virtual ~IObject() = default;
 
     //=> IObject API
-    virtual GUID  iobject_get_typeid() const   = 0;
+    virtual GUID iobject_get_typeid() const = 0;
     virtual void* iobject_get_head_ptr() const = 0;
     //=> IObject API
 
@@ -39,7 +41,7 @@ sreflect_struct(guid = "3740620f-714d-4d78-b47e-095f256ba4a7")
 
     // disable default new/delete, please use SkrNewObj/SkrDeleteObj or RC<T> instead
     inline static void* operator new(std::size_t, void* p) { return p; }
-    static void* operator new(size_t)   = delete;
+    static void* operator new(size_t) = delete;
     static void* operator new[](size_t) = delete;
 };
 
@@ -47,7 +49,8 @@ sreflect_struct(guid = "3740620f-714d-4d78-b47e-095f256ba4a7")
 
 // delete traits
 template <std::derived_from<::skr::IObject> T>
-struct SkrDeleteTraits<T> {
+struct SkrDeleteTraits<T>
+{
     SKR_FORCEINLINE static void* get_free_ptr(T* p)
     {
         return p->iobject_get_head_ptr();
@@ -60,8 +63,8 @@ namespace skr
 template <typename TO>
 inline TO* IObject::type_cast()
 {
-    auto  from_type = get_type_from_guid(this->iobject_get_typeid());
-    void* cast_p    = from_type->cast_to_base(::skr::type_id_of<TO>(), this->iobject_get_head_ptr());
+    auto from_type = get_type_from_guid(this->iobject_get_typeid());
+    void* cast_p = from_type->cast_to_base(::skr::type_id_of<TO>(), this->iobject_get_head_ptr());
     return reinterpret_cast<TO*>(cast_p);
 }
 template <typename TO>

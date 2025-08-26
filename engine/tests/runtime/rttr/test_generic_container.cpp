@@ -2,6 +2,7 @@
 #include <SkrCore/log.hpp>
 #include <SkrRTTR/export/export_builder.hpp>
 #include <SkrCore/exec_static.hpp>
+#include <SkrRTTR/type_registry.hpp>
 
 #include <SkrContainers/optional.hpp>
 #include <SkrContainers/vector.hpp>

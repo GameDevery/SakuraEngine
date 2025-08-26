@@ -1,22 +1,22 @@
 #include <SkrV8/v8_context.hpp>
+#include <SkrContainers/set.hpp>
 #include <SkrCore/log.hpp>
-#include <SkrV8/v8_isolate.hpp>
+#include <SkrRTTR/type.hpp>
 #include <SkrV8/v8_bind.hpp>
-#include <SkrV8/v8_module.hpp>
+#include <SkrV8/v8_isolate.hpp>
+#include <SkrV8/v8_vfs.hpp>
 
-#include <v8-exception.h>
+// v8 includes
+#include <libplatform/libplatform.h>
+#include <v8-initialization.h>
+#include <v8-template.h>
+#include <v8-external.h>
 #include <v8-function.h>
+#include <v8-container.h>
+#include <v8-exception.h>
 
 namespace skr
 {
-// setup by isolate
-void V8Context::_init_basic(V8Isolate* isolate, String name)
-{
-    _isolate = isolate;
-    _name = name;
-    _global_module.manager = &_isolate->script_binder_manger();
-}
-
 // ctor & dtor
 V8Context::V8Context()
 {
@@ -25,138 +25,311 @@ V8Context::~V8Context()
 {
 }
 
-// init & shutdown
-void V8Context::init()
+::v8::Global<::v8::Context> V8Context::v8_context() const
+{
+    return ::v8::Global<::v8::Context>(_isolate->v8_isolate(), _context);
+}
+
+// context op
+void V8Context::enter()
 {
     using namespace ::v8;
-    Isolate::Scope isolate_scope(_isolate->v8_isolate());
     HandleScope handle_scope(_isolate->v8_isolate());
+    _context.Get(_isolate->v8_isolate())->Enter();
+}
+void V8Context::exit()
+{
+    using namespace ::v8;
+    HandleScope handle_scope(_isolate->v8_isolate());
+    _context.Get(_isolate->v8_isolate())->Exit();
+}
+
+// build export
+void V8Context::build_export(FunctionRef<void(V8VirtualModule&)> build_func)
+{
+    auto               isolate = _isolate->v8_isolate();
+    v8::Isolate::Scope isolate_scope(isolate);
+    v8::HandleScope    handle_scope(isolate);
+    auto               context = _context.Get(isolate);
+    v8::Context::Scope context_scope(context);
+
+    // build module
+    build_func(_virtual_module);
+    _virtual_module.dump_bind_tp_error();
+
+    // setup context
+    _virtual_module.export_v8_to(
+        isolate,
+        context,
+        _context.Get(isolate)->Global()
+    );
+}
+bool V8Context::is_export_built() const
+{
+    return !_virtual_module.is_empty();
+}
+void V8Context::clear_export()
+{
+    if (is_export_built())
+    {
+        _virtual_module.erase_export(
+            _isolate->v8_isolate(),
+            _context.Get(_isolate->v8_isolate()),
+            _context.Get(_isolate->v8_isolate())->Global()
+        );
+    }
+}
+
+// set & get global value
+V8Value V8Context::get_global(StringView name)
+{
+    using namespace ::v8;
+
+    // scopes
+    auto           isolate = _isolate->v8_isolate();
+    Isolate::Scope isolate_scope(isolate);
+    HandleScope    handle_scope(isolate);
+    Local<Context> context = _context.Get(isolate);
+    Context::Scope context_scope(context);
+
+    // find value
+    auto maybe_value = context->Global()->Get(
+        context,
+        V8Bind::to_v8(name, true)
+    );
+    if (maybe_value.IsEmpty())
+    {
+        return {};
+    }
+    else
+    {
+        auto value = maybe_value.ToLocalChecked();
+        if (value->IsNullOrUndefined()) { return {}; }
+        return {
+            { isolate, value },
+            this
+        };
+    }
+}
+bool V8Context::set_global_value(StringView name, const V8Value& value)
+{
+    using namespace ::v8;
+
+    // scopes
+    auto           isolate = _isolate->v8_isolate();
+    Isolate::Scope isolate_scope(isolate);
+    HandleScope    handle_scope(isolate);
+    Local<Context> context = _context.Get(isolate);
+    Context::Scope context_scope(context);
+
+    auto result = context->Global()->Set(
+        context,
+        V8Bind::to_v8(name, true),
+        value.v8_value().Get(isolate)
+    );
+    return result.IsJust();
+}
+
+// exec
+V8Value V8Context::exec(StringView script, bool as_module)
+{
+    using namespace ::v8;
+
+    auto           isolate = _isolate->v8_isolate();
+    Isolate::Scope isolate_scope(isolate);
+    HandleScope    handle_scope(isolate);
+    Local<Context> context = _context.Get(isolate);
+    Context::Scope context_scope(context);
+
+    if (as_module)
+    {
+        // compile module
+        auto maybe_module = _compile_module(
+            isolate,
+            script,
+            u8"[CPP]"
+        );
+        if (maybe_module.IsEmpty())
+        {
+            SKR_LOG_ERROR(u8"compile module failed");
+            return {};
+        }
+
+        // run module
+        return _exec_module(
+            isolate,
+            context,
+            maybe_module.ToLocalChecked(),
+            true
+        );
+    }
+    else
+    {
+        // compile script
+        auto maybe_script = _compile_script(
+            isolate,
+            context,
+            script,
+            u8"[CPP]"
+        );
+        if (maybe_script.IsEmpty())
+        {
+            SKR_LOG_ERROR(u8"compile script failed");
+            return {};
+        }
+
+        // run script
+        return _exec_script(
+            isolate,
+            context,
+            maybe_script.ToLocalChecked(),
+            true
+        );
+    }
+}
+V8Value V8Context::exec_file(StringView file_path, bool as_module)
+{
+    using namespace ::v8;
+
+    auto           isolate = _isolate->v8_isolate();
+    Isolate::Scope isolate_scope(isolate);
+    HandleScope    handle_scope(isolate);
+    Local<Context> context = _context.Get(isolate);
+    Context::Scope context_scope(context);
+
+    // check vfs and load script
+    if (!_isolate->vfs)
+    {
+        SKR_LOG_ERROR(u8"vfs is not set, cannot load script from file");
+        return {};
+    }
+    auto normalized_path = _isolate->vfs->path_normalize(file_path);
+    auto script_content  = _isolate->vfs->load_script(normalized_path);
+    if (!script_content)
+    {
+        SKR_LOG_FMT_ERROR(u8"failed to load script from file: {}", normalized_path.c_str());
+        return {};
+    }
+
+    if (as_module)
+    {
+        // compile module
+        auto maybe_module = _compile_module(
+            isolate,
+            script_content.value(),
+            normalized_path
+        );
+        if (maybe_module.IsEmpty())
+        {
+            SKR_LOG_ERROR(u8"compile module failed");
+            return {};
+        }
+        auto module = maybe_module.ToLocalChecked();
+
+        // cache module path for evaluation
+        _module_id_to_path.add(module->GetIdentityHash(), normalized_path);
+
+        // run module
+        auto run_result = _exec_module(
+            isolate,
+            context,
+            module,
+            true
+        );
+
+        // pop module path
+        _module_id_to_path.remove(module->GetIdentityHash());
+
+        return run_result;
+    }
+    else
+    {
+        // compile script
+        auto maybe_script = _compile_script(
+            isolate,
+            context,
+            script_content.value(),
+            normalized_path
+        );
+        if (maybe_script.IsEmpty())
+        {
+            SKR_LOG_ERROR(u8"compile script failed");
+            return {};
+        }
+
+        // run script
+        return _exec_script(
+            isolate,
+            context,
+            maybe_script.ToLocalChecked(),
+            true
+        );
+    }
+
+    return {};
+}
+
+// init & shutdown
+void V8Context::_init(V8Isolate* isolate, String name)
+{
+    using namespace ::v8;
+
+    _isolate = isolate;
+    _name    = name;
+    _virtual_module.set_isolate(_isolate);
+
+    Isolate::Scope isolate_scope(_isolate->v8_isolate());
+    HandleScope    handle_scope(_isolate->v8_isolate());
 
     // create context
     auto new_context = Context::New(_isolate->v8_isolate());
     _context.Reset(_isolate->v8_isolate(), new_context);
 
     // bind this
-    new_context->SetAlignedPointerInEmbedderData(1, this);
+    new_context->SetAlignedPointerInEmbedderData(0, this);
 }
-void V8Context::shutdown()
+void V8Context::_shutdown()
 {
     // destroy context
     _context.Reset();
 }
 
-// build export
-bool V8Context::build_global_export(FunctionRef<void(ScriptModule& module)> build_func)
+// exec helpers
+v8::MaybeLocal<v8::Script> V8Context::_compile_script(
+    v8::Isolate*           isolate,
+    v8::Local<v8::Context> context,
+    StringView             script,
+    StringView             path
+)
 {
-    // build global module
-    build_func(_global_module);
-
-    // finalize
-    {
-        auto isolate = _isolate->v8_isolate();
-        v8::Isolate::Scope isolate_scope(isolate);
-        v8::HandleScope handle_scope(isolate);
-        auto context = _context.Get(isolate);
-        v8::Context::Scope context_scope(context);
-
-        if (!_global_module.check_full_export())
-        {
-            // dump lost types
-            for (const auto& lost_item : _global_module.lost_types())
-            {
-                String type_name;
-                switch (lost_item.kind())
-                {
-                case ScriptBinderRoot::EKind::Object: {
-                    auto* type = lost_item.object()->type;
-                    type_name = format(u8"{}::{}", type->name_space_str(), type->name());
-                    break;
-                }
-                case ScriptBinderRoot::EKind::Value: {
-                    auto* type = lost_item.value()->type;
-                    type_name = format(u8"{}::{}", type->name_space_str(), type->name());
-                    break;
-                }
-                case ScriptBinderRoot::EKind::Enum: {
-                    auto* type = lost_item.enum_()->type;
-                    type_name = format(u8"{}::{}", type->name_space_str(), type->name());
-                    break;
-                }
-                default:
-                    SKR_UNREACHABLE_CODE()
-                    break;
-                }
-
-                SKR_LOG_FMT_ERROR(u8"lost type {} when export context global data", type_name);
-            }
-            return false;
-        }
-        else
-        {
-            for (const auto& [k, v] : _global_module.ns_mapper().root().children())
-            {
-                // clang-format off
-                context->Global()->Set(
-                    context,
-                    V8Bind::to_v8(k, true),
-                    V8Bind::export_namespace_node(v, _isolate)
-                ).Check();
-                // clang-format on
-            }
-
-            return true;
-        }
-    }
-}
-
-// getter
-::v8::Global<::v8::Context> V8Context::v8_context() const
-{
-    return ::v8::Global<::v8::Context>(_isolate->v8_isolate(), _context);
-}
-
-// get global value
-V8Value V8Context::get_global(StringView name)
-{
-    // scopes
-    auto isolate = _isolate->v8_isolate();
-    v8::Isolate::Scope isolate_scope(isolate);
-    v8::HandleScope handle_scope(isolate);
-    v8::Local<v8::Context> context = _context.Get(isolate);
-    v8::Context::Scope context_scope(context);
-
-    // find value
-    auto global = context->Global();
-    v8::Local<v8::String> name_v8 = V8Bind::to_v8(name, true);
-    auto maybe_value = global->Get(context, name_v8);
-    if (maybe_value.IsEmpty())
-    {
-        SKR_LOG_FMT_ERROR(u8"failed to get global value {}", name);
-        return {};
-    }
-
-    // return value
-    V8Value result;
-    result.context = this;
-    result.v8_value.Reset(isolate, maybe_value.ToLocalChecked());
-    return result;
-}
-
-// run as script
-V8Value V8Context::exec_script(StringView script, StringView file_path)
-{
-    auto isolate = _isolate->v8_isolate();
-    v8::Isolate::Scope isolate_scope(isolate);
-    v8::HandleScope handle_scope(isolate);
-    v8::Local<v8::Context> context = _context.Get(isolate);
-    v8::Context::Scope context_scope(context);
-    v8::TryCatch try_catch(isolate);
-
-    // compile script
     v8::Local<v8::String> source = V8Bind::to_v8(script, false);
+    v8::ScriptOrigin      origin(
+        isolate,
+        V8Bind::to_v8(path),
+        0,
+        0,
+        true,
+        -1,
+        {},
+        false,
+        false,
+        false,
+        {}
+    );
+    return ::v8::Script::Compile(
+        context,
+        source
+    );
+}
+v8::MaybeLocal<v8::Module> V8Context::_compile_module(
+    v8::Isolate* isolate,
+    StringView   script,
+    StringView   path
+)
+{
     v8::ScriptOrigin origin(
         isolate,
-        V8Bind::to_v8(file_path.is_empty() ? u8"[CPP]" : file_path),
+        V8Bind::to_v8(path),
         0,
         0,
         true,
@@ -165,77 +338,70 @@ V8Value V8Context::exec_script(StringView script, StringView file_path)
         false,
         false,
         true,
-        {});
-    auto may_be_script = ::v8::Script::Compile(
-        context,
-        source);
-    if (may_be_script.IsEmpty())
-    {
-        SKR_LOG_ERROR(u8"compile script failed");
-        return {};
-    }
+        {}
+    );
+    ::v8::ScriptCompiler::Source source(
+        V8Bind::to_v8(script),
+        origin
+    );
+    return ::v8::ScriptCompiler::CompileModule(
+        isolate,
+        &source,
+        v8::ScriptCompiler::kNoCompileOptions
+    );
+}
+V8Value V8Context::_exec_script(
+    v8::Isolate*           isolate,
+    v8::Local<v8::Context> context,
+    v8::Local<v8::Script>  script,
+    bool                   dump_exception
+)
+{
+    using namespace ::v8;
+    TryCatch try_catch(isolate);
 
     // run script
-    auto compiled_script = may_be_script.ToLocalChecked();
-    auto exec_result = compiled_script->Run(context);
+    auto exec_result = script->Run(context);
 
     // dump exception
     if (try_catch.HasCaught())
     {
-        String exception_str;
-        V8Bind::to_native(try_catch.Exception()->ToString(context).ToLocalChecked(), exception_str);
-        SKR_LOG_FMT_ERROR(u8"[V8] uncaught exception: {}\n  at: {}", exception_str.c_str(), file_path);
+        if (dump_exception)
+        {
+            String exception_str;
+            V8Bind::to_native(try_catch.Exception()->ToString(context).ToLocalChecked(), exception_str);
+            SKR_LOG_FMT_ERROR(
+                u8"[V8] uncaught exception: {}",
+                exception_str.c_str()
+            );
+        }
+        try_catch.ReThrow();
     }
 
     // return result
-    if (!exec_result.IsEmpty())
+    if (exec_result.IsEmpty())
     {
-        V8Value result;
-        result.context = this;
-        result.v8_value.Reset(_isolate->v8_isolate(), exec_result.ToLocalChecked());
-        return result;
-    }
-
-    return {};
-}
-
-// run as ES module
-V8Value V8Context::exec_module(StringView script, StringView file_path)
-{
-    auto isolate = _isolate->v8_isolate();
-    v8::Isolate::Scope isolate_scope(isolate);
-    v8::HandleScope handle_scope(isolate);
-    v8::Local<v8::Context> context = _context.Get(isolate);
-    v8::Context::Scope context_scope(context);
-    v8::TryCatch try_catch(isolate);
-
-    // compile module
-    v8::ScriptOrigin origin(
-        isolate,
-        V8Bind::to_v8(file_path.is_empty() ? u8"[CPP]" : file_path),
-        0,
-        0,
-        true,
-        -1,
-        {},
-        false,
-        false,
-        true,
-        {});
-    auto source_str = V8Bind::to_v8(script, false);
-    ::v8::ScriptCompiler::Source source(source_str, origin);
-    auto maybe_module = ::v8::ScriptCompiler::CompileModule(
-        isolate,
-        &source,
-        v8::ScriptCompiler::kNoCompileOptions);
-    if (maybe_module.IsEmpty())
-    {
-        SKR_LOG_ERROR(u8"compile module failed");
         return {};
     }
+    else
+    {
+        return {
+            { isolate, exec_result.ToLocalChecked() },
+            this
+        };
+    }
+}
+V8Value V8Context::_exec_module(
+    v8::Isolate*           isolate,
+    v8::Local<v8::Context> context,
+    v8::Local<v8::Module>  module,
+    bool                   dump_exception
+)
+{
+    using namespace ::v8;
+    TryCatch try_catch(isolate);
 
     // instantiate module
-    auto module = maybe_module.ToLocalChecked();
     auto instantiate_result = module->InstantiateModule(context, _resolve_module);
     if (instantiate_result.IsNothing())
     {
@@ -249,12 +415,11 @@ V8Value V8Context::exec_module(StringView script, StringView file_path)
     // check module error
     if (module->GetStatus() == v8::Module::kErrored)
     {
-        // won't stop, see https://github.com/nodejs/node/issues/50430
+        // won't stop on first level exception, see https://github.com/nodejs/node/issues/50430
         _isolate->v8_isolate()->ThrowException(module->GetException());
     }
 
-    // finish promise
-    // TODO. generic promise api
+    // finish first level promise
     if (eval_result.ToLocalChecked()->IsPromise())
     {
         auto promise = eval_result.ToLocalChecked().As<v8::Promise>();
@@ -272,33 +437,43 @@ V8Value V8Context::exec_module(StringView script, StringView file_path)
     // dump exception
     if (try_catch.HasCaught())
     {
-        String exception_str;
-        V8Bind::to_native(try_catch.Exception()->ToString(context).ToLocalChecked(), exception_str);
-        SKR_LOG_FMT_ERROR(u8"[V8] uncaught exception: {}\n  at: {}", exception_str.c_str(), file_path);
+        if (dump_exception)
+        {
+            String exception_str;
+            V8Bind::to_native(try_catch.Exception()->ToString(context).ToLocalChecked(), exception_str);
+            SKR_LOG_FMT_ERROR(
+                u8"[V8] uncaught exception: {}",
+                exception_str.c_str()
+            );
+        }
         try_catch.ReThrow();
     }
 
     // return result
-    if (!eval_result.IsEmpty())
+    if (eval_result.IsEmpty())
     {
-        V8Value result;
-        result.context = this;
-        result.v8_value.Reset(_isolate->v8_isolate(), eval_result.ToLocalChecked());
-        return result;
+        return {};
     }
-
-    return {};
+    else
+    {
+        return {
+            { isolate, eval_result.ToLocalChecked() },
+            this
+        };
+    }
 }
 
 // callback
 v8::MaybeLocal<v8::Module> V8Context::_resolve_module(
-    v8::Local<v8::Context> context,
-    v8::Local<v8::String> specifier,
+    v8::Local<v8::Context>    context,
+    v8::Local<v8::String>     specifier,
     v8::Local<v8::FixedArray> import_assertions,
-    v8::Local<v8::Module> referrer)
+    v8::Local<v8::Module>     referrer
+)
 {
-    auto isolate = v8::Isolate::GetCurrent();
+    auto isolate     = v8::Isolate::GetCurrent();
     auto skr_isolate = reinterpret_cast<V8Isolate*>(isolate->GetData(0));
+    auto skr_context = reinterpret_cast<V8Context*>(context->GetAlignedPointerFromEmbedderData(0));
 
     // get module name
     skr::String module_name;
@@ -309,28 +484,156 @@ v8::MaybeLocal<v8::Module> V8Context::_resolve_module(
         return {};
     }
 
-    // solve module kind
-    bool is_cpp_module = true;
+    // check module name
+    bool is_relative_file =
+        module_name.starts_with(u8"..") ||
+        module_name.starts_with(u8".");
 
     // solve module
-    if (is_cpp_module)
-    { // cpp module
-        // find module
-        auto found_module = skr_isolate->find_cpp_module(module_name);
-        if (!found_module)
+    if (is_relative_file)
+    { // relative path
+        // check vfs
+        if (!skr_isolate->vfs)
         {
-            isolate->ThrowException(V8Bind::to_v8(u8"cannot find module"));
-            SKR_LOG_FMT_ERROR(u8"module {} not found", module_name);
+            isolate->ThrowException(
+                V8Bind::to_v8(u8"vfs is not set, cannot load script from file")
+            );
+            SKR_LOG_ERROR(u8"vfs is not set, cannot load script from file");
             return {};
         }
 
-        // return module
-        return found_module->v8_module();
+        // get referrer module path
+        auto find_referrer_path_result = skr_context->_module_id_to_path.find(referrer->GetIdentityHash());
+        if (!find_referrer_path_result)
+        {
+            isolate->ThrowException(
+                V8Bind::to_v8(u8"referrer module path not found")
+            );
+            return {};
+        }
+
+        // append .js suffix if needed
+        // TODO. optimize it
+        if (!module_name.ends_with(u8".js"))
+        {
+            module_name.append(u8".js");
+        }
+
+        // combine path and find cache
+        auto full_path = skr_isolate->vfs->path_solve_relative_module(
+            find_referrer_path_result.value(),
+            module_name
+        );
+        auto find_module_result = skr_context->_path_to_module.find(full_path);
+        if (find_module_result)
+        { // found in cache
+            return { find_module_result.value().Get(isolate) };
+        }
+
+        // load script
+        auto script_content = skr_isolate->vfs->load_script(full_path);
+        if (!script_content)
+        {
+            isolate->ThrowException(
+                V8Bind::to_v8(skr::format(u8"failed to load script from file: {}", full_path))
+            );
+            SKR_LOG_FMT_ERROR(u8"failed to load script from file: {}", full_path);
+            return {};
+        }
+
+        // compile module
+        auto maybe_module = skr_context->_compile_module(
+            isolate,
+            script_content.value(),
+            full_path
+        );
+        if (maybe_module.IsEmpty())
+        {
+            SKR_LOG_ERROR(u8"compile module failed");
+            return {};
+        }
+        auto module = maybe_module.ToLocalChecked();
+
+        // cache module id to path
+        skr_context->_module_id_to_path.add(module->GetIdentityHash(), full_path);
+
+        // evaluate module
+        auto run_result = skr_context->_exec_module(
+            isolate,
+            context,
+            module,
+            true
+        );
+
+        // cache module
+        skr_context->_path_to_module.add(full_path, v8::Global<v8::Module>(isolate, module));
+
+        return module;
     }
     else
-    {
-        return {};
+    { // absolute path
+        // check vfs
+        if (!skr_isolate->vfs)
+        {
+            isolate->ThrowException(V8Bind::to_v8(u8"vfs is not set, cannot load script from file"));
+            SKR_LOG_ERROR(u8"vfs is not set, cannot load script from file");
+            return {};
+        }
+
+        // append .js suffix if needed
+        // TODO. optimize it
+        if (!module_name.ends_with(u8".js"))
+        {
+            module_name.append(u8".js");
+        }
+
+        // normalize path and find cache
+        auto normalized_path    = skr_isolate->vfs->path_normalize(module_name);
+        auto find_module_result = skr_context->_path_to_module.find(normalized_path);
+        if (find_module_result)
+        { // found in cache
+            return { find_module_result.value().Get(isolate) };
+        }
+
+        // load script
+        auto script_content = skr_isolate->vfs->load_script(normalized_path);
+        if (!script_content)
+        {
+            isolate->ThrowException(
+                V8Bind::to_v8(skr::format(u8"failed to load script from file: {}", normalized_path))
+            );
+            SKR_LOG_FMT_ERROR(u8"failed to load script from file: {}", normalized_path);
+            return {};
+        }
+
+        // compile module
+        auto maybe_module = skr_context->_compile_module(
+            isolate,
+            script_content.value(),
+            normalized_path
+        );
+        if (maybe_module.IsEmpty())
+        {
+            SKR_LOG_ERROR(u8"compile module failed");
+            return {};
+        }
+        auto module = maybe_module.ToLocalChecked();
+
+        // cache module id to path
+        skr_context->_module_id_to_path.add(module->GetIdentityHash(), normalized_path);
+
+        // evaluate module
+        auto run_result = skr_context->_exec_module(
+            isolate,
+            context,
+            module,
+            true
+        );
+
+        // cache module
+        skr_context->_path_to_module.add(normalized_path, v8::Global<v8::Module>(isolate, module));
+
+        return module;
     }
 }
-
 } // namespace skr

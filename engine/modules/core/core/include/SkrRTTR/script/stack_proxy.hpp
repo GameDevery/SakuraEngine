@@ -1,10 +1,12 @@
 #pragma once
 #include <SkrRTTR/type_signature.hpp>
 
+// stack proxy
 namespace skr
 {
-struct StackProxy {
-    void*         data      = nullptr;
+struct StackProxy
+{
+    void* data = nullptr;
     TypeSignature signature = {};
 
     inline operator bool() const
@@ -17,71 +19,76 @@ struct StackProxy {
     }
 };
 template <typename T>
-struct StackProxyMaker {
+struct StackProxyMaker
+{
     inline static StackProxy Make(T& data, bool with_signature = true)
     {
         return {
-            .data      = &data,
+            .data = &data,
             .signature = with_signature ? type_signature_of<T>() : TypeSignature{},
         };
     }
     inline static StackProxy Make(T&& data, bool with_signature = true)
     {
         return {
-            .data      = &data,
+            .data = &data,
             .signature = with_signature ? type_signature_of<T>() : TypeSignature{},
         };
     }
 };
 template <typename T>
-struct StackProxyMaker<T*> { // see object export, we only pass object by pointer, and we should change pointer value when return it
+struct StackProxyMaker<T*>
+{ // see object export, we only pass object by pointer, and we should change pointer value when return it
     inline static StackProxy Make(T*& data, bool with_signature = true)
     {
         return {
-            .data      = &data,
+            .data = &data,
             .signature = with_signature ? type_signature_of<T>() : TypeSignature{},
         };
     }
 };
 template <typename T>
-struct StackProxyMaker<const T*> { // see object export, we only pass object by pointer, and we should change pointer value when return it
+struct StackProxyMaker<const T*>
+{ // see object export, we only pass object by pointer, and we should change pointer value when return it
     inline static StackProxy Make(const T*& data, bool with_signature = true)
     {
         return {
-            .data      = &data,
+            .data = &data,
             .signature = with_signature ? type_signature_of<T>() : TypeSignature{},
         };
     }
 };
 template <typename T>
-struct StackProxyMaker<T&> {
+struct StackProxyMaker<T&>
+{
     inline static StackProxy Make(T& data, bool with_signature = true)
     {
         return {
-            .data      = &data,
+            .data = &data,
             .signature = with_signature ? type_signature_of<T>() : TypeSignature{},
         };
     }
 };
 template <typename T>
-struct StackProxyMaker<const T&> {
+struct StackProxyMaker<const T&>
+{
     inline static StackProxy Make(const T& data, bool with_signature = true)
     {
         return {
-            .data      = const_cast<T*>(&data),
+            .data = const_cast<T*>(&data),
             .signature = with_signature ? type_signature_of<T>() : TypeSignature{},
         };
     }
 };
 template <typename T>
-struct StackProxyMaker<T&&> {
+struct StackProxyMaker<T&&>
+{
     inline static StackProxy Make(T&& data, bool with_signature = true)
     {
         return {
-            .data      = &data,
+            .data = &data,
             .signature = with_signature ? type_signature_of<T>() : TypeSignature{},
         };
     }
 };
-
 } // namespace skr

@@ -206,11 +206,12 @@ class _Gen {
 
     // header
     b.$line(`// BEGIN RTTR GENERATED`);
-    b.$line(`#include "SkrBase/misc/hash.h"`);
-    b.$line(`#include "SkrRTTR/type.hpp"`);
-    b.$line(`#include "SkrCore/exec_static.hpp"`);
-    b.$line(`#include "SkrContainers/tuple.hpp"`);
-    b.$line(`#include "SkrRTTR/export/export_builder.hpp"`);
+    b.$line(`#include <SkrBase/misc/hash.h>`);
+    b.$line(`#include <SkrRTTR/type.hpp>`);
+    b.$line(`#include <SkrCore/exec_static.hpp>`);
+    b.$line(`#include <SkrContainers/tuple.hpp>`);
+    b.$line(`#include <SkrRTTR/export/export_builder.hpp>`);
+    b.$line(`#include <SkrRTTR/type_registry.hpp>`);
     b.$line(``);
 
     // static register functions

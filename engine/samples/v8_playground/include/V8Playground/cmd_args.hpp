@@ -12,12 +12,13 @@
 namespace skr
 {
 sreflect_struct(guid = "c30115c5-4945-468f-a579-523202d4f42b" rttr = @full)
-SubCommandDumpDefine {
+SubCommandDumpDefine
+{
     srttr_attr(CmdOption{
         .short_name = u8'o',
-        .help       = u8"where to output .d.ts file",
+        .help = u8"where to output .d.ts file",
     })
-    skr::String outdir = {};
+        skr::String outdir = {};
 
     srttr_attr(CmdExec{}) void exec()
     {
@@ -41,48 +42,42 @@ SubCommandDumpDefine {
 };
 
 sreflect_struct(guid = "1bfb194d-abcd-42c0-9597-96f359a786aa" rttr = @full)
-MainCommand {
+MainCommand
+{
     srttr_attr(CmdOption{
-        .name        = u8"...",
-        .help        = u8"js files to execute",
-        .is_required = false,
+        .short_name = u8'r',
+        .name = u8"root",
+        .help = u8"js project root",
+        .is_required = true,
     })
-    skr::Vector<skr::String> exec_files = {};
+        skr::String js_root = {};
 
     srttr_attr(CmdSub{
         .short_name = u8'd',
-        .help       = u8"dump .d.ts files",
-        .usage      = u8"V8Playground dump_def [options]",
+        .help = u8"dump .d.ts files",
+        .usage = u8"V8Playground dump_def [options]",
     })
-    SubCommandDumpDefine dump_def = {};
+        SubCommandDumpDefine dump_def = {};
 
     srttr_attr(CmdExec{}) void exec()
     {
         V8PlaygroundApp::env_init();
 
         V8PlaygroundApp app;
-        
+
         // init
         app.init();
         app.load_native_types();
+        app.setup_vfs(js_root);
 
         // wait for debugger
-        app.init_debugger(9865);
-        app.wait_for_debugger_connected();
-        
+        // app.init_debugger(9865);
+        // app.wait_for_debugger_connected();
+
         // run scripts
-        bool any_failed = false;
-        for (auto& file : exec_files)
-        {
-            any_failed |= !app.run_script(file);
-        }
-        if (any_failed)
-        {
-            exit(1);
-        }
-        
+        app.run_script(u8"main.js");
+
         // shutdown
-        app.shutdown_debugger();
         app.shutdown();
 
         V8PlaygroundApp::env_shutdown();
