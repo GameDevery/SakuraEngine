@@ -1,7 +1,5 @@
 #include <std/std.hpp>
 
-using namespace skr::shader;
-
 struct [[stage_inout]] VSIn
 {
     float3 position;

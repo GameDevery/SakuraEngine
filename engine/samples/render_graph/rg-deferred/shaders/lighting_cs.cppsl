@@ -1,6 +1,6 @@
 #include <std/std.hpp>
 
-using namespace skr::shader;
+
 
 Texture2D<float> gbuffer_color;
 Texture2D<float> gbuffer_normal;

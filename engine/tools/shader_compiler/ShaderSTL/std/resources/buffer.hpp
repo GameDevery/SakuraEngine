@@ -2,8 +2,6 @@
 #include "./../attributes.hpp"
 #include "./../types/vec.hpp"
 
-namespace skr::shader {
-
 template <concepts::struct_type Type>
 struct [[builtin("constant_buffer")]] ConstantBuffer : public Type
 {
@@ -77,5 +75,3 @@ using RWStructuredBuffer = Buffer<Type, BufferFlags::ReadWrite>;
 
 using ByteAddressBuffer = Buffer<void, BufferFlags::ReadOnly>;
 using RWByteAddressBuffer = Buffer<void, BufferFlags::ReadWrite>;
-
-}// namespace skr::shader

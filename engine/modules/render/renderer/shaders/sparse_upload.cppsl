@@ -1,6 +1,6 @@
 #include <std/std.hpp>
 
-using namespace skr::shader;
+
 
 // Upload operation descriptor (must match C++ side)
 struct Upload

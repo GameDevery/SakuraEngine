@@ -4,8 +4,6 @@
 #include "./../types/vec.hpp"
 #include "./../numeric/constants.hpp"
 
-namespace skr::shader {
-
 template<concepts::arithmetic T, concepts::arithmetic U>
 	requires(sizeof(T) == sizeof(U))
 [[callop("BIT_CAST")]] extern T bit_cast(U v);
@@ -325,5 +323,3 @@ template<typename T, typename... Args>
 auto sum(T v, Args... args) {
     return v + sum(args...);
 }
-
-}// namespace skr::shader

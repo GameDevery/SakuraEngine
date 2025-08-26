@@ -1,6 +1,6 @@
 #include "attributes.hpp"
 #include <skr/std.hpp>
-using namespace skr::shader;
+
 struct VertexOut {
 	float4 position;
 	float3 normal;

@@ -2,8 +2,6 @@
 #include "./../attributes.hpp"
 #include "./../types/vec.hpp"
 
-namespace skr::shader {
-
 [[callop("AllMemoryBarrier")]] 
 extern void AllMemoryBarrier();
 
@@ -61,5 +59,3 @@ extern void InterlockedXor(V& v, T value, T& prev);
 // raster
 [[callop("RASTER_DISCARD")]] 
 extern void discard();
-
-}

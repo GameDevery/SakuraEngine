@@ -2,9 +2,6 @@
 #include "./../attributes.hpp"
 #include "./../types/vec.hpp"
 
-namespace skr::shader
-{
-
 struct [[builtin("sampler")]] Sampler 
 {
 
@@ -95,5 +92,3 @@ using TextureCube = TexCube<scalar_type<T>, TextureFlags::ReadOnly>;
 
 template <concepts::arithmetic_scalar_or_vec T = float>
 using TextureCubeArray = Tex3DArray<scalar_type<T>, TextureFlags::ReadOnly>;
-
-} // namespace skr::shader

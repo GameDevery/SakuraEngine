@@ -3,7 +3,6 @@
 #include "./../types/ray.hpp"
 #include "./../raytracing/ray_query.hpp"
 
-namespace skr::shader {
 struct [[builtin("accel")]] Accel {
     [[callop("RAY_TRACING_INSTANCE_TRANSFORM")]] float4x4 instance_transform(uint32 index);
     [[callop("RAY_TRACING_INSTANCE_USER_ID")]] uint32 instance_user_id(uint32 index);
@@ -18,4 +17,3 @@ struct [[builtin("accel")]] Accel {
     [[callop("RAY_TRACING_QUERY_ALL")]] RayQueryAll query_all(Ray ray, uint32 mask = ~0);
     [[callop("RAY_TRACING_QUERY_ANY")]] RayQueryAny query_any(Ray ray, uint32 mask = ~0);
 };
-}// namespace skr::shader

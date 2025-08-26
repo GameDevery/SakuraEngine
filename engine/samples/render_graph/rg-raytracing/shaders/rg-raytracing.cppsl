@@ -1,6 +1,6 @@
 #include <std/std.hpp>
 
-using namespace skr::shader;
+
 
 RWTexture2D<float> output_texture;
 Accel scene_tlas;

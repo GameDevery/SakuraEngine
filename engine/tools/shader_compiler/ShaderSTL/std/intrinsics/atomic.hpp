@@ -3,9 +3,8 @@
 #include "./../intrinsics/math.hpp"
 #include "./dispatch.hpp"
 
-namespace skr::shader {
 template<typename T>
-	requires(is_same_v<T, float> || is_same_v<float, element_of<T>>)
+	requires(std::is_same_v<T, float> || std::is_same_v<float, element_of<T>>)
 static typename copy_dim<uint, T>::type float_pack_to_uint(T val) {
 	using RetType = typename copy_dim<uint, T>::type;
 	RetType uvalue = bit_cast<RetType>(val);
@@ -13,7 +12,7 @@ static typename copy_dim<uint, T>::type float_pack_to_uint(T val) {
 }
 
 template<typename T>
-	requires(is_same_v<T, uint> || is_same_v<uint, element_of<T>>)
+	requires(std::is_same_v<T, uint> || std::is_same_v<uint, element_of<T>>)
 static typename copy_dim<float, T>::type uint_unpack_to_float(T val) {
 	using RetType = typename copy_dim<uint, T>::type;
 	RetType uvalue = ite(val >> RetType(31u) == 0, ~val, val & RetType(~(1u << 31u)));
@@ -45,5 +44,3 @@ static float float_atomic_add(
 	}
 	return bit_cast<float>(old);
 }
-
-}// namespace skr::shader

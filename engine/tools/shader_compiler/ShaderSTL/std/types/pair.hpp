@@ -2,12 +2,12 @@
 #include "../attributes.hpp"
 #include "../type_traits.hpp"
 
-namespace skr::shader {
 // constexpr inline struct zero_then_variadic_t {
 // } zero_then_variadic;
 // constexpr inline struct one_then_variadic_t {
 // } one_then_variadic;
 
+namespace std {
 template<class first_type, class second_type>
 class pair {
 public:
@@ -50,9 +50,7 @@ template<class first_type, class second_type>
 constexpr pair<remove_cvref_t<first_type>, remove_cvref_t<second_type>> make_pair(first_type&& first, second_type&& second) {
 	return {static_cast<first_type&&>(first), static_cast<second_type&&>(second)};
 }
-}// namespace skr::shader
 
-namespace std {
 template<class E>
 class tuple_size;
 
@@ -60,14 +58,14 @@ template<size_t I, class E>
 class tuple_element;
 
 template<class T1, class T2>
-trait tuple_size<skr::shader::pair<T1, T2>> : integral_constant<uint64, 2>{};
+trait tuple_size<std::pair<T1, T2>> : integral_constant<uint64, 2>{};
 
 template<class T1, class T2>
-trait tuple_element<0, skr::shader::pair<T1, T2>> {
+trait tuple_element<0, std::pair<T1, T2>> {
 	using type = T1;
 };
 template<class T1, class T2>
-trait tuple_element<1, skr::shader::pair<T1, T2>> {
+trait tuple_element<1, std::pair<T1, T2>> {
 	using type = T2;
 };
 }// namespace std

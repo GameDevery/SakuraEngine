@@ -1,7 +1,6 @@
 #pragma once
 #include "./../types/vec.hpp"
 
-namespace skr::shader {
 struct [[builtin("bindless_array")]] BindlessImage {
     [[callop("TYPED_BINDLESS_TEXTURE2D_SAMPLE_SAMPLER")]] float4 image_sample(uint32 image_index, float2 uv, uint filter, uint address);
     [[callop("TYPED_BINDLESS_TEXTURE2D_SAMPLE_LEVEL_SAMPLER")]] float4 image_sample_level(uint32 image_index, float2 uv, float mip_level, uint filter, uint address);
@@ -23,4 +22,3 @@ struct [[builtin("bindless_array")]] BindlessImage {
     [[callop("TYPED_UNIFORM_BINDLESS_TEXTURE2D_SIZE")]] uint2 uniform_idx_image_size(uint32 image_index);
     [[callop("TYPED_UNIFORM_BINDLESS_TEXTURE2D_SIZE_LEVEL")]] uint2 uniform_idx_image_size_level(uint32 image_index, uint32 mip_level);
 };
-}// namespace skr::shader
