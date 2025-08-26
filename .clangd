@@ -23,14 +23,14 @@ CompileFlags:
 ---
 
 If:
-  PathMatch: .*/.*.cppsl
+  PathMatch: .*/.*.cxx
 CompileFlags:
   CompilationDatabase: .sb/compile_commands/shaders/
 
 ---
 
 If:
-  PathMatch: .*/.*.hppsl
+  PathMatch: .*/.*.hxx
 CompileFlags:
   CompilationDatabase: .sb/compile_commands/shaders/
   Add: [ -x, c++-header ]

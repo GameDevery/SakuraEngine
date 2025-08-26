@@ -10,8 +10,6 @@
     "cmake.ignoreCMakeListsMissing": true,
     "files.associations": {
         "*.mm": "objective-cpp",
-        "*.m": "objective-c",
-        "*.hppsl": "cpp",
-        "*.cppsl": "cpp"
+        "*.m": "objective-c"
     }
 }
