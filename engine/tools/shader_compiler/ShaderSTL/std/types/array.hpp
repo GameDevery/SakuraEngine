@@ -2,8 +2,6 @@
 #include "../attributes.hpp"
 #include "../type_traits.hpp"
 
-namespace skr::shader {
-
 template<typename Type, uint32 size>
 struct [[builtin("array")]] Array {
     static constexpr uint32 N = size;
@@ -34,5 +32,3 @@ private:
     // DONT EDIT THIS FIELD LAYOUT
     Type v[size];
 };
-
-}// namespace skr::shader

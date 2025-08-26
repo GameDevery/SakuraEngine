@@ -1,7 +1,7 @@
 #include "std/std.hpp"
 #include "std/functions/math.hpp"
 
-using namespace skr::shader;
+
 
 enum class E : uint {
     A, B, C, D, E, F, G

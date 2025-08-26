@@ -2,7 +2,6 @@
 #include "SkrRenderer/shared/gpu_scene.hpp"
 #include "SkrRenderer/shared/soa_layout.hpp"
 
-using namespace skr::shader;
 using namespace skr;
 
 RWTexture2D<float> output_texture;

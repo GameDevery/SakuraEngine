@@ -1,6 +1,6 @@
 #include "attributes.hpp"
 #include <skr/std.hpp>
-using namespace skr::shader;
+
 struct VertexIn {
 	[[INSTANCE_ID]] uint instance_id;
 	[[MESHLET_ID]] uint meshlet_id;

@@ -1,7 +1,5 @@
 #include <std/std.hpp>
 
-using namespace skr::shader;
-
 struct Constants
 {
     float4x4 projection_matrix;

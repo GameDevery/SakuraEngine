@@ -3,7 +3,6 @@
 #include "array.hpp"
 #include "./../numeric.hpp"
 
-namespace skr::shader {
 struct Ray {
 public:
 	Ray() = default;
@@ -92,4 +91,3 @@ struct ProceduralHit {
 	uint32 inst;
 	uint32 prim;
 };
-}// namespace skr::shader
