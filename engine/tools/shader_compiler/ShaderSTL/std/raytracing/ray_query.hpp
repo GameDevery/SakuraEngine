@@ -84,9 +84,9 @@ struct [[builtin("ray_query")]] RayQuery {
     [[callop("RAY_QUERY_WORLD_RAY_DIRECTION")]] 
     float3 WorldRayDirection();
     
-
+    template <typename RayType>
     [[callop("RAY_QUERY_TRACE_RAY_INLINE")]] 
-    void TraceRayInline(const Accel& AS, uint32 mask, const Ray& ray);
+    void TraceRayInline(const Accel& AS, uint32 mask, const RayType& ray);
 
     [[callop("RAY_QUERY_COMMIT_TRIANGLE")]]
     void CommitTriangle();
