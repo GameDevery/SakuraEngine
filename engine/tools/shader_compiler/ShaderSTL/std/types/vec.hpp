@@ -1,7 +1,6 @@
 #pragma once
 #include "array.hpp"
 #include "../type_traits.hpp"
-namespace skr::shader {
 
 template<typename T, uint64 N>
 struct [[builtin("vec")]] vec;
@@ -174,8 +173,6 @@ using bool2 = vec<bool, 2>;
 using bool3 = vec<bool, 3>;
 using bool4 = vec<bool, 4>;
 
-};// namespace skr::shader
-
 namespace std {
 template<class E>
 class tuple_size;
@@ -184,10 +181,10 @@ template<size_t I, class E>
 class tuple_element;
 
 template<class T, uint64 N>
-trait tuple_size<skr::shader::vec<T, N>> : integral_constant<uint64, N>{};
+trait tuple_size<vec<T, N>> : integral_constant<uint64, N>{};
 
 template<size_t I, class T, uint64 N>
-trait tuple_element<I, skr::shader::vec<T, N>> {
+trait tuple_element<I, vec<T, N>> {
 	using type = T;
 };
 }// namespace std

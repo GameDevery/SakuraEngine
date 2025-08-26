@@ -280,7 +280,6 @@ if (isSampleCall(call)) {
 
 ```cpp
 #include "std/std.hpp"
-using namespace skr::shader;
 
 #define WIDTH 3200
 #define HEIGHT 2400
@@ -327,7 +326,6 @@ void compute_main([[sv_thread_id]] uint3 tid) {
 
 ```cpp
 #include "std/std.hpp"
-using namespace skr::shader;
 
 // 声明外部资源
 [[binding(0, 0)]]

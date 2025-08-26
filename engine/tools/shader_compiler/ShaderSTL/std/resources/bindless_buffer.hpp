@@ -1,7 +1,6 @@
 #pragma once
 #include "./../types/vec.hpp"
 
-namespace skr::shader {
 struct [[builtin("bindless_array")]] BindlessBuffer {
     template <typename T>
     [[callop("TYPED_BINDLESS_BUFFER_READ")]] T buffer_read(uint32 buffer_index, uint32 elem_index);
@@ -22,4 +21,3 @@ struct [[builtin("bindless_array")]] BindlessBuffer {
         return _uniform_idx_buffer_size(buffer_index, sizeof(T));
     }
 };
-}// namespace skr::shader

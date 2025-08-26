@@ -2,7 +2,6 @@
 #include "../attributes.hpp"
 #include "../types/ray.hpp"
 
-namespace skr::shader {
 enum struct RayQueryFlags : uint32
 {
     None = 0x0,
@@ -97,5 +96,3 @@ struct [[builtin("ray_query")]] RayQuery {
 
 using RayQueryAll = RayQuery<RayQueryFlags::None>;
 using RayQueryAny = RayQuery<RayQueryFlags::AcceptFirstAndEndSearch>;
-
-}// namespace skr::shader

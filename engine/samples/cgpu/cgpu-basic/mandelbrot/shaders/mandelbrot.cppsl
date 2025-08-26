@@ -1,6 +1,6 @@
 #include <std/std.hpp>
 
-using namespace skr::shader;
+
 
 RWBuffer<float4> buf;
 

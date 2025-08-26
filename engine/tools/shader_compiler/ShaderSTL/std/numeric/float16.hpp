@@ -1,7 +1,6 @@
 #pragma once
 #include <skr/type_traits.hpp>
 #include <skr/functions/math.hpp>
-namespace skr::shader {
 namespace float16_detail {
 constexpr static int shift = 13;
 constexpr static int shiftSign = 16;
@@ -78,5 +77,3 @@ static float float16_decompress(uint value) {
 	v_si |= sign;
 	return bit_cast<float>(v_si);
 }
-
-}// namespace skr::shader
