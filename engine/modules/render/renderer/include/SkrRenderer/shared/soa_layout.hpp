@@ -99,7 +99,7 @@ public:
     }
     
     template <typename T>
-    static constexpr AddressType component_location(uint32_t instance_id)
+    static constexpr AddressType Location(uint32_t instance_id)
     {
         uint32_t page = instance_id / page_size;
         uint32_t offset = instance_id % page_size;
@@ -115,7 +115,7 @@ public:
     template <typename T>
     static T Load(const data_layout::ByteAddressBuffer& buffer, uint32_t instance_id)
     {
-        const auto offset = PagedLayout::component_location<T>(instance_id);
+        const auto offset = PagedLayout::Location<T>(instance_id);
         return buffer.Load<T>(offset);
     }
 #endif
