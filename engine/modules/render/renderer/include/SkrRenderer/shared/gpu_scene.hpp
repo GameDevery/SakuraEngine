@@ -41,7 +41,7 @@ GPUSceneGeometryBuffers
         BufferEntry uv;
         BufferEntry normal;
         BufferEntry tangent;
-    } entries[16];
+    } entries[256];
 };
 
 using DefaultGPUSceneLayout = PagedLayout<16384, // 16K instances per page

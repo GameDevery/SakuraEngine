@@ -338,8 +338,6 @@ std::string ShaderTranslator::GetVarName(const clang::VarDecl* var)
     {
         index = static_cast<size_t>(std::distance(bucket.begin(), it));
     }
-    if (index == 0)
-        return base;
     return base + "_" + std::to_string(index);
 }
 
