@@ -1,6 +1,6 @@
 #pragma once
 #ifdef __CPPSL__
-    #include "detail/type_usings.hppsl" // IWYU pragma: export
+    #include "detail/type_usings.hxx" // IWYU pragma: export
 #else
     #include "detail/type_usings.hpp" // IWYU pragma: export
 #endif

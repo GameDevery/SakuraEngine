@@ -11,7 +11,7 @@ public static class SceneSamples
                 , "SkrImGui", "SkrCore", "SkrSystem", "SkrAnim")
             .IncludeDirs(Visibility.Public, "renderer")
             .AddCppFiles("renderer/*.cpp")
-            .AddCppSLFiles("renderer/shaders/*.cppsl")
+            .AddCppSLFiles("renderer/shaders/*.cxx")
             .CppSLOutputDirectory("resources/shaders/scene");
 
         Engine.Program("SceneSample_Simple")

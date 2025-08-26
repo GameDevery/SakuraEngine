@@ -20,14 +20,14 @@ public static class RenderGraphSamples
             .Depend(Visibility.Private, "AppSampleCommon")
             .IncludeDirs(Visibility.Private, "./../common")
             .AddCppFiles("rg-deferred/*.cpp")
-            .AddCppSLFiles("rg-deferred/**.cppsl")
+            .AddCppSLFiles("rg-deferred/**.cxx")
             .CppSLOutputDirectory("resources/shaders/rg-deferred");
 
         Engine.Program("RenderGraphRaytracingSample")
             .Depend(Visibility.Public, "SkrRenderGraph", "SkrSystem", "SkrScene")
             .Depend(Visibility.Private, "lodepng")
             .AddCppFiles("rg-raytracing/*.cpp")
-            .AddCppSLFiles("rg-raytracing/**.cppsl")
+            .AddCppSLFiles("rg-raytracing/**.cxx")
             .CppSLOutputDirectory("resources/shaders/rg-raytracing");
 
         Engine.Program("RenderGraphCrossProcessSample")
