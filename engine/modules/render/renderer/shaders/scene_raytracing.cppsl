@@ -61,7 +61,7 @@ float4 shade_hit(RayQuery<RayQueryFlags::AcceptFirstAndEndSearch>& query)
 {
     using Layout = skr::DefaultGPUSceneLayout;
     uint instance_id = query.CommittedInstanceID();
-    const auto offset = Layout::component_location<skr::GPUSceneInstanceColor>(instance_id);
+    const auto offset = Layout::Location<skr::GPUSceneInstanceColor>(instance_id);
     const auto color = gpu_scene.Load<skr::GPUSceneInstanceColor>(offset);
     return color.color;
 }
