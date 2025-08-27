@@ -120,7 +120,8 @@ RenderApp::SwapchainManager::SwapchainManager(RenderApp& app) SKR_NOEXCEPT
 
 void RenderApp::SwapchainManager::handle_event(const SkrSystemEvent& event) SKR_NOEXCEPT
 {
-    if (event.window.type == SKR_SYSTEM_EVENT_WINDOW_RESIZED)
+    if (event.window.type == SKR_SYSTEM_EVENT_WINDOW_RESIZED ||
+        event.window.type == SKR_SYSTEM_EVENT_WINDOW_MAXIMIZED)
     {
         auto wm = _app.get_window_manager();
         recreate_swapchain(wm->get_window_by_native_handle(event.window.window_native_handle));

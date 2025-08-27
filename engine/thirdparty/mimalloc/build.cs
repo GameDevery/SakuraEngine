@@ -7,14 +7,23 @@ public static class MiMalloc
     static MiMalloc()
     {
         var MiMalloc = Engine.Target("mimalloc")
-            .TargetType(TargetType.Dynamic)
             .OptimizationLevel(OptimizationLevel.Fastest)
-            .CppVersion("20")
-            .Defines(Visibility.Public, "MI_SHARED_LIB")
-            .Defines(Visibility.Private, "MI_SHARED_LIB_EXPORT", "MI_XMALLOC=1", "MI_WIN_NOREDIRECT")
+            .CVersion("11")
+            .Defines(Visibility.Private, "MI_WIN_NOREDIRECT")
             .IncludeDirs(Visibility.Public, "files")
-            .AddCppFiles("files/build.mimalloc.cpp");
-        
+            .AddCFiles("files/build.mimalloc.c");
+
+        if (!Engine.ShippingOneArchive)
+        {
+            MiMalloc.TargetType(TargetType.Dynamic)
+                .Defines(Visibility.Public, "MI_SHARED_LIB")
+                .Defines(Visibility.Private, "MI_SHARED_LIB_EXPORT");
+        }
+        else
+        {
+            MiMalloc.TargetType(TargetType.Objects);
+        }
+
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
             MiMalloc.Link(Visibility.Private, "psapi", "shell32", "ole32", "advapi32", "bcrypt");

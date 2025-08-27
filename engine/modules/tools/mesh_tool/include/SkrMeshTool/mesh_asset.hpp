@@ -8,6 +8,8 @@
     #include "SkrMeshTool/mesh_asset.generated.h" // IWYU pragma: export
 #endif
 
+struct cgltf_data;
+
 namespace skd::asset
 {
 
@@ -74,15 +76,26 @@ MESH_TOOL_API ProceduralMeshImporter final : public Importer
     void Destroy(void* resource) override;
 };
 
-sreflect_struct(
-    guid = "D72E2056-3C12-402A-A8B8-148CB8EAB922" serde = @json)
+sreflect_struct(guid = "D72E2056-3C12-402A-A8B8-148CB8EAB922" serde = @json)
 MESH_TOOL_API GltfMeshImporter final : public Importer
 {
+public:
+    struct ImportData
+    {
+        cgltf_data* gltf_data;
+        skr::Vector<skr::GUID> import_materials;
+        skr::Vector<skr::GUID> import_textures;
+    };
+
     String assetPath;
     bool invariant_vertices = false;
+    bool import_all_materials = false;
 
     void* Import(skr::io::IRAMService*, CookContext * context) override;
     void Destroy(void* resource) override;
+
+private:
+    void ImportMaterials(ImportData* data, CookContext* context);
 };
 
 sreflect_struct(guid = "5a378356-7bfa-461a-9f96-4bbbd2e95368")

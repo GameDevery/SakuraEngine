@@ -31,6 +31,17 @@ struct BufferEntry
     skr::data_layout::uint32 offset = ~0;
 };
 
+sreflect_managed_component(guid = "03035b31-a526-4fa7-b062-56da0849d5b9")
+PBRMaterial
+{
+    struct Group
+    {
+        uint32_t basecolor_tex;
+        uint32_t metallic_roughness_tex;
+        uint32_t emission_tex;
+    } entries[256];
+};
+
 sreflect_managed_component(guid = "a434196c-7a99-4dee-8715-e422124288e2")
 GPUSceneGeometryBuffers
 {
@@ -41,6 +52,7 @@ GPUSceneGeometryBuffers
         BufferEntry uv;
         BufferEntry normal;
         BufferEntry tangent;
+        uint32_t material_index;
     } entries[256];
 };
 

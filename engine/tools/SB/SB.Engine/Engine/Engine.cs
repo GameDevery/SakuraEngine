@@ -133,7 +133,8 @@ namespace SB
                     .LinkDirs(Visibility.Public, Target.GetBinaryPath());
                 if (BS.TargetOS == OSPlatform.Windows)
                 {
-                    Target.RuntimeLibrary("MD");
+                    Target.RuntimeLibrary("MD")
+                        .MSVC_LinkerArgs(Visibility.Public, "/NODEFAULTLIB:library");
                 }
                 if (Target.IsFromPackage)
                 {
