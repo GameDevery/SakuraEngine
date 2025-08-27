@@ -499,12 +499,30 @@ CGPURootSignatureId cgpu_create_root_signature_d3d12(CGPUDeviceId device, const 
     }
     D3D12_ROOT_PARAMETER1* rootParams = (D3D12_ROOT_PARAMETER1*)cgpu_calloc(tableCount + RS->super.push_constant_count, sizeof(D3D12_ROOT_PARAMETER1));
     D3D12_DESCRIPTOR_RANGE1* cbvSrvUavRanges = (D3D12_DESCRIPTOR_RANGE1*)cgpu_calloc(descRangeCount, sizeof(D3D12_DESCRIPTOR_RANGE1));
-    // Create descriptor tables
-    UINT valid_root_tables = 0;
+    // Count bindless count
     for (uint32_t i_set = 0, i_range = 0; i_set < RS->super.table_count; i_set++)
     {
         CGPUParameterTable* paramTable = &RS->super.tables[i_set];
-        D3D12_ROOT_PARAMETER1* rootParam = &rootParams[valid_root_tables];
+        for (uint32_t i_register = 0; i_register < paramTable->resources_count; i_register++)
+        {
+            CGPUShaderResource* reflSlot = &paramTable->resources[i_register];
+            if (reflSlot->size == 0) // bindless!
+            {
+                RS->mBindlessParamCount += 1;
+            }
+        }
+    }
+    if (RS->mBindlessParamCount != 0)
+    {
+        RS->pBindlessSetParamIndices = cgpu_calloc(RS->mBindlessParamCount, sizeof(BindlessRootParamInfo_D3D12));
+    }
+    // Create descriptor tables
+    UINT RootParamCursor = 0;
+    UINT BindlessRootParamCursor = 0;
+    for (uint32_t i_set = 0, i_range = 0; i_set < RS->super.table_count; i_set++)
+    {
+        CGPUParameterTable* paramTable = &RS->super.tables[i_set];
+        D3D12_ROOT_PARAMETER1* rootParam = &rootParams[RootParamCursor];
         rootParam->ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         CGPUShaderStages visStages = CGPU_SHADER_STAGE_NONE;
         const D3D12_DESCRIPTOR_RANGE1* descRangeCursor = &cbvSrvUavRanges[i_range];
@@ -518,8 +536,12 @@ CGPURootSignatureId cgpu_create_root_signature_d3d12(CGPUDeviceId device, const 
                 descRange->BaseShaderRegister = reflSlot->binding;
                 if (reflSlot->size == 0) // bindless!
                 {
+                    RS->pBindlessSetParamIndices[BindlessRootParamCursor].set = descRange->RegisterSpace;
+                    RS->pBindlessSetParamIndices[BindlessRootParamCursor].param = RootParamCursor;
+                    BindlessRootParamCursor += 1;
+
                     descRange->NumDescriptors = -1;
-                    descRange->Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE;
+                    descRange->Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE;
                     descRange->OffsetInDescriptorsFromTableStart = 0;
                 }
                 else
@@ -537,7 +559,7 @@ CGPURootSignatureId cgpu_create_root_signature_d3d12(CGPUDeviceId device, const 
         {
             rootParam->ShaderVisibility = D3D12Util_TranslateShaderStages(visStages);
             rootParam->DescriptorTable.pDescriptorRanges = descRangeCursor;
-            valid_root_tables++;
+            RootParamCursor++;
         }
     }
     // Root Const
@@ -552,11 +574,11 @@ CGPURootSignatureId cgpu_create_root_signature_d3d12(CGPUDeviceId device, const 
         RS->mRootConstantParam.ShaderVisibility = D3D12Util_TranslateShaderStages(reflSlot->stages);
     }
     // Create static samplers
-    UINT staticSamplerCount = desc->static_sampler_count;
+    UINT staticSamplerCount = 0;
     D3D12_STATIC_SAMPLER_DESC* staticSamplerDescs = CGPU_NULLPTR;
-    if (staticSamplerCount > 0)
+    if (desc->static_sampler_count > 0)
     {
-        staticSamplerDescs = (D3D12_STATIC_SAMPLER_DESC*)cgpu_calloc(staticSamplerCount, sizeof(D3D12_STATIC_SAMPLER_DESC));
+        staticSamplerDescs = (D3D12_STATIC_SAMPLER_DESC*)cgpu_calloc(desc->static_sampler_count, sizeof(D3D12_STATIC_SAMPLER_DESC));
         for (uint32_t i = 0; i < RS->super.static_sampler_count; i++)
         {
             CGPUShaderResource* RST_slot = &RS->super.static_samplers[i];
@@ -581,6 +603,8 @@ CGPURootSignatureId cgpu_create_root_signature_d3d12(CGPUDeviceId device, const 
                     staticSamplerDescs[i].RegisterSpace = samplerResource->set;
                     staticSamplerDescs[i].ShaderRegister = samplerResource->binding;
                     staticSamplerDescs[i].ShaderVisibility = D3D12Util_TranslateShaderStages(samplerResource->stages);
+                    
+                    staticSamplerCount += 1;
                 }
             }
         }
@@ -601,13 +625,13 @@ CGPURootSignatureId cgpu_create_root_signature_d3d12(CGPUDeviceId device, const 
     if (!(shaderStages & CGPU_SHADER_STAGE_FRAG))
         rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
     // Serialize versioned RS
-    const UINT paramCount = valid_root_tables + RS->super.push_constant_count /*must be 0 or 1 now*/;
+    const UINT paramCount = RootParamCursor + RS->super.push_constant_count /*must be 0 or 1 now*/;
     // Root Constant
     assert(RS->super.push_constant_count <= 1 && "Only support 1 push const now!");
     for (uint32_t i = 0; i < RS->super.push_constant_count; i++)
     {
-        rootParams[valid_root_tables + i] = RS->mRootConstantParam;
-        RS->mRootParamIndex = valid_root_tables + i;
+        rootParams[RootParamCursor + i] = RS->mRootConstantParam;
+        RS->mRootParamIndex = RootParamCursor + i;
     }
     // Serialize root signature
     ID3DBlob* error               = NULL;
@@ -616,8 +640,11 @@ CGPURootSignatureId cgpu_create_root_signature_d3d12(CGPUDeviceId device, const 
     sig_desc.Version                    = D3D_ROOT_SIGNATURE_VERSION_1_1;
     sig_desc.Desc_1_1.NumParameters     = paramCount;
     sig_desc.Desc_1_1.pParameters       = rootParams;
-    sig_desc.Desc_1_1.NumStaticSamplers = staticSamplerCount;
-    sig_desc.Desc_1_1.pStaticSamplers   = staticSamplerDescs;
+    if (staticSamplerCount != 0)
+    {
+        sig_desc.Desc_1_1.NumStaticSamplers = staticSamplerCount;
+        sig_desc.Desc_1_1.pStaticSamplers   = staticSamplerDescs;
+    }
     sig_desc.Desc_1_1.Flags             = rootSignatureFlags;
     HRESULT hres                        = D3D12SerializeVersionedRootSignature(&sig_desc, &rootSignatureString, &error);
     if (staticSamplerDescs != CGPU_NULLPTR)
@@ -665,6 +692,8 @@ void cgpu_free_root_signature_d3d12(CGPURootSignatureId signature)
     // [RS POOL] END FREE
     CGPUUtil_FreeRSParamTables((CGPURootSignature*)signature);
     SAFE_RELEASE(RS->pDxRootSignature);
+    if (RS->pBindlessSetParamIndices != CGPU_NULLPTR)
+        cgpu_free(RS->pBindlessSetParamIndices);
     cgpu_free(RS);
     return;
 }
@@ -2163,8 +2192,18 @@ void cgpu_compute_encoder_bind_descriptor_buffer_d3d12(CGPUComputePassEncoderId 
     }
     if (set_index != UINT32_MAX)
     {
+        uint32_t RootParamIndex = ~0;
+        for (uint32_t i = 0; i < Cmd->pBoundRootSignature->mBindlessParamCount; i++)
+        {
+            BindlessRootParamInfo_D3D12 info = Cmd->pBoundRootSignature->pBindlessSetParamIndices[i];
+            if (info.set == set_index)
+            {
+                RootParamIndex = info.param;
+                break;
+            }
+        }
         D3D12_GPU_DESCRIPTOR_HANDLE HeapToBind = D3D12Util_DescriptorIdToGpuHandle(Cmd->pBoundHeaps[0], Args->mGpuStartId);
-        COM_CALL(SetComputeRootDescriptorTable, Cmd->pDxCmdList, set_index - 1, HeapToBind);
+        COM_CALL(SetComputeRootDescriptorTable, Cmd->pDxCmdList, RootParamIndex, HeapToBind);
     }
 }
 
@@ -2448,8 +2487,18 @@ void cgpu_render_encoder_bind_descriptor_buffer_d3d12(CGPURenderPassEncoderId en
     }
     if (set_index != UINT32_MAX)
     {
+        uint32_t RootParamIndex = ~0;
+        for (uint32_t i = 0; i < Cmd->pBoundRootSignature->mBindlessParamCount; i++)
+        {
+            BindlessRootParamInfo_D3D12 info = Cmd->pBoundRootSignature->pBindlessSetParamIndices[i];
+            if (info.set == set_index)
+            {
+                RootParamIndex = info.param;
+                break;
+            }
+        }
         D3D12_GPU_DESCRIPTOR_HANDLE HeapToBind = D3D12Util_DescriptorIdToGpuHandle(Cmd->pBoundHeaps[0], Args->mGpuStartId);
-        COM_CALL(SetGraphicsRootDescriptorTable, Cmd->pDxCmdList, set_index - 1, HeapToBind);
+        COM_CALL(SetGraphicsRootDescriptorTable, Cmd->pDxCmdList, RootParamIndex, HeapToBind);
     }
 }
 

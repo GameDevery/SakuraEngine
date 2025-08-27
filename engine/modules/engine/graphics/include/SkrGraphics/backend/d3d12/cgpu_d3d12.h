@@ -301,11 +301,19 @@ typedef struct CGPUShaderLibrary_D3D12 {
     struct IDxcBlobEncoding* pShaderBlob;
 } CGPUShaderLibrary_D3D12;
 
+typedef struct BindlessRootParamInfo_D3D12
+{
+    uint32_t set;
+    uint32_t param;
+} BindlessRootParamInfo_D3D12;
+
 typedef struct CGPURootSignature_D3D12 {
     CGPURootSignature super;
     ID3D12RootSignature* pDxRootSignature;
     D3D12_ROOT_PARAMETER1 mRootConstantParam;
     uint32_t mRootParamIndex;
+    uint32_t mBindlessParamCount;
+    BindlessRootParamInfo_D3D12* pBindlessSetParamIndices;
 } CGPURootSignature_D3D12;
 
 typedef struct CGPUDescriptorSet_D3D12 {
