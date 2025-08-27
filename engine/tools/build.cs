@@ -53,6 +53,7 @@ public static class LLVMTools
     {
         var LibDir = Path.Combine(Engine.DownloadDirectory, "llvm-" + LLVMDownloader.Version, "lib");
         @this.RTTI(false)
+            .Cl_CXFlags(Visibility.Private, "/wd4244", "/wd4291", "/wd4819")
             .IncludeDirs(Visibility.Private, Path.Combine(Engine.DownloadDirectory, "llvm-" + LLVMDownloader.Version, "include"))
             .LinkDirs(Visibility.Public, LibDir)
             .Defines(Visibility.Public, "CLANG_BUILD_STATIC");

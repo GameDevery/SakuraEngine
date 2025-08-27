@@ -7,7 +7,8 @@ namespace SB
     using BS = BuildSystem;
     public class CppLinkAttribute
     {
-        public List<string> LinkOnlys { get; init; } = new();
+        public List<string> BypassLinks { get; init; } = new();
+        public List<string> BypassLinkDirs { get; init; } = new();
     }
 
     public class CppLinkEmitter : TaskEmitter
@@ -19,73 +20,90 @@ namespace SB
         {
             var CppLinkAttr = Target.GetAttribute<CppLinkAttribute>()!;
             var TT = Target.GetTargetType();
-            if (TT != TargetType.HeaderOnly && TT != TargetType.Objects)
-            {
-                Stopwatch sw = new();
-                sw.Start();
+            Stopwatch sw = new();
+            sw.Start();
 
-                var LinkedFileName = GetLinkedFileName(Target);
-                var DependFile = Path.Combine(Target.GetStorePath(BS.DepsStore), BS.GetUniqueTempFileName(LinkedFileName, Target.Name + this.Name, "task.deps.json"));
-                var Inputs = new ArgumentList<string>();
-                // Add obj files
-                var SourceFiles = Target.FileList<CppFileList>().Files.ToList();
-                SourceFiles.AddRange(Target.FileList<CFileList>().Files.ToList());
-                if (BuildSystem.TargetOS == OSPlatform.OSX)
-                {
-                    SourceFiles.AddRange(Target.FileList<ObjCFileList>().Files.ToList());
-                    SourceFiles.AddRange(Target.FileList<ObjCppFileList>().Files.ToList());
-                }
-                Inputs.AddRange(SourceFiles.Select(F => CppCompileEmitter.GetObjectFilePath(Target, F)));
+            var LinkedFileName = GetLinkedFileName(Target);
+            var DependFile = Path.Combine(Target.GetStorePath(BS.DepsStore), BS.GetUniqueTempFileName(LinkedFileName, Target.Name + this.Name, "task.deps.json"));
+            var Inputs = new ArgumentList<string>();
+            // Add obj files
+            var SourceFiles = Target.FileList<CppFileList>().Files.ToList();
+            SourceFiles.AddRange(Target.FileList<CFileList>().Files.ToList());
+            if (BuildSystem.TargetOS == OSPlatform.OSX)
+            {
+                SourceFiles.AddRange(Target.FileList<ObjCFileList>().Files.ToList());
+                SourceFiles.AddRange(Target.FileList<ObjCppFileList>().Files.ToList());
+            }
+            Inputs.AddRange(SourceFiles.Select(F => CppCompileEmitter.GetObjectFilePath(Target, F)));
+
+            if (TT == TargetType.Dynamic || TT == TargetType.Executable)
+            {
+                var TargetArguments = Target.Arguments.ToDictionary();
                 // Add dep obj files
-                Inputs.AddRange(Target.Dependencies.Where(
+                Inputs.AddRange(Target.IgnoreVisibilityAllDependencies.Where(
                     Dep => BS.GetTarget(Dep)?.GetTargetType() == TargetType.Objects
                 ).SelectMany(
                     Dep => BS.GetTarget(Dep)!.GetAttribute<CppCompileAttribute>()!.ObjectFiles
                 ));
-                if (TT != TargetType.Static)
+                // Add lib file of dep target
+                Inputs.AddRange(
+                    Target.IgnoreVisibilityAllDependencies.Select(Dependency => GetStubFileName(BS.GetTarget(Dependency)!)).Where(Stub => Stub != null).Select(Stub => Stub!)
+                );
+                // Collect 'Links' & 'LinkDirs' from static targets
+                var Links = TargetArguments.GetOrAddNew<string, ArgumentList<string>>("Link");
+                var LinkDirs = TargetArguments.GetOrAddNew<string, ArgumentList<string>>("LinkDirs");
+                Links.AddRange(
+                    Target.IgnoreVisibilityAllDependencies.Select(Dependency => BS.GetTarget(Dependency)!.GetAttribute<CppLinkAttribute>()!).SelectMany(A => A.BypassLinks)
+                );
+                LinkDirs.AddRange(
+                    Target.IgnoreVisibilityAllDependencies.Select(Dependency => BS.GetTarget(Dependency)!.GetAttribute<CppLinkAttribute>()!).SelectMany(A => A.BypassLinkDirs)
+                );
+                // Link
+                if (Inputs.Count != 0)
                 {
-                    Inputs.AddRange(
-                        Target.Dependencies.Select(Dependency => GetStubFileName(BS.GetTarget(Dependency)!)).Where(Stub => Stub != null).Select(Stub => Stub!)
-                    );
-                    // Collect links from static targets
-                    Inputs.AddRange(
-                        Target.Dependencies.Select(Dependency => BS.GetTarget(Dependency)!.GetAttribute<CppLinkAttribute>()!).SelectMany(A => A.LinkOnlys)
-                    );
-                    if (Inputs.Count != 0)
+                    var LINKDriver = Toolchain.Linker.CreateArgumentDriver()
+                        .AddArguments(TargetArguments)
+                        .AddArgument("Inputs", Inputs)
+                        .AddArgument("Output", LinkedFileName);
+                    if (TargetArguments.TryGetValue("DebugSymbols", out var Enable) && (bool)Enable!)
                     {
-                        var LINKDriver = Toolchain.Linker.CreateArgumentDriver()
-                            .AddArguments(Target.Arguments)
-                            .AddArgument("Inputs", Inputs)
-                            .AddArgument("Output", LinkedFileName);
-                        if (Target.Arguments.TryGetValue("DebugSymbols", out var Enable) && (bool)Enable!)
+                        if (BS.TargetOS == OSPlatform.Windows)
                         {
-                            if (BS.TargetOS == OSPlatform.Windows)
-                            {
-                                LINKDriver.AddArgument("PDB", LinkedFileName.Replace("dll", "pdb").Replace("exe", "pdb"));
-                            }
+                            LINKDriver.AddArgument("PDB", LinkedFileName.Replace("dll", "pdb").Replace("exe", "pdb"));
                         }
-                        return Toolchain.Linker.Link(this, Target, LINKDriver);
                     }
+                    return Toolchain.Linker.Link(this, Target, LINKDriver);
                 }
-                else
-                {
-                    // Add dep links.Static libraries don’t really have a link phase. 
-                    // Very cruedly they are just an archive of object files that will be propagated to a real link line ( creation of a shared library or executable ).
-                    CppLinkAttr.LinkOnlys.AddRange(
-                        Target.Dependencies.Select(Dependency => GetStubFileName(BS.GetTarget(Dependency)!)).Where(Stub => Stub != null).Select(Stub => Stub!)
-                    );
-                    if (Inputs.Count != 0)
-                    {
-                        var ARDriver = Toolchain.Archiver.CreateArgumentDriver()
-                            .AddArguments(Target.Arguments)
-                            .AddArgument("Inputs", Inputs)
-                            .AddArgument("Output", LinkedFileName);
-                        return Toolchain.Archiver.Archive(this, Target, ARDriver);
-                    }
-                }
-                sw.Stop();
-                Time += (int)sw.ElapsedMilliseconds;
             }
+            else if (TT == TargetType.Static)
+            {
+                // Archive only
+                if (Inputs.Count != 0)
+                {
+                    var ARDriver = Toolchain.Archiver.CreateArgumentDriver()
+                        .AddArguments(Target.Arguments)
+                        .AddArgument("Inputs", Inputs)
+                        .AddArgument("Output", LinkedFileName);
+                    return Toolchain.Archiver.Archive(this, Target, ARDriver);
+                }
+            }
+            if (TT == TargetType.Static || TT == TargetType.Objects || TT == TargetType.HeaderOnly)
+            {
+                // bypass 'Link' vars (include private)
+                if (Target.Arguments.TryGetValue("Link", out var LinkArgs))
+                {
+                    var Links = LinkArgs as ArgumentList<string>;
+                    CppLinkAttr.BypassLinks.AddRange(Links!.ToList());
+                }
+                // bypass 'LinkDir' vars
+                if (Target.Arguments.TryGetValue("LinkDirs", out var LinkDirArgs))
+                {
+                    var LinkDirs = LinkDirArgs as ArgumentList<string>;
+                    CppLinkAttr.BypassLinkDirs.AddRange(LinkDirs!.ToList());
+                }
+            }
+            sw.Stop();
+            Time += (int)sw.ElapsedMilliseconds;
             return null;
         }
 

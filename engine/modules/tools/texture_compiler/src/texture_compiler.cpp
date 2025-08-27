@@ -108,7 +108,7 @@ bool TextureCooker::Cook(CookContext* ctx)
     }
     // TODO: ASTC
     // write texture resource
-    STextureResource resource;
+    TextureResource resource;
     resource.format = compressed_format;
     resource.mips_count = 1;
     resource.data_size = compressed_data.size();

@@ -19,13 +19,13 @@ struct SKR_RENDERER_API TextureSamplerFactoryImpl : public TextureSamplerFactory
 
     Root root;
 
-    ECGPUFilterType translate(ESkrTextureSamplerFilterType type)
+    ECGPUFilterType translate(ETextureSamplerFilterType type)
     {
         switch (type)
         {
-        case ESkrTextureSamplerFilterType::NEAREST:
+        case ETextureSamplerFilterType::NEAREST:
             return CGPU_FILTER_TYPE_NEAREST;
-        case ESkrTextureSamplerFilterType::LINEAR:
+        case ETextureSamplerFilterType::LINEAR:
             return CGPU_FILTER_TYPE_LINEAR;
         default:
             SKR_UNIMPLEMENTED_FUNCTION();
@@ -33,13 +33,13 @@ struct SKR_RENDERER_API TextureSamplerFactoryImpl : public TextureSamplerFactory
         }
     }
 
-    ECGPUMipMapMode translate(ESkrTextureSamplerMipmapMode v)
+    ECGPUMipMapMode translate(ETextureSamplerMipmapMode v)
     {
         switch (v)
         {
-        case ESkrTextureSamplerMipmapMode::NEAREST:
+        case ETextureSamplerMipmapMode::NEAREST:
             return CGPU_MIPMAP_MODE_NEAREST;
-        case ESkrTextureSamplerMipmapMode::LINEAR:
+        case ETextureSamplerMipmapMode::LINEAR:
             return CGPU_MIPMAP_MODE_LINEAR;
         default:
             SKR_UNIMPLEMENTED_FUNCTION();
@@ -47,40 +47,40 @@ struct SKR_RENDERER_API TextureSamplerFactoryImpl : public TextureSamplerFactory
         }
     }
 
-    ECGPUAddressMode translate(ESkrTextureSamplerAddressMode v)
+    ECGPUAddressMode translate(ETextureSamplerAddressMode v)
     {
         switch (v)
         {
-        case ESkrTextureSamplerAddressMode::MIRROR:
+        case ETextureSamplerAddressMode::MIRROR:
             return CGPU_ADDRESS_MODE_MIRROR;
-        case ESkrTextureSamplerAddressMode::REPEAT:
+        case ETextureSamplerAddressMode::REPEAT:
             return CGPU_ADDRESS_MODE_REPEAT;
-        case ESkrTextureSamplerAddressMode::CLAMP_TO_EDGE:
+        case ETextureSamplerAddressMode::CLAMP_TO_EDGE:
             return CGPU_ADDRESS_MODE_CLAMP_TO_EDGE;
-        case ESkrTextureSamplerAddressMode::CLAMP_TO_BORDER:
+        case ETextureSamplerAddressMode::CLAMP_TO_BORDER:
             return CGPU_ADDRESS_MODE_CLAMP_TO_BORDER;
         default:
             SKR_UNIMPLEMENTED_FUNCTION();
             return CGPU_ADDRESS_MODE_MAX_ENUM_BIT;
         }
     }
-    ECGPUCompareMode translate(ESkrTextureSamplerCompareMode v)
+    ECGPUCompareMode translate(ETextureSamplerCompareMode v)
     {
         switch (v)
         {
-        case ESkrTextureSamplerCompareMode::NEVER:
+        case ETextureSamplerCompareMode::NEVER:
             return CGPU_CMP_NEVER;
-        case ESkrTextureSamplerCompareMode::LESS:
+        case ETextureSamplerCompareMode::LESS:
             return CGPU_CMP_LESS;
-        case ESkrTextureSamplerCompareMode::EQUAL:
+        case ETextureSamplerCompareMode::EQUAL:
             return CGPU_CMP_EQUAL;
-        case ESkrTextureSamplerCompareMode::LEQUAL:
+        case ETextureSamplerCompareMode::LEQUAL:
             return CGPU_CMP_LEQUAL;
-        case ESkrTextureSamplerCompareMode::GREATER:
+        case ETextureSamplerCompareMode::GREATER:
             return CGPU_CMP_GREATER;
-        case ESkrTextureSamplerCompareMode::NOTEQUAL:
+        case ETextureSamplerCompareMode::NOTEQUAL:
             return CGPU_CMP_NOTEQUAL;
-        case ESkrTextureSamplerCompareMode::GEQUAL:
+        case ETextureSamplerCompareMode::GEQUAL:
             return CGPU_CMP_GEQUAL;
         default:
             SKR_UNIMPLEMENTED_FUNCTION();
@@ -101,13 +101,13 @@ void TextureSamplerFactory::Destroy(TextureSamplerFactory* factory)
 
 skr_guid_t TextureSamplerFactoryImpl::GetResourceType()
 {
-    const auto resource_type = ::skr::type_id_of<STextureSamplerResource>();
+    const auto resource_type = ::skr::type_id_of<TextureSamplerResource>();
     return resource_type;
 }
 
 bool TextureSamplerFactoryImpl::Unload(SResourceRecord* record)
 {
-    auto sampler_resource = (STextureSamplerResource*)record->resource;
+    auto sampler_resource = (TextureSamplerResource*)record->resource;
     if (sampler_resource->sampler) cgpu_free_sampler(sampler_resource->sampler);
     SkrDelete(sampler_resource);
     return true;
@@ -115,7 +115,7 @@ bool TextureSamplerFactoryImpl::Unload(SResourceRecord* record)
 
 ESkrInstallStatus TextureSamplerFactoryImpl::Install(SResourceRecord* record)
 {
-    auto sampler_resource = (STextureSamplerResource*)record->resource;
+    auto sampler_resource = (TextureSamplerResource*)record->resource;
     CGPUSamplerDescriptor sampler_desc = {};
     sampler_desc.min_filter = translate(sampler_resource->min_filter);
     sampler_desc.mag_filter = translate(sampler_resource->mag_filter);
@@ -138,7 +138,7 @@ bool TextureSamplerFactoryImpl::Uninstall(SResourceRecord* record)
 
 ESkrInstallStatus TextureSamplerFactoryImpl::UpdateInstall(SResourceRecord* record)
 {
-    auto sampler_resource = (STextureSamplerResource*)record->resource;
+    auto sampler_resource = (TextureSamplerResource*)record->resource;
     return sampler_resource->sampler ? SKR_INSTALL_STATUS_SUCCEED : SKR_INSTALL_STATUS_FAILED;
 }
 

@@ -34,3 +34,7 @@ If:
 CompileFlags:
   CompilationDatabase: .sb/compile_commands/shaders/
   Add: [ -x, c++-header ]
+
+Diagnostics:
+  ClangTidy:
+    Remove: [misc-definitions-in-headers]

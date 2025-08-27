@@ -2,7 +2,7 @@ using SB.Core;
 using System.Runtime.CompilerServices;
 
 namespace SB
-{   
+{
     using BS = BuildSystem;
 
     public class ModuleAttribute
@@ -62,18 +62,29 @@ namespace SB
         {
             var Target = BS.Target(Name, Location!, LineNumber);
             Target.ApplyEngineModulePresets();
-            Target.TargetType(TargetType.Static);
+            if (ShippingOneArchive)
+            {
+                Target.TargetType(TargetType.Objects)
+                    .Defines(Visibility.Private, "SHIPPING_ONE_ARCHIVE");
+            }
+            else
+            {
+                Target.TargetType(TargetType.Static);
+            }
+            
             Target.AfterLoad((Target) =>
             {
                 var Owner = BS.GetTarget(OwnerName);
                 var OwnerAttribute = Owner?.GetAttribute<ModuleAttribute>();
+
+                var API = OwnerAttribute?.API;
+                Target.Defines(Visibility.Private, $"{API}_API=");
+
                 var OwnerIncludes = (Owner?.PublicArguments["IncludeDirs"]) as ArgumentList<string>;
-                
                 if (OwnerIncludes is not null && OwnerIncludes.Count > 0)
                 {
                     Target.IncludeDirs(Visibility.Private, OwnerIncludes.ToArray());
                 }
-                Target.Defines(Visibility.Private, $"{OwnerAttribute?.API}_API=");
             });
             return Target;
         }
@@ -92,7 +103,7 @@ namespace SB
             if (BS.TargetOS == OSPlatform.Windows)
             {
                 @this.CXFlags(Visibility.Private, "/utf-8");
-                
+
                 // MSVC & CRT
                 @this.Defines(Visibility.Private, "NOMINMAX", "UNICODE", "_UNICODE", "_WINDOWS")
                     .Defines(Visibility.Private, "_CRT_SECURE_NO_WARNINGS")
@@ -118,8 +129,8 @@ namespace SB
                 A.RootDirectory = Root;
                 return @this;
             }
-            
-            @this.SetAttribute(new CodegenMetaAttribute{ RootDirectory = Root });
+
+            @this.SetAttribute(new CodegenMetaAttribute { RootDirectory = Root });
             @this.SetAttribute(new CodegenRenderAttribute());
             var CodegenDirectory = @this.GetCodegenDirectory();
             Directory.CreateDirectory(CodegenDirectory);

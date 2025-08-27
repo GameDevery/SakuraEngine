@@ -42,22 +42,28 @@ bool MeshCooker::Cook(CookContext* ctx)
     if (importer_type == skr::type_id_of<GltfMeshImporter>())
     {
         auto importer = static_cast<GltfMeshImporter*>(ctx->GetImporter());
-        auto gltf_data = ctx->Import<cgltf_data>();
-        if (!gltf_data)
+        auto import_data = ctx->Import<GltfMeshImporter::ImportData>();
+        if (!import_data)
         {
             return false;
         }
-        SKR_DEFER({ ctx->Destroy(gltf_data); });
+        SKR_DEFER({ ctx->Destroy(import_data); });
+
+        for (auto import_material : import_data->import_materials)
+        {
+            ctx->AddRuntimeDependency(import_material);
+            mesh.materials.add(import_material);
+        }
 
         if (importer->invariant_vertices)
         {
-            CookGLTFMeshData(gltf_data, &mesh_asset, mesh, blobs);
+            CookGLTFMeshData(import_data->gltf_data, &mesh_asset, mesh, blobs);
             // TODO: support ram-only mode install
             mesh.install_to_vram = true;
         }
         else
         {
-            CookGLTFMeshData_SplitSkin(gltf_data, &mesh_asset, mesh, blobs);
+            CookGLTFMeshData_SplitSkin(import_data->gltf_data, &mesh_asset, mesh, blobs);
             // TODO: install only pos/norm/tangent vertices
             mesh.install_to_ram = true;
             // TODO: support ram-only mode install

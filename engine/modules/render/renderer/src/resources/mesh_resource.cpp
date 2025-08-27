@@ -269,6 +269,10 @@ ESkrInstallStatus MeshFactoryImpl::Install(SResourceRecord* record)
 {
     auto mesh_resource = (MeshResource*)record->resource;
     if (!mesh_resource) return ESkrInstallStatus::SKR_INSTALL_STATUS_FAILED;
+    for (auto& mat : mesh_resource->materials)
+    {
+        mat.resolve(true, (uint64_t)record, ESkrRequesterType::SKR_REQUESTER_DEPENDENCY);
+    }
     if (auto render_device = root.render_device)
     {
         if (mesh_resource->install_to_vram)

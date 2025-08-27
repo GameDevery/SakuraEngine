@@ -25,7 +25,6 @@ struct MaterialFactoryImpl : public MaterialFactory
 
         // 1.create shader map
         shader_map = root.shader_map;
-        SKR_ASSERT(shader_map);
 
         // 2.create root signature pool
         CGPURootSignaturePoolDescriptor rs_pool_desc = {};
@@ -37,12 +36,23 @@ struct MaterialFactoryImpl : public MaterialFactory
         pso_map_root.job_queue = root.job_queue;
         pso_map_root.device = root.device;
         pso_map = skr_pso_map_create(&pso_map_root);
+
+        // 4.create descriptor buffer
+        desc_buffer.count = 4096;
+        CGPUDescriptorBufferDescriptor bdls_desc = { .count = desc_buffer.count };
+        desc_buffer.descriptor_buffer = cgpu_create_descriptor_buffer(root.device, &bdls_desc);
     }
 
     ~MaterialFactoryImpl()
     {
-        skr_pso_map_free(pso_map);
-        if (rs_pool) cgpu_free_root_signature_pool(rs_pool);
+        if (pso_map)
+            skr_pso_map_free(pso_map);
+
+        if (desc_buffer.descriptor_buffer)
+            cgpu_free_descriptor_buffer(desc_buffer.descriptor_buffer);
+
+        if (rs_pool)
+            cgpu_free_root_signature_pool(rs_pool);
     }
 
     skr_guid_t GetResourceType() override
@@ -96,59 +106,63 @@ struct MaterialFactoryImpl : public MaterialFactory
     ESkrInstallStatus Install(SResourceRecord* record) override
     {
         auto material = static_cast<MaterialResource*>(record->resource);
-        if (!material->material_type.is_resolved())
-            material->material_type.resolve(true, nullptr);
-        auto matType = material->material_type.get_resolved();
-        // TODO: early reserve
-        // install shaders
-        for (auto& pass_template : matType->passes)
+        if (!material->material_type.is_null())
         {
-            auto& installed_pass = material->installed_passes.add_default().ref();
-            installed_pass.name = pass_template.pass;
-            for (auto& shader : pass_template.shader_resources)
-            {
-                bool installed = false;
-                if (!shader.is_resolved()) shader.resolve(true, nullptr);
-                const auto pShaderCollection = shader.get_resolved();
-                const auto shaderCollectionGUID = shader.get_record()->header.guid;
-                for (auto switchVariant : material->overrides.switch_variants)
-                {
-                    const auto theCollectionGUID = switchVariant.shader_collection;
-                    if (theCollectionGUID == shaderCollectionGUID) // hit this variant
-                    {
-                        const auto switch_hash = switchVariant.switch_hash;
-                        const auto option_hash = switchVariant.option_hash;
-                        auto& multiShader = pShaderCollection->GetStaticVariant(switch_hash);
-                        const auto platform_ids = multiShader.GetDynamicVariants(option_hash);
-                        for (auto platform_id : platform_ids)
-                        {
-                            const auto backend = root.device->adapter->instance->backend;
-                            const auto bytecode_type = ShaderResourceFactory::GetRuntimeBytecodeType(backend);
-                            if (bytecode_type == platform_id.bytecode_type)
-                            {
-                                const auto status = shader_map->install_shader(platform_id);
-                                if (status != EShaderMapShaderStatus::FAILED)
-                                {
-                                    auto& installed_shader = installed_pass.shaders.add_default().ref();
-                                    installed_shader.identifier = platform_id;
-                                    installed_shader.entry = multiShader.entry.c_str();
-                                    installed_shader.stage = multiShader.shader_stage;
+            if (!material->material_type.is_resolved())
+                material->material_type.resolve(true, nullptr);
 
-                                    installed = true;
-                                }
-                                else
+            auto matType = material->material_type.get_resolved();
+            // install shaders
+            for (auto& pass_template : matType->passes)
+            {
+                auto& installed_pass = material->installed_passes.add_default().ref();
+                installed_pass.name = pass_template.pass;
+                for (auto& shader : pass_template.shader_resources)
+                {
+                    bool installed = false;
+                    if (!shader.is_resolved()) shader.resolve(true, nullptr);
+                    const auto pShaderCollection = shader.get_resolved();
+                    const auto shaderCollectionGUID = shader.get_record()->header.guid;
+                    for (auto switchVariant : material->overrides.switch_variants)
+                    {
+                        const auto theCollectionGUID = switchVariant.shader_collection;
+                        if (theCollectionGUID == shaderCollectionGUID) // hit this variant
+                        {
+                            const auto switch_hash = switchVariant.switch_hash;
+                            const auto option_hash = switchVariant.option_hash;
+                            auto& multiShader = pShaderCollection->GetStaticVariant(switch_hash);
+                            const auto platform_ids = multiShader.GetDynamicVariants(option_hash);
+                            for (auto platform_id : platform_ids)
+                            {
+                                const auto backend = root.device->adapter->instance->backend;
+                                const auto bytecode_type = ShaderResourceFactory::GetRuntimeBytecodeType(backend);
+                                if (bytecode_type == platform_id.bytecode_type)
                                 {
-                                    SKR_UNREACHABLE_CODE(); // shader install failed handler
+                                    const auto status = shader_map->install_shader(platform_id);
+                                    if (status != EShaderMapShaderStatus::FAILED)
+                                    {
+                                        auto& installed_shader = installed_pass.shaders.add_default().ref();
+                                        installed_shader.identifier = platform_id;
+                                        installed_shader.entry = multiShader.entry.c_str();
+                                        installed_shader.stage = multiShader.shader_stage;
+
+                                        installed = true;
+                                    }
+                                    else
+                                    {
+                                        SKR_UNREACHABLE_CODE(); // shader install failed handler
+                                    }
                                 }
                             }
                         }
                     }
+                    SKR_ASSERT(installed && "Specific shader resource in material not installed!");
                 }
-                SKR_ASSERT(installed && "Specific shader resource in material not installed!");
+                // all shaders have been installed
+                installed_pass.status = SKR_INSTALL_STATUS_INPROGRESS;
             }
-            // all shaders have been installed
-            installed_pass.status = SKR_INSTALL_STATUS_INPROGRESS;
         }
+        createBindlessDescriptors(material);
         return material ? SKR_INSTALL_STATUS_INPROGRESS : SKR_INSTALL_STATUS_FAILED;
     }
 
@@ -181,8 +195,57 @@ struct MaterialFactoryImpl : public MaterialFactory
         return root_signature;
     }
 
+    struct
+    {
+        CGPUDescriptorBufferId descriptor_buffer = nullptr;
+        uint32_t count = 0;
+        uint32_t next = 0;
+        skr::Vector<uint32_t> free_list;
+    } desc_buffer;
+
+    CGPUDescriptorBufferId descriptor_buffer() override
+    {
+        return desc_buffer.descriptor_buffer;
+    }
+
+    void createBindlessDescriptors(MaterialResource* material)
+    {
+        // 3.create bindless descriptor
+        for (auto& override : material->overrides.textures)
+        {
+            skr::AsyncResource<TextureResource> hdl = override.value;
+            hdl.resolve(true, 1, ESkrRequesterType::SKR_REQUESTER_UNKNOWN);
+
+            uint32_t free_id = 0;
+            if (!desc_buffer.free_list.is_empty())
+                free_id = desc_buffer.free_list.pop_back_get();
+            else
+                free_id = desc_buffer.next++;
+            override.bindless_id = free_id;
+
+            auto texture = hdl.get_resolved(true)->texture;
+            hdl.resolve(true, nullptr);
+            CGPUTextureViewDescriptor tv_desc = {
+                .name = u8"MaterialTexture",
+                .texture = texture,
+                .format = texture->info->format,
+                .view_usages = CGPU_TEXTURE_VIEW_USAGE_SRV,
+                .aspects = CGPU_TEXTURE_VIEW_ASPECTS_COLOR,
+                .dims = CGPU_TEXTURE_DIMENSION_2D,
+                // TODO: mipmaps
+                .base_mip_level = 0,
+                .mip_level_count = 1
+            };
+            CGPUDescriptorBufferElement elem = {};
+            elem.index = free_id;
+            elem.resource_type = CGPU_RESOURCE_TYPE2_TEXTURE;
+            elem.texture = tv_desc;
+            cgpu_update_descriptor_buffer(desc_buffer.descriptor_buffer, &elem, 1);
+        }
+    }
+
     const char* sampler_name = "color_sampler";
-    CGPUXBindTableId createMaterialBindTable(const MaterialResource* material, CGPURootSignatureId root_signature) const
+    CGPUXBindTableId createMaterialBindTable(const MaterialResource* material, CGPURootSignatureId root_signature)
     {
         // 1.make bind table
         // TODO: multi bind table
@@ -229,7 +292,7 @@ struct MaterialFactoryImpl : public MaterialFactory
         skr::InlineVector<CGPUDescriptorData, 16> updates;
         for (const auto& override : material->overrides.samplers)
         {
-            auto hdl = skr::AsyncResource<STextureSamplerResource>(override.value);
+            auto hdl = skr::AsyncResource<TextureSamplerResource>(override.value);
             hdl.resolve(true, nullptr);
 
             auto& update = updates.emplace().ref();
@@ -239,7 +302,7 @@ struct MaterialFactoryImpl : public MaterialFactory
         }
         for (const auto& override : material->overrides.textures)
         {
-            skr::AsyncResource<STextureResource> hdl = override.value;
+            skr::AsyncResource<TextureResource> hdl = override.value;
             hdl.resolve(true, nullptr);
 
             auto& update = updates.emplace().ref();
