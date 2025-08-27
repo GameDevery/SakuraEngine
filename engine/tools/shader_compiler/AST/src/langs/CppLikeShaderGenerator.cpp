@@ -94,8 +94,7 @@ void CppLikeShaderGenerator::visitStmt(SourceBuilderNew& sb, const skr::CppSL::S
             // TODO: Implement REAL TEMPLATE CALL (CallWithTypeArgs)
             const bool ByteBufferReadTyped = callee_decl->name() == L"byte_buffer_read";
             const bool WaveReadLaneFirst = callee_decl->name() == L"WaveReadLaneFirst";
-            const bool bit_cast = callee_decl->name() == L"bit_cast";
-            if (ByteBufferReadTyped || WaveReadLaneFirst || bit_cast)
+            if (ByteBufferReadTyped || WaveReadLaneFirst)
             {
                 func_name = func_name + L"<" + GetQualifiedTypeName(callee_decl->return_type()) + L">";
             }
