@@ -553,7 +553,6 @@ template <typename G, typename T> T atomic_fetch_add(inout G shared_v, T value) 
 // template <typename TEX> float4 texture3d_sample(TEX tex, uint3 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
 )";
 
-extern const wchar_t* kHLSLBitCast;
 extern const wchar_t* kHLSLBufferIntrinsics;
 extern const wchar_t* kHLSLTextureIntrinsics;
 extern const wchar_t* kHLSLRayIntrinsics;
@@ -562,27 +561,6 @@ void HLSLGenerator::RecordBuiltinHeader(SourceBuilderNew& sb, const AST& ast)
 {
     GenerateSRTs(ast);
 
-    bool HasBitCast = false;
-
-    for (auto stmt : ast.stmts())
-    {
-        if (auto as_call = dynamic_cast<CppSL::CallExpr*>(stmt))
-        {
-            auto called_function = dynamic_cast<const FunctionDecl*>(as_call->callee()->decl());
-            if (called_function && ast.IsIntrinsic(called_function))
-            {
-                if (called_function->name().starts_with(L"bit_cast"))
-                {
-                    HasBitCast = true;
-                }
-            }    
-        }
-    }
-
-    if (HasBitCast)
-    {
-        sb.append(kHLSLBitCast);
-    }
     sb.append(kHLSLHeader);
     sb.append(kHLSLBufferIntrinsics);
     sb.append(kHLSLTextureIntrinsics);

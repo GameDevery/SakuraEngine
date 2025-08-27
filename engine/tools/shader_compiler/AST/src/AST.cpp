@@ -875,19 +875,41 @@ void AST::DeclareIntrinsics()
         });
 
     auto ReturnFirstArgType = [=](auto pts){ return pts[0]; };
-    auto ReturnBoolVecWithSameDim = [this](auto pts) {
-        const TypeDecl* inputType = pts[0];
-        if (inputType == Float2Type || inputType == Int2Type || inputType == UInt2Type) return Bool2Type;
-        if (inputType == Float3Type || inputType == Int3Type || inputType == UInt3Type) return Bool3Type;
-        if (inputType == Float4Type || inputType == Int4Type || inputType == UInt4Type) return Bool4Type;
-        return BoolType; 
-    };
+#define ReturnVecWithSameDim(T) \
+    auto Return##T##VecWithSameDim = [this](auto pts) {\
+        const TypeDecl* inputType = pts[0];\
+        if (auto asVectorType = dynamic_cast<const VectorTypeDecl*>(pts[0]))\
+        {\
+            if (asVectorType->count() == 2)\
+                return T##2Type;\
+            else if (asVectorType->count() == 3)\
+                return T##3Type;\
+            else if (asVectorType->count() == 4)\
+                return T##4Type;\
+        }\
+        if (auto AsMatrixType = dynamic_cast<const MatrixTypeDecl*>(pts[0]))\
+        {\
+            if (AsMatrixType->columns() == 2)\
+                return T##2x2Type;\
+            if (AsMatrixType->columns() == 3)\
+                return T##3x3Type;\
+            if (AsMatrixType->columns() == 4)\
+                return T##4x4Type;\
+        }\
+        return IntType;\
+    }
+    ReturnVecWithSameDim(Bool);
+    ReturnVecWithSameDim(Float);
+    ReturnVecWithSameDim(Int);
+    ReturnVecWithSameDim(UInt);
 
     std::array<VarConceptDecl*, 1> OneValue = { ValueFamily };
     std::array<VarConceptDecl*, 1> OneArithmetic = { ArthmeticFamily };
     _intrinsics["ABS"] = DeclareTemplateFunction(L"abs", ReturnFirstArgType, OneArithmetic);
     // bit_cast<T> will be override when is called
-    _intrinsics["BIT_CAST"] = DeclareTemplateFunction(L"bit_cast", VoidType, OneArithmetic);
+    _intrinsics["ASFLOAT"] = DeclareTemplateFunction(L"asfloat", ReturnFloatVecWithSameDim, OneArithmetic);
+    _intrinsics["ASINT"] = DeclareTemplateFunction(L"asint", ReturnIntVecWithSameDim, OneArithmetic);
+    _intrinsics["ASUINT"] = DeclareTemplateFunction(L"asuint", ReturnUIntVecWithSameDim, OneArithmetic);
 
     std::array<VarConceptDecl*, 2> TwoArithmetic = { ArthmeticFamily, ArthmeticFamily };
     _intrinsics["MIN"] = DeclareTemplateFunction(L"min", ReturnFirstArgType, TwoArithmetic);
