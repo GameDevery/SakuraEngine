@@ -172,6 +172,11 @@ constexpr T sqr(const T& v) {
 }
 
 template<concepts::float_family T>
+constexpr T pow2(const T& v) {
+	return v * v;
+}
+
+template<concepts::float_family T>
 constexpr T pow4(T x) {
 	return sqr(sqr(x));
 }

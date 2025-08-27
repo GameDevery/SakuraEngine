@@ -56,6 +56,7 @@ std::string get_access_string(clang::AccessSpecifier access) {
   case clang::AS_none:
     return "none";
   }
+  return "none";
 }
 std::string get_comment(clang::Decl *decl, clang::ASTContext *ctx, clang::SourceManager &sm) {
   using namespace clang;

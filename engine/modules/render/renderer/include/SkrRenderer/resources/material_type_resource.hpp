@@ -79,7 +79,7 @@ sreflect_struct(
 MaterialPass
 {
     String pass;
-    Vector<skr_shader_collection_handle_t> shader_resources;
+    Vector<AsyncResource<ShaderCollectionResource>> shader_resources;
     Vector<EMaterialBlendMode> blend_modes;
     bool two_sided = false;
 };
@@ -90,7 +90,6 @@ sreflect_struct(
 MaterialTypeResource
 {
     uint32_t version;
-
     Vector<MaterialPass> passes;
     Vector<MaterialValue> default_values;
     Vector<ShaderOptionInstance> switch_defaults;

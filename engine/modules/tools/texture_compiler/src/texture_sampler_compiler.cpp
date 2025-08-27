@@ -22,14 +22,14 @@ void* TextureSamplerImporter::Import(skr::io::IRAMService* ioService, CookContex
     '*/
     skr::String jString(skr::StringView((const char8_t*)blob->get_data(), blob->get_size()));
     skr::archive::JsonReader jsonVal(jString.view());
-    auto sampler_resource = SkrNew<STextureSamplerResource>();
+    auto sampler_resource = SkrNew<TextureSamplerResource>();
     skr::json_read(&jsonVal, *sampler_resource);
     return sampler_resource;
 }
 
 void TextureSamplerImporter::Destroy(void* resource)
 {
-    auto sampler_resource = (STextureSamplerResource*)resource;
+    auto sampler_resource = (TextureSamplerResource*)resource;
     SkrDelete(sampler_resource);
 }
 
@@ -39,7 +39,7 @@ bool TextureSamplerCooker::Cook(CookContext* ctx)
     // no cook config for config, skipping
 
     //-----import resource object
-    auto sampler_resource = ctx->Import<STextureSamplerResource>();
+    auto sampler_resource = ctx->Import<TextureSamplerResource>();
     if (!sampler_resource) return false;
     SKR_DEFER({ ctx->Destroy(sampler_resource); });
 

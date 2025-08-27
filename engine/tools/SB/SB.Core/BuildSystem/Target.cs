@@ -160,6 +160,8 @@ namespace SB
         {
             RecursiveMergeDependencies(FinalTargetDependencies, PublicTargetDependencies);
             RecursiveMergeDependencies(FinalTargetDependencies, PrivateTargetDependencies);
+
+            ResolveDependenciesIgnoreVisibility();
         }
 
         internal void RecursiveMergeDependencies(ISet<string> To, IReadOnlySet<string> DepNames)
@@ -172,6 +174,27 @@ namespace SB
                     throw new TaskFatalError($"Target {Name}: Dependency {DepName} does not exist!");
                 RecursiveMergeDependencies(To, DepTarget.PublicTargetDependencies);
                 RecursiveMergeDependencies(To, DepTarget.InterfaceTargetDependencies);
+            }
+        }
+
+        internal void ResolveDependenciesIgnoreVisibility()
+        {
+            RecursiveMergeDependenciesIgnoreVisibility(ignoreVisibilityAllDependencies, PublicTargetDependencies);
+            RecursiveMergeDependenciesIgnoreVisibility(ignoreVisibilityAllDependencies, InterfaceDependencies);
+            RecursiveMergeDependenciesIgnoreVisibility(ignoreVisibilityAllDependencies, PrivateTargetDependencies);
+        }
+
+        internal void RecursiveMergeDependenciesIgnoreVisibility(ISet<string> To, IReadOnlySet<string> DepNames)
+        {
+            To.AddRange(DepNames);
+            foreach (var DepName in DepNames)
+            {
+                Target? DepTarget = BuildSystem.GetTarget(DepName)!;
+                if (DepTarget == null)
+                    throw new TaskFatalError($"Target {Name}: Dependency {DepName} does not exist!");
+                RecursiveMergeDependenciesIgnoreVisibility(To, DepTarget.PublicTargetDependencies);
+                RecursiveMergeDependenciesIgnoreVisibility(To, DepTarget.InterfaceTargetDependencies);
+                RecursiveMergeDependenciesIgnoreVisibility(To, DepTarget.PrivateTargetDependencies);
             }
         }
 
@@ -197,6 +220,7 @@ namespace SB
         }
 
         private Dictionary<Type, object?> Attributes = new();
+        public IReadOnlySet<string> IgnoreVisibilityAllDependencies => ignoreVisibilityAllDependencies;
         public IReadOnlySet<string> Dependencies => FinalTargetDependencies;
         public IReadOnlySet<string> PublicDependencies => PublicTargetDependencies;
         public IReadOnlySet<string> PrivateDependencies => PrivateTargetDependencies;
@@ -213,6 +237,7 @@ namespace SB
         #region Dependencies
         private SortedDictionary<string, PackageConfig> PackageDependencies = new();
 
+        private SortedSet<string> ignoreVisibilityAllDependencies = new();
         private SortedSet<string> FinalTargetDependencies = new();
         private SortedSet<string> PublicTargetDependencies = new();
         private SortedSet<string> PrivateTargetDependencies = new();

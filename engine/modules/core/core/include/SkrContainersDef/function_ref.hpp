@@ -1,6 +1,7 @@
 #pragma once
 #include <type_traits>
 #include <memory>
+#include <exception>
 #include <SkrBase/template/concepts.hpp>
 #include <SkrRTTR/script/stack_proxy.hpp>
 #include <SkrContainersDef/span.hpp>
@@ -34,6 +35,18 @@ struct FunctionRef<R(Args...)>
     using FuncType = R(Args...);
     using CallerType = R(void*, Args...);
     using StackProxyCallerType = void(void* payload,span<const StackProxy> params, StackProxy return_value);
+
+    template <typename T>
+    [[noreturn]] static T unreachable_return()
+    {
+        SKR_ASSERT(false && "unreachable control path in FunctionRef::operator()");
+#if defined(_MSC_VER)
+        __assume(0);
+#elif defined(__GNUC__)
+        __builtin_unreachable();
+#endif
+        std::terminate();
+    }
 
     // ctor & dtor
     inline FunctionRef() noexcept = default;
@@ -156,6 +169,11 @@ struct FunctionRef<R(Args...)>
             }
         }
         }
+        // Fallback to satisfy all control paths for both void and non-void R
+        if constexpr (std::is_void_v<R>)
+            return;
+        else
+            return unreachable_return<std::remove_reference_t<R>>();
     }
 
 private:

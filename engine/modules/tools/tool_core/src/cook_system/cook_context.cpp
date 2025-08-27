@@ -107,9 +107,9 @@ void* CookContextImpl::_Import()
 {
     SkrZoneScoped;
     //-----load importer
-    if (metafile->GetImporter() != nullptr)
+    if (auto importer = metafile->GetImporter())
     {
-        auto rawData = metafile->GetImporter()->Import(ioService, this);
+        auto rawData = importer->Import(ioService, this);
         SKR_LOG_INFO(u8"[CookContext::Cook] asset imported for asset: %s", metafile->GetURI().string().c_str());
         return rawData;
     }

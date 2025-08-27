@@ -9,8 +9,8 @@ public static class CGltf
         BuildSystem.Package("cgltf")
             .AddTarget("cgltf", (Target Target, PackageConfig Config) =>
             {
-                if (Config.Version != new Version(1, 13, 0))
-                    throw new TaskFatalError("cgltf version mismatch!", "cgltf version mismatch, only v1.13.0 is supported in source.");
+                if (Config.Version != new Version(1, 15, 0))
+                    throw new TaskFatalError("cgltf version mismatch!", "cgltf version mismatch, only v1.15.0 is supported in source.");
 
                 var @this = Target.TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, "include")

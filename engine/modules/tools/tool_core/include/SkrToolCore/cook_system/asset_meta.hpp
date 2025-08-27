@@ -78,7 +78,7 @@ private:
     skr::RC<Importer> importer = nullptr;
 
     sattr(serde = @disable)
-    const SProject* project = nullptr;
+    SProject* project = nullptr;
 
     sattr(serde = @disable)
     skr::String meta_content;
