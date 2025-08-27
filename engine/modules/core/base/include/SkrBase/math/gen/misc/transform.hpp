@@ -38,13 +38,13 @@ struct TransformF {
     bool is_nearly_identity(float threshold = float(0.00001)) const;
     
     // to matrix
-    operator float4x4() const;
+    explicit operator float4x4() const;
     float4x4 to_matrix() const;
     float4x4 to_matrix_no_scale() const;
     
     // from matrix
-    TransformF(const float3x3& mat);
-    TransformF(const float4x4& mat);
+    explicit TransformF(const float3x3& mat);
+    explicit TransformF(const float4x4& mat);
     static TransformF FromMatrix(const float3x3& mat);
     static TransformF FromMatrix(const float4x4& mat);
     
@@ -85,13 +85,13 @@ struct TransformD {
     bool is_nearly_identity(double threshold = double(0.00001)) const;
     
     // to matrix
-    operator double4x4() const;
+    explicit operator double4x4() const;
     double4x4 to_matrix() const;
     double4x4 to_matrix_no_scale() const;
     
     // from matrix
-    TransformD(const double3x3& mat);
-    TransformD(const double4x4& mat);
+    explicit TransformD(const double3x3& mat);
+    explicit TransformD(const double4x4& mat);
     static TransformD FromMatrix(const double3x3& mat);
     static TransformD FromMatrix(const double4x4& mat);
     
