@@ -5,7 +5,7 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderGraph/frame_resource.hpp"
 #include "SkrRenderer/render_device.h"
-#include "SkrRenderer/graphics/soa_segment.hpp"
+#include "SkrRenderer/graphics/gpu_database.hpp"
 #include "SkrRenderer/graphics/tlas_manager.hpp"
 #include "SkrRenderer/shared/soa_layout.hpp"
 #ifndef __meta__
@@ -71,36 +71,33 @@ struct GPUSceneConfig
 class SKR_RENDERER_API GPUSceneBuilder
 {
 public:
+    GPUSceneBuilder(skr::RenderDevice* d)
+        : soa_builder_(d->get_cgpu_device())
+    {
+        config_.render_device = d;
+    }
     GPUSceneBuilder& with_world(skr::ecs::World* w)
     {
         config_.world = w;
-        return *this;
-    }
-    GPUSceneBuilder& with_device(skr::RenderDevice* d)
-    {
-        config_.render_device = d;
-        // 重新构造 soa_builder_ 以设置正确的 device
-        soa_builder_.~Builder();
-        new (&soa_builder_) SOASegmentBuffer::Builder(d->get_cgpu_device());
         return *this;
     }
     template <typename Layout>
     GPUSceneBuilder& from_layout(uint32_t initial_instances = 256);
     
     GPUSceneConfig build_config() { return config_; }
-    const SOASegmentBuffer::Builder& get_soa_builder() const { return soa_builder_; }
+    const gpu::TableConfig& get_soa_builder() const { return soa_builder_; }
     
 private:
     friend struct GPUScene;
     GPUSceneConfig config_;
-    SOASegmentBuffer::Builder soa_builder_;
+    gpu::TableConfig soa_builder_;
 };
 
 // 主管理器
 struct SKR_RENDERER_API GPUScene final
 {
 public:
-    void Initialize(const struct GPUSceneConfig& config, const SOASegmentBuffer::Builder& soa_builder);
+    void Initialize(gpu::TableManager* table_manager, const struct GPUSceneConfig& config, const gpu::TableConfig& soa_builder);
     void Shutdown();
 
     // TODO: ADD A TRACKER COMPONENT TO REPLACE THIS KIND OF API
@@ -172,7 +169,7 @@ private:
     std::atomic<GPUSceneInstanceID> free_id_count = 0;
 
     // core data 的 graph handle
-    SOASegmentBuffer soa_segments;
+    skr::RC<gpu::TableInstance> soa_segments;
 
 private:
     static constexpr uint32_t kLaneCount = 2;
@@ -244,7 +241,7 @@ private:
     CGPUComputePipelineId sparse_upload_pipeline = nullptr;
 };
 
-// Builder 实现已移至 SOASegmentBuffer::Builder
+// Builder 实现已移至 TableConfig
 
 template <typename Layout>
 inline GPUSceneBuilder& GPUSceneBuilder::from_layout(uint32_t initial_instances)
@@ -252,7 +249,7 @@ inline GPUSceneBuilder& GPUSceneBuilder::from_layout(uint32_t initial_instances)
     // 清空现有配置
     config_.components.clear();
     
-    // 让 SOASegmentBuffer::Builder 处理布局
+    // 让 TableConfig 处理布局
     soa_builder_.from_layout<Layout>(initial_instances);
     
     // 同时构建组件映射信息

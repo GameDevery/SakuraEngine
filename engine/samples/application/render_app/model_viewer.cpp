@@ -16,6 +16,7 @@
 #include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrToolCore/project/project.hpp"
 #include "SkrRenderer/resources/texture_resource.h"
+#include "SkrRenderer/resources/material_resource.hpp"
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderer/render_app.hpp"
 #include "SkrRenderer/gpu_scene.h"
@@ -26,6 +27,7 @@
 #include "SkrMeshCore/mesh_processing.hpp"
 #include "SkrMeshTool/mesh_asset.hpp"
 #include "common/utils.h"
+#include "SkrRenderer/shared/database.hpp"
 
 using namespace skr::literals;
 const auto MeshAssetID = u8"18db1369-ba32-4e91-aa52-b2ed1556f576"_guid;
@@ -112,6 +114,35 @@ public:
     virtual int main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
 
+
+    void Test()
+    {
+        using namespace skr::gpu;
+
+        skr::RC<TableInstance> table;
+
+        skr::gpu::Instance instance;
+        instance.transform = skr::float4x4();
+
+        AsyncResource<MaterialResource> r; // !
+        uint32_t mat_index = ~0; // !
+        auto matResource = r.get_ptr();
+        skr::gpu::Material mat; 
+        mat.basecolor_tex = matResource->overrides.textures[0].bindless_id;
+        instance.materials.StoreAt(*table, mat_index, mat);
+
+        AsyncResource<MeshResource> rr; // !
+        uint32_t prim_index = ~0; // !
+        auto meshResource = rr.get_ptr();
+        skr::gpu::Primitive prim;
+        prim.mat_index = mat_index;
+        prim.positions = meshResource->render_mesh->buffer_ids[0];
+
+        instance.primitives.StoreAt(*table, prim_index, prim);
+
+        skr::gpu::Row<skr::gpu::Instance> inst(15);
+        inst.Store(*table, instance);
+    }
 protected:
     void CookAndLoadGLTF();
     void InitializeAssetSystem();
@@ -197,7 +228,9 @@ protected:
     skr::TextureSamplerFactory* TextureSamplerFactory = nullptr;
     skr::TextureFactory* TextureFactory = nullptr;
     skr::MeshFactory* MeshFactory = nullptr;
+    skr::MaterialFactory* MatFactory = nullptr;
 
+    skr::RC<skr::gpu::TableManager> gpu_table_manager;
     skr::ecs::World world;
     skr::GPUScene GPUScene;
 
@@ -351,11 +384,11 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     // Create compute pipeline for debug rendering
     CreateComputePipeline();
 
-    GPUSceneBuilder cfg_builder;
-    cfg_builder.with_device(render_device)
-        .with_world(&world)
+    gpu_table_manager = skr::gpu::TableManager::Create();
+    GPUSceneBuilder cfg_builder(render_device);
+    cfg_builder.with_world(&world)
         .from_layout<DefaultGPUSceneLayout>();
-    GPUScene.Initialize(cfg_builder.build_config(), cfg_builder.get_soa_builder());
+    GPUScene.Initialize(gpu_table_manager.get(), cfg_builder.build_config(), cfg_builder.get_soa_builder());
 
     // AsyncResource<> is a handle can be constructed by any resource type & ids
     skr::AsyncResource<MeshResource> mesh_resource;

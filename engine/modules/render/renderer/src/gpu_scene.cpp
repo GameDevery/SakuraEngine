@@ -193,7 +193,7 @@ struct ScanGPUScene : public GPUSceneInstanceTask
                         continue;
 
                     const auto& component_info = pScene->component_types[gpu_type];
-                    const uint64_t dst_offset = pScene->soa_segments.get_component_offset(gpu_type, instance_data.instance_index);
+                    const uint64_t dst_offset = pScene->soa_segments->get_component_offset(gpu_type, instance_data.instance_index);
                     const uint64_t src_offset = pScene->upload_ctxs.get(graph).upload_cursor.fetch_add(component_info.element_size);
 
                     if (src_offset + component_info.element_size <= pScene->upload_ctxs.get(graph).upload_buffer->info->size)
@@ -260,20 +260,20 @@ void GPUScene::AdjustBuffer(skr::render_graph::RenderGraph* graph)
         current_buffer_ctx.buffer_to_discard = nullptr;
     }
 
-    if (soa_segments.needs_resize(required_instances))
+    if (soa_segments->needs_resize(required_instances))
     {
         SKR_LOG_INFO(u8"GPUScene: GPUScene data resize needed. Current: %u/%u instances",
             required_instances,
-            soa_segments.get_instance_capacity());
+            soa_segments->get_instance_capacity());
 
         // Calculate new capacity
         uint32_t new_capacity = static_cast<uint32_t>(required_instances * config.resize_growth_factor);
 
         // Resize and get old buffer (no blocking sync needed now)
-        auto old_buffer = soa_segments.resize(new_capacity);
-        frame_ctx.scene_handle = soa_segments.import_buffer(graph, u8"scene_buffer");
+        auto old_buffer = soa_segments->resize(new_capacity);
+        frame_ctx.scene_handle = soa_segments->import_buffer(graph, u8"scene_buffer");
 
-        if (old_buffer && soa_segments.get_buffer())
+        if (old_buffer && soa_segments->get_buffer())
         {
             // Import old buffer for copy source
             auto old_buffer_handle = graph->create_buffer(
@@ -282,7 +282,7 @@ void GPUScene::AdjustBuffer(skr::render_graph::RenderGraph* graph)
                         .import(old_buffer, CGPU_RESOURCE_STATE_SHADER_RESOURCE);
                 });
             // Copy data from old to new buffer
-            soa_segments.copy_segments(graph, old_buffer_handle, frame_ctx.scene_handle, existed_instances);
+            soa_segments->copy_segments(graph, old_buffer_handle, frame_ctx.scene_handle, existed_instances);
 
             // Mark old buffer for deferred destruction (will be freed next time this frame slot comes around)
             // Unlike TLAS, we don't reuse the old buffer - we always discard it after copy
@@ -292,7 +292,7 @@ void GPUScene::AdjustBuffer(skr::render_graph::RenderGraph* graph)
     else
     {
         // Import scene buffer with proper state management
-        frame_ctx.scene_handle = soa_segments.import_buffer(graph, u8"scene_buffer");
+        frame_ctx.scene_handle = soa_segments->import_buffer(graph, u8"scene_buffer");
     }
 }
 
@@ -756,7 +756,7 @@ void GPUScene::CreateSparseUploadPipeline(CGPUDeviceId device)
     SKR_LOG_INFO(u8"SparseUpload compute pipeline created successfully");
 }
 
-void GPUScene::Initialize(const GPUSceneConfig& cfg, const SOASegmentBuffer::Builder& soa_builder)
+void GPUScene::Initialize(gpu::TableManager* table_manager, const GPUSceneConfig& cfg, const gpu::TableConfig& soa_builder)
 {
     SKR_LOG_INFO(u8"Initializing GPUScene...");
 
@@ -785,7 +785,7 @@ void GPUScene::Initialize(const GPUSceneConfig& cfg, const SOASegmentBuffer::Bui
     // 3. Initialize component type registry
     InitializeComponentTypes(cfg);
     // 4. Create soa segment buffer
-    soa_segments.initialize(soa_builder);
+    soa_segments = table_manager->CreateTable(soa_builder);
 
     SKR_LOG_INFO(u8"GPUScene initialized successfully");
 }
@@ -795,7 +795,7 @@ void GPUScene::Shutdown()
     SKR_LOG_INFO(u8"Shutting down GPUScene...");
 
     // Shutdown allocators (will release buffers)
-    soa_segments.shutdown();
+    soa_segments.reset();
 
     // Release upload buffers for all frames
     for (uint32_t i = 0; i < upload_ctxs.max_frames_in_flight(); ++i)

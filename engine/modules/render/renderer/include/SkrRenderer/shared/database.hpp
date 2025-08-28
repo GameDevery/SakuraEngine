@@ -1,10 +1,6 @@
 #pragma once
 #include "soa_layout.hpp"
-#ifdef __CPPSL__
-    #include "detail/database.hxx" // IWYU pragma: export
-#else
-    #include "detail/database.hpp" // IWYU pragma: export
-#endif
+#include "detail/database.h"
 
 namespace skr::gpu
 {
@@ -28,8 +24,82 @@ Material
 gpu_struct(guid = "73a52be2-4247-4320-b30c-f1fbd5a1766a")
 Instance
 {
+    float4x4 transform;
     Range<Primitive> primitives;
     Range<Material> materials;
+};
+
+template <>
+struct GPUDatablock<Primitive>
+{
+public:
+    inline static constexpr uint32_t Size = GPUDatablock<Row<uint3>>::Size + GPUDatablock<Row<float3>>::Size + GPUDatablock<uint32_t>::Size;
+    GPUDatablock<Primitive>(const Primitive& v)
+        : triangles(v.triangles), positions(v.positions), mat_index(v.mat_index)
+    {
+
+    }
+    operator Primitive() const 
+    { 
+        Primitive output;
+        output.triangles = triangles;
+        output.positions = positions;
+        output.mat_index = mat_index;
+        return output;
+    }
+
+private:
+    GPUDatablock<Row<uint3>> triangles;
+    GPUDatablock<Row<float3>> positions;
+    GPUDatablock<uint32_t> mat_index;
+};
+
+template <>
+struct GPUDatablock<Material>
+{
+public:
+    inline static constexpr uint32_t Size = GPUDatablock<uint32_t>::Size + GPUDatablock<uint32_t>::Size + GPUDatablock<uint32_t>::Size;
+    GPUDatablock<Material>(const Material& v)
+        : basecolor_tex(v.basecolor_tex), metallic_roughness_tex(v.metallic_roughness_tex), emission_tex(v.emission_tex)
+    {
+
+    }
+    operator Material() const 
+    { 
+        Material output;
+        output.basecolor_tex = basecolor_tex;
+        output.metallic_roughness_tex = metallic_roughness_tex;
+        output.emission_tex = emission_tex;
+        return output;
+    }
+
+private:
+    GPUDatablock<uint32_t> basecolor_tex;
+    GPUDatablock<uint32_t> metallic_roughness_tex;
+    GPUDatablock<uint32_t> emission_tex;
+};
+
+template <>
+struct GPUDatablock<Instance>
+{
+public:
+    inline static constexpr uint32_t Size = GPUDatablock<Range<Primitive>>::Size + GPUDatablock<Range<Material>>::Size;
+    GPUDatablock<Instance>(const Instance& v)
+        : primitives(v.primitives), materials(v.materials)
+    {
+
+    }
+    operator Instance() const 
+    { 
+        Instance output;
+        output.primitives = primitives;
+        output.materials = materials;
+        return output;
+    }
+
+private:
+    GPUDatablock<Range<Primitive>> primitives;
+    GPUDatablock<Range<Material>> materials;
 };
 
 template<typename T>
