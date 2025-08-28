@@ -162,7 +162,7 @@ void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, ERa
         out_vbv.vertex_count = vertex_attribtue_slice.size() / out_vbv.stride;
         buffer.append(vertex_attribtue_slice.data(), vertex_attribtue_slice.size());
     }
-    
+
     // GPU needs to align 16 bytes
     while (buffer.size() % 16 != 0)
     {
@@ -221,7 +221,10 @@ void EmplaceRawMeshVerticesWithRange(skr::span<const EVertexAttribute> range, ui
             for (uint32_t j = 0; j < mesh->primitives.size(); j++)
             {
                 auto& prim = out_primitives[j];
-                prim.vertex_buffers.reserve(shuffle_layout.attribute_count);
+                // prim.vertex_buffers.reserve(shuffle_layout.attribute_count);
+                prim.vertex_buffers.resize_default(shuffle_layout.attribute_count);
+                // 这里prim.vertex_buffers实际上是一个字典，维护了layout_id到buffer_entry的映射关系，所以不能直接emplace
+                // 只能resize好后直接索引赋值
 
                 const auto& raw_primitive = mesh->primitives[j];
                 prim.vertex_count = (uint32_t)raw_primitive.vertex_streams[0].count;
@@ -241,9 +244,11 @@ void EmplaceRawMeshVerticesWithRange(skr::span<const EVertexAttribute> range, ui
                     }
                     if (within)
                     {
-                        auto& new_vb = prim.vertex_buffers.emplace().ref();
-                        EmplaceRawPrimitiveVertexBufferAttribute(&raw_primitive, (const char*)shuffle_attrib.semantic_name, k, buffer, new_vb);
-                        new_vb.buffer_index = buffer_idx;
+                        // auto& new_vb = prim.vertex_buffers.emplace().ref();
+                        // EmplaceRawPrimitiveVertexBufferAttribute(&raw_primitive, (const char*)shuffle_attrib.semantic_name, k, buffer, new_vb);
+                        // new_vb.buffer_index = buffer_idx;
+                        EmplaceRawPrimitiveVertexBufferAttribute(&raw_primitive, (const char*)shuffle_attrib.semantic_name, k, buffer, prim.vertex_buffers[i]);
+                        prim.vertex_buffers[i].buffer_index = buffer_idx;
                     }
                 }
             }
