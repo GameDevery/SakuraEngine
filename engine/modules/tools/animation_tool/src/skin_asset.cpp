@@ -2,6 +2,7 @@
 #include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrAnimTool/skin_asset.h"
 #include "cgltf/cgltf.h"
+#include "SkrMeshTool/mesh_asset.hpp"
 
 namespace skd::asset
 {
@@ -10,14 +11,24 @@ bool SkinCooker::Cook(CookContext* ctx)
     using namespace skr;
     SkrZoneScopedNS("SkinCooker::Cook", 4);
 
-    cgltf_data* rawMesh = ctx->Import<cgltf_data>();
+    auto import_data = ctx->Import<GltfMeshImporter::ImportData>();
+    if (!import_data)
+    {
+        return false;
+    }
+    cgltf_data* rawMesh = import_data->gltf_data;
     if (!rawMesh)
     {
         return false;
     }
-    SKR_DEFER({ ctx->Destroy(rawMesh); });
+    SKR_DEFER({ ctx->Destroy(import_data); });
     // TODO; indexing skin
     cgltf_skin* rawSkin = &rawMesh->skins[0];
+    if (!rawSkin)
+    {
+        SKR_LOG_ERROR(u8"[SkinCooker::Cook] No skin found in gltf file!");
+        return false;
+    }
 
     SkinResource resource;
     resource.name = rawSkin->name ? (const char8_t*)rawSkin->name : u8"UnnamedSkin";
