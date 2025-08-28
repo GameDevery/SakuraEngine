@@ -357,14 +357,15 @@ void SceneSampleSkelMeshModule::CookAndLoadGLTF()
 
     cook_system.ImportAssetMeta(&project, anim_asset, animImporter, animdata);
 
-    // skin shares the same mesh with mesh asset
+    auto skin_importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
+    skin_importer->assetPath = gltf_path.c_str();
+    // skin_importer->invariant_vertices = true;
     auto skin_asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"test_skin.gltf.meta",
         SkinAssetID,
         skr::type_id_of<skr::SkinResource>(),
         skr::type_id_of<skd::asset::SkinCooker>());
-
-    cook_system.ImportAssetMeta(&project, skin_asset, importer, metadata);
+    cook_system.ImportAssetMeta(&project, skin_asset, skin_importer, metadata);
 
     {
         cook_system.ParallelForEachAsset(1,
