@@ -9,7 +9,7 @@
 namespace skr::gpu
 {
 
-gpu_database(guid = "62af1ab3-7762-4413-97f9-fab30d9232c0")
+gpu_struct(guid = "62af1ab3-7762-4413-97f9-fab30d9232c0")
 Primitive
 {
     Row<uint3> triangles;
@@ -17,7 +17,7 @@ Primitive
     uint32_t mat_index;
 };
 
-gpu_database(guid = "74e60480-7324-48d7-a174-bc5e404fe0bc") 
+gpu_struct(guid = "74e60480-7324-48d7-a174-bc5e404fe0bc") 
 Material
 {
     uint32_t basecolor_tex;
@@ -25,7 +25,7 @@ Material
     uint32_t emission_tex;
 };
 
-gpu_database(guid = "73a52be2-4247-4320-b30c-f1fbd5a1766a")
+gpu_struct(guid = "73a52be2-4247-4320-b30c-f1fbd5a1766a")
 Instance
 {
     Range<Primitive> primitives;

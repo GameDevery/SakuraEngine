@@ -1,7 +1,8 @@
 #pragma once
 #include "type_usings.hpp" // IWYU pragma: export
 
-#define gpu_database(...) struct
+#define gpu_struct(...) struct
+#define gpu_table(...) struct
 
 namespace skr::gpu
 {

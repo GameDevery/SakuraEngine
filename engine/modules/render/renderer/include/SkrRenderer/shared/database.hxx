@@ -35,8 +35,8 @@ struct GPUDatablock<Row<T>>
     operator Row<T>() const 
     { 
         Row<T> row; 
-        row.bindless_index = bindless_index;
-        row.instance_index = index;
+        row._bindless_index = bindless_index;
+        row._instance_index = index;
         return row; 
     }
 
