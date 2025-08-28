@@ -19,6 +19,7 @@
 #include <SkrRT/ecs/world.hpp>
 #include <SkrRT/resource/resource_system.h>
 #include <SkrRT/resource/local_resource_registry.hpp>
+#include <cmath>
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrImGui/imgui_app.hpp"
 
@@ -51,7 +52,18 @@
 using namespace skr::literals;
 const auto MeshAssetID = u8"01985f1f-8286-773f-8bcc-7d7451b0265d"_guid;
 const auto TextureID = u8"0198cb9d-35ab-7342-bd41-21f61e1d0d8e"_guid;
-const auto BuiltinMeshID = u8"0198cfc4-9bfd-77fd-a9a0-553938b10314"_guid;
+const auto FloorID = u8"0198cfc4-9bfd-77fd-a9a0-553938b10314"_guid;
+
+struct BuiltInMeshAsset
+{
+    skr_guid_t built_in_mesh_tid;
+    skr_guid_t asset_id;
+};
+
+skr::Vector<BuiltInMeshAsset> g_built_in_mesh_assets = {
+    { skr::type_id_of<skd::asset::SimpleTriangleMesh>(), u8"0198efb0-4df3-7418-a554-3ca70850cf0f"_guid },
+    { skr::type_id_of<skd::asset::SimpleCubeMesh>(), u8"0198efb0-7887-7595-99e5-34ce87cf5754"_guid }
+};
 
 // The Three-Triangle Example: simple mesh scene hierarchy
 struct SceneSampleMeshModule : public skr::IDynamicModule
@@ -264,40 +276,43 @@ void SceneSampleMeshModule::on_unload()
 
 void SceneSampleMeshModule::CookAndLoadGLTF()
 {
-    auto& System = *skd::asset::GetCookSystem();
-
-    // auto textureImporter = skd::asset::TextureImporter::Create<skd::asset::TextureImporter>();
-    // auto textureAsset = skr::RC<skd::asset::AssetMetaFile>::New(
-    //     u8"test_texture.meta",
-    //     TextureID,
-    //     skr::type_id_of<skr::TextureResource>(),
-    //     skr::type_id_of<skd::asset::TextureCooker>());
-    // textureImporter->assetPath = u8"D:/ws/ext/glTFSample/media/Cauldron-Media/buster_drone/Assets/Models/Public/BusterDrone/Materials/body_albedo2048.png";
-    // System.ImportAssetMeta(&project, textureAsset, textureImporter);
-
+    auto& cook_system = *skd::asset::GetCookSystem();
     auto grid_metadata = skd::asset::SimpleGridMeshAsset::Create<skd::asset::SimpleGridMeshAsset>();
     grid_metadata->x_segments = 10;
     grid_metadata->y_segments = 10;
     grid_metadata->x_size = 10.0f;
     grid_metadata->y_size = 10.0f;
     grid_metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; // GLTFVertexLayoutWithJointId
-    auto builtin_importer = skd::asset::ProceduralMeshImporter::Create<skd::asset::ProceduralMeshImporter>();
+    auto floor_importer = skd::asset::ProceduralMeshImporter::Create<skd::asset::ProceduralMeshImporter>();
     // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleTriangleMesh>();
     // builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleCubeMesh>();
-    builtin_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleGridMesh>();
-
-    auto builtin_asset = skr::RC<skd::asset::AssetMetaFile>::New(
-        u8"simple_triangle.meta",
-        BuiltinMeshID,
+    floor_importer->built_in_mesh_tid = skr::type_id_of<skd::asset::SimpleGridMesh>();
+    auto floor_asset = skr::RC<skd::asset::AssetMetaFile>::New(
+        u8"floor.builtin.meta",
+        FloorID,
         skr::type_id_of<skr::MeshResource>(),
         skr::type_id_of<skd::asset::MeshCooker>());
-    System.ImportAssetMeta(&project, builtin_asset, builtin_importer, grid_metadata);
+    cook_system.ImportAssetMeta(&project, floor_asset, floor_importer, grid_metadata);
+
+    for (auto i = 0; i < g_built_in_mesh_assets.size(); i++)
+    {
+        auto& built_in = g_built_in_mesh_assets[i];
+        auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
+        metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; // GLTFVertexLayoutWithJointId
+
+        auto builtin_importer = skd::asset::ProceduralMeshImporter::Create<skd::asset::ProceduralMeshImporter>();
+        builtin_importer->built_in_mesh_tid = built_in.built_in_mesh_tid;
+        auto builtin_asset = skr::RC<skd::asset::AssetMetaFile>::New(
+            skr::format(u8"builtin_{}.meta", i).c_str(),
+            built_in.asset_id,
+            skr::type_id_of<skr::MeshResource>(),
+            skr::type_id_of<skd::asset::MeshCooker>());
+        metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; // GLTFVertexLayoutWithJointId
+        cook_system.ImportAssetMeta(&project, builtin_asset, builtin_importer, metadata);
+    }
 
     auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
     metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid; //    GLTFVertexLayoutWithJointId
-
-    auto builtin_event = System.EnsureCooked(BuiltinMeshID);
-    builtin_event.wait(true);
 
     auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
 
@@ -308,11 +323,28 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
         skr::type_id_of<skr::MeshResource>(),
         skr::type_id_of<skd::asset::MeshCooker>());
     importer->assetPath = gltf_path.c_str();
+    // importer->invariant_vertices = true;
 
-    System.ImportAssetMeta(&project, asset, importer, metadata);
+    cook_system.ImportAssetMeta(&project, asset, importer, metadata);
 
-    auto event = System.EnsureCooked(asset->GetGUID());
-    event.wait(true);
+    {
+        cook_system.ParallelForEachAsset(1,
+            [&](skr::span<skr::RC<skd::asset::AssetMetaFile>> assets) {
+                SkrZoneScopedN("Cook");
+                for (auto asset : assets)
+                {
+                    cook_system.EnsureCooked(asset->GetGUID());
+                }
+            });
+    }
+
+    auto resource_system = skr::GetResourceSystem();
+    skr::task::schedule([&] {
+        cook_system.WaitForAll();
+        // resource_system->Quit();
+    },
+        nullptr);
+    resource_system->Update();
 }
 
 int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
@@ -337,63 +369,53 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     auto cgpu_device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
 
-    // skr::Vector<skr::RCWeak<skr::MeshActor>> hierarchy_actors;
-    // constexpr int hierarchy_count = 3; // Number of actors in the hierarchy
+    skr::Vector<skr::RCWeak<skr::MeshActor>> builtin_actors;
+    builtin_actors.resize_default(g_built_in_mesh_assets.size());
 
     auto root = skr::Actor::GetRoot();
     auto actor1 = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
-    auto actor2 = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
 
     actor1.lock()->SetDisplayName(u8"Actor 1");
-    actor2.lock()->SetDisplayName(u8"Actor 2");
 
     root.lock()->CreateEntity();
     actor1.lock()->CreateEntity();
-    actor2.lock()->CreateEntity();
 
     actor1.lock()->AttachTo(root);
-    actor2.lock()->AttachTo(root);
 
     root.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
-
     actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 10.0f, 0.0f });
-    actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
+    actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .9f, .9f, .9f });
     actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
-    actor2.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
-    actor2.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 1.f, 1.f, 1.0f });
-    actor2.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
+    //auto actor2 = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
+    //actor2.lock()->SetDisplayName(u8"Actor 2");
+    //actor2.lock()->AttachTo(root);
+    //actor2.lock()->CreateEntity();
+    //actor2.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
+    //actor2.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 1.f, 1.f, 1.0f });
+    //actor2.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
-    // for (auto i = 0; i < hierarchy_count; ++i)
-    // {
-    //     auto actor = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
-    //     hierarchy_actors.push_back(actor);
+    //for (size_t i = 0; i < g_built_in_mesh_assets.size(); i++)
+    //{
+    //    auto actor = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
+    //    builtin_actors[i] = actor;
+    //    actor.lock()->SetDisplayName(skr::format(u8"Builtin Actor {}", i).c_str());
+    //    actor.lock()->CreateEntity();
+    //    actor.lock()->AttachTo(actor2);
 
-    //     actor.lock()->SetDisplayName(skr::format(u8"HActor {}", i).c_str());
-    //     actor.lock()->CreateEntity();
-
-    //     if (i == 0)
-    //     {
-    //         actor.lock()->AttachTo(actor1);
-    //     }
-    //     else
-    //     {
-    //         actor.lock()->AttachTo(hierarchy_actors[i - 1]);
-    //     }
-
-    //     actor.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, (float)(i + 1) * 5.0f });
-    //     actor.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .8f, .8f, .8f });
-    // }
-
+    //    actor.lock()->GetComponent<skr::scene::PositionComponent>()->set({ (float)(i * 5.0f), 2.0f, (float)(i * 5.0f) });
+    //    actor.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 5.f, 5.f, 5.0f });
+    //    actor.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
+    //}
     transform_system->update();
     transform_system->get_context()->update_finish.wait(true);
 
     actor1.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = MeshAssetID;
-    actor2.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = BuiltinMeshID;
-    // for (auto& actor : hierarchy_actors)
-    // {
-    //     actor.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = MeshAssetID;
-    // }
+    //actor2.lock()->GetComponent<skr::MeshComponent>()->mesh_resource = FloorID;
+    //for (size_t i = 0; i < g_built_in_mesh_assets.size(); i++)
+    //{
+    //    builtin_actors[i].lock()->GetComponent<skr::MeshComponent>()->mesh_resource = g_built_in_mesh_assets[i].asset_id;
+    //}
 
     CookAndLoadGLTF();
 
