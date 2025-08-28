@@ -449,6 +449,7 @@ namespace SB
         public string Mode = "Debug"; // build modes to filter generated configs
         public string Debugger = "";
         public IToolchain? Toolchain = null;
+        public bool PreserveUserConfig = true;
 
         // path
         public string CmdFilesOutputDir = "";
@@ -472,16 +473,12 @@ namespace SB
         }
 
         // generate
-        public void Generate()
+        public void Check()
         {
             // check config
             if (Toolchain == null)
             {
                 throw new InvalidOperationException("Toolchain is not set for VSCodeDebugEmitter");
-            }
-            if (string.IsNullOrEmpty(Debugger))
-            {
-                Debugger = _GetDefaultDebugger();
             }
 
             // check path
@@ -497,6 +494,18 @@ namespace SB
             {
                 throw new InvalidOperationException("WorkspaceRoot is not set for VSCodeDebugEmitter");
             }
+        }
+        public void Generate()
+        {
+            Check();
+
+            if (string.IsNullOrEmpty(Debugger))
+            {
+                Debugger = _GetDefaultDebugger();
+            }
+
+            // sort targets
+            _TargetsToGenerate = new(_TargetsToGenerate.OrderByDescending(t => t.Name));
 
             // collect tasks
             foreach (var target in _TargetsToGenerate)
@@ -527,16 +536,48 @@ namespace SB
 
             // generate tasks.json
             {
-                var taskJsonObj = new JsonObject
-                {
-                    ["version"] = "2.0.0",
-                    ["tasks"] = JsonSerializer.SerializeToNode(_PerTargetPreLaunchTasks.Values)
-                };
-
-                // write to file
+                // get path
                 var taskJsonPath = Path.Combine(WorkspaceRoot, ".vscode", "tasks.json");
                 if (!Directory.Exists(Path.GetDirectoryName(taskJsonPath)!))
                     Directory.CreateDirectory(Path.GetDirectoryName(taskJsonPath)!);
+
+                JsonObject? taskJsonObj = null;
+
+                // try load existing tasks.json
+                if (File.Exists(taskJsonPath) && PreserveUserConfig)
+                {
+                    // load json object
+                    var jsonText = File.ReadAllText(taskJsonPath);
+                    taskJsonObj = JsonNode.Parse(jsonText)!.AsObject();
+
+                    // remove tasks we generated before
+                    if (taskJsonObj.ContainsKey("tasks") && taskJsonObj["tasks"] is JsonArray tasksArray)
+                    {
+                        _RemoveObjWithTag(tasksArray);
+                    }
+                }
+
+                if (taskJsonObj == null)
+                {
+                    taskJsonObj = new JsonObject
+                    {
+                        ["version"] = "2.0.0",
+                        ["tasks"] = JsonSerializer.SerializeToNode(_PerTargetPreLaunchTasks.Values)
+                    };
+                }
+                else
+                {
+                    // append new tasks
+                    foreach (var task in _PerTargetPreLaunchTasks.Values)
+                    {
+                        if (taskJsonObj["tasks"] is JsonArray tasksArray)
+                        {
+                            tasksArray.Add(task);
+                        }
+                    }
+                }
+
+                // write to file
                 File.WriteAllText(taskJsonPath, taskJsonObj.ToJsonString(new JsonSerializerOptions
                 {
                     TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver(),
@@ -547,16 +588,48 @@ namespace SB
 
             // generate launch.json
             {
-                var launchJsonObj = new JsonObject
-                {
-                    ["version"] = "0.2.0",
-                    ["configurations"] = JsonSerializer.SerializeToNode(_LaunchConfigs)
-                };
-
-                // write to file
+                // get path
                 var launchJsonPath = Path.Combine(WorkspaceRoot, ".vscode", "launch.json");
                 if (!Directory.Exists(Path.GetDirectoryName(launchJsonPath)!))
                     Directory.CreateDirectory(Path.GetDirectoryName(launchJsonPath)!);
+
+                JsonObject? launchJsonObj = null;
+
+                // try load existing launch.json
+                if (File.Exists(launchJsonPath) && PreserveUserConfig)
+                {
+                    // load json object
+                    var jsonText = File.ReadAllText(launchJsonPath);
+                    launchJsonObj = JsonNode.Parse(jsonText)!.AsObject();
+
+                    // remove configs we generated before
+                    if (launchJsonObj.ContainsKey("configurations") && launchJsonObj["configurations"] is JsonArray configsArray)
+                    {
+                        _RemoveObjWithTag(configsArray);
+                    }
+                }
+
+                if (launchJsonObj == null)
+                {
+                    launchJsonObj = new JsonObject
+                    {
+                        ["version"] = "0.2.0",
+                        ["configurations"] = JsonSerializer.SerializeToNode(_LaunchConfigs)
+                    };
+                }
+                else
+                {
+                    // append new configs
+                    foreach (var config in _LaunchConfigs)
+                    {
+                        if (launchJsonObj["configurations"] is JsonArray configsArray)
+                        {
+                            configsArray.Add(config);
+                        }
+                    }
+                }
+
+                // write to file
                 File.WriteAllText(launchJsonPath, launchJsonObj.ToJsonString(new JsonSerializerOptions
                 {
                     TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver(),
@@ -565,8 +638,99 @@ namespace SB
                 }));
             }
         }
+        public void Clear()
+        {
+            Check();
+
+            // remove task.json
+            {
+                // get path
+                var taskJsonPath = Path.Combine(WorkspaceRoot, ".vscode", "tasks.json");
+                if (!Directory.Exists(Path.GetDirectoryName(taskJsonPath)!))
+                    Directory.CreateDirectory(Path.GetDirectoryName(taskJsonPath)!);
+                if (File.Exists(taskJsonPath) && PreserveUserConfig)
+                {
+                    // load json object
+                    var jsonText = File.ReadAllText(taskJsonPath);
+                    var taskJsonObj = JsonNode.Parse(jsonText)!.AsObject();
+
+                    // remove tasks we generated before
+                    if (taskJsonObj.ContainsKey("tasks") && taskJsonObj["tasks"] is JsonArray tasksArray)
+                    {
+                        _RemoveObjWithTag(tasksArray);
+                    }
+
+                    // write to file
+                    File.WriteAllText(taskJsonPath, taskJsonObj.ToJsonString(new JsonSerializerOptions
+                    {
+                        TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver(),
+                        WriteIndented = true,
+                        // DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                    }));
+                }
+            }
+
+            // remove launch.json
+            {
+                // get path
+                var launchJsonPath = Path.Combine(WorkspaceRoot, ".vscode", "launch.json");
+                if (!Directory.Exists(Path.GetDirectoryName(launchJsonPath)!))
+                    Directory.CreateDirectory(Path.GetDirectoryName(launchJsonPath)!);
+                if (File.Exists(launchJsonPath) && PreserveUserConfig)
+                {
+                    // load json object
+                    var jsonText = File.ReadAllText(launchJsonPath);
+                    var launchJsonObj = JsonNode.Parse(jsonText)!.AsObject();
+
+                    // remove configs we generated before
+                    if (launchJsonObj.ContainsKey("configurations") && launchJsonObj["configurations"] is JsonArray configsArray)
+                    {
+                        _RemoveObjWithTag(configsArray);
+                    }
+
+                    // write to file
+                    File.WriteAllText(launchJsonPath, launchJsonObj.ToJsonString(new JsonSerializerOptions
+                    {
+                        TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver(),
+                        WriteIndented = true,
+                        // DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                    }));
+                }
+            }
+
+            // remove cmd files
+            if (Directory.Exists(CmdFilesOutputDir))
+            {
+                Directory.Delete(CmdFilesOutputDir, true);
+            }
+
+            // remove natvis files
+            if (Directory.Exists(MergedNatvisOutputDir))
+            {
+                Directory.Delete(MergedNatvisOutputDir, true);
+            }
+        }
+
 
         // helpers
+        private void _RemoveObjWithTag(JsonArray arr)
+        {
+            // search obj with __SB_TAG__
+            var toRemove = new List<JsonNode>();
+            foreach (var task in arr)
+            {
+                if (task is JsonObject taskObj && taskObj.ContainsKey("__SB_TAG__") && taskObj["__SB_TAG__"]?.GetValue<bool>() == true)
+                {
+                    toRemove.Add(task);
+                }
+            }
+
+            // remove them
+            foreach (var task in toRemove)
+            {
+                arr.Remove(task);
+            }
+        }
         private string? _GenerateCmdFile(List<string> cmds, string cmdName)
         {
             if (cmds.Count >= 0)
@@ -615,6 +779,7 @@ namespace SB
             {
                 return new JsonObject
                 {
+                    ["__SB_TAG__"] = true,
                     ["label"] = cmdName,
                     ["type"] = "shell",
                     ["command"] = BS.HostOS switch
@@ -669,12 +834,13 @@ namespace SB
 
             var result = new JsonObject
             {
+                ["__SB_TAG__"] = true,
                 ["name"] = $"▶️{target.Name} [{Mode}]",
                 ["type"] = Debugger,
                 ["request"] = "launch",
                 ["program"] = _GetTargetProgramPath(target),
                 ["args"] = args.Count > 0 ? JsonSerializer.SerializeToNode(args) : new JsonArray(),
-                ["cwd"] = "${workspaceFolder}",
+                ["cwd"] = _GetTargetProgramDir(target),
                 ["stopAtEntry"] = false,
                 ["console"] = "integratedTerminal",
                 ["visualizerFile"] = Path.Join("${workspaceFolder}", natvisFileName),
@@ -724,9 +890,13 @@ namespace SB
         private string _GetTargetProgramPath(Target target)
         {
             var exeName = target.Name + (BS.TargetOS == OSPlatform.Windows ? ".exe" : "");
+            return Path.Combine(_GetTargetProgramDir(target), exeName);
+        }
+        private string _GetTargetProgramDir(Target target)
+        {
             var binaryPath = target.GetBinaryPath(Mode).ToLowerInvariant();
             var relativeBinaryPath = Path.GetRelativePath(WorkspaceRoot, binaryPath);
-            return Path.Combine("${workspaceFolder}", relativeBinaryPath, exeName);
+            return Path.Combine("${workspaceFolder}", relativeBinaryPath);
         }
         // cppvsdbg, cppdbg, lldb-dap, lldb
         private string _GetDefaultDebugger()
