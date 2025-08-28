@@ -155,7 +155,7 @@ void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, ERa
     out_vbv.buffer_index = 0;
     out_vbv.stride = attribute_stride;
     out_vbv.offset = attribute_stride ? (uint32_t)buffer.size() : 0u;
-    buffer.append(vertex_attribtue_slice.data(), vertex_attribtue_slice.size());
+    //buffer.append(vertex_attribtue_slice.data(), vertex_attribtue_slice.size());
     out_vbv.vertex_count = 0u;
     if (vertex_attribtue_slice.size() != 0)
     {
