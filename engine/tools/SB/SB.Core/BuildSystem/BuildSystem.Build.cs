@@ -281,6 +281,21 @@ namespace SB
                         Plan.DirectDependencies.Add(DepFingerprint);
                     }
                 }
+
+                // 特定目标依赖：依赖于指定目标的指定发射器
+                foreach (var TargetDep in Emitter.TargetDependencies)
+                {
+                    var DepFingerprint = new PlanKey
+                    {
+                        Target = TargetDep.Key,
+                        Emitter = TargetDep.Value
+                    };
+
+                    if (AllTaskPlans.ContainsKey(DepFingerprint))
+                    {
+                        Plan.DirectDependencies.Add(DepFingerprint);
+                    }
+                }
             }
         }
 

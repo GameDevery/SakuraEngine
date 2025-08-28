@@ -537,6 +537,7 @@ void ModelViewerModule::CreateEntities(uint32_t count)
                 .add_component(&Spawner::meshes)
 
                 .add_component(&Spawner::instances)
+                .add_component(&Spawner::geom_buffers)
                 .add_component(&Spawner::colors)
                 .add_component(&Spawner::indices);
 
@@ -606,6 +607,7 @@ void ModelViewerModule::CreateEntities(uint32_t count)
         ModelViewerModule* pModule = nullptr;
         skr::GPUScene* pScene = nullptr;
         ComponentView<GPUSceneInstance> instances;
+        ComponentView<GPUSceneGeometryBuffers> geom_buffers;
         ComponentView<GPUSceneInstanceColor> colors;
         ComponentView<GPUSceneObjectToWorld> transforms;
         ComponentView<GPUSceneInstanceEmission> emissions;

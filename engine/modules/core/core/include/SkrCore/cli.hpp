@@ -16,11 +16,10 @@ namespace skr::attr
 sreflect_struct(guid = "5ec06e6b-ca62-45ca-aa35-d39e1aba88a4")
 CmdOption {
     // clang-format on
-
-    String name = {};
-    skr_char8 short_name = {};
-    String help = {};
-    bool is_required = true;
+    skr_char8 short_name  = {};
+    String    name        = {};
+    String    help        = {};
+    bool      is_required = true;
 };
 // clang-format off
 sreflect_struct(guid = "3bd3f46e-e8fd-41e8-9c94-c74e2d93141b")

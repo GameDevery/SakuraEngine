@@ -875,19 +875,41 @@ void AST::DeclareIntrinsics()
         });
 
     auto ReturnFirstArgType = [=](auto pts){ return pts[0]; };
-    auto ReturnBoolVecWithSameDim = [this](auto pts) {
-        const TypeDecl* inputType = pts[0];
-        if (inputType == Float2Type || inputType == Int2Type || inputType == UInt2Type) return Bool2Type;
-        if (inputType == Float3Type || inputType == Int3Type || inputType == UInt3Type) return Bool3Type;
-        if (inputType == Float4Type || inputType == Int4Type || inputType == UInt4Type) return Bool4Type;
-        return BoolType; 
-    };
+#define ReturnVecWithSameDim(T) \
+    auto Return##T##VecWithSameDim = [this](auto pts) {\
+        const TypeDecl* inputType = pts[0];\
+        if (auto asVectorType = dynamic_cast<const VectorTypeDecl*>(pts[0]))\
+        {\
+            if (asVectorType->count() == 2)\
+                return T##2Type;\
+            else if (asVectorType->count() == 3)\
+                return T##3Type;\
+            else if (asVectorType->count() == 4)\
+                return T##4Type;\
+        }\
+        if (auto AsMatrixType = dynamic_cast<const MatrixTypeDecl*>(pts[0]))\
+        {\
+            if (AsMatrixType->columns() == 2)\
+                return T##2x2Type;\
+            if (AsMatrixType->columns() == 3)\
+                return T##3x3Type;\
+            if (AsMatrixType->columns() == 4)\
+                return T##4x4Type;\
+        }\
+        return IntType;\
+    }
+    ReturnVecWithSameDim(Bool);
+    ReturnVecWithSameDim(Float);
+    ReturnVecWithSameDim(Int);
+    ReturnVecWithSameDim(UInt);
 
     std::array<VarConceptDecl*, 1> OneValue = { ValueFamily };
     std::array<VarConceptDecl*, 1> OneArithmetic = { ArthmeticFamily };
     _intrinsics["ABS"] = DeclareTemplateFunction(L"abs", ReturnFirstArgType, OneArithmetic);
     // bit_cast<T> will be override when is called
-    _intrinsics["BIT_CAST"] = DeclareTemplateFunction(L"bit_cast", VoidType, OneArithmetic);
+    _intrinsics["ASFLOAT"] = DeclareTemplateFunction(L"asfloat", ReturnFloatVecWithSameDim, OneArithmetic);
+    _intrinsics["ASINT"] = DeclareTemplateFunction(L"asint", ReturnIntVecWithSameDim, OneArithmetic);
+    _intrinsics["ASUINT"] = DeclareTemplateFunction(L"asuint", ReturnUIntVecWithSameDim, OneArithmetic);
 
     std::array<VarConceptDecl*, 2> TwoArithmetic = { ArthmeticFamily, ArthmeticFamily };
     _intrinsics["MIN"] = DeclareTemplateFunction(L"min", ReturnFirstArgType, TwoArithmetic);
@@ -1070,6 +1092,7 @@ void AST::DeclareIntrinsics()
     _intrinsics["RAY_QUERY_COMMITTED_STATUS"] = DeclareTemplateFunction(L"ray_query_committed_status", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS"] = DeclareTemplateFunction(L"ray_query_committed_triangle_bary", Float2Type, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_PRIMIVE_INDEX"] = DeclareTemplateFunction(L"ray_query_committed_primitive_index", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_COMMITTED_GEOMETRY_INDEX"] = DeclareTemplateFunction(L"ray_query_committed_geometry_index", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_INSTANCE_ID"] = DeclareTemplateFunction(L"ray_query_committed_instance_id", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_PROCEDURAL_DISTANCE"] = DeclareTemplateFunction(L"ray_query_committed_procedual_distance", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_COMMITTED_RAY_T"] = DeclareTemplateFunction(L"ray_query_committed_ray_t", FloatType, RayQueryProceedParams);
@@ -1077,6 +1100,7 @@ void AST::DeclareIntrinsics()
     _intrinsics["RAY_QUERY_CANDIDATE_STATUS"] = DeclareTemplateFunction(L"ray_query_candidate_status", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_CANDIDATE_TRIANGLE_BARYCENTRICS"] = DeclareTemplateFunction(L"ray_query_candidate_triangle_bary", Float2Type, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_CANDIDATE_PRIMIVE_INDEX"] = DeclareTemplateFunction(L"ray_query_candidate_primitive_index", UIntType, RayQueryProceedParams);
+    _intrinsics["RAY_QUERY_CANDIDATE_GEOMETRY_INDEX"] = DeclareTemplateFunction(L"ray_query_candidate_geometry_index", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_CANDIDATE_INSTANCE_ID"] = DeclareTemplateFunction(L"ray_query_candidate_instance_id", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_CANDIDATE_PROCEDURAL_DISTANCE"] = DeclareTemplateFunction(L"ray_query_candidate_procedual_distance", UIntType, RayQueryProceedParams);
     _intrinsics["RAY_QUERY_CANDIDATE_TRIANGLE_RAY_T"] = DeclareTemplateFunction(L"ray_query_candidate_triangle_ray_t", FloatType, RayQueryProceedParams);

@@ -338,8 +338,6 @@ std::string ShaderTranslator::GetVarName(const clang::VarDecl* var)
     {
         index = static_cast<size_t>(std::distance(bucket.begin(), it));
     }
-    if (index == 0)
-        return base;
     return base + "_" + std::to_string(index);
 }
 
@@ -801,7 +799,7 @@ CppSL::TypeDecl* ShaderTranslator::TranslateRecordDecl(const clang::RecordDecl* 
         if (!TSD && TemplateItSelf) return nullptr;              // skip template definitions
 
         auto TypeName = TSD ? std::format("{}_{}", TSD->getName().str(), next_template_spec_id++) :
-                              recordDecl->getName().str(); // Use short name instead of qualified
+                              std::format("{}_{}", recordDecl->getName().str(), next_template_spec_id++); // Use short name instead of qualified
         if (getType(ThisQualType))
             ReportFatalError(recordDecl, "Duplicate type declaration: {}", TypeName);
 
@@ -1526,6 +1524,27 @@ Stmt* ShaderTranslator::TranslateStmt(const clang::Stmt* x)
     else if (auto cxxContinue = llvm::dyn_cast<clang::ContinueStmt>(x))
     {
         return AST.Continue();
+    }
+    else if (auto offset_of = llvm::dyn_cast<clang::OffsetOfExpr>(x))
+    {
+        auto &&location = offset_of->getBeginLoc();
+        auto &&fields = offset_of->getComponent(0).getField()->getParent()->fields();
+        auto field_idx = offset_of->getComponent(0).getField()->getFieldIndex();
+        auto iter = fields.begin();
+        uint32_t offset = 0;
+        for (uint32_t i = 0; i < field_idx; ++i) {
+            auto astType = getType(iter->getType());
+            auto align = astType->alignment() - 1;
+            offset = (offset + align) & (~align);
+            offset += astType->size();
+            iter++;
+        }
+        {
+            auto astType = getType(iter->getType());
+            auto align = astType->alignment() - 1;
+            offset = (offset + align) & (~align);
+        }
+        return AST.Constant(IntValue(offset));
     }
     else if (auto cxxBreak = llvm::dyn_cast<clang::BreakStmt>(x))
     {

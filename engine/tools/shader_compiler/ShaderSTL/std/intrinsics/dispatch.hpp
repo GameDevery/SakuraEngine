@@ -2,8 +2,6 @@
 #include "./../attributes.hpp"
 #include "./../types/vec.hpp"
 
-namespace skr::shader {
-
 [[callop("AllMemoryBarrier")]] 
 extern void AllMemoryBarrier();
 
@@ -62,4 +60,13 @@ extern void InterlockedXor(V& v, T value, T& prev);
 [[callop("RASTER_DISCARD")]] 
 extern void discard();
 
-}
+// try flatten next if-stmt
+[[callop("FLATTEN")]] 
+extern void flatten();	
+
+// try un-flatten next if-stmt
+[[callop("BRANCH")]] 
+extern void branch();		  
+
+[[callop("FORCE_CASE")]] 
+extern void force_case();

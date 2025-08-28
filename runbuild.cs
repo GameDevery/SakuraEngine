@@ -148,32 +148,6 @@ public class BuildCommand : CommandBase
             Engine.AddEngineTaskEmitters(Toolchain);
         }
         Engine.RunBuild(SingleTarget);
-
-        // Copy Compiled Tools to Tools Directory
-        if (Categories.HasFlag(TargetCategory.Tool))
-        {
-            string ToolsDirectory = Path.Combine(SourceLocation.Directory(), ".sb", "tools");
-            BuildSystem.Artifacts.AsParallel().ForAll(artifact =>
-            {
-                if (artifact is LinkResult Program)
-                {
-                    if (!Program.IsRestored && Program.Target.IsCategory(TargetCategory.Tool))
-                    {
-                        // copy to /.sb/tools
-                        if (File.Exists(Program.PDBFile))
-                        {
-                            Log.Verbose("Copying PDB file {PDBFile} to {ToolsDirectory}", Program.PDBFile, ToolsDirectory);
-                            File.Copy(Program.PDBFile, Path.Combine(ToolsDirectory, Path.GetFileName(Program.PDBFile)), true);
-                        }
-                        if (File.Exists(Program.TargetFile))
-                        {
-                            Log.Verbose("Copying target file {TargetFile} to {ToolsDirectory}", Program.TargetFile, ToolsDirectory);
-                            File.Copy(Program.TargetFile, Path.Combine(ToolsDirectory, Path.GetFileName(Program.TargetFile)), true);
-                        }
-                    }
-                }
-            });
-        }
     }
 }
 

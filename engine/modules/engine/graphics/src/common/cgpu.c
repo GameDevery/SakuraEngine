@@ -893,6 +893,17 @@ void cgpu_compute_encoder_bind_descriptor_set(CGPUComputePassEncoderId encoder, 
     fn_bind_descriptor_set(encoder, set);
 }
 
+void cgpu_compute_encoder_bind_descriptor_buffer(CGPUComputePassEncoderId encoder, CGPUDescriptorBufferId args, const char8_t* set_name)
+{
+    cgpu_assert(encoder != CGPU_NULLPTR && "fatal: call on NULL compute encoder!");
+    cgpu_assert(set_name != CGPU_NULLPTR && "fatal: call on NULL descriptor!");
+    CGPUDeviceId device = encoder->device;
+    cgpu_assert(device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    const CGPUProcComputeEncoderBindDescriptorBuffer fn_bind_descriptor_buffer = device->proc_table_cache->compute_encoder_bind_descriptor_buffer;
+    cgpu_assert(fn_bind_descriptor_buffer && "cgpu_compute_encoder_bind_descriptor_buffer Proc Missing!");
+    fn_bind_descriptor_buffer(encoder, args, set_name);
+}
+
 void cgpu_compute_encoder_push_constants(CGPUComputePassEncoderId encoder, CGPURootSignatureId rs, const char8_t* name, const void* data)
 {
     CGPUDeviceId device = encoder->device;

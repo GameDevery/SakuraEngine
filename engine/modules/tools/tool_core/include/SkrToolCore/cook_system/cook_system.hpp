@@ -2,6 +2,7 @@
 #include "SkrCore/log.hpp"
 #include "SkrCore/blob.hpp"
 #include "SkrCore/platform/vfs.h"
+#include "SkrContainersDef/function_ref.hpp"
 #include "SkrContainers/vector.hpp"
 #include "SkrRT/resource/resource_header.hpp"
 #include "SkrToolCore/cook_system/importer.hpp"

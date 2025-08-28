@@ -2,7 +2,6 @@
 #include "../attributes.hpp"
 #include "../types/ray.hpp"
 
-namespace skr::shader {
 enum struct RayQueryFlags : uint32
 {
     None = 0x0,
@@ -43,6 +42,9 @@ struct [[builtin("ray_query")]] RayQuery {
     [[callop("RAY_QUERY_CANDIDATE_INSTANCE_ID")]] 
     uint CandidateInstanceID();
 
+    [[callop("RAY_QUERY_CANDIDATE_GEOMETRY_INDEX")]] 
+    uint CandidateGeometryIndex();
+
     [[callop("RAY_QUERY_CANDIDATE_PRIMIVE_INDEX")]] 
     uint CandidatePrimitiveIndex();
 
@@ -62,6 +64,9 @@ struct [[builtin("ray_query")]] RayQuery {
     [[callop("RAY_QUERY_COMMITTED_INSTANCE_ID")]] 
     uint CommittedInstanceID();
     
+    [[callop("RAY_QUERY_COMMITTED_GEOMETRY_INDEX")]] 
+    uint CommittedGeometryIndex();
+
     [[callop("RAY_QUERY_COMMITTED_PRIMIVE_INDEX")]] 
     uint CommittedPrimitiveIndex();
     
@@ -78,9 +83,9 @@ struct [[builtin("ray_query")]] RayQuery {
     [[callop("RAY_QUERY_WORLD_RAY_DIRECTION")]] 
     float3 WorldRayDirection();
     
-
+    template <typename RayType>
     [[callop("RAY_QUERY_TRACE_RAY_INLINE")]] 
-    void TraceRayInline(const Accel& AS, uint32 mask, const Ray& ray);
+    void TraceRayInline(const Accel& AS, uint32 mask, const RayType& ray);
 
     [[callop("RAY_QUERY_COMMIT_TRIANGLE")]]
     void CommitTriangle();
@@ -91,5 +96,3 @@ struct [[builtin("ray_query")]] RayQuery {
 
 using RayQueryAll = RayQuery<RayQueryFlags::None>;
 using RayQueryAny = RayQuery<RayQueryFlags::AcceptFirstAndEndSearch>;
-
-}// namespace skr::shader

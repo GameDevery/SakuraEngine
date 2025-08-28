@@ -1,6 +1,6 @@
 #include <std/std.hpp>
 
-using namespace skr::shader;
+
 
 [[group(0)]]
 Texture2D<float> input_color;

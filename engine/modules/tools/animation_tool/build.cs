@@ -26,7 +26,7 @@ public static class SkrAnimTool
 
             .AddMetaHeaders("include/**.h")
 
-            .Require("cgltf", new PackageConfig { Version = new Version(1, 13, 0) })
+            .Require("cgltf", new PackageConfig { Version = new Version(1, 15, 0) })
             .Depend(Visibility.Public, "cgltf@cgltf")
 
             .Require("tinygltf", new PackageConfig { Version = new Version(2, 8, 14) })

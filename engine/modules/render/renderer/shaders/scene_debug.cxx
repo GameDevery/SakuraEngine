@@ -2,7 +2,6 @@
 #include "SkrRenderer/shared/gpu_scene.hpp"
 #include "SkrRenderer/shared/soa_layout.hpp"
 
-using namespace skr::shader;
 using namespace skr;
 
 RWTexture2D<float> output_texture;
@@ -71,7 +70,7 @@ void scene_debug([[sv_thread_id]] uint3 thread_id)
             
             if (instance_index < debug_constants.instance_count) {
                 // Use DefaultGPUSceneLayout to calculate offset directly
-                uint color_offset = DefaultGPUSceneLayout::component_location<GPUSceneInstanceColor>(instance_index);
+                uint color_offset = DefaultGPUSceneLayout::Location<GPUSceneInstanceColor>(instance_index);
                 
                 // Read color data from GPU buffer
                 GPUSceneInstanceColor color_data = gpu_scene_buffer.Load<GPUSceneInstanceColor>(color_offset);
@@ -97,7 +96,7 @@ void scene_debug([[sv_thread_id]] uint3 thread_id)
         {
             if (debug_constants.instance_count > 0) {
                 // Read the first instance's color using DefaultGPUSceneLayout
-                constexpr uint color_offset = DefaultGPUSceneLayout::component_location<GPUSceneInstanceColor>(0);
+                constexpr uint color_offset = DefaultGPUSceneLayout::Location<GPUSceneInstanceColor>(0);
                 GPUSceneInstanceColor color_data = gpu_scene_buffer.Load<GPUSceneInstanceColor>(color_offset);
                 float4 first_color = float4(color_data.color[0], color_data.color[1],
                                            color_data.color[2], color_data.color[3]);
@@ -161,7 +160,7 @@ void scene_debug([[sv_thread_id]] uint3 thread_id)
             // Check intersection with all sphere instances
             for (uint instance_index = 0; instance_index < debug_constants.instance_count; instance_index++) {
                 // Use DefaultGPUSceneLayout to calculate transform offset
-                uint transform_offset = DefaultGPUSceneLayout::component_location<GPUSceneObjectToWorld>(instance_index);
+                uint transform_offset = DefaultGPUSceneLayout::Location<GPUSceneObjectToWorld>(instance_index);
                 
                 // Load 4x4 transform matrix manually (16 floats = 64 bytes)
                 // This ensures we're reading in the expected memory layout
@@ -196,7 +195,7 @@ void scene_debug([[sv_thread_id]] uint3 thread_id)
                         closest_distance = distance;
 
                         // Read color for this instance using DefaultGPUSceneLayout
-                        uint color_offset = DefaultGPUSceneLayout::component_location<GPUSceneInstanceColor>(instance_index);
+                        uint color_offset = DefaultGPUSceneLayout::Location<GPUSceneInstanceColor>(instance_index);
                         GPUSceneInstanceColor color_data = gpu_scene_buffer.Load<GPUSceneInstanceColor>(color_offset);
                         float4 sphere_color = float4(color_data.color[0], color_data.color[1], 
                                                     color_data.color[2], color_data.color[3]);

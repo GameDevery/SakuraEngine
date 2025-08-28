@@ -123,6 +123,10 @@ String HLSLGenerator::GetTypeName(const TypeDecl* type)
     }
     else if (auto array = dynamic_cast<const ArrayTypeDecl*>(type))
     {
+        if (array->element_type()->is_resource() && (array->count() == 0))
+        {
+            return std::format(L"Bindless< {} >", GetQualifiedTypeName(array->element_type()));
+        }
         return std::format(L"array<{}, {}>", GetQualifiedTypeName(array->element_type()), array->count());
     }
     else if (auto cbuffer = dynamic_cast<const ConstantBufferTypeDecl*>(type))
@@ -178,11 +182,15 @@ void HLSLGenerator::VisitAccessExpr(SourceBuilderNew& sb, const AccessExpr* expr
         sb.append(L".data");
 
     sb.append(L"[");
+    if (asBdlsResource)
+        sb.append(L"NonUniformResourceIndex(");
     visitStmt(sb, index);
+    if (asBdlsResource)
+        sb.append(L")");
     sb.append(L"]");
 }
 
-void HLSLGenerator::VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var)
+void HLSLGenerator::VisitShaderResource(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var)
 {
     // Handle array of resources - need C-style array syntax
     String typeName = GetTypeName(&var->type());
@@ -228,7 +236,6 @@ void HLSLGenerator::VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::
     }
     else
     {
-        var->ast().ReportFatalError(L"Internal: missing binding in table for global resource '" + var->name() + L"'");
     }
 
     if (!asPushConstant && !vk_binding.empty())
@@ -546,7 +553,6 @@ template <typename G, typename T> T atomic_fetch_add(inout G shared_v, T value) 
 // template <typename TEX> float4 texture3d_sample(TEX tex, uint3 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
 )";
 
-extern const wchar_t* kHLSLBitCast;
 extern const wchar_t* kHLSLBufferIntrinsics;
 extern const wchar_t* kHLSLTextureIntrinsics;
 extern const wchar_t* kHLSLRayIntrinsics;
@@ -555,27 +561,6 @@ void HLSLGenerator::RecordBuiltinHeader(SourceBuilderNew& sb, const AST& ast)
 {
     GenerateSRTs(ast);
 
-    bool HasBitCast = false;
-
-    for (auto stmt : ast.stmts())
-    {
-        if (auto as_call = dynamic_cast<CppSL::CallExpr*>(stmt))
-        {
-            auto called_function = dynamic_cast<const FunctionDecl*>(as_call->callee()->decl());
-            if (called_function && ast.IsIntrinsic(called_function))
-            {
-                if (called_function->name().starts_with(L"bit_cast"))
-                {
-                    HasBitCast = true;
-                }
-            }    
-        }
-    }
-
-    if (HasBitCast)
-    {
-        sb.append(kHLSLBitCast);
-    }
     sb.append(kHLSLHeader);
     sb.append(kHLSLBufferIntrinsics);
     sb.append(kHLSLTextureIntrinsics);

@@ -8,7 +8,7 @@ public static class WebSocketSample
     {
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
-            var WebSocketSample = Engine.Program("WebSocketSample")
+            Engine.Program("WebSocketSample")
                 .Depend(Visibility.Public, "libhv")
                 .Depend(Visibility.Public, "SkrCore")
                 .IncludeDirs(Visibility.Public, "include")

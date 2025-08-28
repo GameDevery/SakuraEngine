@@ -1,7 +1,10 @@
 #include <std/std.hpp>
+#include "SkrRenderer/shared/soa_layout.hpp"
+#include "SkrRenderer/shared/gpu_scene.hpp"
 
-using namespace skr::shader;
 
+
+ByteAddressBuffer gpu_scene;
 RWTexture2D<float> output_texture;
 Accel scene_tlas;
 
@@ -54,31 +57,13 @@ Ray generate_camera_ray(uint2 pixel_coord, uint2 screen_size)
 }
 
 // Colorful sphere shading based on instance ID
-float4 shade_sphere_hit(RayQuery<RayQueryFlags::AcceptFirstAndEndSearch>& query) 
+float4 shade_hit(RayQuery<RayQueryFlags::AcceptFirstAndEndSearch>& query) 
 {
-    // Get instance ID (corresponding to sphere index)
+    using Layout = skr::DefaultGPUSceneLayout;
     uint instance_id = query.CommittedInstanceID();
-    
-    // Generate colors uniformly distributed in RGB space
-    uint hash = instance_id * 12345u + 67890u;
-    uint hash2 = hash * 54321u + 98765u;
-    uint hash3 = hash2 * 13579u + 24681u;
-    
-    // Extract RGB components from different parts of the hash
-    float r = float((hash >> 8) & 0xFF) / 255.0f;
-    float g = float((hash2 >> 8) & 0xFF) / 255.0f;
-    float b = float((hash3 >> 8) & 0xFF) / 255.0f;
-    
-    // Create pure, saturated colors like in profiler
-    float3 base_color = float3(r, g, b);
-    
-    // Make colors more saturated and bright like profiler
-    base_color = normalize(base_color) * (0.8f + 0.4f * length(base_color)); // Boost saturation
-    
-    // Adjust brightness - not too bright, not too dark
-    base_color *= 0.8f; // Moderate brightness
-    
-    return float4(base_color, 1.0f);
+    const auto offset = Layout::Location<skr::GPUSceneInstanceColor>(instance_id);
+    const auto color = gpu_scene.Load<skr::GPUSceneInstanceColor>(offset);
+    return color.color;
 }
 
 // Main ray tracing function with debug info
@@ -90,22 +75,6 @@ float4 trace_scene(uint2 pixel_coord, uint2 screen_size)
     // Debug: Test if we can create ray query (this will fail if TLAS binding is broken)
     RayQuery<RayQueryFlags::AcceptFirstAndEndSearch> query;
     
-    // Add debug marker in top-left corner to show TLAS binding status
-    if (pixel_coord.x < 50 && pixel_coord.y < 50) {
-        // Try a simple ray straight down from above origin to test TLAS binding
-        Ray debug_ray = Ray(float3(0.0f, 1000.0f, 0.0f), float3(0.0f, -1.0f, 0.0f), 0.1f, 2000.0f);
-        query.TraceRayInline(scene_tlas, 0xff, debug_ray);
-        query.Proceed();
-        
-        if (query.CommittedStatus() == HitType::HitTriangle) {
-            // TLAS working - green corner
-            return float4(0.0f, 1.0f, 0.0f, 1.0f);
-        } else {
-            // TLAS not working - red corner  
-            return float4(1.0f, 0.0f, 0.0f, 1.0f);
-        }
-    }
-    
     // Normal ray tracing
     query.TraceRayInline(scene_tlas, 0xff, primary_ray);
     query.Proceed();
@@ -113,7 +82,7 @@ float4 trace_scene(uint2 pixel_coord, uint2 screen_size)
     // Check hit status
     if (query.CommittedStatus() == HitType::HitTriangle) {
         // Hit sphere, perform shading
-        return shade_sphere_hit(query);
+        return shade_hit(query);
     } else {
         // Miss, return square checkerboard
         float2 uv = float2(pixel_coord) / float2(screen_size);

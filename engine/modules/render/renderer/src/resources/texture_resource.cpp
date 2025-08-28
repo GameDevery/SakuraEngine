@@ -107,8 +107,8 @@ struct SKR_RENDERER_API TextureFactoryImpl : public TextureFactory
 
     skr::String dstorage_root;
     Root root;
-    skr::FlatHashMap<skr_texture_resource_id, InstallType> mInstallTypes;
-    skr::FlatHashMap<skr_texture_resource_id, SP<TextureRequest>> mTextureRequests;
+    skr::FlatHashMap<TextureResource*, InstallType> mInstallTypes;
+    skr::FlatHashMap<TextureResource*, SP<TextureRequest>> mTextureRequests;
 };
 
 TextureFactory* TextureFactory::Create(const Root& root)
@@ -123,13 +123,13 @@ void TextureFactory::Destroy(TextureFactory* factory)
 
 skr_guid_t TextureFactoryImpl::GetResourceType()
 {
-    const auto resource_type = ::skr::type_id_of<STextureResource>();
+    const auto resource_type = ::skr::type_id_of<TextureResource>();
     return resource_type;
 }
 
 bool TextureFactoryImpl::Unload(SResourceRecord* record)
 {
-    auto texture_resource = (STextureResource*)record->resource;
+    auto texture_resource = (TextureResource*)record->resource;
     if (texture_resource->texture_view) cgpu_free_texture_view(texture_resource->texture_view);
     if (texture_resource->texture) cgpu_free_texture(texture_resource->texture);
     SkrDelete(texture_resource);
@@ -153,7 +153,7 @@ ESkrInstallStatus TextureFactoryImpl::InstallImpl(SResourceRecord* record)
 {
     const auto gpuCompressOnly = true;
     auto vram_service = root.vram_service;
-    auto texture_resource = (STextureResource*)record->resource;
+    auto texture_resource = (TextureResource*)record->resource;
     auto guid = record->activeRequest->GetGuid();
     if (auto render_device = root.render_device)
     {
@@ -207,7 +207,7 @@ bool TextureFactoryImpl::Uninstall(SResourceRecord* record)
 
 ESkrInstallStatus TextureFactoryImpl::UpdateInstall(SResourceRecord* record)
 {
-    auto texture_resource = (STextureResource*)record->resource;
+    auto texture_resource = (TextureResource*)record->resource;
     [[maybe_unused]] auto installType = mInstallTypes[texture_resource];
     auto dRequest = mTextureRequests.find(texture_resource);
     if (dRequest != mTextureRequests.end())

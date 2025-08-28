@@ -18,7 +18,8 @@ public static class LLVMTools
         BuildSystem.Target("meta")
             .TargetType(TargetType.Executable)
             .LinkAgainstLLVM()
-            .AddCppFiles("meta/src/**.cpp");
+            .AddCppFiles("meta/src/**.cpp")
+            .InstallArtifact();  // Auto-install to tools directory
 
         BuildSystem.Target("CppSLAst")
             .TargetType(TargetType.Static)
@@ -39,7 +40,8 @@ public static class LLVMTools
         BuildSystem.Target("CppSLCompiler")
             .TargetType(TargetType.Executable)
             .Depend(Visibility.Public, "CppSLLLVM")
-            .AddCppFiles("shader_compiler/shader_compiler.cpp");
+            .AddCppFiles("shader_compiler/shader_compiler.cpp")
+            .InstallArtifact();  // Auto-install to tools directory based on Tool category
 
         BuildSystem.Target("CppSLManualTest")
             .TargetType(TargetType.Executable)
@@ -51,6 +53,7 @@ public static class LLVMTools
     {
         var LibDir = Path.Combine(Engine.DownloadDirectory, "llvm-" + LLVMDownloader.Version, "lib");
         @this.RTTI(false)
+            .Cl_CXFlags(Visibility.Private, "/wd4244", "/wd4291", "/wd4819")
             .IncludeDirs(Visibility.Private, Path.Combine(Engine.DownloadDirectory, "llvm-" + LLVMDownloader.Version, "include"))
             .LinkDirs(Visibility.Public, LibDir)
             .Defines(Visibility.Public, "CLANG_BUILD_STATIC");

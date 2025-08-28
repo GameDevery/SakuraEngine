@@ -551,7 +551,6 @@ protected:
 ```cpp
 // engine/tools/shader_compiler/ShaderSTL/raytracing_sample.cpp
 #include "std/std.hpp"
-using namespace skr::shader;
 
 #define WIDTH 3200
 #define HEIGHT 2400

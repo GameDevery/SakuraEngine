@@ -10,14 +10,14 @@ public static class IOSamples
             .IncludeDirs(Visibility.Private, ".")
             .AddCppFiles("gltf/load_gltf.cpp")
             .Depend(Visibility.Private, "SkrRT")
-            .Require("cgltf", new PackageConfig { Version = new Version(1, 13, 0) })
+            .Require("cgltf", new PackageConfig { Version = new Version(1, 15, 0) })
             .Depend(Visibility.Private, "cgltf@cgltf");
         Engine.Program("IOSample_gltf_tool")
             .IncludeDirs(Visibility.Private, ".")
             .AddCppFiles("gltf/gltf_tool.cpp")
             .Depend(Visibility.Private, "SkrRT")
             .Depend(Visibility.Private, "SkrMeshTool")
-            .Require("cgltf", new PackageConfig { Version = new Version(1, 13, 0) })
+            .Require("cgltf", new PackageConfig { Version = new Version(1, 15, 0) })
             .Depend(Visibility.Private, "cgltf@cgltf");
     }
 }

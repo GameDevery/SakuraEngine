@@ -2,8 +2,6 @@
 #include "./../attributes.hpp"
 #include "./../type_traits.hpp"
 
-namespace skr::shader {
-
 template<typename T>
 [[callop("QuadReadAcrossDiagonal")]] 
 extern T QuadReadAcrossDiagonal(T v);
@@ -91,5 +89,3 @@ extern T WaveReadLaneFirst();
 template<typename T>
 [[callop("WaveReadLaneAt")]] 
 extern T WaveReadLaneAt(uint32 lane_index);
-
-}

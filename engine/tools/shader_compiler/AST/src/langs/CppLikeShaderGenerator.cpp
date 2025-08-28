@@ -94,8 +94,7 @@ void CppLikeShaderGenerator::visitStmt(SourceBuilderNew& sb, const skr::CppSL::S
             // TODO: Implement REAL TEMPLATE CALL (CallWithTypeArgs)
             const bool ByteBufferReadTyped = callee_decl->name() == L"byte_buffer_read";
             const bool WaveReadLaneFirst = callee_decl->name() == L"WaveReadLaneFirst";
-            const bool bit_cast = callee_decl->name() == L"bit_cast";
-            if (ByteBufferReadTyped || WaveReadLaneFirst || bit_cast)
+            if (ByteBufferReadTyped || WaveReadLaneFirst)
             {
                 func_name = func_name + L"<" + GetQualifiedTypeName(callee_decl->return_type()) + L">";
             }
@@ -628,7 +627,7 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
                 auto param = funcDecl->parameters()[i];
                 if (auto asResource = dynamic_cast<const ResourceTypeDecl*>(&param->type()))
                 {
-                    VisitGlobalResource(sb, param);
+                    VisitShaderResource(sb, param);
                     params.erase(std::find(params.begin(), params.end(), param));
                 }
             }
@@ -758,7 +757,7 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::VarDe
     const auto isGlobal = dynamic_cast<const skr::CppSL::GlobalVarDecl*>(varDecl);
     if (varDecl->type().is_resource())
     {
-        VisitGlobalResource(sb, varDecl);
+        VisitShaderResource(sb, varDecl);
     }
     else
     {

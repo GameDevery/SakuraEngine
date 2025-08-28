@@ -1,8 +1,6 @@
 #pragma once
 #include "./../attributes.hpp"
 
-namespace std
-{
 using int16 = short;
 using uint16 = unsigned short;
 using int32 = int;
@@ -11,6 +9,11 @@ using uint32 = unsigned int;
 using uint = uint32;
 using uint64 = unsigned long long;
 
+#pragma clang diagnostic ignored "-Winvalid-offsetof"
+#define offsetof(Type, member) uint(__builtin_offsetof(Type, member))
+
+namespace std
+{
 template<typename F>
 inline constexpr bool is_function_v = __is_function(F);
 
@@ -138,9 +141,6 @@ template<bool B, class T, class F>
 using conditional_t = typename conditional<B, T, F>::type;
 
 } // namespace std
-using namespace std;
-
-namespace skr::shader {
 
 struct [[builtin("half")]] half {
     [[ignore]] half() = default;
@@ -150,5 +150,3 @@ struct [[builtin("half")]] half {
 private:
     short v;
 };
-
-}// namespace skr::shader

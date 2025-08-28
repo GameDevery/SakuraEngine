@@ -4,11 +4,34 @@
 #include "./../types/vec.hpp"
 #include "./../numeric/constants.hpp"
 
-namespace skr::shader {
+template<concepts::arithmetic_vec T>
+[[callop("ASFLOAT")]] extern vec<float, vec_dim_v<T>> asfloat(T v);
+template<concepts::arithmetic_scalar T>
+[[callop("ASFLOAT")]] extern float asfloat(T v);
+
+template<concepts::arithmetic_vec T>
+[[callop("ASINT")]] extern vec<int, vec_dim_v<T>> asint(T v);
+template<concepts::arithmetic_scalar T>
+[[callop("ASINT")]] extern int asint(T v);
+
+template<concepts::arithmetic_vec T>
+[[callop("ASUINT")]] extern vec<uint, vec_dim_v<T>> asuint(T v);
+template<concepts::arithmetic_scalar T>
+[[callop("ASUINT")]] extern uint asuint(T v);
 
 template<concepts::arithmetic T, concepts::arithmetic U>
 	requires(sizeof(T) == sizeof(U))
-[[callop("BIT_CAST")]] extern T bit_cast(U v);
+extern T bit_cast(U v)
+{
+	if constexpr (is_float_family_v<T>)
+		return asfloat(v);
+	else if constexpr (is_sint_family_v<T>)
+		return asint(v);
+	else if constexpr (is_uint_family_v<T>)
+		return asuint(v);
+	else
+		static_assert(std::is_same_v<T, void>, "Unsupported bit_cast type!");
+}
 
 template<concepts::bool_family T>
 [[callop("ALL")]] extern bool all(const T& x);
@@ -145,6 +168,11 @@ template<concepts::float_family T>
 
 template<concepts::float_family T>
 constexpr T sqr(const T& v) {
+	return v * v;
+}
+
+template<concepts::float_family T>
+constexpr T pow2(const T& v) {
 	return v * v;
 }
 
@@ -325,5 +353,3 @@ template<typename T, typename... Args>
 auto sum(T v, Args... args) {
     return v + sum(args...);
 }
-
-}// namespace skr::shader

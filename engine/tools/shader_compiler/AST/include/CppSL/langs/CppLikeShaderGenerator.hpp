@@ -25,7 +25,7 @@ public:
     virtual void VisitDeclRef(SourceBuilderNew& sb, const DeclRefExpr* expr);
     virtual void VisitAccessExpr(SourceBuilderNew& sb, const AccessExpr* expr);
     virtual void VisitBinaryExpr(SourceBuilderNew& sb, const BinaryExpr* expr);
-    virtual void VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var) = 0;
+    virtual void VisitShaderResource(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var) = 0;
     virtual void VisitVariable(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var) = 0;
     virtual void VisitParameter(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl, const skr::CppSL::ParamVarDecl* param) = 0;
     virtual void VisitField(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* type, const skr::CppSL::FieldDecl* field) = 0;

@@ -3,6 +3,7 @@
 #include "SkrRenderGraph/backend/graph_backend.hpp"
 #include "SkrRenderer/gpu_scene.h"
 #include "SkrRenderer/render_device.h"
+#include "SkrRenderer/resources/material_resource.hpp"
 #include "SkrRenderer/render_mesh.h"
 #include "SkrRenderer/shared/gpu_scene.hpp"
 #include "SkrProfile/profile.h"
@@ -31,6 +32,8 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
     {
         GPUSceneInstanceTask::build(builder);
         builder.read(&AddEntityToGPUScene::meshes);
+        builder.write(&AddEntityToGPUScene::geometries);
+        builder.write(&AddEntityToGPUScene::pbr_mats);
     }
 
     void run(skr::ecs::TaskContext& Context)
@@ -64,6 +67,51 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
                     mesh_resource->render_mesh->need_build_blas = false;
                 }
 
+                // record index/vertex buffers
+                auto& geometry = geometries[i];
+                for (uint32_t prim_id = 0; prim_id < mesh_resource->primitives.size(); prim_id++)
+                {
+                    const auto& primitive = mesh_resource->primitives[prim_id];
+                    geometry.entries[prim_id].material_index = primitive.material_index;
+                    for (const auto& vb : primitive.vertex_buffers)
+                    {
+                        const auto buffer_id = mesh_resource->render_mesh->buffer_ids[vb.buffer_index];
+                        if (vb.attribute == EVertexAttribute::POSITION)
+                            geometry.entries[prim_id].pos = { buffer_id, vb.offset };
+                        else if (vb.attribute == EVertexAttribute::TEXCOORD)
+                            geometry.entries[prim_id].uv = { buffer_id, vb.offset };
+                        else if (vb.attribute == EVertexAttribute::NORMAL)
+                            geometry.entries[prim_id].normal = { buffer_id, vb.offset };
+                        else if (vb.attribute == EVertexAttribute::TANGENT)
+                            geometry.entries[prim_id].tangent = { buffer_id, vb.offset };
+                    }
+                    {
+                        const auto& ib = primitive.index_buffer;
+                        const auto buffer_id = mesh_resource->render_mesh->buffer_ids[ib.buffer_index];
+                        const auto buffer_offset = ib.index_offset;
+                        geometry.entries[prim_id].index = { buffer_id, buffer_offset };
+                    }
+                }
+                // TODO: IMPLEMENT 1<->N DataTable and replace this hack
+                auto& pbr = pbr_mats[i];
+                for (uint32_t mat_id = 0; mat_id < mesh_resource->materials.size(); mat_id++)
+                {
+                    mesh_resource->materials[mat_id].resolve(true, 1, ESkrRequesterType::SKR_REQUESTER_UNKNOWN);
+                    const auto& mat = mesh_resource->materials[mat_id].get_resolved();
+                    pbr.entries[mat_id].basecolor_tex = ~0;
+                    pbr.entries[mat_id].metallic_roughness_tex = ~0;
+                    pbr.entries[mat_id].emission_tex = ~0;
+                    for (const auto& tex : mat->overrides.textures)
+                    {
+                        if (tex.slot_name == u8"BaseColor")
+                            pbr.entries[mat_id].basecolor_tex = tex.bindless_id;
+                        else if (tex.slot_name == u8"MetallicRoughness")
+                            pbr.entries[mat_id].metallic_roughness_tex = tex.bindless_id;
+                        else if (tex.slot_name == u8"Emissive")
+                            pbr.entries[mat_id].emission_tex = tex.bindless_id;
+                    }
+                }
+
                 // add tlas
                 auto& o2w = *(const GPUSceneObjectToWorld*)Context.read(sugoi_id_of<GPUSceneObjectToWorld>::get()).at(i);
                 auto& transform = o2w.matrix;
@@ -91,6 +139,8 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
         }
     }
     skr::ecs::ComponentView<const MeshComponent> meshes;
+    skr::ecs::ComponentView<GPUSceneGeometryBuffers> geometries;
+    skr::ecs::ComponentView<PBRMaterial> pbr_mats;
 };
 
 struct ScanGPUScene : public GPUSceneInstanceTask
@@ -384,8 +434,6 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
     // Pass 1: GPUScene Data Upload
     {
         const uint64_t ops_size = skr::max(1ull, Lane.dirty_comp_count) * sizeof(Upload);
-        const uint32_t max_threads_per_op = 4;
-        const uint32_t dispatch_groups = (Lane.dirty_comp_count * max_threads_per_op + 255) / 256;
 
         auto ops_buffer = graph->create_buffer(
             [=](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
@@ -405,7 +453,7 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
                     .read(u8"upload_operations", ops_buffer)
                     .readwrite(u8"target_buffer", frame_ctx.scene_handle);
             },
-            [this, dispatch_groups, ops_size, ops_buffer](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
+            [this, ops_size, ops_buffer](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
                 SkrZoneScopedN("GPUScene::SparseUploadScene");
                 auto& upload_ctx = upload_ctxs.get(ctx.graph);
                 upload_ctx.add_finish.wait(true);
@@ -458,13 +506,10 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
                     struct SparseUploadConstants
                     {
                         uint32_t num_operations;
-                        uint32_t max_threads_per_op;
-                        uint32_t alignment = 16;
-                        uint32_t padding0 = 0;
                     } constants;
                     constants.num_operations = static_cast<uint32_t>(actual_uploads);
-                    constants.max_threads_per_op = max_threads_per_op;
 
+                    const uint32_t dispatch_groups = (constants.num_operations + 255u) / 256u;
                     cgpu_compute_encoder_push_constants(ctx.encoder, sparse_upload_root_signature, u8"constants", &constants);
                     cgpu_compute_encoder_dispatch(ctx.encoder, dispatch_groups, 1, 1);
                 }

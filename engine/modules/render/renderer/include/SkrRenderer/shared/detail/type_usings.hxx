@@ -7,14 +7,14 @@
 
 namespace skr::data_layout
 {
-using skr::shader::float2;
-using skr::shader::float4;
+using ::float2;
+using ::float4;
 
-using skr::shader::float2x2;
-using skr::shader::float4x4;
+using ::float2x2;
+using ::float4x4;
 
-using skr::shader::ByteAddressBuffer;
-using skr::shader::RWByteAddressBuffer;
+using ::ByteAddressBuffer;
+using ::RWByteAddressBuffer;
 
 using uint32 = uint;
 using uint32_t = uint;

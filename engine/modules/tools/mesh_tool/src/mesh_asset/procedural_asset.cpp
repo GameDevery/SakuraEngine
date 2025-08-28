@@ -1,5 +1,6 @@
 #include "SkrBase/misc/defer.hpp"
 #include "SkrCore/log.hpp"
+#include "SkrRTTR/type_registry.hpp"
 #include "SkrTask/parallel_for.hpp"
 #include "SkrContainers/stl_vector.hpp"
 #include "SkrToolCore/cook_system/cook_system.hpp"

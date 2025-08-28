@@ -67,4 +67,3 @@ typedef struct skr_pso_map_root_t skr_pso_map_root_t;
 
 using skr_shader_resource_handle_t = skr::AsyncResource<skr::MultiShaderResource>;
 using skr_material_type_handle_t = skr::AsyncResource<skr::MaterialTypeResource>;
-using skr_shader_collection_handle_t = skr::AsyncResource<skr::ShaderCollectionResource>;
