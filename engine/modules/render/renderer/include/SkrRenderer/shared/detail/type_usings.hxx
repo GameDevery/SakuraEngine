@@ -5,7 +5,7 @@
 
 #define sreflect_managed_component(...) struct 
 
-namespace skr::data_layout
+namespace skr::gpu
 {
 using ::float2;
 using ::float4;
@@ -42,4 +42,4 @@ protected:
 };
 
 
-} // namespace skr::data_layout
+} // namespace skr::gpu

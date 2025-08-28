@@ -2,6 +2,7 @@
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrBase/misc/defer.hpp"
 #include "SkrRTTR/type.hpp"
+#include "SkrRTTR/type_registry.hpp"
 #include "SkrTask/parallel_for.hpp"
 #include "SkrCore/module/module.hpp"
 #include "SkrCore/async/thread_job.hpp"

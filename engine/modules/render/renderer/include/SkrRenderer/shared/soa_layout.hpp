@@ -8,8 +8,8 @@
 namespace skr
 {
 
-using uint32_t = skr::data_layout::uint32_t;
-using AddressType = skr::data_layout::AddressType;
+using uint32_t = skr::gpu::uint32_t;
+using AddressType = skr::gpu::AddressType;
 
 template <AddressType v, AddressType a>
 constexpr AddressType align_up = (v + a - 1) & ~(a - 1);
@@ -113,7 +113,7 @@ public:
 
 #ifdef __CPPSL__
     template <typename T>
-    static T Load(const data_layout::ByteAddressBuffer& buffer, uint32_t instance_id)
+    static T Load(const gpu::ByteAddressBuffer& buffer, uint32_t instance_id)
     {
         const auto offset = PagedLayout::Location<T>(instance_id);
         return buffer.Load<T>(offset);
