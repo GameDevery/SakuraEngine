@@ -1,3 +1,4 @@
+using System.Text;
 using System.Xml;
 using Serilog;
 
@@ -6,7 +7,7 @@ namespace SB
     // SEE: https://github.com/microsoft/vscode-cpptools/issues/10917#issuecomment-2189106550
     public static partial class MiscTools
     {
-        public static XmlDocument MergeNatvis(string[] filePaths)
+        public static string MergeNatvis(IEnumerable<string> filePaths)
         {
             const string nsUrl = "http://schemas.microsoft.com/vstudio/debugger/natvis/2010";
 
@@ -27,8 +28,7 @@ namespace SB
             result.AppendChild(declaration);
 
             // setup visualizer node
-            var visualizer = result.CreateElement("AutoVisualizer");
-            visualizer.SetAttribute("xmlns", nsUrl);
+            var visualizer = result.CreateElement("AutoVisualizer", nsUrl);
             result.AppendChild(visualizer);
 
             // merge Type nodes
@@ -52,7 +52,7 @@ namespace SB
                     }
                     else
                     {
-                        Log.Information("Adding Type: {typeName} with Priority {typePriority}.", typeName, typePriority);
+                        Log.Verbose("Adding Type: {typeName} with Priority {typePriority}.", typeName, typePriority);
                         seenTypes.Add(typeKey);
                         var importedNode = result.ImportNode(typeNode, true);
                         visualizer.AppendChild(importedNode);
@@ -60,7 +60,18 @@ namespace SB
                 }
             }
 
-            return result;
+            // dump content to string
+            StringBuilder sb = new StringBuilder();
+            using (var writer = XmlWriter.Create(sb, new XmlWriterSettings
+            {
+                Indent = true,
+                OmitXmlDeclaration = false
+            }))
+            {
+                result.WriteTo(writer);
+            }
+
+            return sb.ToString();
         }
     };
 }
