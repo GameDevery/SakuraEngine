@@ -302,30 +302,9 @@ public class VSCodeCommand : CommandBase
     {
         Log.Information("Generating VSCode debug configurations...");
 
-        // Set debugger type
-        // VSCodeDebugEmitter.DebuggerType debuggerType = VSCodeDebugEmitter.DebuggerType.CppDbg;
-        // switch (Debugger.ToLower())
-        // {
-        //     case "lldb-dap":
-        //         debuggerType = VSCodeDebugEmitter.DebuggerType.LLDBDap;
-        //         break;
-        //     case "codelldb":
-        //         debuggerType = VSCodeDebugEmitter.DebuggerType.CodeLLDB;
-        //         break;
-        //     case "cppvsdbg":
-        //         debuggerType = VSCodeDebugEmitter.DebuggerType.CppVsDbg;
-        //         break;
-        // }
-
-        // // Configure VSCode emitter
-        // VSCodeDebugEmitter.WorkspaceRoot = !string.IsNullOrEmpty(WorkspaceRoot) ? WorkspaceRoot :
-        //                                    (!string.IsNullOrEmpty(Engine.EngineDirectory) ? Engine.EngineDirectory : Directory.GetCurrentDirectory());
-        // VSCodeDebugEmitter.DefaultDebugger = debuggerType;
-        // VSCodeDebugEmitter.PreserveUserConfigurations = PreserveUser;
-
         if (ClearMode)
         {
-            var emitter = new VSCodeDebugEmitterNew();
+            var emitter = new VSCodeDebugEmitter();
             emitter.WorkspaceRoot = !string.IsNullOrEmpty(WorkspaceRoot) ? WorkspaceRoot :
                                     (!string.IsNullOrEmpty(Engine.EngineDirectory) ? Engine.EngineDirectory : Directory.GetCurrentDirectory());
             emitter.CmdFilesOutputDir = Path.Combine(emitter.WorkspaceRoot, ".sb", "vscode", "task_cmds");
@@ -335,12 +314,12 @@ public class VSCodeCommand : CommandBase
             emitter.Toolchain = Toolchain;
             emitter.PreserveUserConfig = PreserveUser;
             emitter.Clear();
-            Log.Information("Cleared generated VSCode debug configurations in: {Path}", Path.GetFullPath(Path.Combine(VSCodeDebugEmitter.WorkspaceRoot, ".vscode")));
+            Log.Information("Cleared generated VSCode debug configurations in: {Path}", Path.GetFullPath(Path.Combine(emitter.WorkspaceRoot, ".vscode")));
         }
         else
         {
             // Add VSCode emitter
-            var emitter = new VSCodeDebugEmitterNew();
+            var emitter = new VSCodeDebugEmitter();
             emitter.WorkspaceRoot = !string.IsNullOrEmpty(WorkspaceRoot) ? WorkspaceRoot :
                                     (!string.IsNullOrEmpty(Engine.EngineDirectory) ? Engine.EngineDirectory : Directory.GetCurrentDirectory());
             emitter.CmdFilesOutputDir = Path.Combine(emitter.WorkspaceRoot, ".sb", "vscode", "task_cmds");
@@ -356,10 +335,8 @@ public class VSCodeCommand : CommandBase
 
             // Generate the debug configurations
             emitter.Generate();
+            Log.Information("VSCode debug configurations generated in: {Path}", Path.GetFullPath(Path.Combine(emitter.WorkspaceRoot, ".vscode")));
         }
-
-
-        Log.Information("VSCode debug configurations generated in: {Path}", Path.GetFullPath(Path.Combine(VSCodeDebugEmitter.WorkspaceRoot, ".vscode")));
     }
 }
 

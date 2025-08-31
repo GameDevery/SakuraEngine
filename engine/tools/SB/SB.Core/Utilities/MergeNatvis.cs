@@ -5,9 +5,9 @@ using Serilog;
 namespace SB
 {
     // SEE: https://github.com/microsoft/vscode-cpptools/issues/10917#issuecomment-2189106550
-    public static partial class MiscTools
+    public static class MergeNatvis
     {
-        public static string MergeNatvis(IEnumerable<string> filePaths)
+        public static string Merge(IEnumerable<string> filePaths)
         {
             const string nsUrl = "http://schemas.microsoft.com/vstudio/debugger/natvis/2010";
 
