@@ -135,7 +135,6 @@ private:
     void            _rearrange_for_push_back(SizeType n);
     void            _construct_default(SizeType front, SizeType back);
     void            _construct_value(SizeType front, SizeType back, const DataType& v);
-    void            _construct_stl_ub(SizeType front, SizeType back);
     void            _construct_zeroed(SizeType front, SizeType back);
 };
 } // namespace skr::container
