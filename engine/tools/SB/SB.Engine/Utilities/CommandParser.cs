@@ -59,7 +59,7 @@ public class CommandParser
     {
         _rootCommand.Name = string.IsNullOrEmpty(name) ? AppDomain.CurrentDomain.FriendlyName : name;
         _rootCommand.Description = description;
-        
+
         ConfigureCommand(_rootCommand, instance);
     }
 
@@ -80,7 +80,7 @@ public class CommandParser
     {
         var parser = new CommandLineBuilder(_rootCommand)
             .UseDefaults()
-            .UseHelp(ctx => 
+            .UseHelp(ctx =>
             {
                 var cmd = ctx.Command;
                 PrintHelp(cmd);
@@ -104,7 +104,7 @@ public class CommandParser
                 var optionName = string.IsNullOrEmpty(optionAttr.Name) ? prop.Name : optionAttr.Name;
                 var currentValue = prop.GetValue(instance);
                 var option = CreateOption(prop.PropertyType, optionName, optionAttr, currentValue);
-                
+
                 if (optionAttr.ShortName != '\0')
                 {
                     option.AddAlias($"-{optionAttr.ShortName}");
@@ -122,7 +122,7 @@ public class CommandParser
                 {
                     var subCmdName = string.IsNullOrEmpty(subCmdAttr.Name) ? prop.Name : subCmdAttr.Name;
                     var subCommand = new Command(subCmdName, subCmdAttr.Help);
-                    
+
                     if (subCmdAttr.ShortName != '\0')
                     {
                         subCommand.AddAlias(subCmdAttr.ShortName.ToString());
@@ -137,7 +137,7 @@ public class CommandParser
         // Find exec method
         var execMethod = type.GetMethods()
             .FirstOrDefault(m => m.GetCustomAttribute<CmdExecAttribute>() != null);
-        
+
         if (execMethod != null)
         {
             _commandExecMethods[command] = execMethod;
@@ -151,7 +151,7 @@ public class CommandParser
                     {
                         var optionName = string.IsNullOrEmpty(optionAttr.Name) ? prop.Name : optionAttr.Name;
                         var optionSymbol = command.Options.FirstOrDefault(o => o.Name == optionName);
-                        
+
                         if (optionSymbol != null)
                         {
                             var value = context.ParseResult.GetValueForOption(optionSymbol);
@@ -174,7 +174,7 @@ public class CommandParser
     private Option CreateOption(Type propertyType, string name, CmdOptionAttribute attr, object? defaultValue)
     {
         Option option;
-        
+
         // Handle different types
         if (propertyType == typeof(bool) || propertyType == typeof(bool?))
         {
@@ -233,7 +233,7 @@ public class CommandParser
     private void PrintHelp(Command command)
     {
         var builder = new CliOutputBuilder();
-        
+
         // Print command description
         if (!string.IsNullOrEmpty(command.Description))
         {
@@ -264,7 +264,7 @@ public class CommandParser
             {
                 var optionStr = GetOptionDisplayName(option).PadRight(maxOptionLength);
                 var typeStr = GetOptionType(option);
-                
+
                 builder
                     .Write("  ")
                     .StyleFrontYellow()
@@ -293,7 +293,7 @@ public class CommandParser
             foreach (var subCmd in command.Subcommands)
             {
                 var subCmdStr = GetSubCommandDisplayName(subCmd).PadRight(maxSubCmdLength);
-                
+
                 builder
                     .StyleBold()
                     .StyleFrontCyan()
@@ -317,7 +317,7 @@ public class CommandParser
     private string GetOptionDisplayName(Option option)
     {
         var parts = new List<string>();
-        
+
         // Get short alias
         var shortAlias = option.Aliases.FirstOrDefault(a => a.StartsWith("-") && !a.StartsWith("--"));
         if (shortAlias != null)
@@ -328,7 +328,7 @@ public class CommandParser
         {
             parts.Add("   ");
         }
-        
+
         parts.Add(option.Name);
         return string.Join(" ", parts);
     }
@@ -336,7 +336,7 @@ public class CommandParser
     private string GetSubCommandDisplayName(Command command)
     {
         var parts = new List<string>();
-        
+
         // Get short alias
         var shortAlias = command.Aliases.FirstOrDefault(a => a.Length == 1);
         if (shortAlias != null)
@@ -347,7 +347,7 @@ public class CommandParser
         {
             parts.Add("  ");
         }
-        
+
         parts.Add(command.Name);
         return string.Join(" ", parts);
     }
@@ -355,7 +355,7 @@ public class CommandParser
     private string GetOptionType(Option option)
     {
         var valueType = option.ValueType;
-        
+
         if (valueType == typeof(bool))
             return "<bool>     ";
         else if (IsIntegerType(valueType))
@@ -372,7 +372,7 @@ public class CommandParser
 
     private bool IsIntegerType(Type type)
     {
-        return type == typeof(int) || type == typeof(long) || 
+        return type == typeof(int) || type == typeof(long) ||
                type == typeof(short) || type == typeof(byte) ||
                type == typeof(uint) || type == typeof(ulong) ||
                type == typeof(ushort) || type == typeof(sbyte);
@@ -385,7 +385,7 @@ public class CommandParser
 
     private bool IsStringArrayType(Type type)
     {
-        return type == typeof(string[]) || type == typeof(List<string>) || 
+        return type == typeof(string[]) || type == typeof(List<string>) ||
                type == typeof(IEnumerable<string>) || type == typeof(IList<string>);
     }
 }

@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text;
 
 namespace SB.Cli;
@@ -201,6 +202,13 @@ public class CliOutputBuilder
     }
     #endregion
 
+    #region Output
+    public void Dump()
+    {
+        Console.Write(_Content.ToString());
+    }
+    #endregion
+
     #region Helpers
     private void _SolveIndent(string str, ref uint indent)
     {
@@ -320,6 +328,33 @@ public class CmdToken
     #endregion
 
 
+    public void Parse(string raw)
+    {
+        _Raw = raw;
+
+        if (_Raw == "--")
+        {
+            _Kind = EKind.DoubleDash;
+        }
+        else if (_Raw.StartsWith("--"))
+        {
+            _Kind = EKind.Option;
+        }
+        else if (_Raw.StartsWith("-") && _Raw.Length >= 2)
+        {
+            _Kind = EKind.ShortOption;
+        }
+        else
+        {
+            _Kind = EKind.Argument;
+        }
+    }
+    public void Unparsed(string raw)
+    {
+        _Raw = raw;
+        _Kind = EKind.Unparsed;
+    }
+
     private EKind _Kind;
     private string _Raw = "";
 };
@@ -382,7 +417,346 @@ public class RegisterCmdAttribute : Attribute
 #endregion
 
 #region cmd parser
+public delegate void CommandExec();
 public class CommandParser
 {
+    // register command
+
+
+    // invoke command line
+    public bool Invoke(string[] args)
+    {
+        // parse args
+        List<CmdToken> tokens = new();
+        {
+            bool doNotParse = false;
+            for (int i = 1; i < args.Length; ++i)
+            {
+                if (doNotParse)
+                {
+                    var token = new CmdToken();
+                    token.Unparsed(args[i]);
+                    tokens.Add(token);
+                }
+                else
+                {
+                    var token = new CmdToken();
+                    token.Parse(args[i]);
+                    if (token.IsDoubleDash)
+                    {
+                        doNotParse = true;
+                    }
+                    tokens.Add(token);
+                }
+            }
+        }
+
+        // solve sub command
+
+
+        return true;
+    }
+
+
+    private class OptionData
+    {
+        public required PropertyInfo Property;
+        public required object? Instance;
+        public required OptionAttribute Attribute;
+
+        public bool IsBool => Property.PropertyType == typeof(bool) || Property.PropertyType == typeof(bool?);
+        public bool IsInt => Property.PropertyType == typeof(int) || Property.PropertyType == typeof(int?);
+        public bool isUint => Property.PropertyType == typeof(uint) || Property.PropertyType == typeof(uint?);
+        public bool IsFloat => Property.PropertyType == typeof(float) || Property.PropertyType == typeof(float?) || Property.PropertyType == typeof(double) || Property.PropertyType == typeof(double?);
+        public bool IsDouble => Property.PropertyType == typeof(double) || Property.PropertyType == typeof(double?);
+        public bool IsString => Property.PropertyType == typeof(string);
+        public bool IsStringList => Property.PropertyType == typeof(List<string>);
+
+        public string DumpTypeName()
+        {
+            var type = Property.PropertyType;
+            if (IsBool)
+            {
+                return "<bool>";
+            }
+            else if (IsInt)
+            {
+                return "<int>";
+            }
+            else if (isUint)
+            {
+                return "<uint>";
+            }
+            else if (IsFloat || IsDouble)
+            {
+                return "<float>";
+            }
+            else if (IsString)
+            {
+                return "<string>";
+            }
+            else if (IsStringList)
+            {
+                return "<string...>";
+            }
+            else
+            {
+                return $"<unknown>";
+            }
+        }
+    }
+    private class Node
+    {
+        public CommandExec? exec;
+        public SubCmdAttribute Attribute;
+        public List<OptionData> Options = new();
+        public List<Node> SubCommands = new();
+
+        public Node(SubCmdAttribute attr)
+        {
+            Attribute = attr;
+        }
+        public Node(object instance, SubCmdAttribute attr)
+        {
+            Attribute = attr;
+            var type = instance.GetType();
+
+            // solve options and sub commands
+            foreach (var prop in type.GetProperties())
+            {
+                // add options
+                var optionAttr = prop.GetCustomAttribute<OptionAttribute>();
+                if (optionAttr != null)
+                {
+                    Options.Add(new OptionData()
+                    {
+                        Property = prop,
+                        Instance = instance,
+                        Attribute = optionAttr
+                    });
+                    continue;
+                }
+
+                // add sub command
+                var subCmdAttr = prop.GetCustomAttribute<SubCmdAttribute>();
+                if (subCmdAttr != null)
+                {
+                    var node = new Node(prop.GetValue(instance)!, subCmdAttr);
+                    SubCommands.Add(node);
+                }
+            }
+
+            // find exec method
+            foreach (var method in type.GetMethods())
+            {
+                var execAttr = method.GetCustomAttribute<ExecCmdAttribute>();
+                if (execAttr != null)
+                {
+                    // check signature
+                    if (method.GetParameters().Length != 0 || method.ReturnType != typeof(void))
+                    {
+                        throw new InvalidOperationException("ExecCmd method must have no parameters and return void");
+                    }
+
+                    // create delegate
+                    exec = (CommandExec)Delegate.CreateDelegate(typeof(CommandExec), instance, method);
+                    return;
+                }
+            }
+        }
+        public void CheckOptions()
+        {
+            Dictionary<string, OptionData> seenOptions = new();
+            Dictionary<char, OptionData> seenShortOptions = new();
+
+            foreach (var option in Options)
+            {
+                // check name
+                if (seenOptions.ContainsKey(option.Attribute.Name))
+                {
+                    throw new InvalidOperationException($"Duplicate option name: {option.Attribute.Name}");
+                }
+                seenOptions[option.Attribute.Name] = option;
+
+                // check short name
+                if (option.Attribute.ShortName != null)
+                {
+                    if (seenShortOptions.ContainsKey(option.Attribute.ShortName.Value))
+                    {
+                        throw new InvalidOperationException($"Duplicate short option name: {option.Attribute.ShortName}");
+                    }
+                    seenShortOptions[option.Attribute.ShortName.Value] = option;
+                }
+            }
+        }
+        public void CheckSubCommands()
+        {
+            Dictionary<string, Node> seenSubCommands = new();
+            Dictionary<char, Node> seenShortSubCommands = new();
+
+            foreach (var subCmd in SubCommands)
+            {
+                // check name
+                if (seenSubCommands.ContainsKey(subCmd.Attribute.Name))
+                {
+                    throw new InvalidOperationException($"Duplicate sub command name: {subCmd.Attribute.Name}");
+                }
+                seenSubCommands[subCmd.Attribute.Name] = subCmd;
+
+                // check short name
+                if (subCmd.Attribute.ShortName != null)
+                {
+                    if (seenShortSubCommands.ContainsKey(subCmd.Attribute.ShortName.Value))
+                    {
+                        throw new InvalidOperationException($"Duplicate short sub command name: {subCmd.Attribute.ShortName}");
+                    }
+                    seenShortSubCommands[subCmd.Attribute.ShortName.Value] = subCmd;
+                }
+            }
+        }
+
+        // help
+        public void PrintHelp()
+        {
+            var builder = new CliOutputBuilder();
+
+            // print sakura build logo
+            builder
+                .StyleBold().StyleFrontGreen()
+                .WriteLine(@"")
+                .WriteLine(@"")
+                .WriteLine(@"    _____         _                        ____          _  _      _ ")
+                .WriteLine(@"   / ____|       | |                      |  _ \        (_)| |    | |")
+                .WriteLine(@"  | (___    __ _ | | __ _   _  _ __  __ _ | |_) | _   _  _ | |  __| |")
+                .WriteLine(@"   \___ \  / _` || |/ /| | | || '__|/ _` ||  _ < | | | || || | / _` |")
+                .WriteLine(@"   ____) || (_| ||   < | |_| || |  | (_| || |_) || |_| || || || (_| |")
+                .WriteLine(@"  |_____/  \__,_||_|\_\ \__,_||_|   \__,_||____/  \__,_||_||_| \__,_|")
+                .WriteLine(@"")
+                .WriteLine(@"")
+                .StyleClear();
+
+            // print self usage
+            builder
+                // usage:
+                .StyleBold()
+                .Write("Usage: ")
+                .StyleClear()
+                // content
+                .StyleFrontBlue()
+                .Write(Attribute.Usage)
+                .StyleClear()
+                .NextLine();
+
+            // print sub commands
+            if (SubCommands.Count != 0)
+            {
+                builder
+                    .StyleBold()
+                    .Write("Sub Commands:")
+                    .StyleClear()
+                    .NextLine();
+
+                // solve max sub command length
+                int maxSubCmdLength = 0;
+                foreach (var subCmd in SubCommands)
+                {
+                    int subCmdLen = 0;
+                    subCmdLen += 3; // 'X, '
+                    subCmdLen += subCmd.Attribute.Name.Length; // 'XXXX'
+                    maxSubCmdLength = Math.Max(subCmdLen, maxSubCmdLength);
+                }
+
+                // print sub commands
+                foreach (var subCmd in SubCommands)
+                {
+                    // solve sub command str
+                    string subCmdStr;
+                    if (subCmd.Attribute.ShortName != null)
+                    {
+                        subCmdStr = $"{subCmd.Attribute.ShortName}, {subCmd.Attribute.Name}";
+                    }
+                    else
+                    {
+                        subCmdStr = $"    {subCmd.Attribute.Name}";
+                    }
+                    subCmdStr = subCmdStr.PadRight(maxSubCmdLength);
+
+                    builder
+                        // write sub command
+                        .StyleFrontMagenta()
+                        .StyleBold()
+                        .Write($"  {subCmdStr} : ")
+                        .StyleClear()
+                        // write help
+                        .StyleClear()
+                        .WriteKeepIndent(subCmd.Attribute.Help)
+                        .NextLine();
+                }
+            }
+
+            // print options
+            if (Options.Count != 0)
+            {
+                builder
+                    .StyleBold()
+                    .WriteLine("Options:")
+                    .StyleClear();
+
+                // solve max option length
+                int maxOptionLength = 0;
+                int maxTypeLength = 0;
+                foreach (var option in Options)
+                {
+                    int optionLen = 0;
+                    optionLen += 4; // '-X, '
+                    optionLen += 2 + option.Attribute.Name.Length; // '--XXXX'
+                    maxOptionLength = Math.Max(optionLen, maxOptionLength);
+
+                    int typeLen = option.DumpTypeName().Length;
+                    maxTypeLength = Math.Max(typeLen, maxTypeLength);
+                }
+
+                // print options
+                foreach (var option in Options)
+                {
+                    // solve type str
+                    string typeStr = option.DumpTypeName().PadRight(maxTypeLength);
+
+                    // solve options str
+                    string optionStr;
+                    if (option.Attribute.ShortName != null)
+                    {
+                        optionStr = $"-{option.Attribute.ShortName}, --{option.Attribute.Name}";
+                    }
+                    else
+                    {
+                        optionStr = $"    --{option.Attribute.Name}";
+                    }
+                    optionStr = optionStr.PadRight(maxOptionLength);
+
+                    string requiredStr = option.Attribute.IsRequired ? "[REQUIRED]" : "";
+
+                    builder
+                        .Write("  ")
+                        // write type
+                        .StyleFrontYellow()
+                        .Write($"  {typeStr} ")
+                        .StyleClear()
+                        // write option
+                        .StyleFrontGreen()
+                        .StyleBold()
+                        .Write($"{optionStr} : ")
+                        .StyleClear()
+                        // write help
+                        .StyleClear()
+                        .WriteKeepIndent($"{requiredStr}{option.Attribute.Help}")
+                        .NextLine();
+                }
+            }
+
+            builder.Dump();
+        }
+    }
+    private Node? rootCommand;
 }
 #endregion
