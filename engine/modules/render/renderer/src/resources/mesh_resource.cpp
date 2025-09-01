@@ -465,27 +465,46 @@ void MeshFactoryImpl::IniitializeRenderMesh(RenderMesh* render_mesh, MeshResourc
     if (UseRayTracing && (mesh_resource->primitives.size() > 0))
     {
         skr::InlineVector<CGPUAccelerationStructureGeometryDesc, 4> geoms;
-        for (const auto& primitive : mesh_resource->primitives)
+        for (const auto& section : mesh_resource->sections)
         {
-            auto pos_vb = primitive.vertex_buffers.find_if(
-                                                      [](auto prim) { return prim.attribute == EVertexAttribute::POSITION; })
-                              .ptr();
-            if (!pos_vb) continue;
+            const auto section_transform = skr::TransformF(skr::QuatF(section.rotation), section.translation, section.scale);
+            const auto transform = section_transform.to_matrix();
+            float transform34[12] = {
+                transform.m00, transform.m10, transform.m20, transform.m30, // Row 0: X axis + X translation
+                transform.m01,
+                transform.m11,
+                transform.m21,
+                transform.m31, // Row 1: Y axis + Y translation
+                transform.m02,
+                transform.m12,
+                transform.m22,
+                transform.m32 // Row 2: Z axis + Z translation
+            };
 
-            CGPUAccelerationStructureGeometryDesc geom = {};
-            geom.flags = CGPU_ACCELERATION_STRUCTURE_GEOMETRY_FLAG_OPAQUE;
-            geom.vertex_buffer = render_mesh->buffers[pos_vb->buffer_index];
-            geom.vertex_offset = pos_vb->offset;
-            geom.vertex_count = primitive.vertex_count;
-            geom.vertex_stride = pos_vb->stride;
-            geom.vertex_format = CGPU_FORMAT_R32G32B32_SFLOAT;
-            geom.index_buffer = render_mesh->buffers[primitive.index_buffer.buffer_index];
-            geom.index_offset = primitive.index_buffer.index_offset;
-            geom.index_count = primitive.index_buffer.index_count;
-            // D3D12 expects index_stride to be 2 (uint16) or 4 (uint32)
-            // primitive.index_buffer.stride should already be 2 or 4, but let's ensure it
-            geom.index_stride = (primitive.index_buffer.stride == 2) ? sizeof(uint16_t) : sizeof(uint32_t);
-            geoms.add(geom);
+            for (const auto& prim_id : section.primitive_indices)
+            {
+                const auto& primitive = mesh_resource->primitives[prim_id];
+                auto pos_vb = primitive.vertex_buffers.find_if(
+                                                          [](auto prim) { return prim.attribute == EVertexAttribute::POSITION; })
+                                  .ptr();
+                if (!pos_vb) continue;
+
+                CGPUAccelerationStructureGeometryDesc geom = {};
+                geom.flags = CGPU_ACCELERATION_STRUCTURE_GEOMETRY_FLAG_OPAQUE;
+                geom.vertex_buffer = render_mesh->buffers[pos_vb->buffer_index];
+                geom.vertex_offset = pos_vb->offset;
+                geom.vertex_count = primitive.vertex_count;
+                geom.vertex_stride = pos_vb->stride;
+                geom.vertex_format = CGPU_FORMAT_R32G32B32_SFLOAT;
+                geom.index_buffer = render_mesh->buffers[primitive.index_buffer.buffer_index];
+                geom.index_offset = primitive.index_buffer.index_offset;
+                geom.index_count = primitive.index_buffer.index_count;
+                // D3D12 expects index_stride to be 2 (uint16) or 4 (uint32)
+                // primitive.index_buffer.stride should already be 2 or 4, but let's ensure it
+                geom.index_stride = (primitive.index_buffer.stride == 2) ? sizeof(uint16_t) : sizeof(uint32_t);
+                memcpy(geom.transform, transform34, sizeof(transform34));
+                geoms.add(geom);
+            }
         }
 
         CGPUAccelerationStructureDescriptor blas_desc = {};

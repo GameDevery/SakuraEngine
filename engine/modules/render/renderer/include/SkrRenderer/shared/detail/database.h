@@ -161,7 +161,7 @@ public:
     inline static constexpr uint32_t Size = 4 + 4 + 4;
 
     GPUDatablock<Range<T>>(const InnerType& row)
-        : instance_index(row._first_instance), count(row._count), bindless_index(row._bindless_index)
+        : first_instance(row._first_instance), count(row._count), bindless_index(row._bindless_index)
     {
 
     }
@@ -169,14 +169,14 @@ public:
     operator Range<T>() const 
     { 
         Range<T> range; 
-        range._first_instance = instance_index;
+        range._first_instance = first_instance;
         range._count = count;
         range._bindless_index = bindless_index;
         return range; 
     }
 
 private:
-    uint32_t instance_index = 0;
+    uint32_t first_instance = 0;
     uint32_t count = 0;
     uint32_t bindless_index = ~0;
 };

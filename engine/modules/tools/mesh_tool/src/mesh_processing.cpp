@@ -128,11 +128,33 @@ cgltf_data* ImportGLTFWithData(skr::StringView assetPath, skr_io_ram_service_t* 
 void GetGLTFNodeTransform(const cgltf_node* node, skr_float3_t& translation, skr_float3_t& scale, skr_float4_t& rotation)
 {
     if (node->has_translation)
+    {
         translation = { node->translation[0], node->translation[1], node->translation[2] };
+    }
+    else
+    {
+        translation = { 0.f, 0.f, 0.f };
+    }
+    
     if (node->has_scale)
+    {
         scale = { node->scale[0], node->scale[1], node->scale[2] };
+    }
+    else
+    {
+        scale = { 1.f, 1.f, 1.f};
+    }
+
     if (node->has_rotation)
+    {
         rotation = { node->rotation[0], node->rotation[1], node->rotation[2], node->rotation[3] };
+        if ((rotation.x == 0) && (rotation.y == 0) && (rotation.z == 0) && (rotation.w == 0))
+            rotation.w = 1.f;
+    }
+    else
+    {
+        rotation = { 0.f, 0.f, 0.f, 1.f };
+    }
 }
 
 void CookGLTFMeshData(const cgltf_data* gltf_data, MeshAsset* cfg, MeshResource& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)

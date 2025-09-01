@@ -70,11 +70,15 @@ float4 shade_hit(RayQuery<RayQueryFlags::AcceptFirstAndEndSearch>& query)
     const auto prim = instance.primitives.LoadAt(gpu_prims, query.CommittedGeometryIndex());
     const auto mat = instance.materials.LoadAt(gpu_mats, prim.material_index);
     const auto tri = prim.triangles.LoadAt(geom_buffers, query.CommittedPrimitiveIndex());
-    const auto uv = prim.uvs.LoadAt(geom_buffers, tri[0]);
+    const auto uv_a = prim.uvs.LoadAt(geom_buffers, tri[0]);
+    const auto uv_b = prim.uvs.LoadAt(geom_buffers, tri[1]);
+    const auto uv_c = prim.uvs.LoadAt(geom_buffers, tri[2]);
+    const auto uv = interpolate(query.CommittedTriangleBarycentrics(), uv_a, uv_b, uv_c);
+    const auto pos_a = prim.positions.LoadAt(geom_buffers, tri[0]);
     float4 color = float4(1.f, 1.f, 1.f, 1.f);
     if (mat.basecolor_tex != ~0)
         color *= mat_textures[mat.basecolor_tex].Sample(tex_sampler, uv);
-    return color;
+    return float4(tri[0] / 1000.f, tri[1] / 1000.f, tri[2] / 1000.f, 1.f); //color;// float4(uv, 0.f, 1.f);
 }
 
 // Main ray tracing function with debug info

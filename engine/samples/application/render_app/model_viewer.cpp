@@ -135,7 +135,7 @@ protected:
 
         float yaw = 0.0f;   // 水平旋转角度
         float pitch = 0.0f; // 垂直旋转角度
-        float move_speed = 5000.0f;
+        float move_speed = 1200.0f;
         float mouse_sensitivity = 0.005f;
 
         bool right_mouse_pressed = false;
@@ -366,7 +366,8 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     // AsyncResource<> is a handle can be constructed by any resource type & ids
     skr::AsyncResource<MeshResource> mesh_resource;
     mesh_resource = MeshAssetID;
-            CreateEntities(1);
+
+    CreateEntities(1);
 
     uint64_t frame_index = 0;
     auto last_time = std::chrono::high_resolution_clock::now();
@@ -511,7 +512,7 @@ void ModelViewerModule::CookAndLoadGLTF()
         );
         // source file
         importer->assetPath = u8"D:/D5EngineAssets/GLTFModels/sponza/scene.gltf";
-        CookSystem.ImportAssetMeta(&project, asset, importer, metadata);
+        CookSystem.ImportAssetMeta(&project, asset, importer, metadata);       
 
         // save
         CookSystem.SaveAssetMeta(&project, asset);
@@ -536,7 +537,6 @@ void ModelViewerModule::CreateEntities(uint32_t count)
     static std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
     static std::uniform_real_distribution<float> pos_xy_dist(-1000.f, 1000.f); // Wider XY range, some outside viewport
     static std::uniform_real_distribution<float> pos_z_dist(-1000.f, 1000.f);  // Z behind camera (negative Z)
-    static std::uniform_real_distribution<float> scale_dist(0.05f, 0.2f);      // Smaller spheres
     static std::uniform_real_distribution<float> color_dist(0.2f, 1.0f);       // Bright colors
     static std::uniform_real_distribution<float> use_emission(-1.f, 1.f);
 
@@ -562,15 +562,9 @@ void ModelViewerModule::CreateEntities(uint32_t count)
             for (uint32_t i = 0; i < cnt; i++)
             {
                 // Generate random position with Z behind camera
-                skr::float3 random_pos = {
-                    pos_xy_dist(*rng_ptr), // X: wider range
-                    pos_xy_dist(*rng_ptr), // Y: wider range
-                    pos_z_dist(*rng_ptr)   // Z: behind camera (negative)
-                };
+                skr::float3 random_pos = { 0.f, 0.f, 0.f };
 
                 // Generate random scale for small spheres
-                float random_scale = scale_dist(*rng_ptr);
-
                 // Generate random bright color
                 skr::float4 random_color = {
                     color_dist(*rng_ptr),
@@ -582,7 +576,7 @@ void ModelViewerModule::CreateEntities(uint32_t count)
                 // Set transform components
                 translations[i].set(random_pos);
                 rotations[i].set(0, 0, 0);
-                scales[i].set(random_scale);
+                scales[i].set(10.f);
 
                 // Create transform matrix from components
                 auto transform_matrix = skr::scene::Transform(

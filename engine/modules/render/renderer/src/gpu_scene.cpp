@@ -73,15 +73,20 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
 
                 // 分配 prim ids
                 auto& prim_comp = primitive_comps[i];
-                prim_comp.resize(mesh_resource->primitives.size());
-                pScene->total_prim_count += prim_comp.size();
-                for (auto& prim : prim_comp)
+                for (uint32_t section_id = 0; section_id < mesh_resource->sections.size(); section_id++)
                 {
-                    if (pScene->free_prims.try_dequeue(prim.global_index))
-                        pScene->free_prim_count -= 1;
-                    else
-                        prim.global_index = pScene->latest_prim_index++;
+                    const auto& section_info = mesh_resource->sections[section_id];
+                    for (auto prim_id : section_info.primitive_indices)
+                    {
+                        uint32_t new_id = 0;
+                        if (pScene->free_prims.try_dequeue(new_id))
+                            pScene->free_prim_count -= 1;
+                        else
+                            new_id = pScene->latest_prim_index++;
+                        prim_comp.emplace_back(new_id);
+                    }
                 }
+                pScene->total_prim_count += prim_comp.size();
 
                 // 分配 mat ids
                 auto& mat_comp = material_comps[i];
@@ -103,34 +108,41 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
 
                 // record index/vertex buffers
                 auto StorePrimitiveToTable = pScene->store_map.find(sugoi_id_of<gpu::Primitive>::get()).value();
-                for (uint32_t prim_id = 0; prim_id < mesh_resource->primitives.size(); prim_id++)
+                uint32_t next_prim = 0;
+                for (uint32_t section_id = 0; section_id < mesh_resource->sections.size(); section_id++)
                 {
-                    const auto& prim_info = mesh_resource->primitives[prim_id];
-                    auto& prim_data = prim_comp[prim_id];
-                    prim_data.material_index = prim_info.material_index;
-                    for (const auto& vb : prim_info.vertex_buffers)
+                    const auto& section_info = mesh_resource->sections[section_id];
+                    for (auto prim_id : section_info.primitive_indices)
                     {
-                        if (vb.vertex_count == 0)
-                            continue;
+                        auto& prim_data = prim_comp[next_prim];
+                        next_prim += 1;
 
-                        const auto buffer_id = mesh_resource->render_mesh->buffer_ids[vb.buffer_index];
-                        if (vb.attribute == EVertexAttribute::POSITION)
-                            prim_data.positions = { vb.offset / vb.stride, vb.vertex_count, buffer_id };
-                        else if (vb.attribute == EVertexAttribute::TEXCOORD)
-                            prim_data.uvs = { vb.offset / vb.stride, vb.vertex_count, buffer_id };
-                        else if (vb.attribute == EVertexAttribute::NORMAL)
-                            prim_data.normals = { vb.offset / vb.stride, vb.vertex_count, buffer_id };
-                        else if (vb.attribute == EVertexAttribute::TANGENT)
-                            prim_data.tangents = { vb.offset / vb.stride, vb.vertex_count, buffer_id };
+                        const auto& prim_info = mesh_resource->primitives[prim_id];
+                        prim_data.material_index = prim_info.material_index;
+                        for (const auto& vb : prim_info.vertex_buffers)
+                        {
+                            if (vb.vertex_count == 0)
+                                continue;
+
+                            const auto buffer_id = mesh_resource->render_mesh->buffer_ids[vb.buffer_index];
+                            if (vb.attribute == EVertexAttribute::POSITION)
+                                prim_data.positions = { vb.offset / vb.stride, vb.vertex_count, buffer_id };
+                            else if (vb.attribute == EVertexAttribute::TEXCOORD)
+                                prim_data.uvs = { vb.offset / vb.stride, vb.vertex_count, buffer_id };
+                            else if (vb.attribute == EVertexAttribute::NORMAL)
+                                prim_data.normals = { vb.offset / vb.stride, vb.vertex_count, buffer_id };
+                            else if (vb.attribute == EVertexAttribute::TANGENT)
+                                prim_data.tangents = { vb.offset / vb.stride, vb.vertex_count, buffer_id };
+                        }
+                        {
+                            const auto& ib = prim_info.index_buffer;
+                            const auto buffer_id = mesh_resource->render_mesh->buffer_ids[ib.buffer_index];
+                            const auto buffer_offset = ib.index_offset;
+                            prim_data.triangles = { ib.index_offset / (3 * ib.stride), ib.index_count / 3, buffer_id };
+                        }
+                        auto& table = pScene->primitives_table;
+                        StorePrimitiveToTable(*table, prim_data.global_index, &prim_data);  
                     }
-                    {
-                        const auto& ib = prim_info.index_buffer;
-                        const auto buffer_id = mesh_resource->render_mesh->buffer_ids[ib.buffer_index];
-                        const auto buffer_offset = ib.index_offset;
-                        prim_data.triangles = { ib.index_offset / (3 * ib.stride), ib.index_count / 3, buffer_id };
-                    }
-                    auto& table = pScene->primitives_table;
-                    StorePrimitiveToTable(*table, prim_data.global_index, &prim_data);                    
                 }
                 gpu_inst.primitives = { prim_comp[0].global_index, (uint32_t)prim_comp.size() };
 
