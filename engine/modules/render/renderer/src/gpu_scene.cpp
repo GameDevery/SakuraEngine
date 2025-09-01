@@ -109,9 +109,8 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
                 // record index/vertex buffers
                 auto StorePrimitiveToTable = pScene->store_map.find(sugoi_id_of<gpu::Primitive>::get()).value();
                 uint32_t next_prim = 0;
-                for (uint32_t section_id = 0; section_id < mesh_resource->sections.size(); section_id++)
+                for (const auto& section_info : mesh_resource->sections)
                 {
-                    const auto& section_info = mesh_resource->sections[section_id];
                     for (auto prim_id : section_info.primitive_indices)
                     {
                         auto& prim_data = prim_comp[next_prim];
@@ -137,8 +136,7 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
                         {
                             const auto& ib = prim_info.index_buffer;
                             const auto buffer_id = mesh_resource->render_mesh->buffer_ids[ib.buffer_index];
-                            const auto buffer_offset = ib.index_offset;
-                            prim_data.triangles = { ib.index_offset / (3 * ib.stride), ib.index_count / 3, buffer_id };
+                            prim_data.triangles = { ib.index_offset / (ib.stride * 3), ib.index_count / 3, buffer_id };
                         }
                         auto& table = pScene->primitives_table;
                         StorePrimitiveToTable(*table, prim_data.global_index, &prim_data);  

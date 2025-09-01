@@ -471,14 +471,8 @@ void MeshFactoryImpl::IniitializeRenderMesh(RenderMesh* render_mesh, MeshResourc
             const auto transform = section_transform.to_matrix();
             float transform34[12] = {
                 transform.m00, transform.m10, transform.m20, transform.m30, // Row 0: X axis + X translation
-                transform.m01,
-                transform.m11,
-                transform.m21,
-                transform.m31, // Row 1: Y axis + Y translation
-                transform.m02,
-                transform.m12,
-                transform.m22,
-                transform.m32 // Row 2: Z axis + Z translation
+                transform.m01, transform.m11, transform.m21, transform.m31, // Row 1: Y axis + Y translation
+                transform.m02, transform.m12, transform.m22, transform.m32 // Row 2: Z axis + Z translation
             };
 
             for (const auto& prim_id : section.primitive_indices)

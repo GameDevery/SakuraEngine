@@ -249,6 +249,8 @@ void EmplaceRawMeshVerticesWithRange(skr::span<const EVertexAttribute> range, ui
                         // new_vb.buffer_index = buffer_idx;
                         EmplaceRawPrimitiveVertexBufferAttribute(&raw_primitive, (const char*)shuffle_attrib.semantic_name, k, buffer, prim.vertex_buffers[i]);
                         prim.vertex_buffers[i].buffer_index = buffer_idx;
+                        // TODO: 现在 UV0 会被错误导入成 UV1，需要修复
+                        // prim.vertex_buffers[i].attribute_index = 
                     }
                 }
             }

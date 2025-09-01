@@ -70,6 +70,7 @@ inline static SRawMesh GenerateRawMeshForGLTFMesh(cgltf_mesh* mesh)
             vertex_stream.count = vertex_count;
             vertex_stream.stride = attribute.data->stride;
             vertex_stream.type = getVertexStreamTypeFromGLTFAttribute(attribute.type);
+            vertex_stream.index = attribute.index;
         }
     }
     return raw_mesh;

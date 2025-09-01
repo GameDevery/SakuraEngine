@@ -104,7 +104,7 @@ public:
     {
         static constexpr bool is_aos = true;
         if constexpr (is_aos)
-            return buffers[_bindless_index].Load<GPUDatablock<T>>(byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size);
+            return buffers[_bindless_index].Load<GPUDatablock<T>>(byte_offset + ((_first_instance + instance_index) * GPUDatablock<T>::Size));
     }
 
     void StoreAt(RWByteAddressBuffer buffer, uint32_t instance_index, const T& v, uint32_t byte_offset = 0)

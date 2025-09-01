@@ -564,15 +564,6 @@ void ModelViewerModule::CreateEntities(uint32_t count)
                 // Generate random position with Z behind camera
                 skr::float3 random_pos = { 0.f, 0.f, 0.f };
 
-                // Generate random scale for small spheres
-                // Generate random bright color
-                skr::float4 random_color = {
-                    color_dist(*rng_ptr),
-                    color_dist(*rng_ptr),
-                    color_dist(*rng_ptr),
-                    1.0f
-                };
-
                 // Set transform components
                 translations[i].set(random_pos);
                 rotations[i].set(0, 0, 0);
