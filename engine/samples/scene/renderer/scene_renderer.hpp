@@ -39,5 +39,8 @@ struct SCENE_RENDERER_API SceneRenderer
 
     virtual void set_camera(utils::Camera* camera) = 0;
     virtual utils::Camera* get_camera() const { return nullptr; }
+    virtual CGPURootSignatureId get_root_signature() const = 0;
+    virtual CGPUDeviceId get_device() const = 0;
+
 };
 } // namespace skr

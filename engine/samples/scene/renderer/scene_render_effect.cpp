@@ -2,6 +2,7 @@
 #include "SkrGraphics/flags.h"
 #include "SkrProfile/profile.h"
 #include "SkrBase/misc/make_zeroed.hpp"
+#include "SkrContainersDef/map.hpp"
 #include "SkrCore/time.h"
 #include "SkrCore/platform/vfs.h"
 #include "SkrRT/ecs/query.hpp"
@@ -11,6 +12,7 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "scene_renderer.hpp"
 #include "helper.hpp"
+
 
 struct SceneRendererImpl : public skr::SceneRenderer
 {
@@ -24,7 +26,6 @@ struct SceneRendererImpl : public skr::SceneRenderer
     CGPUVertexLayout vertex_layout = {};
     CGPURasterizerStateDescriptor rs_state = {};
     CGPUDepthStateDescriptor ds_desc = {};
-    // temp push_constants
     struct push_constants
     {
         skr_float4x4_t model = skr_float4x4_t::identity();
@@ -52,53 +53,16 @@ struct SceneRendererImpl : public skr::SceneRenderer
         return mp_camera;
     }
 
-    void draw_primitives(skr::render_graph::RenderGraph* render_graph, skr::span<skr_primitive_draw_t> drawcalls) override
+    virtual CGPURootSignatureId get_root_signature() const override
     {
-        // SKR_LOG_INFO(u8"Render Mesh has %d drawcalls", drawcalls.size());
-
-        for (auto& drawcall : drawcalls)
-        {
-            drawcall.pipeline = pipeline;
-            drawcall.push_const_name = push_constants_name;
-        }
-
-        auto backbuffer = render_graph->get_texture(u8"backbuffer");
-        const auto back_desc = render_graph->resolve_descriptor(backbuffer);
-        auto depthbuffer = render_graph->get_texture(u8"render_depth");
-
-        render_graph->add_render_pass(
-            [this, backbuffer, depthbuffer](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
-                builder.set_name(u8"scene_render_pass")
-                    .set_pipeline(pipeline) // captured this->pipeline
-                    .set_depth_stencil(depthbuffer.clear_depth(100.0f))
-                    .write(0, backbuffer, CGPU_LOAD_ACTION_CLEAR);
-            },
-            [back_desc, drawcalls](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& context) {
-                {
-                    // do render pass
-                    cgpu_render_encoder_set_viewport(context.encoder, 0.0, 0.0, (float)back_desc->width, (float)back_desc->height, 0.0f, 1.0f);
-                    cgpu_render_encoder_set_scissor(context.encoder, 0, 0, back_desc->width, back_desc->height);
-
-                    for (const auto& drawcall : drawcalls)
-                    {
-                        CGPUBufferId vertex_buffers[16] = { 0 };
-                        uint32_t strides[16] = { 0 };
-                        uint32_t offsets[16] = { 0 };
-                        for (uint32_t i = 0; i < drawcall.vertex_buffer_count; i++)
-                        {
-                            vertex_buffers[i] = drawcall.vertex_buffers[i].buffer;
-                            strides[i] = drawcall.vertex_buffers[i].stride;
-                            offsets[i] = drawcall.vertex_buffers[i].offset;
-                        }
-
-                        cgpu_render_encoder_bind_index_buffer(context.encoder, drawcall.index_buffer.buffer, drawcall.index_buffer.stride, drawcall.index_buffer.offset);
-                        cgpu_render_encoder_bind_vertex_buffers(context.encoder, drawcall.vertex_buffer_count, vertex_buffers, strides, offsets);
-                        cgpu_render_encoder_push_constants(context.encoder, drawcall.pipeline->root_signature, drawcall.push_const_name, drawcall.push_const);
-                        cgpu_render_encoder_draw_indexed_instanced(context.encoder, drawcall.index_buffer.index_count, drawcall.index_buffer.first_index, 1, 0, 0); // 3 vertices, 1 instance
-                    }
-                }
-            });
+        return pipeline->root_signature;
     }
+    virtual CGPUDeviceId get_device() const override
+    {
+        return pipeline->device;
+    }
+
+    void draw_primitives(skr::render_graph::RenderGraph* rg, skr::span<skr_primitive_draw_t> dallcalls) override;
 
     void prepare_pipeline_settings();
     void prepare_pipeline(skr::RenderDevice* render_device);
@@ -117,6 +81,75 @@ void skr::SceneRenderer::Destroy(skr::SceneRenderer* renderer)
 }
 
 skr::SceneRenderer::~SceneRenderer() {}
+
+
+
+void SceneRendererImpl::draw_primitives(skr::render_graph::RenderGraph* rg, skr::span<skr_primitive_draw_t> drawcalls)
+{
+    for (auto& drawcall : drawcalls)
+    {
+        drawcall.pipeline = pipeline;
+        drawcall.push_const_name = push_constants_name;
+    }
+
+    auto backbuffer = rg->get_texture(u8"backbuffer");
+    const auto back_desc = rg->resolve_descriptor(backbuffer);
+    auto depthbuffer = rg->get_texture(u8"render_depth");
+
+    rg->add_render_pass(
+        [this, backbuffer, depthbuffer](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
+            builder.set_name(u8"scene_render_pass")
+                .set_pipeline(pipeline) // captured this->pipeline
+                .set_depth_stencil(depthbuffer.clear_depth(100.0f))
+                .write(0, backbuffer, CGPU_LOAD_ACTION_CLEAR);
+        },
+        [back_desc, drawcalls](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& pass_context) {
+            {
+                // do render pass
+                cgpu_render_encoder_set_viewport(pass_context.encoder, 0.0, 0.0, (float)back_desc->width, (float)back_desc->height, 0.0f, 1.0f);
+                cgpu_render_encoder_set_scissor(pass_context.encoder, 0, 0, back_desc->width, back_desc->height);
+                skr::InlineMap<CGPUXBindTableId, CGPUXMergedBindTableId, 32> merged_tables;
+
+                for (const auto& dc : drawcalls)
+                {
+                    if (dc.deprecated || (dc.index_buffer.buffer == nullptr) || (dc.vertex_buffer_count == 0))
+                    {
+                        continue;
+                    }
+                    if (dc.bind_table)
+                    {
+                        if (auto bd = merged_tables.find(dc.bind_table))
+                        {
+                            pass_context.bind(bd.value());
+                        }
+                        else
+                        {
+                            CGPUXBindTableId tables[2] = { dc.bind_table, pass_context.bind_table };
+                            auto merged = pass_context.merge_tables(tables, 2);
+                            merged_tables.add(dc.bind_table, merged);
+                            pass_context.bind(merged);
+                        }
+                    }
+
+                    CGPUBufferId vertex_buffers[16] = { 0 };
+                    uint32_t strides[16] = { 0 };
+                    uint32_t offsets[16] = { 0 };
+                    for (uint32_t i = 0; i < dc.vertex_buffer_count; i++)
+                    {
+                        vertex_buffers[i] = dc.vertex_buffers[i].buffer;
+                        strides[i] = dc.vertex_buffers[i].stride;
+                        offsets[i] = dc.vertex_buffers[i].offset;
+                    }
+
+                    cgpu_render_encoder_bind_index_buffer(pass_context.encoder, dc.index_buffer.buffer, dc.index_buffer.stride, dc.index_buffer.offset);
+                    cgpu_render_encoder_bind_vertex_buffers(pass_context.encoder, dc.vertex_buffer_count, vertex_buffers, strides, offsets);
+                    cgpu_render_encoder_push_constants(pass_context.encoder, dc.pipeline->root_signature, dc.push_const_name, dc.push_const);
+                    cgpu_render_encoder_draw_indexed_instanced(pass_context.encoder, dc.index_buffer.index_count, dc.index_buffer.first_index, 1, 0, 0); // 3 vertices, 1 instance
+                }
+            }
+        });
+}
+
 
 void SceneRendererImpl::prepare_pipeline_settings()
 {
@@ -155,13 +188,36 @@ void SceneRendererImpl::prepare_pipeline(skr::RenderDevice* render_device)
     ppl_fs.stage = CGPU_SHADER_STAGE_FRAG;
     ppl_fs.entry = u8"fs";
 
+    const char8_t* static_sampler_name = u8"color_sampler";
+    auto static_sampler = render_device->get_linear_sampler();
     auto rs_desc = make_zeroed<CGPURootSignatureDescriptor>();
     rs_desc.push_constant_count = 1;
     rs_desc.push_constant_names = &push_constants_name;
     rs_desc.shader_count = 2;
     rs_desc.shaders = ppl_shaders;
+    rs_desc.static_sampler_count = 1;
+    rs_desc.static_sampler_names = &static_sampler_name;
+    rs_desc.static_samplers = &static_sampler;
     rs_desc.pool = render_device->get_root_signature_pool();
     auto root_sig = cgpu_create_root_signature(cgpu_device, &rs_desc);
+
+    CGPUBlendStateDescriptor blend_state = {};
+    blend_state.blend_modes[0] = CGPU_BLEND_MODE_ADD;
+    blend_state.blend_alpha_modes[0] = CGPU_BLEND_MODE_ADD;
+    blend_state.masks[0] = CGPU_COLOR_MASK_ALL;
+    blend_state.independent_blend = false;
+
+    // Normal
+    blend_state.src_factors[0] = CGPU_BLEND_CONST_SRC_ALPHA;
+    blend_state.dst_factors[0] = CGPU_BLEND_CONST_ONE_MINUS_SRC_ALPHA;
+    blend_state.src_alpha_factors[0] = CGPU_BLEND_CONST_ONE;
+    blend_state.dst_alpha_factors[0] = CGPU_BLEND_CONST_ONE_MINUS_SRC_ALPHA;
+
+    // Multiply
+    blend_state.src_factors[0] = CGPU_BLEND_CONST_ONE;
+    blend_state.dst_factors[0] = CGPU_BLEND_CONST_ONE_MINUS_SRC_ALPHA;
+    blend_state.src_alpha_factors[0] = CGPU_BLEND_CONST_ONE;
+    blend_state.dst_alpha_factors[0] = CGPU_BLEND_CONST_ONE_MINUS_SRC_ALPHA;
 
     CGPURenderPipelineDescriptor rp_desc = {};
     rp_desc.root_signature = root_sig;
@@ -173,6 +229,7 @@ void SceneRendererImpl::prepare_pipeline(skr::RenderDevice* render_device)
     rp_desc.color_formats = &color_format;
     rp_desc.depth_stencil_format = depth_format;
 
+    rp_desc.blend_state = &blend_state;
     rp_desc.rasterizer_state = &rs_state;
     rp_desc.depth_state = &ds_desc;
     pipeline = cgpu_create_render_pipeline(cgpu_device, &rp_desc);
@@ -187,8 +244,3 @@ void SceneRendererImpl::free_pipeline(skr::RenderDevice* renderer)
     cgpu_free_render_pipeline(pipeline);
     cgpu_free_root_signature(sig_to_free);
 }
-
-// render_view_reset
-// render_view_set_screen
-// render_view_set_transform_screen
-// render_view_transform_view

@@ -10,7 +10,7 @@ struct [[stage_inout]] VSIn
 
 struct [[stage_inout]] VSOut
 {
-    float3 color;
+    float2 uv;
 };
 
 struct RootConstants
@@ -18,6 +18,9 @@ struct RootConstants
     float4x4 model;
     float4x4 view_proj; // model-view-projection matrix
 };
+
+[[group(0)]] Texture2D<float> color_texture;
+[[group(1)]] SamplerState color_sampler;
 
 [[push_constant]]
 ConstantBuffer<RootConstants> push_constants;
@@ -27,13 +30,14 @@ VSOut vs(const VSIn input, [[sv_position]] float4& position)
 {
     VSOut output;
     position = float4(input.position, 1.0f) * push_constants.model * push_constants.view_proj;
-    // position = float4(input.position, 1.0f) * push_constants.view_proj;
-    output.color = float3(float(input.uv0.x), float(input.uv0.y), 0.5f);
+    output.uv = input.uv0;
     return output;
 }
 
 [[fragment_shader("fs")]]
 void fs(const VSOut input, [[sv_render_target(0)]] float4& color)
 {
-    color = float4(input.color, 1.0f);
+    float4 sampled = color_texture.Sample(color_sampler, input.uv);
+    // color = float4(float(input.uv.x), float(input.uv.y), 0.5f, 1.0f);
+    color = sampled;
 }

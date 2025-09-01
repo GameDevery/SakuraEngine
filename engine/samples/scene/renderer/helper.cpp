@@ -8,7 +8,7 @@ namespace utils
 void CameraController::imgui_camera_info_frame()
 {
     ImGui::Begin("Camera Info");
-    ImGui::Text("Position: (%.2f, %.2f, %.2f)", camera->position.x, camera->position.y, camera->position.z);
+    ImGui::Text("Position: (%.2f, %.2f, %.2f)", camera->pos.x, camera->pos.y, camera->pos.z);
     ImGui::Text("Front:    (%.2f, %.2f, %.2f)", camera->front.x, camera->front.y, camera->front.z);
     ImGui::End();
 }
@@ -27,10 +27,10 @@ void CameraController::imgui_control_frame()
     // Rotation
     if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
     {
-        if (ImGui::IsKeyDown(ImGuiKey_W)) camera->position += camera->front * camera_speed;
-        if (ImGui::IsKeyDown(ImGuiKey_S)) camera->position -= camera->front * camera_speed;
-        if (ImGui::IsKeyDown(ImGuiKey_A)) camera->position -= camera->right * camera_speed;
-        if (ImGui::IsKeyDown(ImGuiKey_D)) camera->position += camera->right * camera_speed;
+        if (ImGui::IsKeyDown(ImGuiKey_W)) camera->pos += camera->front * camera_speed;
+        if (ImGui::IsKeyDown(ImGuiKey_S)) camera->pos -= camera->front * camera_speed;
+        if (ImGui::IsKeyDown(ImGuiKey_A)) camera->pos -= camera->right * camera_speed;
+        if (ImGui::IsKeyDown(ImGuiKey_D)) camera->pos += camera->right * camera_speed;
         static float yaw = 90.0f;
         static float pitch = 0.0f;
         yaw += io.MouseDelta.x * camera_sensitivity;
@@ -47,8 +47,8 @@ void CameraController::imgui_control_frame()
     // Panning
     if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
     {
-        camera->position -= camera->right * io.MouseDelta.x * camera_pan_speed;
-        camera->position += camera->up * io.MouseDelta.y * camera_pan_speed;
+        camera->pos -= camera->right * io.MouseDelta.x * camera_pan_speed;
+        camera->pos += camera->up * io.MouseDelta.y * camera_pan_speed;
     }
     imgui_camera_info_frame();
 }

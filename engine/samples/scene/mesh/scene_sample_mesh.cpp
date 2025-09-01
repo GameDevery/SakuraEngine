@@ -27,6 +27,7 @@
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrRenderer/resources/texture_resource.h"
 #include "SkrRenderer/resources/material_resource.hpp"
+#include "SkrRenderer/resources/material_type_resource.hpp"
 #include "SkrRenderer/render_mesh.h"
 
 #include "SkrTask/fib_task.hpp"
@@ -96,6 +97,7 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     skr::TextureSamplerFactory* TextureSamplerFactory = nullptr;
     skr::TextureFactory* TextureFactory = nullptr;
     skr::MaterialFactory* matFactory = nullptr;
+    skr::MaterialTypeFactory* matTypeFactory = nullptr;
 
     skd::SProject project;
     skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
@@ -177,6 +179,23 @@ void SceneSampleMeshModule::InitializeResourceSystem()
         factoryRoot.render_device = render_device;
         mesh_factory = skr::MeshFactory::Create(factoryRoot);
         resource_system->RegisterFactory(mesh_factory);
+    }
+    // material type factory
+    {
+        skr::MaterialTypeFactory::Root factoryRoot = {};
+        factoryRoot.render_device = render_device;
+        matTypeFactory = skr::MaterialTypeFactory::Create(factoryRoot);
+        resource_system->RegisterFactory(matTypeFactory);
+    }
+
+    // material factory
+    {
+        skr::MaterialFactory::Root factoryRoot = {};
+        factoryRoot.device = render_device->get_cgpu_device();
+        factoryRoot.job_queue = job_queue.get();
+        factoryRoot.ram_service = ram_service;
+        matFactory = skr::MaterialFactory::Create(factoryRoot);
+        resource_system->RegisterFactory(matFactory);
     }
 }
 
@@ -324,6 +343,7 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
         skr::type_id_of<skd::asset::MeshCooker>());
     importer->assetPath = gltf_path.c_str();
     // importer->invariant_vertices = true;
+    importer->import_all_materials = true;
 
     cook_system.ImportAssetMeta(&project, asset, importer, metadata);
 
