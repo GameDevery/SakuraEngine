@@ -56,6 +56,28 @@ private:\
     T u0, u1, u2, u3;\
 };
 
+#define GPU_DATABLOCK_MAT3(T)\
+template <> struct GPUDatablock<T##3x3> {\
+    inline static constexpr uint32_t Size = 3 * 3 * 4;\
+    GPUDatablock<T##3x3>(const T##3x3& v)\
+        : u0(v[0]), u1(v[1]), u2(v[2])\
+    { static_assert(sizeof(T) == sizeof(float), "PRIMITIVE MAT3 TYPES MUST BE 32BIT TYPES"); }\
+    operator T##3x3() const { return T##3x3(u0, u1, u2); }\
+private:\
+    GPUDatablock<T##4> u0, u1, u2;\
+};
+
+#define GPU_DATABLOCK_MAT4(T)\
+template <> struct GPUDatablock<T##4x4> {\
+    inline static constexpr uint32_t Size = 4 * 4 * 4;\
+    GPUDatablock<T##4x4>(const T##4x4& v)\
+        : u0(v[0]), u1(v[1]), u2(v[2]), u3(v[3])\
+    { static_assert(sizeof(T) == sizeof(float), "PRIMITIVE MAT4 TYPES MUST BE 32BIT TYPES"); }\
+    operator T##4x4() const { return T##4x4(u0, u1, u2, u3); }\
+private:\
+    GPUDatablock<T##4> u0, u1, u2, u3;\
+};
+
 using uint = uint32_t;
 GPU_DATABLOCK_SCALAR(int);
 GPU_DATABLOCK_VEC2(int);
@@ -72,6 +94,9 @@ GPU_DATABLOCK_VEC2(float);
 GPU_DATABLOCK_VEC3(float);
 GPU_DATABLOCK_VEC4(float);
 
+// TODO: 4x4
+// GPU_DATABLOCK_MAT3(float);
+GPU_DATABLOCK_MAT4(float);
 
 template <typename T>
 struct GPUDatablock<Row<T>>

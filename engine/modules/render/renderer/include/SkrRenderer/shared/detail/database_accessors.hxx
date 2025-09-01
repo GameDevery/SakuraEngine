@@ -21,19 +21,28 @@ public:
 
     }
 
-    T Load(ByteAddressBuffer buffer, uint32_t byte_offset = 0)
+    T Load(ByteAddressBuffer buffers[], uint32_t byte_offset = 0) const 
     {
         static constexpr bool is_aos = true;
         if constexpr (is_aos)
-            return buffer.Load<T>(byte_offset + _instance_index * GPUDatablock<T>::Size);
+            return buffers[_bindless_index].Load<GPUDatablock<T>>(byte_offset + _instance_index * GPUDatablock<T>::Size);
+    }
+
+    T Load(ByteAddressBuffer buffer, uint32_t byte_offset = 0) const 
+    {
+        static constexpr bool is_aos = true;
+        if constexpr (is_aos)
+            return buffer.Load<GPUDatablock<T>>(byte_offset + _instance_index * GPUDatablock<T>::Size);
     }
 
     void Store(RWByteAddressBuffer buffer, const T& v, uint32_t byte_offset = 0)
     {
         static constexpr bool is_aos = true;
         if constexpr (is_aos)
-            buffer.Store(byte_offset + _instance_index * GPUDatablock<T>::Size, v);
+            buffer.Store(byte_offset + _instance_index * GPUDatablock<T>::Size, GPUDatablock<T>(v));
     }
+
+    auto bindless_index() const { return _bindless_index; }
 
 private:
     friend struct GPUDatablock<Row<T>>;
@@ -53,18 +62,18 @@ public:
     }
 
     template <typename ByteBufferType>
-    T LoadAt(ByteAddressBuffer buffer, uint32_t instance_index, uint32_t byte_offset = 0)
+    T LoadAt(ByteAddressBuffer buffer, uint32_t instance_index, uint32_t byte_offset = 0) const
     {
         static constexpr bool is_aos = true;
         if constexpr (is_aos)
-            return buffer.Load<T>(byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size);
+            return buffer.Load<GPUDatablock<T>>(byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size);
     }
 
     void StoreAt(RWByteAddressBuffer buffer, uint32_t instance_index, const T& v, uint32_t byte_offset = 0)
     {
         static constexpr bool is_aos = true;
         if constexpr (is_aos)
-            buffer.Store(byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, v);
+            buffer.Store(byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, GPUDatablock<T>(v));
     }
 
 private:
@@ -84,18 +93,25 @@ public:
 
     }
 
-    T LoadAt(ByteAddressBuffer buffer, uint32_t instance_index, uint32_t byte_offset = 0)
+    T LoadAt(ByteAddressBuffer buffer, uint32_t instance_index, uint32_t byte_offset = 0) const
     {
         static constexpr bool is_aos = true;
         if constexpr (is_aos)
-            return buffer.Load<T>(byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size);
+            return buffer.Load<GPUDatablock<T>>(byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size);
+    }
+
+    T LoadAt(ByteAddressBuffer buffers[], uint32_t instance_index, uint32_t byte_offset = 0) const
+    {
+        static constexpr bool is_aos = true;
+        if constexpr (is_aos)
+            return buffers[_bindless_index].Load<GPUDatablock<T>>(byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size);
     }
 
     void StoreAt(RWByteAddressBuffer buffer, uint32_t instance_index, const T& v, uint32_t byte_offset = 0)
     {
         static constexpr bool is_aos = true;
         if constexpr (is_aos)
-            buffer.Store(byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, v);
+            buffer.Store(byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, GPUDatablock<T>(v));
     }
 
     uint32_t count() const { return _count; }

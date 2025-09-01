@@ -110,8 +110,10 @@ void PassExecutionPhase::execute_scheduled_passes(RenderGraph* graph, RenderGrap
     {
         const auto& queue_info = schedule_result.all_queues[queue_index];
         const auto& timeline = reorder_phase_.get_optimized_timeline()[queue_index];
-        for (const auto pass : timeline)
+        uint32_t last_dependency_level = 0;
+        for (uint32_t pass_idx = 0; pass_idx < timeline.size(); pass_idx++)
         {
+            const auto& pass = timeline[pass_idx];
             if (config_.enable_profiler_events && profiler)
             {
                 profiler->on_pass_begin(*static_cast<RenderGraphBackend*>(graph), *executor, *pass);
@@ -124,10 +126,20 @@ void PassExecutionPhase::execute_scheduled_passes(RenderGraph* graph, RenderGrap
             }
 
             // Insert barriers before pass execution
+            uint32_t current_dependency_level = sync_analysis_.get_dependency_analysis().get_logical_dependency_level(pass);
+            if (last_dependency_level < current_dependency_level)
             {
                 SkrZoneScopedN("InsertPassBarriers");
-                insert_pass_barriers(executor, pass);
+                for (uint32_t i = pass_idx; i < timeline.size(); i++)
+                {
+                    uint32_t dl = sync_analysis_.get_dependency_analysis().get_logical_dependency_level(timeline[i]);
+                    if (dl == current_dependency_level)
+                        insert_pass_barriers(executor, timeline[i]);
+                    else
+                        break;
+                }
             }
+            last_dependency_level = current_dependency_level;
 
             // Begin debug marker
             if (config_.enable_debug_markers)

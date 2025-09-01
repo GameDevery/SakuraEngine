@@ -1,66 +1,135 @@
 #pragma once
-#include "soa_layout.hpp"
+#include "database.hpp"
 #if !defined(__meta__) && !defined(__CPPSL__)
     #include "SkrRenderer/shared/gpu_scene.generated.h" // IWYU pragma: export
 #endif
 
-namespace skr
+namespace skr::gpu
 {
 
-sreflect_managed_component(guid = "7d7ae068-1c62-46a0-a3bc-e6b141c8e56d")
-GPUSceneObjectToWorld
+sreflect_managed_component(guid = "74e60480-7324-48d7-a174-bc5e404fe0bc" ecs.comp.array = 4) 
+Material
 {
-    gpu::float4x4 matrix;
+    uint32_t global_index;
+    uint32_t basecolor_tex;
+    uint32_t metallic_roughness_tex;
+    uint32_t emission_tex;
 };
 
-sreflect_managed_component(guid = "d108318f-a1c2-4f64-b82f-63e7914773c8")
-GPUSceneInstanceColor
+sreflect_managed_component(guid = "62af1ab3-7762-4413-97f9-fab30d9232c0" ecs.comp.array = 4)
+Primitive
 {
-    gpu::float4 color;
+    uint32_t global_index;
+    uint32_t material_index;
+    Range<uint3> triangles;
+    Range<float3> positions;
+    Range<float3> normals;
+    Range<float3> tangents;
+    Range<float2> uvs;
 };
 
-sreflect_managed_component(guid = "e72c5ea1-9e31-4649-b190-45733b176760")
-GPUSceneInstanceEmission
+sreflect_managed_component(guid = "73a52be2-4247-4320-b30c-f1fbd5a1766a")
+Instance
 {
-    gpu::float4 color;
+    float4x4 transform;
+    Range<Material> materials;
+    Range<Primitive> primitives;
 };
 
-struct BufferEntry
+template <>
+struct GPUDatablock<Material>
 {
-    skr::gpu::uint32 buffer = ~0;
-    skr::gpu::uint32 offset = ~0;
-};
-
-sreflect_managed_component(guid = "03035b31-a526-4fa7-b062-56da0849d5b9")
-PBRMaterial
-{
-    struct Group
+public:
+    inline static constexpr uint32_t Size = 
+        GPUDatablock<uint32_t>::Size + GPUDatablock<uint32_t>::Size + 
+        GPUDatablock<uint32_t>::Size + GPUDatablock<uint32_t>::Size;
+    
+    GPUDatablock<Material>(const Material& v)
+        : global_index(v.global_index), basecolor_tex(v.basecolor_tex), 
+          metallic_roughness_tex(v.metallic_roughness_tex), emission_tex(v.emission_tex)
     {
-        uint32_t basecolor_tex;
-        uint32_t metallic_roughness_tex;
-        uint32_t emission_tex;
-    } entries[256];
+
+    }
+    operator Material() const 
+    { 
+        Material output;
+        output.global_index = global_index;
+        output.basecolor_tex = basecolor_tex;
+        output.metallic_roughness_tex = metallic_roughness_tex;
+        output.emission_tex = emission_tex;
+        return output;
+    }
+private:
+    GPUDatablock<uint32_t> global_index;
+    GPUDatablock<uint32_t> basecolor_tex;
+    GPUDatablock<uint32_t> metallic_roughness_tex;
+    GPUDatablock<uint32_t> emission_tex;
 };
 
-sreflect_managed_component(guid = "a434196c-7a99-4dee-8715-e422124288e2")
-GPUSceneGeometryBuffers
+template <>
+struct GPUDatablock<Primitive>
 {
-    struct Group
+public:
+    inline static constexpr uint32_t Size =
+        GPUDatablock<uint32_t>::Size + GPUDatablock<uint32_t>::Size + 
+        GPUDatablock<Range<uint3>>::Size + GPUDatablock<Range<float3>>::Size + 
+        GPUDatablock<Range<float3>>::Size + GPUDatablock<Range<float3>>::Size + 
+        GPUDatablock<Range<float2>>::Size;
+        
+    GPUDatablock<Primitive>(const Primitive& v)
+        : global_index(v.global_index), material_index(v.material_index), 
+        triangles(v.triangles), positions(v.positions), normals(v.normals),
+        tangents(v.tangents), uvs(v.uvs)
     {
-        BufferEntry index;
-        BufferEntry pos;
-        BufferEntry uv;
-        BufferEntry normal;
-        BufferEntry tangent;
-        uint32_t material_index;
-    } entries[256];
+
+    }
+    operator Primitive() const 
+    { 
+        Primitive output;
+        output.global_index = global_index;
+        output.material_index = material_index;
+        output.triangles = triangles;
+        output.positions = positions;
+        output.normals = normals;
+        output.tangents = tangents;
+        output.uvs = uvs;
+        return output;
+    }
+private:
+    GPUDatablock<uint32_t> global_index;
+    GPUDatablock<uint32_t> material_index;
+    GPUDatablock<Range<uint3>> triangles;
+    GPUDatablock<Range<float3>> positions;
+    GPUDatablock<Range<float3>> normals;
+    GPUDatablock<Range<float3>> tangents;
+    GPUDatablock<Range<float2>> uvs;
 };
 
-using DefaultGPUSceneLayout = PagedLayout<16384, // 16K instances per page
-    GPUSceneObjectToWorld,
-    GPUSceneInstanceColor,
-    GPUSceneInstanceEmission,
-    GPUSceneGeometryBuffers
->;
+template <>
+struct GPUDatablock<Instance>
+{
+public:
+    inline static constexpr uint32_t Size = 
+        sizeof(GPUDatablock<float4x4>) +
+        sizeof(GPUDatablock<Range<Material>>) + sizeof(GPUDatablock<Range<Primitive>>);
+
+    GPUDatablock<Instance>(const Instance& v)
+        : transform(v.transform), primitives(v.primitives), materials(v.materials)
+    {
+
+    }
+    operator Instance() const 
+    { 
+        Instance output;
+        output.transform = transform;
+        output.materials = materials;
+        output.primitives = primitives;
+        return output;
+    }
+private:
+    GPUDatablock<float4x4> transform;
+    GPUDatablock<Range<Material>> materials;
+    GPUDatablock<Range<Primitive>> primitives;
+};
 
 } // namespace skr

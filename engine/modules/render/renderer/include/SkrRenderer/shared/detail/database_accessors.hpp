@@ -8,16 +8,13 @@
 namespace skr::gpu
 {
 
-template <typename T> 
-struct GPUDatablock;
-
 template <typename T>
 struct Row
 {
 public:
     Row() = default;
-    Row(uint32_t instance_index)
-        : _instance_index(instance_index)
+    Row(uint32_t instance_index, uint32_t bindless_index = ~0)
+        : _instance_index(instance_index), _bindless_index(bindless_index)
     {
 
     }
@@ -27,7 +24,7 @@ public:
         static constexpr bool is_aos = true;
         _bindless_index = buffer.bindless_index();
         if constexpr (is_aos)
-            buffer.Store(byte_offset + _instance_index * GPUDatablock<T>::Size, v);
+            buffer.Store(byte_offset + _instance_index * GPUDatablock<T>::Size, GPUDatablock<T>(v));
     }
 private:
     friend struct GPUDatablock<Row<T>>;
@@ -40,8 +37,8 @@ struct FixedRange
 {
 public:
     FixedRange() = default;
-    FixedRange(uint32_t first_instance)
-        : _first_instance(first_instance)
+    FixedRange(uint32_t first_instance, uint32_t bindless_index = ~0)
+        : _first_instance(first_instance), _bindless_index(bindless_index)
     {
 
     }
@@ -51,7 +48,7 @@ public:
         static constexpr bool is_aos = true;
         _bindless_index = buffer.bindless_index();
         if constexpr (is_aos)
-            buffer.Store(byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, v);
+            buffer.Store(byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, GPUDatablock<T>(v));
     }
 private:
     friend struct GPUDatablock<FixedRange<T, N>>;
@@ -64,8 +61,8 @@ struct Range
 {
 public:
     Range() = default;
-    Range(uint32_t first_instance, uint32_t count)
-        : _first_instance(first_instance), _count(count)
+    Range(uint32_t first_instance, uint32_t count, uint32_t bindless_index = ~0)
+        : _first_instance(first_instance), _count(count), _bindless_index(bindless_index)
     {
 
     }
@@ -75,7 +72,7 @@ public:
         static constexpr bool is_aos = true;
         _bindless_index = buffer.bindless_index();
         if constexpr (is_aos)
-            buffer.Store(byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, v);
+            buffer.Store(byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, GPUDatablock<T>(v));
     }
 
 private:

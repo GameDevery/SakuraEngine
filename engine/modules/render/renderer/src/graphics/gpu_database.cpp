@@ -1,13 +1,12 @@
+#include "SkrRenderGraph/backend/graph_backend.hpp"
 #include "SkrRenderer/graphics/gpu_database.hpp"
 #include <utility>
 
 namespace skr::gpu
 {
 
-// ==================== Builder Implementation ====================
-
-TableConfig::TableConfig(CGPUDeviceId device)
-    : device_(device)
+TableConfig::TableConfig(CGPUDeviceId device, const char8_t* name)
+    : device_(device), name(name)
 {
 }
 
@@ -48,11 +47,9 @@ TableConfig& TableConfig::add_component(TableSegmentID type_id, uint32_t element
     return *this;
 }
 
-// ==================== TableInstance Implementation ====================
-
-TableInstance::~TableInstance()
+TableInstanceBase::~TableInstanceBase()
 {
-    release_buffer();
+    releaseBuffer();
 
     capacity_bytes = 0;
     instance_capacity = 0;
@@ -60,68 +57,40 @@ TableInstance::~TableInstance()
     config.mappings_.clear();
 }
 
-TableInstance::TableInstance(const TableConfig& cfg)
-    : config(cfg)
+TableInstanceBase::TableInstanceBase(const TableManager* manager, const TableConfig& cfg)
+    : manager(manager)
+    , config(cfg)
 {
     // 根据布局类型确定实际容量
     if (config.page_size == UINT32_MAX)
     {
         // 连续布局：直接使用请求的容量
         instance_capacity = config.initial_instances;
-        SKR_LOG_INFO(u8"TableInstance: Continuous layout, capacity = %u instances", instance_capacity);
+        SKR_LOG_INFO(u8"TableInstanceBase: Continuous layout, capacity = %u instances", instance_capacity);
     }
     else
     {
         // 分页布局：容量必须是页大小的整数倍
         uint32_t page_count = (config.initial_instances + config.page_size - 1) / config.page_size;
         instance_capacity = page_count * config.page_size;
-        SKR_LOG_INFO(u8"TableInstance: Paged layout, requested = %u, page_size = %u, page_count = %u, capacity = %u instances",
+        SKR_LOG_INFO(u8"TableInstanceBase: Paged layout, requested = %u, page_size = %u, page_count = %u, capacity = %u instances",
             config.initial_instances,
             config.page_size,
             page_count,
             instance_capacity);
     }
 
-    // 设置所有Segment的element_count
+    // 设置所有 Segment 的 element_count
     for (auto& segment : config.segments_)
     {
         segment.element_count = instance_capacity;
     }
 
-    // 计算布局
-    calculate_layout();
-
-    // 创建 GPU 缓冲区
-    create_buffer();
+    calculateLayout();
+    createBuffer();
 }
 
-void TableInstance::Store(uint64_t offset, const void* data, uint64_t size)
-{
-    auto& ctx = updates[update_index];
-    const uint64_t update_offset = ctx.bytes.size();
-    ctx.bytes.append((const uint8_t*)data, size);
-
-    uint64_t cursor = 0;
-    const uint64_t stride = 4 * sizeof(float);
-    while (cursor < size)
-    {
-        const auto slice_size = min(stride, size - cursor);
-        const Update update = {
-            .offset = update_offset + cursor,
-            .size = stride
-        };
-        ctx.updates.add(update);
-        cursor += 16;
-    }
-}
-
-uint64_t TableInstance::bindless_index() const
-{
-    // TODO: SUPPORT BINDLESS
-    return ~0;
-}
-
-void TableInstance::calculate_layout()
+void TableInstanceBase::calculateLayout()
 {
     uint32_t offset = 0;
 
@@ -170,7 +139,19 @@ void TableInstance::calculate_layout()
     }
 }
 
-uint32_t TableInstance::get_component_offset(TableSegmentID component_id, TableInstanceID instance_id) const
+uint32_t TableInstanceBase::GetComponentSize(TableSegmentID component_id) const
+{
+    for (const auto& mapping : config.mappings_)
+    {
+        if (mapping.component_id == component_id)
+        {
+            return mapping.element_size;
+        }
+    }
+    return 0;
+}
+
+uint32_t TableInstanceBase::GetComponentOffset(TableSegmentID component_id, TableInstanceBaseID instance_id) const
 {
     // 查找组件映射
     for (const auto& mapping : config.mappings_)
@@ -199,60 +180,66 @@ uint32_t TableInstance::get_component_offset(TableSegmentID component_id, TableI
             }
         }
     }
-    SKR_LOG_WARN(u8"TableInstance: Component %u not found", component_id);
+    SKR_LOG_WARN(u8"TableInstanceBase: Component %u not found", component_id);
     return 0;
 }
 
-void TableInstance::create_buffer()
+skr::render_graph::BufferHandle TableInstanceBase::AdjustDatabase(skr::render_graph::RenderGraph* graph, uint64_t required_instances)
 {
-    if (!config.device_)
+    SkrZoneScopedN("GPUScene::AdjustBuffer");
+    auto& frame_ctx = frame_ctxs.get(graph);
+
+    // First, clean up any buffer marked for discard from previous frame
+    if (frame_ctx.buffer_to_discard != nullptr)
     {
-        SKR_LOG_ERROR(u8"TableInstance: Device not set");
-        return;
+        cgpu_free_buffer(frame_ctx.buffer_to_discard);
+        frame_ctx.buffer_to_discard = nullptr;
     }
 
-    if (buffer)
+    if (needsResize(required_instances))
     {
-        SKR_LOG_WARN(u8"TableInstance: Buffer already created");
-        return;
+        SKR_LOG_INFO(u8"GPUScene: GPUScene data resize needed. Current: %u/%u instances", required_instances, GetInstanceCapacity());
+
+        // Calculate new capacity
+        const uint32_t old_capacity = instance_capacity;
+        const uint64_t old_capacity_bytes = capacity_bytes;
+        const uint32_t new_capacity = static_cast<uint32_t>(required_instances * 1.5f);
+
+        // Resize and get old buffer (no blocking sync needed now)
+        auto old_buffer = Resize(new_capacity);
+        frame_ctx.buffer_handle = importBuffer(graph, config.name.c_str());
+
+        if (old_buffer && GetBuffer())
+        {
+            // Import old buffer for copy source
+            auto old_buffer_handle = graph->create_buffer(
+                [=](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
+                    builder.set_name(u8"old_scene_buffer")
+                        .import(old_buffer, CGPU_RESOURCE_STATE_SHADER_RESOURCE);
+                });
+            // Copy data from old to new buffer
+            CopySegments(graph, old_buffer_handle, frame_ctx.buffer_handle, old_capacity_bytes);
+
+            // Mark old buffer for deferred destruction (will be freed next time this frame slot comes around)
+            // Unlike TLAS, we don't reuse the old buffer - we always discard it after copy
+            frame_ctx.buffer_to_discard = old_buffer;
+        }
     }
-
-    if (capacity_bytes == 0)
-    {
-        SKR_LOG_WARN(u8"TableInstance: No data to allocate");
-        return;
-    }
-
-    CGPUBufferDescriptor buffer_desc = {};
-    buffer_desc.name = u8"TableInstance";
-    buffer_desc.size = capacity_bytes;
-    buffer_desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
-    buffer_desc.usages = CGPU_BUFFER_USAGE_SHADER_READ | CGPU_BUFFER_USAGE_SHADER_READWRITE;
-    buffer_desc.flags = CGPU_BUFFER_FLAG_DEDICATED_BIT;
-
-    buffer = cgpu_create_buffer(config.device_, &buffer_desc);
-    if (!buffer)
-        SKR_LOG_ERROR(u8"TableInstance: Failed to create GPU buffer");
     else
-        SKR_LOG_INFO(u8"TableInstance: Created GPU buffer (%lld MB)", capacity_bytes / (1024 * 1024));
-}
-
-void TableInstance::release_buffer()
-{
-    if (buffer)
     {
-        cgpu_free_buffer(buffer);
-        buffer = nullptr;
-        SKR_LOG_DEBUG(u8"TableInstance: Released GPU buffer");
+        // Import scene buffer with proper state management
+        frame_ctx.buffer_handle = importBuffer(graph, config.name.c_str());
     }
+
+    return frame_ctx.buffer_handle;
 }
 
-bool TableInstance::needs_resize(uint32_t required_instances) const
+bool TableInstanceBase::needsResize(uint32_t required_instances) const
 {
     return required_instances > instance_capacity;
 }
 
-CGPUBufferId TableInstance::resize(uint32_t new_instance_capacity)
+CGPUBufferId TableInstanceBase::Resize(uint32_t new_instance_capacity)
 {
     // 对于分页布局，确保容量是页大小的整数倍
     if (config.page_size != UINT32_MAX)
@@ -263,7 +250,7 @@ CGPUBufferId TableInstance::resize(uint32_t new_instance_capacity)
 
     if (new_instance_capacity <= instance_capacity)
     {
-        SKR_LOG_WARN(u8"TableInstance: New capacity %u not greater than current %u",
+        SKR_LOG_WARN(u8"TableInstanceBase: New capacity %u not greater than current %u",
             new_instance_capacity,
             instance_capacity);
         return nullptr;
@@ -286,12 +273,12 @@ CGPUBufferId TableInstance::resize(uint32_t new_instance_capacity)
     }
 
     // 重新计算布局
-    calculate_layout();
+    calculateLayout();
 
     // 创建新 buffer
-    buffer = create_buffer_with_capacity(new_instance_capacity);
+    buffer = createBufferWithCapacity(new_instance_capacity);
 
-    SKR_LOG_INFO(u8"TableInstance: Resized from %u to %u instances, new buffer size: %llu MB",
+    SKR_LOG_INFO(u8"TableInstanceBase: Resized from %u to %u instances, new buffer size: %llu MB",
         old_instance_capacity,
         new_instance_capacity,
         capacity_bytes / (1024 * 1024));
@@ -299,96 +286,119 @@ CGPUBufferId TableInstance::resize(uint32_t new_instance_capacity)
     return old_buffer;
 }
 
-void TableInstance::copy_segments(skr::render_graph::RenderGraph* graph,
+void TableInstanceBase::CopySegments(skr::render_graph::RenderGraph* graph,
     skr::render_graph::BufferHandle src_buffer,
     skr::render_graph::BufferHandle dst_buffer,
-    uint32_t instance_count) const
+    uint64_t old_buffer_size) const
 {
-    if (instance_count == 0)
+    if (old_buffer_size == 0)
         return;
 
-    // 添加拷贝 pass
     graph->add_copy_pass(
         [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassBuilder& builder) {
-            builder.set_name(skr::format(u8"TableInstance_Copy-{}", (uint64_t)this).c_str());
+            builder.set_name(skr::format(u8"TableInstanceBase_Copy-{}", (uint64_t)this).c_str());
 
-            if (config.page_size == UINT32_MAX)
-            {
-                // 连续布局：按Segment拷贝
-                for (const auto& segment : config.segments_)
-                {
-                    const uint32_t copy_size = segment.stride * instance_count;
-                    const uint32_t offset = segment.buffer_offset;
-                    builder.buffer_to_buffer(
-                        src_buffer.range(offset, offset + copy_size),
-                        dst_buffer.range(offset, offset + copy_size));
-                }
-            }
-            else
-            {
-                // 分页布局：按页拷贝更高效
-                uint32_t pages_to_copy = (instance_count + config.page_size - 1) / config.page_size;
-                uint32_t last_page_instances = instance_count % config.page_size;
-                if (last_page_instances == 0 && instance_count > 0)
-                    last_page_instances = config.page_size;
-
-                // 拷贝完整页
-                for (uint32_t page = 0; page < pages_to_copy; page++)
-                {
-                    uint32_t page_offset = page * page_stride_bytes;
-
-                    if (page < pages_to_copy - 1)
-                    {
-                        // 完整页：直接拷贝整页
-                        builder.buffer_to_buffer(
-                            src_buffer.range(page_offset, page_offset + page_stride_bytes),
-                            dst_buffer.range(page_offset, page_offset + page_stride_bytes));
-                    }
-                    else
-                    {
-                        // 最后一页：可能需要部分拷贝
-                        // 按Segment拷贝以避免越界
-                        uint32_t offset_in_page = 0;
-                        for (const auto& segment : config.segments_)
-                        {
-                            // 对齐
-                            offset_in_page = (offset_in_page + segment.align - 1) & ~(segment.align - 1);
-                            // 计算这个Segment在最后一页的大小
-                            const uint32_t segment_size = segment.stride * last_page_instances;
-                            // 拷贝
-                            builder.buffer_to_buffer(
-                                src_buffer.range(page_offset + offset_in_page,
-                                    page_offset + offset_in_page + segment_size),
-                                dst_buffer.range(page_offset + offset_in_page,
-                                    page_offset + offset_in_page + segment_size));
-
-                            // 下一个Segment的偏移
-                            offset_in_page += segment.stride * config.page_size;
-                        }
-                    }
-                }
-            }
+            builder.buffer_to_buffer(
+                src_buffer.range(0, old_buffer_size),
+                dst_buffer.range(0, old_buffer_size));
         },
         {});
 }
 
-CGPUBufferId TableInstance::create_buffer_with_capacity(uint32_t capacity)
+void TableInstanceBase::DispatchSparseUpload(skr::render_graph::RenderGraph* graph, const render_graph::ComputePassExecuteFunction& on_exec)
+{
+    SkrZoneScopedN("GPUScene::DispatchSparseUpload");
+
+    // TODO: !!!
+    const uint64_t bytes_size = skr::max(1ull, 1000000ull) * sizeof(Upload);
+    const uint64_t ops_size = skr::max(1ull, 1000000ull) * sizeof(Upload);
+
+    auto upload_buffer = graph->create_buffer(
+        [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
+            builder.set_name(skr::format(u8"GPUTable{}-UploadData", config.name).c_str())
+                .size(bytes_size)
+                .memory_usage(CGPU_MEM_USAGE_CPU_TO_GPU)
+                .as_upload_buffer()
+                .allow_shader_read()
+                .prefer_on_device();
+        });
+
+    auto ops_buffer = graph->create_buffer(
+        [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
+            builder.set_name(skr::format(u8"GPUTable{}-UploadOps", config.name).c_str())
+                .size(ops_size)
+                .memory_usage(CGPU_MEM_USAGE_CPU_TO_GPU)
+                .as_upload_buffer()
+                .allow_shader_read()
+                .prefer_on_device();
+        });
+
+    graph->add_compute_pass(
+        [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassBuilder& builder) {
+            builder.set_name(skr::format(u8"GPUTable{}-DataSparseUploadPass", config.name).c_str())
+                .set_pipeline(manager->GetSparseUploadPipeline())
+                .read(u8"upload_buffer", upload_buffer)
+                .read(u8"upload_operations", ops_buffer)
+                .readwrite(u8"target_buffer", frame_ctxs.get(&g).buffer_handle);
+        },
+        [this, ops_buffer, upload_buffer, exec = on_exec](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
+            SkrZoneScopedN("GPUTable::SparseUploadScene");
+
+            if (exec)
+                exec(g, ctx);
+
+            auto& upload_ctx = frame_ctxs.get(ctx.graph);
+            uint32_t actual_uploads = upload_data.uploads.size();
+            uint32_t actual_bytes = upload_data.bytes.size();
+            if (actual_uploads)
+            {
+                SkrZoneScopedN("GPUScene::CollectAndDisptachCopyPass");
+
+                // Fetch upload data
+                if (auto scene_data = ctx.resolve(upload_buffer)->info->cpu_mapped_address)
+                {
+                    ::memcpy(scene_data, upload_data.bytes.data(), upload_data.used_bytes);
+                    upload_data.bytes.clear();
+                    upload_data.used_bytes = 0;
+                }
+                if (auto ops = ctx.resolve(ops_buffer)->info->cpu_mapped_address)
+                {
+                    ::memcpy(ops, upload_data.uploads.data(), upload_data.used_ops * sizeof(Upload));
+                    upload_data.uploads.clear();
+                    upload_data.used_ops = 0;
+                }
+
+                struct SparseUploadConstants
+                {
+                    uint32_t num_operations;
+                } constants;
+                constants.num_operations = static_cast<uint32_t>(actual_uploads);
+
+                const uint32_t dispatch_groups = (constants.num_operations + 255u) / 256u;
+                cgpu_compute_encoder_push_constants(ctx.encoder, manager->GetSparseUploadPipeline()->root_signature, u8"constants", &constants);
+                cgpu_compute_encoder_dispatch(ctx.encoder, dispatch_groups, 1, 1);
+            }
+        });
+}
+
+CGPUBufferId TableInstanceBase::createBufferWithCapacity(uint32_t capacity)
 {
     if (!config.device_)
     {
-        SKR_LOG_ERROR(u8"TableInstance: Device not set");
+        SKR_LOG_ERROR(u8"TableInstanceBase: Device not set");
         return nullptr;
     }
 
     // capacity_bytes 已经在 calculate_layout 中计算
     if (capacity_bytes == 0)
     {
-        SKR_LOG_WARN(u8"TableInstance: No data to allocate");
+        SKR_LOG_WARN(u8"TableInstanceBase: No data to allocate");
         return nullptr;
     }
 
+    auto table_name = skr::format(u8"TableInstance-{}", config.name);
     CGPUBufferDescriptor buffer_desc = {};
-    buffer_desc.name = u8"TableInstance";
+    buffer_desc.name = table_name.c_str();
     buffer_desc.size = capacity_bytes;
     buffer_desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
     buffer_desc.usages = CGPU_BUFFER_USAGE_SHADER_READ | CGPU_BUFFER_USAGE_SHADER_READWRITE;
@@ -397,15 +407,13 @@ CGPUBufferId TableInstance::create_buffer_with_capacity(uint32_t capacity)
     CGPUBufferId new_buffer = cgpu_create_buffer(config.device_, &buffer_desc);
     if (!new_buffer)
     {
-        SKR_LOG_ERROR(u8"TableInstance: Failed to create GPU buffer");
+        SKR_LOG_ERROR(u8"TableInstanceBase: Failed to create GPU buffer");
     }
 
     return new_buffer;
 }
 
-skr::render_graph::BufferHandle TableInstance::import_buffer(
-    skr::render_graph::RenderGraph* graph,
-    const char8_t* name)
+skr::render_graph::BufferHandle TableInstanceBase::importBuffer(skr::render_graph::RenderGraph* graph, const char8_t* name)
 {
     if (!buffer || !graph)
         return {};
@@ -421,67 +429,270 @@ skr::render_graph::BufferHandle TableInstance::import_buffer(
     return handle;
 }
 
+void TableInstanceBase::createBuffer()
+{
+    if (!config.device_)
+    {
+        SKR_LOG_ERROR(u8"TableInstanceBase: Device not set");
+        return;
+    }
+
+    if (buffer)
+    {
+        SKR_LOG_WARN(u8"TableInstanceBase: Buffer already created");
+        return;
+    }
+
+    if (capacity_bytes == 0)
+    {
+        SKR_LOG_WARN(u8"TableInstanceBase: No data to allocate");
+        return;
+    }
+
+    CGPUBufferDescriptor buffer_desc = {};
+    buffer_desc.name = config.name.c_str();
+    buffer_desc.size = capacity_bytes;
+    buffer_desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
+    buffer_desc.usages = CGPU_BUFFER_USAGE_SHADER_READ | CGPU_BUFFER_USAGE_SHADER_READWRITE;
+    buffer_desc.flags = CGPU_BUFFER_FLAG_DEDICATED_BIT;
+
+    buffer = cgpu_create_buffer(config.device_, &buffer_desc);
+    if (!buffer)
+        SKR_LOG_ERROR(u8"TableInstanceBase: Failed to create GPU buffer");
+    else
+        SKR_LOG_INFO(u8"TableInstanceBase: Created GPU buffer (%lld MB)", capacity_bytes / (1024 * 1024));
+}
+
+void TableInstanceBase::releaseBuffer()
+{
+    if (buffer)
+    {
+        cgpu_free_buffer(buffer);
+        buffer = nullptr;
+        SKR_LOG_DEBUG(u8"TableInstanceBase: Released GPU buffer");
+    }
+}
+
+void TableInstanceBase::Store(uint64_t dst_offset, const void* data, uint64_t size)
+{
+    static constexpr uint64_t op_stride = 64 * sizeof(float);
+
+    // ensure capacity
+    uint64_t src_byte_offset = 0;
+    uint64_t src_upload_offset = 0;
+
+    const auto needed_bytes = size;
+    const auto needed_uploads = (size + op_stride - 1) / op_stride;
+    bool need_resize_bytes = false;
+    bool need_resize_ops = false;
+    upload_data.mtx.lock_shared();
+    {
+        src_byte_offset = upload_data.used_bytes.fetch_add(needed_bytes);
+        if (upload_data.used_bytes + needed_bytes > upload_data.bytes.size())
+        {
+            need_resize_bytes = true;
+        }
+
+        src_upload_offset = upload_data.used_ops.fetch_add(needed_uploads);
+        if (upload_data.used_ops + needed_uploads > upload_data.uploads.size())
+        {
+            need_resize_ops = true;
+        }
+    }
+    upload_data.mtx.unlock_shared();
+
+    upload_data.mtx.lock();
+    {
+        if (need_resize_bytes)
+            upload_data.bytes.resize_unsafe(1.2f * (upload_data.used_bytes));
+        if (need_resize_ops)
+            upload_data.uploads.resize_unsafe(1.2f * (upload_data.used_ops));
+    }
+    upload_data.mtx.unlock();
+
+    upload_data.mtx.lock_shared();
+    {
+        ::memcpy(upload_data.bytes.data() + src_byte_offset, data, size);
+
+        for (uint32_t i = 0; i < needed_uploads; i++)
+        {
+            const Upload upload = {
+                .src_offset = (uint32_t)(src_byte_offset + i * op_stride),
+                .dst_offset = (uint32_t)(dst_offset + i * op_stride),
+                .data_size = (uint32_t)skr::min(size, op_stride)
+            };
+            upload_data.uploads[src_upload_offset + i] = upload;
+        }
+    }
+    upload_data.mtx.unlock_shared();
+}
+
+TableInstance::TableInstance(const TableManager* manager, const TableConfig& config)
+    : skr::gpu::TableInstanceBase(manager, config)
+{
+}
+
+uint64_t TableInstance::bindless_index() const
+{
+    // TODO: SUPPORT BINDLESS
+    return ~0;
+}
+
 skr::RC<TableInstance> TableManager::CreateTable(const TableConfig& cfg)
 {
-    auto table = skr::RC<TableInstance>::New(cfg);
-    mtx.lock();
+    auto table = skr::RC<TableInstance>::New(this, cfg);
+    tables_mtx.lock();
     tables.add(table);
-    mtx.unlock();
+    tables_mtx.unlock();
     return table;
 }
 
 void TableManager::UploadToGPU(skr::render_graph::RenderGraph& graph)
 {
-    auto& ctx = upload_ctxs.get(&graph);
-    ctx.upload_size = 0;
-
-    mtx.lock();
+    tables_mtx.lock();
     tables.remove_all_if([](RCWeak<TableInstance> t) { return t.is_expired(); });
-    mtx.unlock();
+    tables_mtx.unlock();
 
     // calculate size & upload infos
-    mtx.lock_shared();
+    tables_mtx.lock_shared();
     for (auto table : tables)
     {
         auto tbl = table.lock();
-        auto& tbl_ctx = tbl->GetUpdateContext();
-        for (auto& update : tbl_ctx.updates)
-            update.offset += ctx.upload_size;
-        ctx.upload_size += tbl_ctx.bytes.size();
-        ctx.ops_size += tbl_ctx.updates.size();
     }
-    mtx.unlock_shared();
-
-    const uint64_t ops_size = skr::max(1ull, ctx.ops_size) * sizeof(TableInstance::Update);
-    auto ops_buffer = graph.create_buffer(
-        [=](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
-            builder.set_name(u8"GPUScene-upload_operations")
-                .size(ops_size)
-                .memory_usage(CGPU_MEM_USAGE_CPU_TO_GPU)
-                .as_upload_buffer()
-                .allow_shader_read()
-                .prefer_on_device();
-        });
-
-    const uint64_t upload_size = ctx.upload_size;
-    auto upload_buffer = graph.create_buffer(
-        [=](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
-            builder.set_name(u8"GPUScene-upload_bytes")
-                .size(upload_size)
-                .memory_usage(CGPU_MEM_USAGE_CPU_TO_GPU)
-                .as_upload_buffer()
-                .allow_shader_read()
-                .prefer_on_device();
-        });
-
-    mtx.lock_shared();
-
-    mtx.unlock_shared();
+    tables_mtx.unlock_shared();
 }
 
-skr::RC<TableManager> TableManager::Create()
+inline static void read_bytes(const char8_t* file_name, uint32_t** bytes, uint32_t* length)
 {
-    return skr::RC<TableManager>::New();
+    FILE* f = fopen((const char*)file_name, "rb");
+    fseek(f, 0, SEEK_END);
+    *length = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    *bytes = (uint32_t*)malloc(*length);
+    fread(*bytes, *length, 1, f);
+    fclose(f);
+}
+
+inline static void read_shader_bytes(const char8_t* virtual_path, uint32_t** bytes, uint32_t* length, ECGPUBackend backend)
+{
+    char8_t shader_file[256];
+    const char8_t* shader_path = SKR_UTF8("./../resources/shaders/");
+    strcpy((char*)shader_file, (const char*)shader_path);
+    strcat((char*)shader_file, (const char*)virtual_path);
+    switch (backend)
+    {
+    case CGPU_BACKEND_VULKAN:
+        strcat((char*)shader_file, (const char*)SKR_UTF8(".spv"));
+        break;
+    case CGPU_BACKEND_METAL:
+        strcat((char*)shader_file, (const char*)SKR_UTF8(".metallib"));
+        break;
+    case CGPU_BACKEND_D3D12:
+    case CGPU_BACKEND_XBOX_D3D12:
+        strcat((char*)shader_file, (const char*)SKR_UTF8(".dxil"));
+        break;
+    default:
+        break;
+    }
+    read_bytes(shader_file, bytes, length);
+}
+
+void TableManager::Initialize(CGPUDeviceId device)
+{
+    SKR_LOG_DEBUG(u8"Creating SparseUpload compute pipeline...");
+
+    // 1. Create compute shader
+    uint32_t *shader_bytes, shader_length;
+    read_shader_bytes(u8"sparse_upload.sparse_upload", &shader_bytes, &shader_length, device->adapter->instance->backend);
+
+    CGPUShaderLibraryDescriptor shader_desc = {
+        .name = u8"SparseUploadComputeShader",
+        .code = shader_bytes,
+        .code_size = shader_length
+    };
+    sparse_upload_shader = cgpu_create_shader_library(device, &shader_desc);
+    free(shader_bytes);
+
+    if (!sparse_upload_shader)
+    {
+        SKR_LOG_ERROR(u8"Failed to create SparseUpload compute shader");
+        return;
+    }
+
+    // 2. Create root signature
+    const char8_t* push_constant_name = u8"constants";
+    CGPUShaderEntryDescriptor compute_shader_entry = {
+        .library = sparse_upload_shader,
+        .entry = u8"sparse_upload",
+        .stage = CGPU_SHADER_STAGE_COMPUTE
+    };
+
+    CGPURootSignatureDescriptor root_desc = {
+        .shaders = &compute_shader_entry,
+        .shader_count = 1,
+        .push_constant_names = &push_constant_name,
+        .push_constant_count = 1,
+    };
+    sparse_upload_root_signature = cgpu_create_root_signature(device, &root_desc);
+
+    if (!sparse_upload_root_signature)
+    {
+        SKR_LOG_ERROR(u8"Failed to create SparseUpload root signature");
+        return;
+    }
+
+    // 3. Create compute pipeline
+    CGPUComputePipelineDescriptor pipeline_desc = {
+        .root_signature = sparse_upload_root_signature,
+        .compute_shader = &compute_shader_entry,
+        .name = u8"SparseUploadPipeline"
+    };
+    sparse_upload_pipeline = cgpu_create_compute_pipeline(device, &pipeline_desc);
+
+    if (!sparse_upload_pipeline)
+    {
+        SKR_LOG_ERROR(u8"Failed to create SparseUpload compute pipeline");
+        return;
+    }
+
+    SKR_LOG_INFO(u8"SparseUpload compute pipeline created successfully");
+}
+
+void TableManager::Shutdown()
+{
+    SKR_LOG_INFO(u8"Shutting down GPUScene...");
+
+    if (sparse_upload_pipeline)
+    {
+        cgpu_free_compute_pipeline(sparse_upload_pipeline);
+        sparse_upload_pipeline = nullptr;
+    }
+
+    if (sparse_upload_root_signature)
+    {
+        cgpu_free_root_signature(sparse_upload_root_signature);
+        sparse_upload_root_signature = nullptr;
+    }
+
+    if (sparse_upload_shader)
+    {
+        cgpu_free_shader_library(sparse_upload_shader);
+        sparse_upload_shader = nullptr;
+    }
+
+    SKR_LOG_INFO(u8"GPUScene shutdown complete");
+}
+
+skr::RC<TableManager> TableManager::Create(CGPUDeviceId cgpu_device)
+{
+    auto manager = skr::RC<TableManager>::New();
+    manager->Initialize(cgpu_device);
+    return manager;
+}
+
+TableManager::~TableManager()
+{
+    Shutdown();
 }
 
 } // namespace skr::gpu

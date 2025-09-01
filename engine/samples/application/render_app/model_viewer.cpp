@@ -114,35 +114,6 @@ public:
     virtual int main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
 
-
-    void Test()
-    {
-        using namespace skr::gpu;
-
-        skr::RC<TableInstance> table;
-
-        skr::gpu::Instance instance;
-        instance.transform = skr::float4x4();
-
-        AsyncResource<MaterialResource> r; // !
-        uint32_t mat_index = ~0; // !
-        auto matResource = r.get_ptr();
-        skr::gpu::Material mat; 
-        mat.basecolor_tex = matResource->overrides.textures[0].bindless_id;
-        instance.materials.StoreAt(*table, mat_index, mat);
-
-        AsyncResource<MeshResource> rr; // !
-        uint32_t prim_index = ~0; // !
-        auto meshResource = rr.get_ptr();
-        skr::gpu::Primitive prim;
-        prim.mat_index = mat_index;
-        prim.positions = meshResource->render_mesh->buffer_ids[0];
-
-        instance.primitives.StoreAt(*table, prim_index, prim);
-
-        skr::gpu::Row<skr::gpu::Instance> inst(15);
-        inst.Store(*table, instance);
-    }
 protected:
     void CookAndLoadGLTF();
     void InitializeAssetSystem();
@@ -258,15 +229,18 @@ void ModelViewerModule::on_load(int argc, char8_t** argv)
     const auto current_path = skr::fs::current_directory();
     skd::SProjectConfig projectConfig = {
         .assetDirectory = (current_path / u8"assets").string().c_str(),
-        .resourceDirectory = (current_path / u8"resources").string().c_str(),
+        .resourceDirectory = (current_path / u8"cooked").string().c_str(),
         .artifactsDirectory = (current_path / u8"artifacts").string().c_str()
     };
+    skr::fs::Directory::remove(projectConfig.resourceDirectory, true);
+    skr::fs::Directory::remove(projectConfig.artifactsDirectory, true);
+
     skr::String projectName = u8"ModelViewer";
     skr::String rootPath = skr::fs::current_directory().string().c_str();
     project.OpenProject(u8"ModelViewer", rootPath.c_str(), projectConfig);
 
     // Load existing project data from disk
-    project.LoadFromDisk();
+    // project.LoadFromDisk();
 
     // initialize resource & asset system
     // these two systems co-works well like producers & consumers
@@ -298,11 +272,13 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     auto gfx_queue = render_device->get_gfx_queue();
     auto resource_system = skr::GetResourceSystem();
     std::atomic_bool resource_system_quit = false;
-    auto resource_updater = std::thread([resource_system, &resource_system_quit]() {
+    auto resource_updater = std::thread([this, resource_system, &resource_system_quit]() {
+        scheduler.bind();
         while (!resource_system_quit)
         {
             resource_system->Update();
         }
+        scheduler.unbind();
     });
 
     skr::render_graph::RenderGraphBuilder graph_builder;
@@ -384,15 +360,13 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     // Create compute pipeline for debug rendering
     CreateComputePipeline();
 
-    gpu_table_manager = skr::gpu::TableManager::Create();
-    GPUSceneBuilder cfg_builder(render_device);
-    cfg_builder.with_world(&world)
-        .from_layout<DefaultGPUSceneLayout>();
-    GPUScene.Initialize(gpu_table_manager.get(), cfg_builder.build_config(), cfg_builder.get_soa_builder());
+    gpu_table_manager = skr::gpu::TableManager::Create(render_device->get_cgpu_device());
+    GPUScene.Initialize(gpu_table_manager.get(), render_device, &world);
 
     // AsyncResource<> is a handle can be constructed by any resource type & ids
     skr::AsyncResource<MeshResource> mesh_resource;
     mesh_resource = MeshAssetID;
+            CreateEntities(1);
 
     uint64_t frame_index = 0;
     auto last_time = std::chrono::high_resolution_clock::now();
@@ -411,9 +385,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
         render_app->get_event_queue()->pump_messages();
         render_app->acquire_frames();
 
-        if (frame_index < 1'000'000 && (frame_index % 100 == 0))
         {
-            CreateEntities(400);
             // DestroyRandomEntities(1);
         }
 
@@ -468,10 +440,18 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                     builder.set_name(u8"RayTracingPass")
                         .set_pipeline(compute_pipeline)
                         .read(u8"scene_tlas", TLASHandle)
-                        .read(u8"gpu_scene", GPUSceneHandle)
+                        .read(u8"gpu_insts", GPUScene.GetSceneBuffer(render_graph))
+                        .read(u8"gpu_mats", GPUScene.GetMaterialBuffer(render_graph))
+                        .read(u8"gpu_prims", GPUScene.GetPrimitiveBuffer(render_graph))
                         .readwrite(u8"output_texture", render_target_handle);
                 },
                 [=, this](render_graph::RenderGraph& g, render_graph::ComputePassContext& ctx) {
+                    // Bind Bindless IB/VBs
+                    auto vbibs = MeshFactory->descriptor_buffer();
+                    cgpu_compute_encoder_bind_descriptor_buffer(ctx.encoder, vbibs, u8"geom_buffers");
+                    auto texs = MatFactory->descriptor_buffer();
+                    cgpu_compute_encoder_bind_descriptor_buffer(ctx.encoder, texs, u8"mat_textures");
+
                     // Push constants
                     cgpu_compute_encoder_push_constants(ctx.encoder, root_signature, u8"camera_constants", &camera_constants);
 
@@ -517,6 +497,7 @@ void ModelViewerModule::CookAndLoadGLTF()
     {
         // source file is a GLTF so we create a gltf importer, if it is a fbx, then just use a fbx importer
         auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
+        importer->import_all_materials = true;
 
         // static mesh has some additional meta data to append
         auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
@@ -529,7 +510,7 @@ void ModelViewerModule::CookAndLoadGLTF()
             skr::type_id_of<skd::asset::MeshCooker>() // this cooker cooks t he raw mesh data to mesh resource
         );
         // source file
-        importer->assetPath = u8"C:/Code/SakuraEngine/engine/samples/assets/sketchfab/loli/scene.gltf";
+        importer->assetPath = u8"D:/D5EngineAssets/GLTFModels/sponza/scene.gltf";
         CookSystem.ImportAssetMeta(&project, asset, importer, metadata);
 
         // save
@@ -566,18 +547,12 @@ void ModelViewerModule::CreateEntities(uint32_t count)
             Builder.add_component(&Spawner::translations)
                 .add_component(&Spawner::rotations)
                 .add_component(&Spawner::scales)
-                .add_component(&Spawner::transforms)
                 .add_component(&Spawner::meshes)
 
                 .add_component(&Spawner::instances)
-                .add_component(&Spawner::geom_buffers)
-                .add_component(&Spawner::colors)
-                .add_component(&Spawner::indices);
-
-            if (use_emission(*rng_ptr) > 0.f)
-            {
-                Builder.add_component(&Spawner::emissions);
-            }
+                .add_component(&Spawner::inst_datas)
+                .add_component(&Spawner::mats)
+                .add_component(&Spawner::prims);
         }
 
         void run(skr::ecs::TaskContext& Context)
@@ -614,15 +589,7 @@ void ModelViewerModule::CreateEntities(uint32_t count)
                     skr::math::QuatF(rotations[i].get()),
                     random_pos,
                     scales[i].get());
-                transforms[i].matrix = transform_matrix.to_matrix();
-
-                // Set random color
-                colors[i].color = random_color;
-
-                if (emissions)
-                {
-                    emissions[i].color = skr::float4(10.f, 0.f, 2.f, 1.f);
-                }
+                inst_datas[i].transform = transform_matrix.to_matrix();
 
                 // Add to GPU scene
                 pScene->AddEntity(entities[i]);
@@ -640,14 +607,13 @@ void ModelViewerModule::CreateEntities(uint32_t count)
         ModelViewerModule* pModule = nullptr;
         skr::GPUScene* pScene = nullptr;
         ComponentView<GPUSceneInstance> instances;
-        ComponentView<GPUSceneGeometryBuffers> geom_buffers;
-        ComponentView<GPUSceneInstanceColor> colors;
-        ComponentView<GPUSceneObjectToWorld> transforms;
-        ComponentView<GPUSceneInstanceEmission> emissions;
+        ComponentView<skr::gpu::Instance> inst_datas;
+        ComponentView<skr::gpu::Primitive> prims;
+        ComponentView<skr::gpu::Material> mats;
+
         ComponentView<skr::scene::PositionComponent> translations;
         ComponentView<skr::scene::RotationComponent> rotations;
         ComponentView<skr::scene::ScaleComponent> scales;
-        ComponentView<skr::scene::IndexComponent> indices;
         ComponentView<skr::MeshComponent> meshes;
         uint32_t local_index = 0;
         std::mt19937* rng_ptr = nullptr;
@@ -741,6 +707,20 @@ void ModelViewerModule::InitializeReosurceSystem()
         TextureFactory = skr::TextureFactory::Create(factoryRoot);
         resource_system->RegisterFactory(TextureFactory);
     }
+    // material factory
+    {
+        skr::MaterialFactory::Root factoryRoot = {};
+        factoryRoot.device = render_device->get_cgpu_device();
+        factoryRoot.job_queue = job_queue.get();
+        factoryRoot.ram_service = ram_service;
+
+        // we have no shaders to install by material factory so these can be null
+        factoryRoot.bytecode_vfs = nullptr;
+        factoryRoot.shader_map = nullptr;
+
+        MatFactory = skr::MaterialFactory::Create(factoryRoot);
+        resource_system->RegisterFactory(MatFactory);
+    }
     // mesh factory
     {
         skr::MeshFactory::Root factoryRoot = {};
@@ -761,6 +741,7 @@ void ModelViewerModule::DestroyResourceSystem()
 
     skr::TextureSamplerFactory::Destroy(TextureSamplerFactory);
     skr::TextureFactory::Destroy(TextureFactory);
+    skr::MaterialFactory::Destroy(MatFactory);
     skr::MeshFactory::Destroy(MeshFactory);
 
     skr_io_ram_service_t::destroy(ram_service);
@@ -828,6 +809,8 @@ void ModelViewerModule::CreateComputePipeline()
 
     // Create root signature
     const char8_t* push_constant_name = u8"camera_constants";
+    const char8_t* static_sampler_name = u8"tex_sampler";
+    auto linear_sampler = render_device->get_linear_sampler();
     CGPUShaderEntryDescriptor compute_shader_entry = {
         .library = compute_shader,
         .entry = u8"cs_main",
@@ -836,6 +819,9 @@ void ModelViewerModule::CreateComputePipeline()
     CGPURootSignatureDescriptor root_desc = {
         .shaders = &compute_shader_entry,
         .shader_count = 1,
+        .static_samplers = &linear_sampler,
+        .static_sampler_names = &static_sampler_name,
+        .static_sampler_count = 1,
         .push_constant_names = &push_constant_name,
         .push_constant_count = 1,
     };

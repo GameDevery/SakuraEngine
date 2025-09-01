@@ -8,9 +8,11 @@
 namespace skr::gpu
 {
 using ::float2;
+using ::float3;
 using ::float4;
 
 using ::float2x2;
+using ::float3x3;
 using ::float4x4;
 
 using ::ByteAddressBuffer;

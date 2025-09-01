@@ -192,8 +192,6 @@ void RenderApp::SwapchainManager::present(skr::SystemWindow* window)
         auto swapchain = exist.value()._swapchain;
         CGPUQueuePresentDescriptor present = {
             .swapchain = swapchain,
-            .wait_semaphores = &exist.value()._semaphore,
-            .wait_semaphore_count = 1,
             .index = (uint8_t)backbuffer_index
         };
         cgpu_queue_present(_app._render_device->get_gfx_queue(), &present);
@@ -228,8 +226,8 @@ void RenderApp::SwapchainManager::recreate_swapchain(skr::SystemWindow* window)
     chain_desc.present_queues_count = 1;
     chain_desc.width = phys_size.x;
     chain_desc.height = phys_size.y;
-    chain_desc.image_count = 3;
-    chain_desc.enable_vsync = true;
+    chain_desc.image_count = 2;
+    chain_desc.enable_vsync = false;
     chain_desc.format = _app._backbuffer_format;
     auto swapchain = cgpu_create_swapchain(cgpu_device, &chain_desc);
     _swapchains.add(window, SwapChain{ ._surface = surface, ._swapchain = swapchain, ._semaphore = cgpu_create_semaphore(cgpu_device), ._size = phys_size, ._current_index = 0 });

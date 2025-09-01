@@ -1,10 +1,10 @@
 #include <std/std.hpp>
-#include "SkrRenderer/shared/soa_layout.hpp"
 #include "SkrRenderer/shared/gpu_scene.hpp"
 
+ByteAddressBuffer gpu_insts;
+ByteAddressBuffer gpu_mats;
+ByteAddressBuffer gpu_prims;
 
-
-ByteAddressBuffer gpu_scene;
 RWTexture2D<float> output_texture;
 Accel scene_tlas;
 
@@ -18,6 +18,11 @@ struct CameraConstants
 
 [[push_constant]]
 ConstantBuffer<CameraConstants> camera_constants;
+
+ByteAddressBuffer geom_buffers[0];
+Texture2D<> mat_textures[0];
+
+[[group(1)]] SamplerState tex_sampler;
 
 // Ray tracing constants
 trait RayTracingConstants {
@@ -59,11 +64,17 @@ Ray generate_camera_ray(uint2 pixel_coord, uint2 screen_size)
 // Colorful sphere shading based on instance ID
 float4 shade_hit(RayQuery<RayQueryFlags::AcceptFirstAndEndSearch>& query) 
 {
-    using Layout = skr::DefaultGPUSceneLayout;
     uint instance_id = query.CommittedInstanceID();
-    const auto offset = Layout::Location<skr::GPUSceneInstanceColor>(instance_id);
-    const auto color = gpu_scene.Load<skr::GPUSceneInstanceColor>(offset);
-    return color.color;
+    const auto instance_row = skr::gpu::Row<skr::gpu::Instance>(instance_id); 
+    const auto instance = instance_row.Load(gpu_insts);
+    const auto prim = instance.primitives.LoadAt(gpu_prims, query.CommittedGeometryIndex());
+    const auto mat = instance.materials.LoadAt(gpu_mats, prim.material_index);
+    const auto tri = prim.triangles.LoadAt(geom_buffers, query.CommittedPrimitiveIndex());
+    const auto uv = prim.uvs.LoadAt(geom_buffers, tri[0]);
+    float4 color = float4(1.f, 1.f, 1.f, 1.f);
+    if (mat.basecolor_tex != ~0)
+        color *= mat_textures[mat.basecolor_tex].Sample(tex_sampler, uv);
+    return color;
 }
 
 // Main ray tracing function with debug info
