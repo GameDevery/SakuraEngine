@@ -10,6 +10,9 @@ trait vec_dim { static constexpr uint64 value = 1; };
 template<typename T, uint64 N>
 trait vec_dim<vec<T, N>> { static constexpr uint64 value = N; };
 
+template<uint64 N>
+trait vec_dim<matrix<N>> { static constexpr uint64 value = N * N; };
+
 }// namespace detail
 
 template<typename T, typename OtherType>
