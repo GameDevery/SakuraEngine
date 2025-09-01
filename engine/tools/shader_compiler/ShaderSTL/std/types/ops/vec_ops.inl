@@ -41,69 +41,74 @@ constexpr void set(U v, Args...args) {
 }
 
 template<typename X>
-static constexpr bool operatable = std::is_same_v<X, ThisType> || std::is_same_v<X, ElementType>;
+static constexpr bool same_family = std::is_same_v<X, ThisType> || std::is_same_v<X, ElementType>;
+
+template<typename X>
+static constexpr bool arithmetical = (is_scalar_v<X> || same_dim_v<ThisType, X>) && is_arithmetic_v<X>;
 
 [[unaop("PLUS")]] ThisType operator+() const;
 [[unaop("MINUS")]] ThisType operator-() const;
 
 template <typename U> requires(std::is_same_v<U, matrix<dim>>)
 [[binop("MUL")]] ThisType operator*(const U&) const;
-template <typename U> requires(operatable<U>)
+
+template <typename U> requires(same_family<U> || arithmetical<U>)
 [[binop("ADD")]] ThisType operator+(const U&) const;
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U> || arithmetical<U>)
 [[binop("SUB")]] ThisType operator-(const U&) const;
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U> || arithmetical<U>)
 [[binop("MUL")]] ThisType operator*(const U&) const;
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U> || arithmetical<U>)
 [[binop("DIV")]] ThisType operator/(const U&) const;
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U> || arithmetical<U>)
 [[binop("MOD")]] ThisType operator%(const U&) const requires(is_int_family_v<ThisType>);
-template <typename U> requires(operatable<U>)
+
+template <typename U> requires(same_family<U>)
 [[binop("BIT_AND")]] ThisType operator&(const U&) const requires(is_int_family_v<ThisType>);
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("BIT_OR")]] ThisType operator|(const U&) const requires(is_int_family_v<ThisType>);
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("BIT_XOR")]] ThisType operator^(const U&) const requires(is_int_family_v<ThisType>);
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("SHL")]] ThisType operator<<(const U&) const requires(is_int_family_v<ThisType>);
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("SHR")]] ThisType operator>>(const U&) const requires(is_int_family_v<ThisType>);
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("AND")]] ThisType operator&&(const U&) const requires(is_bool_family_v<ThisType>);
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("OR")]] ThisType operator||(const U&) const requires(is_bool_family_v<ThisType>);
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("LESS")]] vec<bool, dim> operator<(const U&) const requires(!is_bool_family_v<ThisType>);
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("GREATER")]] vec<bool, dim> operator>(const U&) const requires(!is_bool_family_v<ThisType>);
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("LESS_EQUAL")]] vec<bool, dim> operator<=(const U&) const requires(!is_bool_family_v<ThisType>);
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("GREATER_EQUAL")]] vec<bool, dim> operator>=(const U&) const requires(!is_bool_family_v<ThisType>);
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("EQUAL")]] vec<bool, dim> operator==(const U&) const;
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("NOT_EQUAL")]] vec<bool, dim> operator!=(const U&) const;
 
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U> || arithmetical<U>)
 [[binop("ADD_ASSIGN")]] ThisType operator+=(const U& rhs) { return *this = *this + rhs; }
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U> || arithmetical<U>)
 [[binop("SUB_ASSIGN")]] ThisType operator-=(const U& rhs) { return *this = *this - rhs; }
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U> || arithmetical<U>)
 [[binop("MUL_ASSIGN")]] ThisType operator*=(const U& rhs) { return *this = *this * rhs; }
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U> || arithmetical<U>)
 [[binop("DIV_ASSIGN")]] ThisType operator/=(const U& rhs) { return *this = *this / rhs; }
-
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U> || arithmetical<U>)
 [[binop("MOD_ASSIGN")]] ThisType operator%=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this % rhs); }
-template <typename U> requires(operatable<U>)
+
+template <typename U> requires(same_family<U>)
 [[binop("BIT_AND_ASSIGN")]] ThisType operator&=(const U& rhs) requires(is_int_family_v<ThisType>)  { return *this = (*this & rhs); }
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("BIT_OR_ASSIGN")]] ThisType operator|=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this | rhs); }
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("BIT_XOR_ASSIGN")]] ThisType operator^=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this ^ rhs); }
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("SHL_ASSIGN")]] ThisType operator<<=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this << rhs); }
-template <typename U> requires(operatable<U>)
+template <typename U> requires(same_family<U>)
 [[binop("SHR_ASSIGN")]] ThisType operator>>=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this >> rhs); }
 // clang-format on
