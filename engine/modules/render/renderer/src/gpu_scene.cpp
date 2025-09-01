@@ -46,15 +46,24 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
                 auto entity = Context.entities()[i];
                 const auto& mesh = meshes[i];
                 const bool MeshNotResolved = !mesh.mesh_resource.is_resolved();
-                bool PrimitiveBufferOversized = false;
-                bool MaterialBufferOversized = false;
                 if (!MeshNotResolved)
                 {
                     auto mesh_resource = mesh.mesh_resource.get_resolved();
-                    PrimitiveBufferOversized = (mesh_resource->primitives.size() + pScene->total_prim_count) > pScene->primitives_table->GetInstanceCapacity();
-                    MaterialBufferOversized = (mesh_resource->materials.size() + pScene->total_mat_count) > pScene->materials_table->GetInstanceCapacity();
+
+                    uint32_t PrimitivesCount = 0;
+                    for (uint32_t section_id = 0; section_id < mesh_resource->sections.size(); section_id++)
+                    {
+                        const auto& section_info = mesh_resource->sections[section_id];
+                        for (auto prim_id : section_info.primitive_indices)
+                        {
+                            PrimitivesCount += 1;
+                        }
+                    }
+
+                    pScene->prim_oversized = (PrimitivesCount + pScene->total_prim_count) > pScene->primitives_table->GetInstanceCapacity();
+                    pScene->mat_oversized = (mesh_resource->materials.size() + pScene->total_mat_count) > pScene->materials_table->GetInstanceCapacity();
                 }
-                if (MeshNotResolved || PrimitiveBufferOversized || MaterialBufferOversized)
+                if (MeshNotResolved || pScene->prim_oversized || pScene->mat_oversized)
                 {
                     pScene->AddEntity(entity);
                     continue;
@@ -63,7 +72,7 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
                 auto mesh_resource = mesh.mesh_resource.get_resolved();
                 auto& gpu_inst = gpu_instances[i];
 
-                // 分配 instnace id
+                // 分配 instance id
                 auto& instance_data = instances[i];
                 instance_data.entity = entity;
                 if (pScene->free_insts.try_dequeue(instance_data.instance_index))
@@ -125,24 +134,25 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
 
                             const auto buffer_id = mesh_resource->render_mesh->buffer_ids[vb.buffer_index];
                             if (vb.attribute == EVertexAttribute::POSITION)
-                                prim_data.positions = { vb.offset / vb.stride, vb.vertex_count, buffer_id };
+                                prim_data.positions = gpu::Range<float3>(0, vb.vertex_count, vb.offset, buffer_id);
                             else if (vb.attribute == EVertexAttribute::TEXCOORD)
-                                prim_data.uvs = { vb.offset / vb.stride, vb.vertex_count, buffer_id };
+                                prim_data.uvs = gpu::Range<float2>(0, vb.vertex_count, vb.offset, buffer_id);
                             else if (vb.attribute == EVertexAttribute::NORMAL)
-                                prim_data.normals = { vb.offset / vb.stride, vb.vertex_count, buffer_id };
+                                prim_data.normals = gpu::Range<float3>(0, vb.vertex_count, vb.offset, buffer_id);
                             else if (vb.attribute == EVertexAttribute::TANGENT)
-                                prim_data.tangents = { vb.offset / vb.stride, vb.vertex_count, buffer_id };
+                                prim_data.tangents = gpu::Range<float3>(0, vb.vertex_count, vb.offset, buffer_id);
                         }
                         {
                             const auto& ib = prim_info.index_buffer;
                             const auto buffer_id = mesh_resource->render_mesh->buffer_ids[ib.buffer_index];
-                            prim_data.triangles = { ib.index_offset / (ib.stride * 3), ib.index_count / 3, buffer_id };
+                            auto mod = ib.index_offset % (ib.stride * 3);
+                            prim_data.triangles = gpu::Range<uint3>(0, ib.index_count / 3, ib.index_offset, buffer_id);
                         }
                         auto& table = pScene->primitives_table;
                         StorePrimitiveToTable(*table, prim_data.global_index, &prim_data);  
                     }
                 }
-                gpu_inst.primitives = { prim_comp[0].global_index, (uint32_t)prim_comp.size() };
+                gpu_inst.primitives = gpu::Range<gpu::Primitive>(prim_comp[0].global_index, (uint32_t)prim_comp.size());
 
                 auto StoreMaterialToTable = pScene->store_map.find(sugoi_id_of<gpu::Material>::get()).value();
                 for (uint32_t mat_id = 0; mat_id < mesh_resource->materials.size(); mat_id++)
@@ -165,7 +175,7 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
                     auto& table = pScene->materials_table;
                     StoreMaterialToTable(*table, mat_data.global_index, &mat_data);
                 }
-                gpu_inst.materials = { mat_comp[0].global_index, (uint32_t)mat_comp.size() };
+                gpu_inst.materials = gpu::Range<gpu::Material>(mat_comp[0].global_index, (uint32_t)mat_comp.size());
 
                 // add tlas
                 auto& transform = gpu_inst.transform;

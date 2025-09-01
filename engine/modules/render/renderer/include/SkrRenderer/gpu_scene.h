@@ -108,12 +108,14 @@ private:
     std::atomic<GPUSceneInstanceID> free_prim_count = 0;
     std::atomic<GPUSceneInstanceID> latest_prim_index = 0;
     std::atomic<GPUSceneInstanceID> total_prim_count = 0;
+    std::atomic_bool prim_oversized = false;
 
     skr::RC<gpu::TableInstance> materials_table;
     skr::ConcurrentQueue<GPUSceneInstanceID> free_mats;
     std::atomic<GPUSceneInstanceID> free_mat_count = 0;
     std::atomic<GPUSceneInstanceID> latest_mat_index = 0;
     std::atomic<GPUSceneInstanceID> total_mat_count = 0;
+    std::atomic_bool mat_oversized = false;
 
 private:
     static constexpr uint32_t kLaneCount = 2;

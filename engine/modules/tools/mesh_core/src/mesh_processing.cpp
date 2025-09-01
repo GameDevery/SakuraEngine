@@ -134,12 +134,6 @@ void EmplaceRawPrimitiveIndexBuffer(const SRawPrimitive* primitve, skr::Vector<u
     index_buffer.index_count = (uint32_t)ib_view.size() / index_stride;
     index_buffer.stride = index_stride;
     buffer.append(ib_view.data(), ib_view.size());
-
-    // GPU needs to align 16 bytes
-    while (buffer.size() % 16 != 0)
-    {
-        buffer.add(0);
-    }
 }
 
 void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, ERawVertexStreamType type, uint32_t idx, skr::Vector<uint8_t>& buffer, VertexBufferEntry& out_vbv)
@@ -162,12 +156,6 @@ void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, ERa
         out_vbv.vertex_count = vertex_attribtue_slice.size() / out_vbv.stride;
         buffer.append(vertex_attribtue_slice.data(), vertex_attribtue_slice.size());
     }
-
-    // GPU needs to align 16 bytes
-    while (buffer.size() % 16 != 0)
-    {
-        buffer.add(0);
-    }
 }
 
 void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, const char* semantics, uint32_t idx, skr::Vector<uint8_t>& buffer, VertexBufferEntry& out_vbv)
@@ -189,12 +177,6 @@ void EmplaceRawPrimitiveVertexBufferAttribute(const SRawPrimitive* primitve, con
     {
         out_vbv.vertex_count = vertex_attribtue_slice.size() / out_vbv.stride;
         buffer.append(vertex_attribtue_slice.data(), vertex_attribtue_slice.size());
-    }
-
-    // GPU needs to align 16 bytes
-    while (buffer.size() % 16 != 0)
-    {
-        buffer.add(0);
     }
 }
 

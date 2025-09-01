@@ -96,7 +96,7 @@ float4 trace_scene(uint2 pixel_coord, uint2 screen_size)
             color = mat_textures[mat.basecolor_tex].Sample(tex_sampler, uv);
         else
             color = float4(1.f, 0.f, 1.f, 1.f);
-        return float4(uv, 0.f, 1.f);//color;
+        return color;
     } else {
         // Miss, return square checkerboard
         float2 uv = float2(pixel_coord) / float2(screen_size);
