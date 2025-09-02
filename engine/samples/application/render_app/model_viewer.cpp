@@ -201,7 +201,7 @@ protected:
     skr::MeshFactory* MeshFactory = nullptr;
     skr::MaterialFactory* MatFactory = nullptr;
 
-    skr::RC<skr::gpu::TableManager> gpu_table_manager;
+    skr::RC<skr::gpu::TableManager> GPUTableManager;
     skr::ecs::World world;
     skr::GPUScene GPUScene;
 
@@ -360,8 +360,8 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     // Create compute pipeline for debug rendering
     CreateComputePipeline();
 
-    gpu_table_manager = skr::gpu::TableManager::Create(render_device->get_cgpu_device());
-    GPUScene.Initialize(gpu_table_manager.get(), render_device, &world);
+    GPUTableManager = skr::gpu::TableManager::Create(render_device->get_cgpu_device());
+    GPUScene.Initialize(GPUTableManager.get(), render_device, &world);
 
     // AsyncResource<> is a handle can be constructed by any resource type & ids
     skr::AsyncResource<MeshResource> mesh_resource;

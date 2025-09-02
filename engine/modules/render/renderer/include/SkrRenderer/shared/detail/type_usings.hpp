@@ -1,8 +1,7 @@
 #pragma once
 #include "SkrBase/math.h" // IWYU pragma: export
 #include "SkrRT/ecs/component.hpp" // IWYU pragma: export
-#include "SkrContainersDef/vector.hpp"
-#include <type_traits>
+#include "SkrContainersDef/array.hpp"
 
 namespace skr
 {
@@ -12,5 +11,8 @@ using uint32_t = ::uint32_t;
 using uint64 = ::uint64_t;
 using uint64_t = ::uint64_t;
 using AddressType = uint32_t;
+
+template <class T, size_t N>
+using gpu_array = skr::Array<T, N>;
 
 } // namespace skr

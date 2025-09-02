@@ -36,7 +36,8 @@ public:
         buffer.Store(_buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size, GPUDatablock<T>(v));
     }
 
-    auto bindless_index() const { return _bindless_index; }
+    uint32_t BindlessIndex() const { return _bindless_index; }
+    bool IsValidBindlessBuffer() const { return _bindless_index != ~0; }
 
 private:
     friend struct GPUDatablock<Row<T>>;
@@ -73,6 +74,9 @@ public:
         buffer.Store(_buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, GPUDatablock<T>(v));
     }
 
+    uint32_t BindlessIndex() const { return _bindless_index; }
+    bool IsValidBindlessBuffer() const { return _bindless_index != ~0; }
+
 private:
     friend struct GPUDatablock<FixedRange<T, N>>;
     uint32_t _first_instance = 0;
@@ -106,7 +110,9 @@ public:
         buffer.Store(_buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, GPUDatablock<T>(v));
     }
 
-    uint32_t count() const { return _count; }
+    uint32_t Count() const { return _count; }
+    uint32_t BindlessIndex() const { return _bindless_index; }
+    bool IsValidBindlessBuffer() const { return _bindless_index != ~0; }
 
 private:
     friend struct GPUDatablock<Range<T>>;

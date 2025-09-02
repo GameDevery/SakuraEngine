@@ -12,48 +12,52 @@ static_assert(sizeof(Row<float>) == 3 * sizeof(uint32_t));
 static_assert(sizeof(FixedRange<float, 1>) == 3 * sizeof(uint32_t));
 static_assert(sizeof(Range<float>) == 4 * sizeof(uint32_t));
 
-#define GPU_DATABLOCK_SCALAR(T)\
+#define GPU_DATABLOCK_SCALAR(T, S)\
 template <> struct GPUDatablock<T> {\
     inline static constexpr uint32_t Size = 4;\
+    GPUDatablock<T>() = default;\
     GPUDatablock<T>(const T& v)\
         : u0(v)\
-    { static_assert(sizeof(T) == sizeof(float), "PRIMITIVE SCALAR TYPES MUST BE 32BIT TYPES"); }\
+    { static_assert(sizeof(S) == sizeof(float), "PRIMITIVE SCALAR TYPES MUST BE 32BIT TYPES"); }\
     operator T() const { return T(u0); }\
 private:\
-    T u0;\
+    S u0 = 0;\
 };
 
-#define GPU_DATABLOCK_VEC2(T)\
+#define GPU_DATABLOCK_VEC2(T, S)\
 template <> struct GPUDatablock<T##2> {\
     inline static constexpr uint32_t Size = 4 * 2;\
+    GPUDatablock<T##2>() = default;\
     GPUDatablock<T##2>(const T##2& v)\
         : u0(v.x), u1(v.y)\
-    { static_assert(sizeof(T) == sizeof(float), "PRIMITIVE VEC2 TYPES MUST BE 32BIT TYPES"); }\
+    { static_assert(sizeof(S) == sizeof(float), "PRIMITIVE VEC2 TYPES MUST BE 32BIT TYPES"); }\
     operator T##2() const { return T##2(u0, u1); }\
 private:\
-    T u0, u1;\
+    S u0 = 0, u1 = 0;\
 };
 
-#define GPU_DATABLOCK_VEC3(T)\
+#define GPU_DATABLOCK_VEC3(T, S)\
 template <> struct GPUDatablock<T##3> {\
     inline static constexpr uint32_t Size = 4 * 3;\
+    GPUDatablock<T##3>() = default;\
     GPUDatablock<T##3>(const T##3& v)\
         : u0(v.x), u1(v.y), u2(v.z)\
-    { static_assert(sizeof(T) == sizeof(float), "PRIMITIVE VEC3 TYPES MUST BE 32BIT TYPES"); }\
+    { static_assert(sizeof(S) == sizeof(float), "PRIMITIVE VEC3 TYPES MUST BE 32BIT TYPES"); }\
     operator T##3() const { return T##3(u0, u1, u2); }\
 private:\
-    T u0, u1, u2;\
+    S u0 = 0, u1 = 0, u2 = 0;\
 };
 
-#define GPU_DATABLOCK_VEC4(T)\
+#define GPU_DATABLOCK_VEC4(T, S)\
 template <> struct GPUDatablock<T##4> {\
     inline static constexpr uint32_t Size = 4 * 4;\
+    GPUDatablock<T##4>() = default;\
     GPUDatablock<T##4>(const T##4& v)\
         : u0(v.x), u1(v.y), u2(v.z), u3(v.w)\
-    { static_assert(sizeof(T) == sizeof(float), "PRIMITIVE VEC4 TYPES MUST BE 32BIT TYPES"); }\
+    { static_assert(sizeof(S) == sizeof(float), "PRIMITIVE VEC4 TYPES MUST BE 32BIT TYPES"); }\
     operator T##4() const { return T##4(u0, u1, u2, u3); }\
 private:\
-    T u0, u1, u2, u3;\
+    S u0 = 0, u1 = 0, u2 = 0, u3 = 0;\
 };
 
 #define GPU_DATABLOCK_MAT3(T)\
@@ -79,24 +83,57 @@ private:\
 };
 
 using uint = uint32_t;
-GPU_DATABLOCK_SCALAR(int);
-GPU_DATABLOCK_VEC2(int);
-GPU_DATABLOCK_VEC3(int);
-GPU_DATABLOCK_VEC4(int);
+GPU_DATABLOCK_SCALAR(bool, uint);
+GPU_DATABLOCK_VEC2(bool, uint);
+GPU_DATABLOCK_VEC3(bool, uint);
+GPU_DATABLOCK_VEC4(bool, uint);
 
-GPU_DATABLOCK_SCALAR(uint);
-GPU_DATABLOCK_VEC2(uint);
-GPU_DATABLOCK_VEC3(uint);
-GPU_DATABLOCK_VEC4(uint);
+GPU_DATABLOCK_SCALAR(int, int);
+GPU_DATABLOCK_VEC2(int, int);
+GPU_DATABLOCK_VEC3(int, int);
+GPU_DATABLOCK_VEC4(int, int);
 
-GPU_DATABLOCK_SCALAR(float);
-GPU_DATABLOCK_VEC2(float);
-GPU_DATABLOCK_VEC3(float);
-GPU_DATABLOCK_VEC4(float);
+GPU_DATABLOCK_SCALAR(uint, uint);
+GPU_DATABLOCK_VEC2(uint, uint);
+GPU_DATABLOCK_VEC3(uint, uint);
+GPU_DATABLOCK_VEC4(uint, uint);
+
+GPU_DATABLOCK_SCALAR(float, float);
+GPU_DATABLOCK_VEC2(float, float);
+GPU_DATABLOCK_VEC3(float, float);
+GPU_DATABLOCK_VEC4(float, float);
 
 // TODO: 4x4
 // GPU_DATABLOCK_MAT3(float);
 GPU_DATABLOCK_MAT4(float);
+
+template <typename T, uint32_t N>
+struct GPUDatablock<skr::gpu_array<T, N>>
+{
+public:
+    inline static constexpr uint32_t Size = sizeof(GPUDatablock<T>) * N;
+
+    GPUDatablock<skr::gpu_array<T, N>>(const skr::gpu_array<T, N>& r)
+    {
+        for (uint32_t i = 0; i < N; i++)
+        {
+            data[i] = r[i];
+        }
+    }
+
+    operator skr::gpu_array<T, N>() const 
+    { 
+        skr::gpu_array<T, N> r; 
+        for (uint32_t i = 0; i < N; i++)
+        {
+            r[i] = data[i];
+        }
+        return r; 
+    }
+
+private:
+    skr::gpu_array<GPUDatablock<T>, N> data;
+};
 
 template <typename T>
 struct GPUDatablock<Row<T>>
