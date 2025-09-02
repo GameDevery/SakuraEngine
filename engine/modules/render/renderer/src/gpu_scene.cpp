@@ -453,8 +453,7 @@ void GPUScene::Initialize(gpu::TableManager* table_manager, skr::RenderDevice* r
         store_map.add(sugoi_id_of<gpu::Instance>::get(), +[](gpu::TableInstance& table, uint32_t inst, const void* data){
             const gpu::Instance* d = (const gpu::Instance*)data;
             const gpu::GPUDatablock<gpu::Instance> block(*d);
-            const uint64_t offset = table.GetComponentOffset(0, inst);
-            table.Store(offset, block);
+            table.Store(0, inst, block);
         });
     }
     {
@@ -466,8 +465,7 @@ void GPUScene::Initialize(gpu::TableManager* table_manager, skr::RenderDevice* r
         store_map.add(sugoi_id_of<gpu::Primitive>::get(), +[](gpu::TableInstance& table, uint32_t inst, const void* data){
             const gpu::Primitive* d = (const gpu::Primitive*)data;
             const gpu::GPUDatablock<gpu::Primitive> block(*d);
-            const uint64_t offset = table.GetComponentOffset(0, inst);
-            table.Store(offset, block);
+            table.Store(0, inst, block);
         });
     }
     {
@@ -479,8 +477,7 @@ void GPUScene::Initialize(gpu::TableManager* table_manager, skr::RenderDevice* r
         store_map.add(sugoi_id_of<gpu::Material>::get(), +[](gpu::TableInstance& table, uint32_t inst, const void* data){
             const gpu::Material* d = (const gpu::Material*)data;
             const gpu::GPUDatablock<gpu::Material> block(*d);
-            const uint64_t offset = table.GetComponentOffset(0, inst);
-            table.Store(offset, block);
+            table.Store(0, inst, block);
         });
     }
 

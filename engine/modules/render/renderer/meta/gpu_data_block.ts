@@ -41,12 +41,13 @@ class _Gen {
     b.$line("#pragma once")
 
     // include files
-    b.$line(`#include <${header.header_path}>`)
+    b.$line(`#include "SkrRenderer/shared/database.hpp"`)
     b.$line(``)
 
     // gen datablocks
     if (_gen_aos_records.length > 0) {
       b.$line(`//! BEGIN Data Blocks`)
+      b.$line(`namespace skr::gpu {`)
       _gen_aos_records.forEach((record) => {
         b.$line(`template <>`)
         b.$line(`struct GPUDatablock<${record.name}> {`)
@@ -97,6 +98,7 @@ class _Gen {
         });
         b.$line(`};`)
       });
+      b.$line(`} // namespace skr::gpu`)
       b.$line(`//! END Data Blocks`)
     }
   }

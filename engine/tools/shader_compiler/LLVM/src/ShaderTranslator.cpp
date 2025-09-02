@@ -223,6 +223,7 @@ const bool LanguageRule_UseMethodForOperatorOverload(const clang::Decl* decl, st
         std::replace(tname.begin(), tname.end(), '(', '_');
         std::replace(tname.begin(), tname.end(), ')', '_');
         std::replace(tname.begin(), tname.end(), ',', '_');
+        std::replace(tname.begin(), tname.end(), ':', '_');
         if (pReplaceName) *pReplaceName = "cast_to_" + tname;
         return true;
     }

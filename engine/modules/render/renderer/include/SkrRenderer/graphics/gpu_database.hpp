@@ -69,9 +69,10 @@ public:
 
     skr::render_graph::BufferHandle AdjustDatabase(skr::render_graph::RenderGraph* graph, uint64_t required_instances);
     template <typename T>
-    void Store(uint64_t offset, const T& data)
+    void Store(uint64_t comp_id, uint64_t inst, const T& data)
     {
         static_assert(gpu::is_datablock_v<T>, "You must store a datablock!");
+        const uint64_t offset = GetComponentOffset(comp_id, inst);
         Store(offset, &data, sizeof(data));
     }
     void DispatchSparseUpload(skr::render_graph::RenderGraph* graph, const render_graph::ComputePassExecuteFunction& on_exec);
