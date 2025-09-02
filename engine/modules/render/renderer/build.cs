@@ -17,6 +17,7 @@ public static class SkrRenderer
             .AddCppSLFiles("shaders/**.cxx")
             .CppSLOutputDirectory("resources/shaders")
             .CppSL_IncludeDirs(Visibility.Public, "include")
-            .AddMetaHeaders("include/**.h", "include/**.hpp"); // codegen
+            .AddMetaHeaders("include/**.h", "include/**.hpp") // codegen
+            .AddCodegenScript("meta/gpu_data_block.ts");
     }
 }

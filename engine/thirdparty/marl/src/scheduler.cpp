@@ -25,7 +25,7 @@
 #endif
 
 #ifdef SKR_PROFILE_ENABLE
-#define USE_FIBER_EVENTS 0
+#define USE_FIBER_EVENTS 1
 #else
 #define USE_FIBER_EVENTS 0
 #endif

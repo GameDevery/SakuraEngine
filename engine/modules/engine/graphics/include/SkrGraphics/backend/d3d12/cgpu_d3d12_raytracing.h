@@ -20,6 +20,7 @@ typedef struct CGPUAccelerationStructure_D3D12 {
     {
         struct
         {
+            CGPUBufferId pTransformBuffer;
             D3D12_RAYTRACING_GEOMETRY_DESC* pGeometryDescs;
         } asBottom;
         struct

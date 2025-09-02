@@ -70,6 +70,7 @@ typedef struct CGPUAccelerationStructureGeometryDesc
     uint32_t index_count;
     uint32_t index_stride;
     CGPUAccelerationStructureGeometryFlags flags;
+    float transform[12];
 } CGPUAccelerationStructureGeometryDesc;
 
 typedef struct CGPUAccelerationStructureInstanceDesc

@@ -13,8 +13,11 @@ EDependencySyncMode TaskSignature::DeterminSyncMode(TaskSignature* t, EAccessMod
     return EDependencySyncMode::WholeTask;
 }
 
-inline static bool HasSelfConfictReadWrite(ComponentAccess acess, skr::span<ComponentAccess> to_search)
+inline static bool HasSelfConfictReadWrite(skr::RC<TaskSignature> task, ComponentAccess acess, skr::span<ComponentAccess> to_search)
 {
+    if (task->opts && task->opts->no_parallelization)
+        return true;
+    
     if (acess.mode == EAccessMode::Random)
     {
         for (auto other : to_search)
@@ -34,7 +37,7 @@ void StaticDependencyAnalyzer::process(skr::RC<TaskSignature> new_task)
     bool HasSelfConflict = false;
     for (auto read : new_task->reads)
     {
-        HasSelfConflict |= HasSelfConfictReadWrite(read, new_task->writes);
+        HasSelfConflict |= HasSelfConfictReadWrite(new_task, read, new_task->writes);
 
         auto access = accesses.try_add_default(read.type);
         if (access.already_exist() && access.value().last_writer.first) // RAW
@@ -47,7 +50,7 @@ void StaticDependencyAnalyzer::process(skr::RC<TaskSignature> new_task)
     }
     for (auto write : new_task->writes)
     {
-        HasSelfConflict |= HasSelfConfictReadWrite(write, new_task->reads);
+        HasSelfConflict |= HasSelfConfictReadWrite(new_task, write, new_task->reads);
 
         auto access = accesses.try_add_default(write.type);
         if (access.already_exist() && access.value().readers.size()) // WAR
