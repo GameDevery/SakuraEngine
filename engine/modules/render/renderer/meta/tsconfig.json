@@ -1,0 +1,8 @@
+{
+    "compilerOptions": {
+        "typeRoots": [
+            "../../../../tools/meta_codegen_ts/node_modules/@types/"
+        ]
+    },
+    "extends": "../../../../tools/meta_codegen_ts/tsconfig.json",
+}

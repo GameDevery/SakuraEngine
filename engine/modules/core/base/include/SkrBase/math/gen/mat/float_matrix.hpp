@@ -100,6 +100,10 @@ struct float3x3 {
     inline float3x3& operator=(const float3x3& rhs) noexcept { this->axis_x = rhs.axis_x; this->axis_y = rhs.axis_y; this->axis_z = rhs.axis_z; return *this; }
     inline float3x3& operator=(float3x3&& rhs) noexcept { this->axis_x = std::move(rhs.axis_x); this->axis_y = std::move(rhs.axis_y); this->axis_z = std::move(rhs.axis_z); return *this; }
     
+    // visitor operator
+    inline float3 operator[](size_t idx) const { SKR_ASSERT(idx < 3); return rows[idx]; }
+    inline float3& operator[](size_t idx) { SKR_ASSERT(idx < 3); return rows[idx]; }
+
     // mul operator
     friend float3x3 operator*(const float3x3& lhs, const float3x3& rhs);
     float3x3& operator*=(const float3x3& rhs);
@@ -210,6 +214,10 @@ struct alignas(16) float4x4 {
     inline float4x4& operator=(const float4x4& rhs) noexcept { this->axis_x = rhs.axis_x; this->axis_y = rhs.axis_y; this->axis_z = rhs.axis_z; this->axis_w = rhs.axis_w; return *this; }
     inline float4x4& operator=(float4x4&& rhs) noexcept { this->axis_x = std::move(rhs.axis_x); this->axis_y = std::move(rhs.axis_y); this->axis_z = std::move(rhs.axis_z); this->axis_w = std::move(rhs.axis_w); return *this; }
     
+    // visitor operator
+    inline float4 operator[](size_t idx) const { SKR_ASSERT(idx < 4); return rows[idx]; }
+    inline float4& operator[](size_t idx) { SKR_ASSERT(idx < 4); return rows[idx]; }
+
     // mul operator
     friend float4x4 operator*(const float4x4& lhs, const float4x4& rhs);
     float4x4& operator*=(const float4x4& rhs);

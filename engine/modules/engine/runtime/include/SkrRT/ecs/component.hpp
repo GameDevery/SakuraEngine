@@ -5,6 +5,7 @@
 #include "SkrRT/sugoi/storage.hpp" // IWYU pragma: export
 #include "SkrRT/sugoi/chunk.hpp" // IWYU pragma: export
 #include "SkrRT/sugoi/archetype.hpp" // IWYU pragma: export
+#include "SkrRT/sugoi/array.hpp" // IWYU pragma: export
 
 namespace skr::ecs {
 

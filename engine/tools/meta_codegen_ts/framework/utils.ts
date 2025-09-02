@@ -108,6 +108,17 @@ export class CodeBuilder {
     content(this);
     this.#pop_indent();
   }
+  $indent_pop(content: (b: CodeBuilder) => void): void {
+    this.#pop_indent();
+    content(this);
+    this.#push_indent();
+  }
+  $generate_note() {
+    this.$line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
+    this.$line(`//!! THIS FILE IS GENERATED, ANY CHANGES WILL BE LOST !!`)
+    this.$line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
+    this.$line(``)
+  }
 
 
   // to string

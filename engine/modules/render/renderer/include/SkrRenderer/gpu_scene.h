@@ -5,9 +5,8 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderGraph/frame_resource.hpp"
 #include "SkrRenderer/render_device.h"
-#include "SkrRenderer/graphics/soa_segment.hpp"
+#include "SkrRenderer/graphics/gpu_database.hpp"
 #include "SkrRenderer/graphics/tlas_manager.hpp"
-#include "SkrRenderer/shared/soa_layout.hpp"
 #ifndef __meta__
     #include "SkrRenderer/gpu_scene.generated.h" // IWYU pragma: export
 #endif
@@ -22,7 +21,6 @@ namespace skr
 // 类型定义
 using GPUSceneInstanceID = uint32_t;
 using GPUArchetypeID = uint16_t;
-using SOAIndex = uint32_t;
 using CPUTypeID = skr::ecs::TypeIndex;
 static constexpr GPUSceneInstanceID INVALID_GPU_SCENE_INSTANCE_ID = 0xFFFFFFFF;
 
@@ -41,66 +39,17 @@ GPUSceneInstance
 {
     skr::ecs::Entity entity;
     GPUSceneInstanceID instance_index = ~0;
-};
-
-struct GPUSceneComponentType
-{
-    CPUTypeID cpu_type_guid;
-    SOAIndex soa_index;
-    uint16_t element_size;
-    uint16_t element_align;
-    const char8_t* name;
-};
-
-struct GPUSceneConfig
-{
-    struct ComponentInfo
-    {
-        CPUTypeID cpu_type;
-        SOAIndex soa_index;
-        uint32_t element_size;
-        uint32_t element_align;
-    };
-    
-    skr::ecs::World* world = nullptr;
-    skr::RenderDevice* render_device = nullptr;
-    skr::Vector<ComponentInfo> components;  // 保留组件映射信息
-    float resize_growth_factor = 1.5f;
-};
-
-class SKR_RENDERER_API GPUSceneBuilder
-{
-public:
-    GPUSceneBuilder& with_world(skr::ecs::World* w)
-    {
-        config_.world = w;
-        return *this;
-    }
-    GPUSceneBuilder& with_device(skr::RenderDevice* d)
-    {
-        config_.render_device = d;
-        // 重新构造 soa_builder_ 以设置正确的 device
-        soa_builder_.~Builder();
-        new (&soa_builder_) SOASegmentBuffer::Builder(d->get_cgpu_device());
-        return *this;
-    }
-    template <typename Layout>
-    GPUSceneBuilder& from_layout(uint32_t initial_instances = 256);
-    
-    GPUSceneConfig build_config() { return config_; }
-    const SOASegmentBuffer::Builder& get_soa_builder() const { return soa_builder_; }
-    
-private:
-    friend struct GPUScene;
-    GPUSceneConfig config_;
-    SOASegmentBuffer::Builder soa_builder_;
+    uint32_t prim_id_start;
+    uint32_t prim_id_count;
+    uint32_t mat_id_start;
+    uint32_t mat_id_count;
 };
 
 // 主管理器
 struct SKR_RENDERER_API GPUScene final
 {
 public:
-    void Initialize(const struct GPUSceneConfig& config, const SOASegmentBuffer::Builder& soa_builder);
+    void Initialize(gpu::TableManager* table_manager, skr::RenderDevice* render_device, skr::ecs::World* world);
     void Shutdown();
 
     // TODO: ADD A TRACKER COMPONENT TO REPLACE THIS KIND OF API
@@ -112,67 +61,57 @@ public:
     void RequireUpload(skr::ecs::Entity entity, CPUTypeID component);
     void ExecuteUpload(skr::render_graph::RenderGraph* graph);
 
-    const skr::Map<CPUTypeID, SOAIndex>& GetTypeRegistry() const;
-    SOAIndex GetComponentSOAIndex(const CPUTypeID& type_guid) const;
-    bool IsComponentTypeRegistered(const CPUTypeID& type_guid) const;
-    const GPUSceneComponentType* GetComponentType(SOAIndex local_id) const;
-
     inline skr::ecs::World* GetECSWorld() const { return ecs_world; }
     inline skr::render_graph::BufferHandle GetSceneBuffer(skr::render_graph::RenderGraph* graph) const 
     {
-        return frame_ctxs.get(graph).scene_handle;
+        return frame_ctxs.get(graph).table_handles.find(instance_type).value();
+    }
+    inline skr::render_graph::BufferHandle GetPrimitiveBuffer(skr::render_graph::RenderGraph* graph) const 
+    {
+        return frame_ctxs.get(graph).primitives_handle;
+    }
+    inline skr::render_graph::BufferHandle GetMaterialBuffer(skr::render_graph::RenderGraph* graph) const 
+    {
+        return frame_ctxs.get(graph).materials_handle;
     }
     skr::render_graph::AccelerationStructureHandle GetTLAS(skr::render_graph::RenderGraph* graph) const 
     { 
         return frame_ctxs.get(graph).tlas_handle;
     }
-    inline uint32_t GetInstanceCount() const { return instance_count; }
+    inline uint32_t GetInstanceCount() const { return total_inst_count; }
 
 protected:
-    void InitializeComponentTypes(const GPUSceneConfig& config);
-    void AdjustBuffer(skr::render_graph::RenderGraph* graph);
+    void AdjustDatabase(skr::render_graph::RenderGraph* graph);
 
 private:
-    struct Upload
-    {
-        uint32_t src_offset; // 在 upload_buffer 中的偏移
-        uint32_t dst_offset; // 在目标缓冲区中的偏移
-        uint32_t data_size;  // 数据大小
-    };
-    void CreateSparseUploadPipeline(CGPUDeviceId device);
-    void PrepareUploadBuffer(skr::render_graph::RenderGraph* graph);
-    void DispatchSparseUpload(skr::render_graph::RenderGraph* graph);
-
     friend struct GPUSceneInstanceTask;
     friend struct AddEntityToGPUScene;
     friend struct RemoveEntityFromGPUScene;
     friend struct ScanGPUScene;
 
-    GPUSceneConfig config;
     skr::ecs::World* ecs_world = nullptr;
     skr::RenderDevice* render_device = nullptr;
 
-    // TLAS
+    TLASManager* tlas_manager = nullptr;
     std::atomic_bool tlas_dirty = false;
     skr::ConcurrentQueue<CGPUAccelerationStructureId> dirty_blases;
     skr::Vector<CGPUAccelerationStructureInstanceDesc> tlas_instances;
     
-    // TLAS with for automatic lifecycle management
-    TLASManager* tlas_manager = nullptr;
-
-    // type registry
-    skr::Map<CPUTypeID, SOAIndex> type_registry;
-    skr::Vector<GPUSceneComponentType> component_types;
-
-    // instance counters
     skr::ParallelFlatHashMap<skr::ecs::Entity, GPUSceneInstanceID, skr::Hash<skr::ecs::Entity>> entity_ids;
-    std::atomic<GPUSceneInstanceID> instance_count = 0;
-    std::atomic<GPUSceneInstanceID> latest_index = 0;
-    skr::ConcurrentQueue<GPUSceneInstanceID> free_ids;
-    std::atomic<GPUSceneInstanceID> free_id_count = 0;
 
-    // core data 的 graph handle
-    SOASegmentBuffer soa_segments;
+    CPUTypeID instance_type;
+    skr::Map<CPUTypeID, skr::RC<gpu::TableInstance>> table_map;
+    skr::Map<CPUTypeID, void(*)(gpu::TableInstance&, uint32_t inst, const void* data)> store_map;
+    skr::ConcurrentQueue<GPUSceneInstanceID> free_insts;
+    std::atomic<GPUSceneInstanceID> free_inst_count = 0;
+    std::atomic<GPUSceneInstanceID> latest_inst_index = 0;
+    std::atomic<GPUSceneInstanceID> total_inst_count = 0;
+
+    skr::RC<gpu::TableInstance> primitives_table;
+    std::atomic<GPUSceneInstanceID> total_prim_count = 0;
+
+    skr::RC<gpu::TableInstance> materials_table;
+    std::atomic<GPUSceneInstanceID> total_mat_count = 0;
 
 private:
     static constexpr uint32_t kLaneCount = 2;
@@ -187,10 +126,7 @@ private:
         shared_atomic_mutex dirty_mtx;
         skr::Vector<skr::ecs::Entity> dirty_ents;
 
-        std::atomic<uint64_t> dirty_comp_count = 0;
-        
         skr::Map<skr::ecs::Entity, skr::InlineVector<CPUTypeID, 4>> dirties;
-        uint64_t dirty_buffer_size = 0;
     } lanes[kLaneCount];
     std::atomic_uint32_t front_lane = 0;
 
@@ -201,11 +137,6 @@ private:
     // upload buffer management
     struct UploadContext
     {
-        CGPUBufferId upload_buffer = nullptr;
-        skr::Vector<Upload> soa_segments_uploads; 
-        skr::Vector<uint8_t> DRAMCache;
-        std::atomic_uint32_t upload_counter = 0;
-        std::atomic<uint64_t> upload_cursor = 0;
         skr::task::event_t add_finish = skr::task::event_t(true);
         skr::task::event_t scan_finish = skr::task::event_t(true);
     };
@@ -224,8 +155,10 @@ private:
         CGPUBufferId buffer_to_discard = nullptr;
         TLASHandle frame_tlas;
         skr::render_graph::AccelerationStructureHandle tlas_handle;
-        skr::render_graph::BufferHandle scene_handle; 
-        
+        skr::Map<CPUTypeID, skr::render_graph::BufferHandle> table_handles;
+        skr::render_graph::BufferHandle primitives_handle;
+        skr::render_graph::BufferHandle materials_handle;
+
         ~FrameContext()
         {
             // Cleanup any remaining buffer when context is destroyed
@@ -237,43 +170,6 @@ private:
         }
     };
     skr::render_graph::FrameResource<FrameContext> frame_ctxs;
-
-    // SparseUpload compute pipeline resources
-    CGPUShaderLibraryId sparse_upload_shader = nullptr;
-    CGPURootSignatureId sparse_upload_root_signature = nullptr;
-    CGPUComputePipelineId sparse_upload_pipeline = nullptr;
 };
-
-// Builder 实现已移至 SOASegmentBuffer::Builder
-
-template <typename Layout>
-inline GPUSceneBuilder& GPUSceneBuilder::from_layout(uint32_t initial_instances)
-{
-    // 清空现有配置
-    config_.components.clear();
-    
-    // 让 SOASegmentBuffer::Builder 处理布局
-    soa_builder_.from_layout<Layout>(initial_instances);
-    
-    // 同时构建组件映射信息
-    [this]<typename... Cs>(typename Layout::template TypePack<Cs...>*) {
-        skr::Vector<CPUTypeID> types;
-        auto collect = [&types]<typename T>() {
-            if constexpr (is_bundle_v<T>)
-                []<typename... Bs>(ComponentBundle<Bs...>, auto& v) {
-                    (v.add(sugoi_id_of<Bs>::get()), ...);
-                }(T{}, types);
-            else
-                types.add(sugoi_id_of<T>::get());
-        };
-        (collect.template operator()<Cs>(), ...);
-        
-        Layout::for_each_component([this, &types](uint32_t id, uint32_t size, uint32_t align, uint32_t idx) {
-            config_.components.add({types[idx], id, size, align});
-        });
-    }(static_cast<typename Layout::Elements*>(nullptr));
-    
-    return *this;
-}
 
 } // namespace skr
