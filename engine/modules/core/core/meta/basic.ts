@@ -7,10 +7,7 @@ class _Gen {
     const b = header.gen_code
 
     // header
-    b.$line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
-    b.$line(`//!! THIS FILE IS GENERATED, ANY CHANGES WILL BE LOST !!`)
-    b.$line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
-    b.$line(``)
+    b.$generate_note()
 
     // basic includes
     b.$line(`#pragma once`)
@@ -61,10 +58,7 @@ class _Gen {
   }
   static source_pre(b: CodeBuilder, main_db: db.Module) {
     // header
-    b.$line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
-    b.$line(`//!! THIS FILE IS GENERATED, ANY CHANGES WILL BE LOST !!`)
-    b.$line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
-    b.$line(``)
+    b.$generate_note()
 
     // includes
     b.$line(`// BEGIN header includes`)
