@@ -103,6 +103,7 @@ struct SceneRenderSystem::Impl
     {
         skr_float4x4_t model = skr_float4x4_t::identity();
         skr_float4x4_t view_proj = skr_float4x4_t::identity();
+        bool use_base_color_texture = false;
     };
     skr::Vector<skr_primitive_draw_t> drawcalls;
     skr::Vector<PushConstants> push_constants_list;
@@ -157,90 +158,94 @@ void SceneRenderSystem::update() SKR_NOEXCEPT
     options.on_finishes.add(impl->context.update_finish);
 
     auto render_func = impl->mp_renderer != nullptr ?
-    skr::scene::SceneRenderJob::RenderF([this](const skr::MeshResource* mesh, skr_float4x4_t model, const skr::AnimComponent* pAnimComponent) {
-        auto& push_constants_data = impl->push_constants_list.emplace().ref();
-        push_constants_data.model = skr::transpose(model);
-        utils::Camera* camera = impl->mp_renderer->get_camera();
-        auto view = skr::float4x4::view_at(
-            camera->pos,
-            camera->pos + camera->front,
-            camera->up);
-        auto proj = skr::float4x4::perspective_fov(
-            skr::camera_fov_y_from_x(camera->fov, camera->aspect),
-            camera->aspect,
-            camera->near_plane,
-            camera->far_plane);
-        auto _view_proj = skr::mul(view, proj);
-        push_constants_data.view_proj = skr::transpose(_view_proj);
-        auto& cmds = mesh->render_mesh->primitive_commands;
+        skr::scene::SceneRenderJob::RenderF([this](const skr::MeshResource* mesh, skr_float4x4_t model, const skr::AnimComponent* pAnimComponent) {
+            auto pso = impl->mp_renderer->get_render_pso();
+            auto& push_constants_data = impl->push_constants_list.emplace().ref();
+            push_constants_data.model = skr::transpose(model);
+            utils::Camera* camera = impl->mp_renderer->get_camera();
+            auto view = skr::float4x4::view_at(
+                camera->pos,
+                camera->pos + camera->front,
+                camera->up);
+            auto proj = skr::float4x4::perspective_fov(
+                skr::camera_fov_y_from_x(camera->fov, camera->aspect),
+                camera->aspect,
+                camera->near_plane,
+                camera->far_plane);
+            auto _view_proj = skr::mul(view, proj);
+            push_constants_data.view_proj = skr::transpose(_view_proj);
+            auto& cmds = mesh->render_mesh->primitive_commands;
 
-        for (auto i = 0; i < cmds.size(); i++)
-        {
-            auto& cmd = cmds[i];
-            skr_primitive_draw_t& drawcall = impl->drawcalls.emplace().ref();
-            // fill the drawcall with data
-            // wait for the render effect to fill the pipeline data
-            auto& mat_handle = mesh->materials[cmd.material_index];
-
-            if (mat_handle.is_resolved())
+            for (auto i = 0; i < cmds.size(); i++)
             {
-                skr::MaterialResource* mat_resource = mat_handle.get_resolved(true);
-                for (auto& tex : mat_resource->overrides.textures)
+                auto& cmd = cmds[i];
+                skr_primitive_draw_t& drawcall = impl->drawcalls.emplace().ref();
+                if (mesh->materials.size() > cmd.material_index)
                 {
-                    if (skr::String(tex.slot_name) == u8"BaseColor")
+                    auto& mat_handle = mesh->materials[cmd.material_index];
+                    if (mat_handle.is_resolved())
                     {
-                        skr::AsyncResource<skr::TextureResource> tex_handle = tex.value;
-                        tex_handle.resolve(true, 0);
-                        if (tex_handle.is_resolved())
+                        skr::MaterialResource* mat_resource = mat_handle.get_resolved(true);
+                        for (auto& tex : mat_resource->overrides.textures)
                         {
-                            skr::TextureResource* tex_resource = tex_handle.get_resolved(true);
-                            // SKR_LOG_INFO(u8"Texture %s resolved with id %u", tex.slot_name.c_str(), tex_resource->texture);
-
-                            auto& tex_view = tex_resource->texture_view;
+                            if (skr::String(tex.slot_name) == u8"BaseColor")
                             {
-                                if (!impl->bind_tables.contains(tex_view))
+                                skr::AsyncResource<skr::TextureResource> tex_handle = tex.value;
+                                tex_handle.resolve(true, 0);
+                                if (tex_handle.is_resolved())
                                 {
-                                    SkrZoneScopedN("SOCRender::createBindTable");
-                                    CGPUXBindTableDescriptor bind_table_desc = {};
-                                    bind_table_desc.root_signature = impl->mp_renderer->get_root_signature();
-                                    bind_table_desc.names = &impl->color_texture_name;
-                                    bind_table_desc.names_count = 1;
+                                    skr::TextureResource* tex_resource = tex_handle.get_resolved(true);
+                                    // SKR_LOG_INFO(u8"Texture %s resolved with id %u", tex.slot_name.c_str(), tex_resource->texture);
+                                    auto& tex_view = tex_resource->texture_view;
+                                    {
+                                        if (!impl->bind_tables.contains(tex_view))
+                                        {
+                                            SkrZoneScopedN("SOCRender::createBindTable");
+                                            CGPUXBindTableDescriptor bind_table_desc = {};
+                                            bind_table_desc.root_signature = pso->root_signature;
+                                            bind_table_desc.names = &impl->color_texture_name;
+                                            bind_table_desc.names_count = 1;
 
-                                    auto bind_table = cgpux_create_bind_table(impl->mp_renderer->get_device(), &bind_table_desc);
+                                            auto bind_table = cgpux_create_bind_table(pso->device, &bind_table_desc);
 
-                                    impl->bind_tables.add(tex_view, bind_table);
+                                            impl->bind_tables.add(tex_view, bind_table);
 
-                                    CGPUDescriptorData datas[1] = {};
-                                    datas[0] = make_zeroed<CGPUDescriptorData>();
-                                    datas[0].by_name.name = impl->color_texture_name;
-                                    datas[0].count = 1;
-                                    datas[0].textures = &tex_view;
-                                    cgpux_bind_table_update(bind_table, datas, 1);
+                                            CGPUDescriptorData datas[1] = {};
+                                            datas[0] = make_zeroed<CGPUDescriptorData>();
+                                            datas[0].by_name.name = impl->color_texture_name;
+                                            datas[0].count = 1;
+                                            datas[0].textures = &tex_view;
+                                            cgpux_bind_table_update(bind_table, datas, 1);
+                                        }
+                                        drawcall.bind_table = impl->bind_tables.find(tex_view).value();
+                                        if (drawcall.bind_table)
+                                        {
+                                            push_constants_data.use_base_color_texture = true;
+                                        }
+                                    }
                                 }
-                                drawcall.bind_table = impl->bind_tables.find(tex_view).value();
                             }
                         }
                     }
                 }
-            }
 
-            drawcall.vertex_buffer_count = (uint32_t)cmd.vbvs.size();
-            if (pAnimComponent)
-            {
-                auto& skin_prim = pAnimComponent->primitives[i];
-                drawcall.vertex_buffers = skin_prim.views.data();
+                drawcall.vertex_buffer_count = (uint32_t)cmd.vbvs.size();
+                if (pAnimComponent)
+                {
+                    auto& skin_prim = pAnimComponent->primitives[i];
+                    drawcall.vertex_buffers = skin_prim.views.data();
+                }
+                else
+                {
+                    drawcall.vertex_buffers = cmd.vbvs.data();
+                }
+                drawcall.index_buffer = *cmd.ibv;
+                drawcall.push_const = (const uint8_t*)(&push_constants_data);
             }
-            else
-            {
-                drawcall.vertex_buffers = cmd.vbvs.data();
-            }
-            drawcall.index_buffer = *cmd.ibv;
-            drawcall.push_const = (const uint8_t*)(&push_constants_data);
-        }
-    }) :
-    skr::scene::SceneRenderJob::RenderF([](const skr::MeshResource*, skr_float4x4_t, const skr::AnimComponent*) {
-        // do nothing
-    });
+        }) :
+        skr::scene::SceneRenderJob::RenderF([](const skr::MeshResource*, skr_float4x4_t, const skr::AnimComponent*) {
+            // do nothing
+        });
     scene::SceneRenderJob job{ render_func };
     impl->m_render_job_query = impl->mp_world->dispatch_task(job, UINT32_MAX, impl->m_render_job_query, std::move(options));
 }

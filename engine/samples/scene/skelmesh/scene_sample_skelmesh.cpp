@@ -359,7 +359,6 @@ void SceneSampleSkelMeshModule::CookAndLoadGLTF()
 
     auto skin_importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
     skin_importer->assetPath = gltf_path.c_str();
-    // skin_importer->invariant_vertices = true;
     auto skin_asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"test_skin.gltf.meta",
         SkinAssetID,
@@ -429,7 +428,8 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
         actor3.lock()->AttachTo(actor2);
 
         root.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
-        actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 1.0f, 10.0f });
+
+        actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ -10.0f, 1.0f, 10.0f });
         actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
         actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.8f, 0.0f });
 
@@ -523,40 +523,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
             imgui_app->pump_message();
         }
         {
-            // if left mouse button is pressed, toggle controlling actor
-            SkrZoneScopedN("InputControl");
-            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
-            {
-                // Move Actor 1 with WASD keys
-                if (ImGui::IsKeyDown(ImGuiKey_W))
-                {
-                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
-                    pos.z -= 0.1f;
-                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_S))
-                {
-                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
-                    pos.z += 0.1f;
-                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_A))
-                {
-                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
-                    pos.x -= 0.1f;
-                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_D))
-                {
-                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
-                    pos.x += 0.1f;
-                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
-                }
-            }
-        }
-
-        {
-            // ResourceSystem Update
+            SkrZoneScopedN("ResourceSystemUpdate");
             resource_system->Update();
         }
 

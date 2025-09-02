@@ -404,7 +404,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
 
     root.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
     actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 10.0f, 0.0f });
-    actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .9f, .9f, .9f });
+    actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
     actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
     //auto actor2 = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();

@@ -13,7 +13,6 @@
 #include "scene_renderer.hpp"
 #include "helper.hpp"
 
-
 struct SceneRendererImpl : public skr::SceneRenderer
 {
     const char8_t* push_constants_name = u8"push_constants";
@@ -26,11 +25,6 @@ struct SceneRendererImpl : public skr::SceneRenderer
     CGPUVertexLayout vertex_layout = {};
     CGPURasterizerStateDescriptor rs_state = {};
     CGPUDepthStateDescriptor ds_desc = {};
-    struct push_constants
-    {
-        skr_float4x4_t model = skr_float4x4_t::identity();
-        skr_float4x4_t view_proj = skr_float4x4_t::identity();
-    } push_constants_data;
 
     virtual void initialize(skr::RenderDevice* render_device, skr::ecs::World* world, struct skr_vfs_t* resource_vfs) override
     {
@@ -38,29 +32,10 @@ struct SceneRendererImpl : public skr::SceneRenderer
         prepare_pipeline_settings();
         prepare_pipeline(render_device);
     }
-
-    virtual void finalize(skr::RenderDevice* renderer) override
-    {
-        free_pipeline(renderer);
-    }
-
-    virtual void set_camera(utils::Camera* camera) override
-    {
-        mp_camera = camera;
-    }
-    virtual utils::Camera* get_camera() const override
-    {
-        return mp_camera;
-    }
-
-    virtual CGPURootSignatureId get_root_signature() const override
-    {
-        return pipeline->root_signature;
-    }
-    virtual CGPUDeviceId get_device() const override
-    {
-        return pipeline->device;
-    }
+    virtual void finalize(skr::RenderDevice* renderer) override { free_pipeline(renderer); }
+    virtual void set_camera(utils::Camera* camera) override { mp_camera = camera; }
+    virtual utils::Camera* get_camera() const override { return mp_camera; }
+    virtual CGPURenderPipelineId get_render_pso() const override { return pipeline; }
 
     void draw_primitives(skr::render_graph::RenderGraph* rg, skr::span<skr_primitive_draw_t> dallcalls) override;
 
@@ -81,8 +56,6 @@ void skr::SceneRenderer::Destroy(skr::SceneRenderer* renderer)
 }
 
 skr::SceneRenderer::~SceneRenderer() {}
-
-
 
 void SceneRendererImpl::draw_primitives(skr::render_graph::RenderGraph* rg, skr::span<skr_primitive_draw_t> drawcalls)
 {
@@ -149,7 +122,6 @@ void SceneRendererImpl::draw_primitives(skr::render_graph::RenderGraph* rg, skr:
             }
         });
 }
-
 
 void SceneRendererImpl::prepare_pipeline_settings()
 {

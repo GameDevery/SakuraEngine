@@ -17,6 +17,7 @@ struct RootConstants
 {
     float4x4 model;
     float4x4 view_proj; // model-view-projection matrix
+    bool use_base_color_texture;
 };
 
 [[group(0)]] Texture2D<float> color_texture;
@@ -38,6 +39,13 @@ VSOut vs(const VSIn input, [[sv_position]] float4& position)
 void fs(const VSOut input, [[sv_render_target(0)]] float4& color)
 {
     float4 sampled = color_texture.Sample(color_sampler, input.uv);
-    // color = float4(float(input.uv.x), float(input.uv.y), 0.5f, 1.0f);
-    color = sampled;
+
+    if (push_constants.use_base_color_texture)
+    {
+        color = sampled;
+    }
+    else
+    {
+        color = float4(float(input.uv.x), float(input.uv.y), 0.5f, 1.0f);
+    }
 }
