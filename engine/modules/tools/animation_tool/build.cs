@@ -8,14 +8,14 @@ public static class SkrAnimTool
     static SkrAnimTool()
     {
         var Gltf2OzzOptions = new CFamilyFileOptions();
-        Gltf2OzzOptions.Arguments.ClangCl_CXFlags(Visibility.Private, 
+        Gltf2OzzOptions.Arguments.ClangCl_CXFlags(Visibility.Private,
             "-Wno-format-invalid-specifier"
         );
 
         Engine.Module("SkrAnimTool", "SKR_ANIMTOOL")
             // .EnableUnityBuild()
             // .Exception(true)
-            .Depend(Visibility.Public, "SkrMeshCore", "SkrAnim")
+            .Depend(Visibility.Public, "SkrMeshCore", "SkrAnim", "SkrMeshTool")
             .IncludeDirs(Visibility.Public, "include", "ozz")
             .IncludeDirs(Visibility.Private, "src")
             .AddCppFiles(new CFamilyFileOptions { UnityGroup = "utils" }, "src/*.cc")

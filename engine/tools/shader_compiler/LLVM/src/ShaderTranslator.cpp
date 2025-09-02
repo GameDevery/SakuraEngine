@@ -2201,8 +2201,10 @@ inline static std::string OpKindToName(clang::OverloadedOperatorKind op)
         return "operator_plus_assign";
     case clang::OO_MinusEqual:
         return "operator_minus_assign";
-    case clang::OO_EqualEqual:
+    case clang::OO_Equal:
         return "operator_equal";
+    case clang::OO_EqualEqual:
+        return "operator_equalequal";
     case clang::OO_ExclaimEqual:
         return "operator_not_equal";
     case clang::OO_Less:

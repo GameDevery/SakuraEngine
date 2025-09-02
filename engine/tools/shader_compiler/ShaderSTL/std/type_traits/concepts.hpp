@@ -70,7 +70,7 @@ template<typename T>
 using scalar_type = typename ::detail::vec_or_matrix<std::decay_t<T>>::scalar_type;
 
 template<typename T>
-static constexpr bool is_scalar_v = !::detail::vec_or_matrix<std::decay_t<T>>::is_vec;
+static constexpr bool is_scalar_v = !::detail::vec_or_matrix<std::decay_t<T>>::is_vec && !::detail::vec_or_matrix<std::decay_t<T>>::is_matrix;
 
 template<typename T>
 static constexpr bool is_vec_v = ::detail::vec_or_matrix<std::decay_t<T>>::is_vec;

@@ -219,6 +219,7 @@ void CookGLTFMeshData_SplitSkin(const cgltf_data* gltf_data, MeshAsset* cfg, Mes
             EmplaceAllRawMeshIndices(&raw_mesh, buffer0, new_primitives);
             EmplaceStaticRawMeshVertices(&raw_mesh, shuffle_layout_name ? &shuffle_layout : nullptr, buffer0, 0, new_primitives);
             EmplaceSkinRawMeshVertices(&raw_mesh, shuffle_layout_name ? &shuffle_layout : nullptr, buffer1, 1, new_primitives);
+
             for (uint32_t j = 0; j < node_->mesh->primitives_count; j++)
             {
                 const auto& gltf_prim = node_->mesh->primitives[j];

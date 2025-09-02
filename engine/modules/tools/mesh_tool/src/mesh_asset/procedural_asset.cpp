@@ -90,9 +90,8 @@ void SimpleTriangleMesh::generate_resource(skr::MeshResource& out_resource, skr:
         raw_prim.index_stream.stride = sizeof(uint32_t);
     }
     // fill vertex stream
+    raw_prim.vertex_streams.reserve(2);
     {
-        raw_prim.vertex_streams.reserve(4);
-
         auto& vertex_stream = raw_prim.vertex_streams.add_default().ref();
         vertex_stream.buffer_view = skr::span<const uint8_t>((const uint8_t*)c_positions.data(), sizeof(c_positions));
         vertex_stream.offset = 0;
@@ -152,7 +151,7 @@ void SimpleCubeMesh::generate_resource(skr::MeshResource& out_resource, skr::Vec
     skr::Vector<skr_float3_t> c_positions;
     skr::Vector<skr_float2_t> c_uvs;
     skr::Vector<skr_float3_t> c_normals;
-    skr::Vector<uint32_t> c_indices;
+    skr::Vector<uint16_t> c_indices;
     // 8 vertices of a cube
     c_positions.push_back({ -half_size, -half_size, -half_size }); // 0: left-bottom-back
     c_positions.push_back({ half_size, -half_size, -half_size });  // 1: right-bottom-back
@@ -201,11 +200,11 @@ void SimpleCubeMesh::generate_resource(skr::MeshResource& out_resource, skr::Vec
         raw_prim.index_stream.buffer_view = skr::span<const uint8_t>((const uint8_t*)c_indices.data(), sizeof(c_indices));
         raw_prim.index_stream.offset = 0;
         raw_prim.index_stream.count = c_indices.size();
-        raw_prim.index_stream.stride = sizeof(uint32_t);
+        raw_prim.index_stream.stride = sizeof(uint16_t);
     }
     // fill vertex stream
     {
-        raw_prim.vertex_streams.reserve(4);
+        raw_prim.vertex_streams.reserve(2);
 
         auto& vertex_stream = raw_prim.vertex_streams.add_default().ref();
         vertex_stream.buffer_view = skr::span<const uint8_t>((const uint8_t*)c_positions.data(), sizeof(c_positions));
