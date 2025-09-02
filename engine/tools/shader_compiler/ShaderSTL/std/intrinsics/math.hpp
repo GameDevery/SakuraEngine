@@ -321,6 +321,18 @@ constexpr T rcp(T t) {
 	return T(1.f) / t;
 }
 
+template <concepts::float_family T>
+constexpr T fmod(const T& x, const T& y)
+{
+    return x - y * trunc(x / y);
+}
+template <concepts::float_family T>
+constexpr T modf(const T& x, T& int_part)
+{
+    int_part = trunc(x);
+    return x - int_part;
+}
+
 template<concepts::float_family T>
 constexpr T inverse_smoothstep(T y) { return T(0.5f) - sin(asin(T(1.0f) - T(2.0f) * y) / T(3.0f)); }
 
