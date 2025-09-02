@@ -322,12 +322,12 @@ constexpr T rcp(T t) {
 }
 
 template <concepts::float_family T>
-constexpr T fmod(const T& x, const T& y)
+[[callop("FMOD")]] constexpr T fmod(const T& x, const T& y)
 {
     return x - y * trunc(x / y);
 }
 template <concepts::float_family T>
-constexpr T modf(const T& x, T& int_part)
+[[callop("MODF")]] constexpr T modf(const T& x, T& int_part)
 {
     int_part = trunc(x);
     return x - int_part;

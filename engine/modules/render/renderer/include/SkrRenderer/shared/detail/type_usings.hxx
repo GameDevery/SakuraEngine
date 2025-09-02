@@ -28,4 +28,7 @@ using uint32_t = uint;
 using uint64_t = uint64;
 using AddressType = uint32_t;
 
+template <class T, size_t N>
+using gpu_array = Array<T, N>;
+
 } // namespace skr::gpu

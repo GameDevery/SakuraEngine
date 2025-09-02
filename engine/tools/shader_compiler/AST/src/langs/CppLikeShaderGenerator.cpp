@@ -271,6 +271,7 @@ void CppLikeShaderGenerator::visitStmt(SourceBuilderNew& sb, const skr::CppSL::S
         sb.append(L") ");
 
         visitStmt(sb, forStmt->body());
+        sb.append(L";");
         sb.endline();
     }
     else if (auto ifStmt = dynamic_cast<const IfStmt*>(stmt))
