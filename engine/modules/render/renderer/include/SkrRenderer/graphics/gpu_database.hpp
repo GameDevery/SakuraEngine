@@ -2,6 +2,7 @@
 #include "SkrBase/atomic/atomic_mutex.hpp"
 #include "SkrCore/memory/rc.hpp"
 #include "SkrContainersDef/vector.hpp"
+#include "SkrContainersDef/concurrent_queue.hpp"
 #include "SkrRenderGraph/frame_resource.hpp"
 #include "SkrRenderer/render_device.h"
 
@@ -104,21 +105,34 @@ protected:
         uint32_t dst_offset;
         uint32_t data_size;
     };
-    struct UploadContext
+    struct FrameContext
     {
         CGPUBufferId buffer_to_discard = nullptr;
         skr::render_graph::BufferHandle buffer_handle; 
     };
-    skr::render_graph::FrameResource<UploadContext> frame_ctxs;
+    skr::render_graph::FrameResource<FrameContext> frame_ctxs;
 
-    struct UploadData
+    struct UploadBatch
     {
-        skr::shared_atomic_mutex mtx;
+        UploadBatch();
+
         skr::Vector<Upload> uploads;
         skr::Vector<uint8_t> bytes;
-        std::atomic_uint32_t used_bytes = 0;
         std::atomic_uint32_t used_ops = 0;
-    } upload_data;
+        
+        SKR_RC_IMPL();
+    };
+    struct UploadContext
+    {
+        UploadContext();
+
+        skr::RC<UploadBatch> GetBatchForUpdate(uint64_t ops, uint64_t& op_start);
+
+        skr::shared_atomic_mutex mtx;
+        skr::RC<UploadBatch> current_batch = nullptr;
+        skr::ConcurrentQueue<skr::RC<UploadBatch>> batches;
+        skr::ConcurrentQueue<skr::RC<UploadBatch>> free_batches;
+    } upload_ctx;
 
     CGPUBufferId buffer = nullptr;
     render_graph::RenderGraphStateTracker state_tracker;

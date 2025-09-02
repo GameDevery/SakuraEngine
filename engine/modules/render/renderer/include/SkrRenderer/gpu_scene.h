@@ -39,6 +39,10 @@ GPUSceneInstance
 {
     skr::ecs::Entity entity;
     GPUSceneInstanceID instance_index = ~0;
+    uint32_t prim_id_start;
+    uint32_t prim_id_count;
+    uint32_t mat_id_start;
+    uint32_t mat_id_count;
 };
 
 // 主管理器
@@ -104,18 +108,10 @@ private:
     std::atomic<GPUSceneInstanceID> total_inst_count = 0;
 
     skr::RC<gpu::TableInstance> primitives_table;
-    skr::ConcurrentQueue<GPUSceneInstanceID> free_prims;
-    std::atomic<GPUSceneInstanceID> free_prim_count = 0;
-    std::atomic<GPUSceneInstanceID> latest_prim_index = 0;
     std::atomic<GPUSceneInstanceID> total_prim_count = 0;
-    std::atomic_bool prim_oversized = false;
 
     skr::RC<gpu::TableInstance> materials_table;
-    skr::ConcurrentQueue<GPUSceneInstanceID> free_mats;
-    std::atomic<GPUSceneInstanceID> free_mat_count = 0;
-    std::atomic<GPUSceneInstanceID> latest_mat_index = 0;
     std::atomic<GPUSceneInstanceID> total_mat_count = 0;
-    std::atomic_bool mat_oversized = false;
 
 private:
     static constexpr uint32_t kLaneCount = 2;
@@ -130,10 +126,7 @@ private:
         shared_atomic_mutex dirty_mtx;
         skr::Vector<skr::ecs::Entity> dirty_ents;
 
-        std::atomic<uint64_t> dirty_comp_count = 0;
-        
         skr::Map<skr::ecs::Entity, skr::InlineVector<CPUTypeID, 4>> dirties;
-        uint64_t dirty_buffer_size = 0;
     } lanes[kLaneCount];
     std::atomic_uint32_t front_lane = 0;
 

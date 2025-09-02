@@ -30,8 +30,6 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
         builder.read(&AddEntityToGPUScene::meshes);
         builder.write(&AddEntityToGPUScene::instances);
         builder.write(&AddEntityToGPUScene::gpu_instances);
-        builder.write(&AddEntityToGPUScene::primitive_comps);
-        builder.write(&AddEntityToGPUScene::material_comps);
     }
 
     void run(skr::ecs::TaskContext& Context)
@@ -46,24 +44,7 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
                 auto entity = Context.entities()[i];
                 const auto& mesh = meshes[i];
                 const bool MeshNotResolved = !mesh.mesh_resource.is_resolved();
-                if (!MeshNotResolved)
-                {
-                    auto mesh_resource = mesh.mesh_resource.get_resolved();
-
-                    uint32_t PrimitivesCount = 0;
-                    for (uint32_t section_id = 0; section_id < mesh_resource->sections.size(); section_id++)
-                    {
-                        const auto& section_info = mesh_resource->sections[section_id];
-                        for (auto prim_id : section_info.primitive_indices)
-                        {
-                            PrimitivesCount += 1;
-                        }
-                    }
-
-                    pScene->prim_oversized = (PrimitivesCount + pScene->total_prim_count) > pScene->primitives_table->GetInstanceCapacity();
-                    pScene->mat_oversized = (mesh_resource->materials.size() + pScene->total_mat_count) > pScene->materials_table->GetInstanceCapacity();
-                }
-                if (MeshNotResolved || pScene->prim_oversized || pScene->mat_oversized)
+                if (MeshNotResolved)
                 {
                     pScene->AddEntity(entity);
                     continue;
@@ -81,33 +62,22 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
                     instance_data.instance_index = pScene->latest_inst_index++;
 
                 // 分配 prim ids
-                auto& prim_comp = primitive_comps[i];
                 for (uint32_t section_id = 0; section_id < mesh_resource->sections.size(); section_id++)
                 {
                     const auto& section_info = mesh_resource->sections[section_id];
                     for (auto prim_id : section_info.primitive_indices)
                     {
-                        uint32_t new_id = 0;
-                        if (pScene->free_prims.try_dequeue(new_id))
-                            pScene->free_prim_count -= 1;
-                        else
-                            new_id = pScene->latest_prim_index++;
-                        prim_comp.emplace_back(new_id);
+                        instance_data.prim_id_count += 1;
                     }
                 }
-                pScene->total_prim_count += prim_comp.size();
+                instance_data.prim_id_start = pScene->total_prim_count.fetch_add(instance_data.prim_id_count);
 
                 // 分配 mat ids
-                auto& mat_comp = material_comps[i];
-                mat_comp.resize(mesh_resource->materials.size());
-                pScene->total_mat_count += mat_comp.size();
-                for (auto& mat : mat_comp)
+                for (auto& mat : mesh_resource->materials)
                 {
-                    if (pScene->free_mats.try_dequeue(mat.global_index))
-                        pScene->free_mat_count -= 1;
-                    else
-                        mat.global_index = pScene->latest_mat_index++;
+                    instance_data.mat_id_count += 1;
                 }
+                instance_data.mat_id_start = pScene->total_mat_count.fetch_add(instance_data.mat_id_count);
 
                 if (mesh_resource->render_mesh->need_build_blas)
                 {
@@ -122,10 +92,9 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
                 {
                     for (auto prim_id : section_info.primitive_indices)
                     {
-                        auto& prim_data = prim_comp[next_prim];
-                        next_prim += 1;
-
                         const auto& prim_info = mesh_resource->primitives[prim_id];
+                        gpu::Primitive prim_data;
+                        prim_data.global_index = instance_data.prim_id_start + next_prim;
                         prim_data.material_index = prim_info.material_index;
                         for (const auto& vb : prim_info.vertex_buffers)
                         {
@@ -150,16 +119,19 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
                         }
                         auto& table = pScene->primitives_table;
                         StorePrimitiveToTable(*table, prim_data.global_index, &prim_data);  
+
+                        next_prim += 1;
                     }
                 }
-                gpu_inst.primitives = gpu::Range<gpu::Primitive>(prim_comp[0].global_index, (uint32_t)prim_comp.size());
+                gpu_inst.primitives = gpu::Range<gpu::Primitive>(instance_data.prim_id_start, (uint32_t)instance_data.prim_id_count);
 
                 auto StoreMaterialToTable = pScene->store_map.find(sugoi_id_of<gpu::Material>::get()).value();
                 for (uint32_t mat_id = 0; mat_id < mesh_resource->materials.size(); mat_id++)
                 {
-                    auto& mat_data = mat_comp[mat_id];
                     mesh_resource->materials[mat_id].resolve(true, 1, ESkrRequesterType::SKR_REQUESTER_UNKNOWN);
                     const auto& mat = mesh_resource->materials[mat_id].get_resolved();
+                    gpu::Material mat_data;
+                    mat_data.global_index = instance_data.mat_id_start + mat_id;
                     mat_data.basecolor_tex = ~0;
                     mat_data.metallic_roughness_tex = ~0;
                     mat_data.emission_tex = ~0;
@@ -175,7 +147,7 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
                     auto& table = pScene->materials_table;
                     StoreMaterialToTable(*table, mat_data.global_index, &mat_data);
                 }
-                gpu_inst.materials = gpu::Range<gpu::Material>(mat_comp[0].global_index, (uint32_t)mat_comp.size());
+                gpu_inst.materials = gpu::Range<gpu::Material>(instance_data.mat_id_start, (uint32_t)instance_data.mat_id_count);
 
                 // add tlas
                 auto& transform = gpu_inst.transform;
@@ -205,8 +177,6 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
     skr::ecs::ComponentView<const MeshComponent> meshes;
     skr::ecs::ComponentView<GPUSceneInstance> instances;
     skr::ecs::ComponentView<gpu::Instance> gpu_instances;
-    skr::ecs::ComponentView<gpu::Primitive> primitive_comps;
-    skr::ecs::ComponentView<gpu::Material> material_comps;
 };
 
 struct ScanGPUScene : public GPUSceneInstanceTask
@@ -266,8 +236,8 @@ void GPUScene::AdjustDatabase(skr::render_graph::RenderGraph* graph)
         imported = table->AdjustDatabase(graph, required_instances);
     }
     // TODO: RESIZE MAT AND PRIMS
-    frame_ctx.primitives_handle = primitives_table->AdjustDatabase(graph, 16 * required_instances);
-    frame_ctx.materials_handle = materials_table->AdjustDatabase(graph, 16 * required_instances);
+    frame_ctx.primitives_handle = primitives_table->AdjustDatabase(graph, 128 * required_instances);
+    frame_ctx.materials_handle = materials_table->AdjustDatabase(graph, 128 * required_instances);
 }
 
 void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
@@ -301,8 +271,6 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
     SKR_DEFER({ ImportTLAS(); });
 
     auto& Lane = GetLaneForUpload();
-    if (Lane.dirty_buffer_size == 0)
-        return;
 
     // Schedule remove & add & scan
     auto get_batchsize = +[](uint64_t ecount) { return std::max(ecount / 8ull, 1024ull); };
@@ -388,9 +356,7 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
                 Lane.add_ents.clear();
                 Lane.remove_ents.clear();
                 Lane.dirty_ents.clear();
-                Lane.dirty_comp_count = 0;
                 Lane.dirties.clear();
-                Lane.dirty_buffer_size = 0;
             } });
     }
     materials_table->DispatchSparseUpload(graph, {});
@@ -430,15 +396,9 @@ void GPUScene::RemoveEntity(skr::ecs::Entity entity)
         free_inst_count += 1;
         total_inst_count -= 1;
 
-        for (auto prim : *prims)
-            free_prims.enqueue(prim.global_index);
-        free_prim_count += prims->size();
-        total_prim_count -= prims->size();
-
-        for (auto mat : *mats)
-            free_mats.enqueue(mat.global_index);
-        free_mat_count += mats->size();
-        total_mat_count -= mats->size();
+        // TODO: FREE
+        // total_prim_count -= instance_data->prim_ids.size();
+        // total_mat_count -= instance_data->mat_ids.size();
 
         auto& tlas_instance = tlas_instances[instance_data->instance_index];
         memset(tlas_instance.transform, 0, sizeof(tlas_instance.transform));
@@ -469,11 +429,6 @@ void GPUScene::RequireUpload(skr::ecs::Entity entity, CPUTypeID component)
     if (!cs.value().find(component))
     {
         cs.value().add(component);
-        if (auto type_iter = table_map.find(component))
-        {
-            Lane.dirty_buffer_size += type_iter.value()->GetComponentSize(0);
-        }
-        Lane.dirty_comp_count += 1;
     }
 
     Lane.dirty_mtx.unlock();

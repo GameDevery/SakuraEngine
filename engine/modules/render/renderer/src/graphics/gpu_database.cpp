@@ -305,18 +305,83 @@ void TableInstanceBase::CopySegments(skr::render_graph::RenderGraph* graph,
         {});
 }
 
+static constexpr uint64_t kBatchBytesSize = 1024 * 1024; 
+static constexpr uint64_t kStridePerOp = 16 * sizeof(float);
+static_assert((kBatchBytesSize % kStridePerOp) == 0);
+
+TableInstanceBase::UploadBatch::UploadBatch()
+{
+    bytes.resize_unsafe(kBatchBytesSize);
+    uploads.resize_zeroed(kBatchBytesSize / kStridePerOp);
+}
+
+TableInstanceBase::UploadContext::UploadContext()
+{
+    current_batch = skr::RC<UploadBatch>::New();
+}
+
+skr::RC<TableInstanceBase::UploadBatch> TableInstanceBase::UploadContext::GetBatchForUpdate(uint64_t ops, uint64_t& op_start)
+{
+    mtx.lock();
+    SKR_DEFER({ mtx.unlock(); });
+
+    // try close batch
+    if (current_batch && (current_batch->used_ops + ops > current_batch->uploads.size()))
+    {
+        batches.enqueue(current_batch);
+        current_batch = nullptr;
+    }
+
+    // pick new batch
+    if (!current_batch)
+    {
+        if (!free_batches.try_dequeue(current_batch))
+        {
+            current_batch = skr::RC<UploadBatch>::New();
+        }
+    }
+    op_start = current_batch->used_ops.fetch_add(ops);
+    return current_batch;
+}
+
+void TableInstanceBase::Store(uint64_t dst_offset, const void* data, uint64_t size)
+{
+    const auto OpsCount = (size + kStridePerOp - 1) / kStridePerOp;
+    uint64_t OpStart = 0;
+    auto batch = upload_ctx.GetBatchForUpdate(OpsCount, OpStart);
+    auto OpsAddress = &batch->uploads[OpStart];
+    auto BytesAddress = &batch->bytes[OpStart * kStridePerOp];
+    ::memcpy(BytesAddress, data, size);
+    for (uint32_t i = 0; i < OpsCount; i++)
+    {
+        const Upload upload = {
+            .src_offset = (uint32_t)((OpStart * kStridePerOp) + (i * kStridePerOp)),
+            .dst_offset = (uint32_t)(dst_offset + i * kStridePerOp),
+            .data_size = (uint32_t)skr::min(size, kStridePerOp)
+        };
+        size -= kStridePerOp;
+        OpsAddress[i] = upload;
+    }
+}
+
 void TableInstanceBase::DispatchSparseUpload(skr::render_graph::RenderGraph* graph, const render_graph::ComputePassExecuteFunction& on_exec)
 {
     SkrZoneScopedN("GPUScene::DispatchSparseUpload");
 
-    // TODO: !!!
-    const uint64_t bytes_size = skr::max(1ull, 1000000ull) * sizeof(Upload);
-    const uint64_t ops_size = skr::max(1ull, 1000000ull) * sizeof(Upload);
+    // close batch
+    if (upload_ctx.current_batch)
+    {
+        upload_ctx.batches.enqueue(upload_ctx.current_batch);
+        upload_ctx.current_batch = nullptr;
+    }
+
+    skr::RC<UploadBatch> BatchToExecute = nullptr;
+    upload_ctx.batches.try_dequeue(BatchToExecute);
 
     auto upload_buffer = graph->create_buffer(
         [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
             builder.set_name(skr::format(u8"GPUTable{}-UploadData", config.name).c_str())
-                .size(bytes_size)
+                .size(kBatchBytesSize)
                 .memory_usage(CGPU_MEM_USAGE_CPU_TO_GPU)
                 .as_upload_buffer()
                 .allow_shader_read()
@@ -326,7 +391,7 @@ void TableInstanceBase::DispatchSparseUpload(skr::render_graph::RenderGraph* gra
     auto ops_buffer = graph->create_buffer(
         [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
             builder.set_name(skr::format(u8"GPUTable{}-UploadOps", config.name).c_str())
-                .size(ops_size)
+                .size(sizeof(Upload) * kBatchBytesSize / kStridePerOp)
                 .memory_usage(CGPU_MEM_USAGE_CPU_TO_GPU)
                 .as_upload_buffer()
                 .allow_shader_read()
@@ -341,43 +406,43 @@ void TableInstanceBase::DispatchSparseUpload(skr::render_graph::RenderGraph* gra
                 .read(u8"upload_operations", ops_buffer)
                 .readwrite(u8"target_buffer", frame_ctxs.get(&g).buffer_handle);
         },
-        [this, ops_buffer, upload_buffer, exec = on_exec](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
+        [this, ops_buffer, upload_buffer, BatchToExecute, exec = on_exec](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
             SkrZoneScopedN("GPUTable::SparseUploadScene");
-
+            
             if (exec)
                 exec(g, ctx);
 
-            auto& upload_ctx = frame_ctxs.get(ctx.graph);
-            uint32_t actual_uploads = upload_data.uploads.size();
-            uint32_t actual_bytes = upload_data.bytes.size();
-            if (actual_uploads)
+            if (!BatchToExecute)
+                return;
+
+            const uint32_t OpsToExecute = BatchToExecute->used_ops;
+            if (OpsToExecute > 0)
             {
                 SkrZoneScopedN("GPUScene::CollectAndDisptachCopyPass");
 
                 // Fetch upload data
                 if (auto scene_data = ctx.resolve(upload_buffer)->info->cpu_mapped_address)
                 {
-                    ::memcpy(scene_data, upload_data.bytes.data(), upload_data.used_bytes);
-                    upload_data.bytes.clear();
-                    upload_data.used_bytes = 0;
+                    ::memcpy(scene_data, BatchToExecute->bytes.data(), OpsToExecute * kStridePerOp);
                 }
                 if (auto ops = ctx.resolve(ops_buffer)->info->cpu_mapped_address)
                 {
-                    ::memcpy(ops, upload_data.uploads.data(), upload_data.used_ops * sizeof(Upload));
-                    upload_data.uploads.clear();
-                    upload_data.used_ops = 0;
+                    ::memcpy(ops, BatchToExecute->uploads.data(), OpsToExecute * sizeof(Upload));
                 }
 
                 struct SparseUploadConstants
                 {
                     uint32_t num_operations;
                 } constants;
-                constants.num_operations = static_cast<uint32_t>(actual_uploads);
+                constants.num_operations = static_cast<uint32_t>(OpsToExecute);
 
                 const uint32_t dispatch_groups = (constants.num_operations + 255u) / 256u;
                 cgpu_compute_encoder_push_constants(ctx.encoder, manager->GetSparseUploadPipeline()->root_signature, u8"constants", &constants);
                 cgpu_compute_encoder_dispatch(ctx.encoder, dispatch_groups, 1, 1);
             }
+
+            BatchToExecute->used_ops = 0;
+            upload_ctx.free_batches.enqueue(BatchToExecute); 
         });
 }
 
@@ -471,60 +536,6 @@ void TableInstanceBase::releaseBuffer()
         buffer = nullptr;
         SKR_LOG_DEBUG(u8"TableInstanceBase: Released GPU buffer");
     }
-}
-
-void TableInstanceBase::Store(uint64_t dst_offset, const void* data, uint64_t size)
-{
-    static constexpr uint64_t op_stride = 64 * sizeof(float);
-
-    // ensure capacity
-    uint64_t src_byte_offset = 0;
-    uint64_t src_upload_offset = 0;
-
-    const auto needed_bytes = size;
-    const auto needed_uploads = (size + op_stride - 1) / op_stride;
-    bool need_resize_bytes = false;
-    bool need_resize_ops = false;
-    upload_data.mtx.lock_shared();
-    {
-        src_byte_offset = upload_data.used_bytes.fetch_add(needed_bytes);
-        if (upload_data.used_bytes + needed_bytes > upload_data.bytes.size())
-        {
-            need_resize_bytes = true;
-        }
-
-        src_upload_offset = upload_data.used_ops.fetch_add(needed_uploads);
-        if (upload_data.used_ops + needed_uploads > upload_data.uploads.size())
-        {
-            need_resize_ops = true;
-        }
-    }
-    upload_data.mtx.unlock_shared();
-
-    upload_data.mtx.lock();
-    {
-        if (need_resize_bytes)
-            upload_data.bytes.resize_unsafe(1.2f * (upload_data.used_bytes));
-        if (need_resize_ops)
-            upload_data.uploads.resize_unsafe(1.2f * (upload_data.used_ops));
-    }
-    upload_data.mtx.unlock();
-
-    upload_data.mtx.lock_shared();
-    {
-        ::memcpy(upload_data.bytes.data() + src_byte_offset, data, size);
-
-        for (uint32_t i = 0; i < needed_uploads; i++)
-        {
-            const Upload upload = {
-                .src_offset = (uint32_t)(src_byte_offset + i * op_stride),
-                .dst_offset = (uint32_t)(dst_offset + i * op_stride),
-                .data_size = (uint32_t)skr::min(size, op_stride)
-            };
-            upload_data.uploads[src_upload_offset + i] = upload;
-        }
-    }
-    upload_data.mtx.unlock_shared();
 }
 
 TableInstance::TableInstance(const TableManager* manager, const TableConfig& config)

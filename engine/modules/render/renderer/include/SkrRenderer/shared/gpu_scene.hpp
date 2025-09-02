@@ -7,7 +7,7 @@
 namespace skr::gpu
 {
 
-sreflect_managed_component(guid = "74e60480-7324-48d7-a174-bc5e404fe0bc" ecs.comp.array = 4) 
+sreflect_managed_component(guid = "74e60480-7324-48d7-a174-bc5e404fe0bc") /*gpu.table=@aos*/
 Material
 {
     uint32_t global_index;
@@ -16,7 +16,7 @@ Material
     uint32_t emission_tex;
 };
 
-sreflect_managed_component(guid = "62af1ab3-7762-4413-97f9-fab30d9232c0" ecs.comp.array = 4)
+sreflect_managed_component(guid = "62af1ab3-7762-4413-97f9-fab30d9232c0")/*gpu.table=@aos*/
 Primitive
 {
     uint32_t global_index;
@@ -28,7 +28,7 @@ Primitive
     Range<float2> uvs;
 };
 
-sreflect_managed_component(guid = "73a52be2-4247-4320-b30c-f1fbd5a1766a")
+sreflect_managed_component(guid = "73a52be2-4247-4320-b30c-f1fbd5a1766a")/*gpu.table=@aos*/
 Instance
 {
     float4x4 transform;

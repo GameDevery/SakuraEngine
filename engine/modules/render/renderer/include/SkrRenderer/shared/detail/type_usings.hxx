@@ -3,6 +3,7 @@
 #include <std/types/matrix.hpp>
 #include <std/resources/buffer.hpp>
 
+#define sreflect_struct(...) struct 
 #define sreflect_managed_component(...) struct 
 
 namespace skr::gpu

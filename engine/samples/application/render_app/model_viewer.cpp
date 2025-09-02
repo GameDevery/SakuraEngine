@@ -369,7 +369,8 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
 
     CreateEntities(1);
 
-    uint64_t frame_index = 0;
+    uint64_t render_frame_index = 0;
+    uint64_t logic_frame_index = 0;
     auto last_time = std::chrono::high_resolution_clock::now();
     while (!event_listener.want_exit)
     {
@@ -386,6 +387,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
         render_app->get_event_queue()->pump_messages();
         render_app->acquire_frames();
 
+        if ((logic_frame_index % 1024) == 0)
         {
             // DestroyRandomEntities(1);
         }
@@ -474,11 +476,13 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                 });
         }
 
-        frame_index = render_graph->execute();
-        if (frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)
-            render_graph->collect_garbage(frame_index - RG_MAX_FRAME_IN_FLIGHT * 10);
+        render_frame_index = render_graph->execute();
+        if (render_frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)
+            render_graph->collect_garbage(render_frame_index - RG_MAX_FRAME_IN_FLIGHT * 10);
 
         render_app->present_all();
+        
+        logic_frame_index += 1;
     }
 
     resource_system_quit = true;
@@ -512,6 +516,7 @@ void ModelViewerModule::CookAndLoadGLTF()
         );
         // source file
         importer->assetPath = u8"D:/D5EngineAssets/GLTFModels/sponza/scene.gltf";
+        // importer->assetPath = u8"C:/Code/D5Engine/engine/samples/assets/sketchfab/loli/scene.gltf";
         CookSystem.ImportAssetMeta(&project, asset, importer, metadata);       
 
         // save
@@ -550,9 +555,7 @@ void ModelViewerModule::CreateEntities(uint32_t count)
                 .add_component(&Spawner::meshes)
 
                 .add_component(&Spawner::instances)
-                .add_component(&Spawner::inst_datas)
-                .add_component(&Spawner::mats)
-                .add_component(&Spawner::prims);
+                .add_component(&Spawner::inst_datas);
         }
 
         void run(skr::ecs::TaskContext& Context)
@@ -563,11 +566,13 @@ void ModelViewerModule::CreateEntities(uint32_t count)
             {
                 // Generate random position with Z behind camera
                 skr::float3 random_pos = { 0.f, 0.f, 0.f };
+                scales[i].set(1.f);
+                // skr::float3 random_pos = { pos_xy_dist(rng), pos_xy_dist(rng), pos_z_dist(rng) };
+                // scales[i].set(0.2f);
 
                 // Set transform components
                 translations[i].set(random_pos);
                 rotations[i].set(0, 0, 0);
-                scales[i].set(10.f);
 
                 // Create transform matrix from components
                 auto transform_matrix = skr::scene::Transform(
@@ -593,18 +598,14 @@ void ModelViewerModule::CreateEntities(uint32_t count)
         skr::GPUScene* pScene = nullptr;
         ComponentView<GPUSceneInstance> instances;
         ComponentView<skr::gpu::Instance> inst_datas;
-        ComponentView<skr::gpu::Primitive> prims;
-        ComponentView<skr::gpu::Material> mats;
 
         ComponentView<skr::scene::PositionComponent> translations;
         ComponentView<skr::scene::RotationComponent> rotations;
         ComponentView<skr::scene::ScaleComponent> scales;
         ComponentView<skr::MeshComponent> meshes;
         uint32_t local_index = 0;
-        std::mt19937* rng_ptr = nullptr;
     } spawner;
     spawner.pScene = &GPUScene;
-    spawner.rng_ptr = &rng;
     spawner.pModule = this;
     world.create_entities(spawner, count);
 }
