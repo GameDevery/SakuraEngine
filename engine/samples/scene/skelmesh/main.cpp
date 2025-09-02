@@ -1,4 +1,3 @@
-// A Movable skinned skeletal mesh sample
 #include "SkrCore/module/module_manager.hpp"
 #include "SkrOS/filesystem.hpp"
 
