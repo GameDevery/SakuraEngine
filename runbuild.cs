@@ -142,6 +142,7 @@ public class BuildCommand : CommandBase
 
     public override void OnExecute()
     {
+        Engine.AddCodegenEmitters(Toolchain);
         Engine.AddShaderTaskEmitters(Toolchain);
         if (!ShaderOnly)
         {

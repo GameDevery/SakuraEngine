@@ -21,10 +21,8 @@ public:
     
     void Store(TableInstance& buffer, const T& v, uint32_t byte_offset = 0)
     {
-        static constexpr bool is_aos = true;
         _bindless_index = buffer.bindless_index();
-        if constexpr (is_aos)
-            buffer.Store(_buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size, GPUDatablock<T>(v));
+        buffer.Store(_buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size, GPUDatablock<T>(v));
     }
 private:
     friend struct GPUDatablock<Row<T>>;
@@ -44,12 +42,10 @@ public:
 
     }
 
-    void StoreAt(TableInstance& buffer, uint32_t instance_index, const T& v, uint32_t byte_offset = 0)
+    void Store(TableInstance& buffer, uint32_t instance_index, const T& v, uint32_t byte_offset = 0)
     {
-        static constexpr bool is_aos = true;
         _bindless_index = buffer.bindless_index();
-        if constexpr (is_aos)
-            buffer.Store(_buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, GPUDatablock<T>(v));
+        buffer.Store(_buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, GPUDatablock<T>(v));
     }
 private:
     friend struct GPUDatablock<FixedRange<T, N>>;
@@ -69,12 +65,10 @@ public:
 
     }
 
-    void StoreAt(TableInstance& buffer, uint32_t instance_index, const T& v, uint32_t byte_offset = 0)
+    void Store(TableInstance& buffer, uint32_t instance_index, const T& v, uint32_t byte_offset = 0)
     {
-        static constexpr bool is_aos = true;
         _bindless_index = buffer.bindless_index();
-        if constexpr (is_aos)
-            buffer.Store(_buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, GPUDatablock<T>(v));
+        buffer.Store(_buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, GPUDatablock<T>(v));
     }
 
 private:

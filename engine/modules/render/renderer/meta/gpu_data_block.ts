@@ -36,6 +36,7 @@ class _Gen {
     // filter soa & aos records
     const _gen_soa_records = _gen_records.filter(r => (r.ml_configs.gpu as RecordConfig).soa.enable);
     const _gen_aos_records = _gen_records.filter(r => (r.ml_configs.gpu as RecordConfig).aos.enable);
+    const _gpu_records = _gen_aos_records.concat(_gen_soa_records)
 
     // header basic
     b.$line("#pragma once")
@@ -45,10 +46,11 @@ class _Gen {
     b.$line(``)
 
     // gen datablocks
-    if (_gen_aos_records.length > 0) {
-      b.$line(`//! BEGIN Data Blocks`)
-      b.$line(`namespace skr::gpu {`)
-      _gen_aos_records.forEach((record) => {
+    b.$line(`//! BEGIN Data Blocks`)
+    b.$line(`namespace skr::gpu {`)
+
+    if (_gpu_records.length > 0) {
+      _gpu_records.forEach((record) => {
         b.$line(`template <>`)
         b.$line(`struct GPUDatablock<${record.name}> {`)
         b.$indent(_b => {
@@ -98,9 +100,38 @@ class _Gen {
         });
         b.$line(`};`)
       });
-      b.$line(`} // namespace skr::gpu`)
-      b.$line(`//! END Data Blocks`)
     }
+
+    /*
+    if (_gen_soa_records.length > 0) {
+      _gen_soa_records.forEach((record) => {
+        b.$line(`template <>`)
+        b.$line(`struct Row<${record.name}> {`)
+        b.$line(`public:`)
+        b.$indent(_b => {
+          b.$line(`Row() = default;`)
+          b.$line(`Row(uint32_t instance_index, uint32_t buffer_offset = 0, uint32_t bindless_index = ~0)`)
+          b.$line(`: _instance_index(instance_index), _buffer_offset(buffer_offset), _bindless_index(bindless_index) {}`)
+
+          record.fields.forEach((f) => {
+            b.$line(`GPUDatablock<${f.type}> _${f.short_name};`)
+          })
+        })
+
+        b.$line(`private:`)
+        b.$indent(_b => {
+          b.$line(`friend struct GPUDatablock<Row<${record.name}>>;`)
+          b.$line(`uint32_t _instance_index = 0;`)
+          b.$line(`uint32_t _buffer_offset = 0;`)
+          b.$line(`uint32_t _bindless_index = ~0;`)
+        })
+        b.$line(`};`)
+      })
+    }
+    */
+
+    b.$line(`} // namespace skr::gpu`)
+    b.$line(`//! END Data Blocks`)
   }
   static filter_record(record: db.Record) {
     return record.ml_configs.gpu.enable;
