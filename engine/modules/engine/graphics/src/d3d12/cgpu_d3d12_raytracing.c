@@ -52,7 +52,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
             D3D12_RAYTRACING_GEOMETRY_DESC* pGeomD3D12 = &AS->asBottom.pGeometryDescs[j];
 
             pGeomD3D12->Flags = ToDXRGeometryFlags(pGeom->flags);
-            memcpy(AS->asBottom.pTransformBuffer->info->cpu_mapped_address + j * sizeof(float) * 3 * 4, 
+            memcpy((uint8_t*)AS->asBottom.pTransformBuffer->info->cpu_mapped_address + j * sizeof(float) * 3 * 4, 
                 pGeom->transform, sizeof(float) * 3 * 4);
 
             pGeomD3D12->Triangles.Transform3x4 = pTransformBuffer->mDxGpuAddress + j * sizeof(float) * 3 * 4; 
