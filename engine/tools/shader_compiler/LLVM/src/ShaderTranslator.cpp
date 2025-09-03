@@ -72,6 +72,8 @@ struct DerefThisScanner : public clang::RecursiveASTVisitor<DerefThisScanner>
         }
         for (auto child : stmt->children())
         {
+            if (child == nullptr)
+                continue;
             if (ContainsDerefThis(child))
                 return true;
         }
@@ -223,6 +225,7 @@ const bool LanguageRule_UseMethodForOperatorOverload(const clang::Decl* decl, st
         std::replace(tname.begin(), tname.end(), '(', '_');
         std::replace(tname.begin(), tname.end(), ')', '_');
         std::replace(tname.begin(), tname.end(), ',', '_');
+        std::replace(tname.begin(), tname.end(), ':', '_');
         if (pReplaceName) *pReplaceName = "cast_to_" + tname;
         return true;
     }
@@ -364,7 +367,17 @@ std::string ShaderTranslator::GetFunctionName(const clang::FunctionDecl* func)
         return false;
     };
 
+    auto IsReserveWorld = [](const auto& string)
+    {
+        if (string == "out") return true;
+        if (string == "triangle") return true;
+        return false;
+    };
+
     std::string base = func->getNameAsString();
+    if (IsReserveWorld(base))
+        base = base + "_f";
+
     if (!IsTemplateRelated(func))
         return base;
 
@@ -583,7 +596,8 @@ void ShaderTranslator::HandleTranslationUnit(clang::ASTContext& Context)
 
 bool ShaderTranslator::VisitEnumDecl(const clang::EnumDecl* enumDecl)
 {
-    return TranslateEnumDecl(enumDecl);
+    TranslateEnumDecl(enumDecl);
+    return true;
 }
 
 bool ShaderTranslator::VisitRecordDecl(const clang::RecordDecl* recordDecl)
@@ -604,6 +618,8 @@ CppSL::TypeDecl* ShaderTranslator::TranslateEnumDecl(const clang::EnumDecl* enum
 
     if (IsDump(enumDecl))
         enumDecl->dump();
+    if (IsIgnore(enumDecl)) 
+        return nullptr;                                         // skip ignored types
 
     if (auto Existed = getType(enumDecl->getTypeForDecl()->getCanonicalTypeInternal())) return Existed; // already processed
 

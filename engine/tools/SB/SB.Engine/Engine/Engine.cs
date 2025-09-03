@@ -51,23 +51,25 @@ namespace SB
             }
         }
 
+        public static void AddCodegenEmitters(IToolchain Toolchain)
+        {
+            Engine.AddTaskEmitter("Module.Info", new ModuleInfoEmitter());
+            Engine.AddTaskEmitter("Cpp.UnityBuild", new UnityBuildEmitter())
+                .AddDependency("Module.Info", DependencyModel.PerTarget);
+
+            Engine.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));
+            Engine.AddTaskEmitter("Codgen.Codegen", new CodegenRenderEmitter(Toolchain))
+                .AddDependency("Cpp.UnityBuild", DependencyModel.PerTarget)
+                .AddDependency("Codgen.Meta", DependencyModel.ExternalTarget)
+                .AddDependency("Codgen.Meta", DependencyModel.PerTarget);
+        }
+
         public static void AddEngineTaskEmitters(IToolchain Toolchain)
         {
             Log.Verbose("Add Engine Task Emitters... ");
 
             Engine.AddTaskEmitter("Utils.CopyFiles", new CopyFilesEmitter());
-
-            Engine.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));
-            Engine.AddTaskEmitter("Module.Info", new ModuleInfoEmitter());
             Engine.AddTaskEmitter("ISPC.Compile", new ISPCEmitter());
-
-            Engine.AddTaskEmitter("Cpp.UnityBuild", new UnityBuildEmitter())
-                .AddDependency("Module.Info", DependencyModel.PerTarget);
-
-            Engine.AddTaskEmitter("Codgen.Codegen", new CodegenRenderEmitter(Toolchain))
-                .AddDependency("Cpp.UnityBuild", DependencyModel.PerTarget)
-                .AddDependency("Codgen.Meta", DependencyModel.ExternalTarget)
-                .AddDependency("Codgen.Meta", DependencyModel.PerTarget);
 
             Engine.AddTaskEmitter("Cpp.PCH", new PCHEmitter(Toolchain))
                 .AddDependency("ISPC.Compile", DependencyModel.PerTarget)
@@ -86,7 +88,7 @@ namespace SB
             Engine.AddTaskEmitter("Cpp.Link", new CppLinkEmitter(Toolchain))
                 .AddDependency("Cpp.Link", DependencyModel.ExternalTarget)
                 .AddDependency("Cpp.Compile", DependencyModel.PerTarget);
-            
+
             Engine.AddTaskEmitter("Install.Artifact", new InstallArtifactEmitter())
                 .AddDependency("Cpp.Link", DependencyModel.PerTarget);
         }
@@ -113,7 +115,9 @@ namespace SB
                 Engine.AddTaskEmitter("MSL.Compile", new MSLEmitter());
             }
             Engine.AddTaskEmitter("CppSL.Compile", new CppSLEmitter())
-                .AddTargetDependency("CppSLCompiler", "Install.Artifact");  // 依赖 CppSLCompiler 目标的链接步骤
+                .AddTargetDependency("CppSLCompiler", "Install.Artifact")
+                .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
+                .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);  // 依赖 CppSLCompiler 目标的链接步骤
         }
 
         public static new void RunBuild(string? singleTargetName = null)

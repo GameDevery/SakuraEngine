@@ -16,6 +16,7 @@
 #include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrToolCore/project/project.hpp"
 #include "SkrRenderer/resources/texture_resource.h"
+#include "SkrRenderer/resources/material_resource.hpp"
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderer/render_app.hpp"
 #include "SkrRenderer/gpu_scene.h"
@@ -26,6 +27,7 @@
 #include "SkrMeshCore/mesh_processing.hpp"
 #include "SkrMeshTool/mesh_asset.hpp"
 #include "common/utils.h"
+#include "SkrRenderer/shared/database.hpp"
 
 using namespace skr::literals;
 const auto MeshAssetID = u8"18db1369-ba32-4e91-aa52-b2ed1556f576"_guid;
@@ -133,7 +135,7 @@ protected:
 
         float yaw = 0.0f;   // 水平旋转角度
         float pitch = 0.0f; // 垂直旋转角度
-        float move_speed = 5000.0f;
+        float move_speed = 1200.0f;
         float mouse_sensitivity = 0.005f;
 
         bool right_mouse_pressed = false;
@@ -197,7 +199,9 @@ protected:
     skr::TextureSamplerFactory* TextureSamplerFactory = nullptr;
     skr::TextureFactory* TextureFactory = nullptr;
     skr::MeshFactory* MeshFactory = nullptr;
+    skr::MaterialFactory* MatFactory = nullptr;
 
+    skr::RC<skr::gpu::TableManager> GPUTableManager;
     skr::ecs::World world;
     skr::GPUScene GPUScene;
 
@@ -225,15 +229,18 @@ void ModelViewerModule::on_load(int argc, char8_t** argv)
     const auto current_path = skr::fs::current_directory();
     skd::SProjectConfig projectConfig = {
         .assetDirectory = (current_path / u8"assets").string().c_str(),
-        .resourceDirectory = (current_path / u8"resources").string().c_str(),
+        .resourceDirectory = (current_path / u8"cooked").string().c_str(),
         .artifactsDirectory = (current_path / u8"artifacts").string().c_str()
     };
+    skr::fs::Directory::remove(projectConfig.resourceDirectory, true);
+    skr::fs::Directory::remove(projectConfig.artifactsDirectory, true);
+
     skr::String projectName = u8"ModelViewer";
     skr::String rootPath = skr::fs::current_directory().string().c_str();
     project.OpenProject(u8"ModelViewer", rootPath.c_str(), projectConfig);
 
     // Load existing project data from disk
-    project.LoadFromDisk();
+    // project.LoadFromDisk();
 
     // initialize resource & asset system
     // these two systems co-works well like producers & consumers
@@ -265,11 +272,13 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     auto gfx_queue = render_device->get_gfx_queue();
     auto resource_system = skr::GetResourceSystem();
     std::atomic_bool resource_system_quit = false;
-    auto resource_updater = std::thread([resource_system, &resource_system_quit]() {
+    auto resource_updater = std::thread([this, resource_system, &resource_system_quit]() {
+        scheduler.bind();
         while (!resource_system_quit)
         {
             resource_system->Update();
         }
+        scheduler.unbind();
     });
 
     skr::render_graph::RenderGraphBuilder graph_builder;
@@ -351,17 +360,17 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     // Create compute pipeline for debug rendering
     CreateComputePipeline();
 
-    GPUSceneBuilder cfg_builder;
-    cfg_builder.with_device(render_device)
-        .with_world(&world)
-        .from_layout<DefaultGPUSceneLayout>();
-    GPUScene.Initialize(cfg_builder.build_config(), cfg_builder.get_soa_builder());
+    GPUTableManager = skr::gpu::TableManager::Create(render_device->get_cgpu_device());
+    GPUScene.Initialize(GPUTableManager.get(), render_device, &world);
 
     // AsyncResource<> is a handle can be constructed by any resource type & ids
     skr::AsyncResource<MeshResource> mesh_resource;
     mesh_resource = MeshAssetID;
 
-    uint64_t frame_index = 0;
+    CreateEntities(1);
+
+    uint64_t render_frame_index = 0;
+    uint64_t logic_frame_index = 0;
     auto last_time = std::chrono::high_resolution_clock::now();
     while (!event_listener.want_exit)
     {
@@ -378,9 +387,8 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
         render_app->get_event_queue()->pump_messages();
         render_app->acquire_frames();
 
-        if (frame_index < 1'000'000 && (frame_index % 100 == 0))
+        if ((logic_frame_index % 1024) == 0)
         {
-            CreateEntities(400);
             // DestroyRandomEntities(1);
         }
 
@@ -435,10 +443,18 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                     builder.set_name(u8"RayTracingPass")
                         .set_pipeline(compute_pipeline)
                         .read(u8"scene_tlas", TLASHandle)
-                        .read(u8"gpu_scene", GPUSceneHandle)
+                        .read(u8"gpu_insts", GPUScene.GetSceneBuffer(render_graph))
+                        .read(u8"gpu_mats", GPUScene.GetMaterialBuffer(render_graph))
+                        .read(u8"gpu_prims", GPUScene.GetPrimitiveBuffer(render_graph))
                         .readwrite(u8"output_texture", render_target_handle);
                 },
                 [=, this](render_graph::RenderGraph& g, render_graph::ComputePassContext& ctx) {
+                    // Bind Bindless IB/VBs
+                    auto vbibs = MeshFactory->descriptor_buffer();
+                    cgpu_compute_encoder_bind_descriptor_buffer(ctx.encoder, vbibs, u8"geom_buffers");
+                    auto texs = MatFactory->descriptor_buffer();
+                    cgpu_compute_encoder_bind_descriptor_buffer(ctx.encoder, texs, u8"mat_textures");
+
                     // Push constants
                     cgpu_compute_encoder_push_constants(ctx.encoder, root_signature, u8"camera_constants", &camera_constants);
 
@@ -460,11 +476,13 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                 });
         }
 
-        frame_index = render_graph->execute();
-        if (frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)
-            render_graph->collect_garbage(frame_index - RG_MAX_FRAME_IN_FLIGHT * 10);
+        render_frame_index = render_graph->execute();
+        if (render_frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)
+            render_graph->collect_garbage(render_frame_index - RG_MAX_FRAME_IN_FLIGHT * 10);
 
         render_app->present_all();
+        
+        logic_frame_index += 1;
     }
 
     resource_system_quit = true;
@@ -484,6 +502,7 @@ void ModelViewerModule::CookAndLoadGLTF()
     {
         // source file is a GLTF so we create a gltf importer, if it is a fbx, then just use a fbx importer
         auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
+        importer->import_all_materials = true;
 
         // static mesh has some additional meta data to append
         auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
@@ -496,8 +515,9 @@ void ModelViewerModule::CookAndLoadGLTF()
             skr::type_id_of<skd::asset::MeshCooker>() // this cooker cooks t he raw mesh data to mesh resource
         );
         // source file
-        importer->assetPath = u8"C:/Code/SakuraEngine/engine/samples/assets/sketchfab/loli/scene.gltf";
-        CookSystem.ImportAssetMeta(&project, asset, importer, metadata);
+        importer->assetPath = u8"D:/D5EngineAssets/GLTFModels/sponza/scene.gltf";
+        // importer->assetPath = u8"C:/Code/D5Engine/engine/samples/assets/sketchfab/loli/scene.gltf";
+        CookSystem.ImportAssetMeta(&project, asset, importer, metadata);       
 
         // save
         CookSystem.SaveAssetMeta(&project, asset);
@@ -522,7 +542,6 @@ void ModelViewerModule::CreateEntities(uint32_t count)
     static std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
     static std::uniform_real_distribution<float> pos_xy_dist(-1000.f, 1000.f); // Wider XY range, some outside viewport
     static std::uniform_real_distribution<float> pos_z_dist(-1000.f, 1000.f);  // Z behind camera (negative Z)
-    static std::uniform_real_distribution<float> scale_dist(0.05f, 0.2f);      // Smaller spheres
     static std::uniform_real_distribution<float> color_dist(0.2f, 1.0f);       // Bright colors
     static std::uniform_real_distribution<float> use_emission(-1.f, 1.f);
 
@@ -533,18 +552,10 @@ void ModelViewerModule::CreateEntities(uint32_t count)
             Builder.add_component(&Spawner::translations)
                 .add_component(&Spawner::rotations)
                 .add_component(&Spawner::scales)
-                .add_component(&Spawner::transforms)
                 .add_component(&Spawner::meshes)
 
                 .add_component(&Spawner::instances)
-                .add_component(&Spawner::geom_buffers)
-                .add_component(&Spawner::colors)
-                .add_component(&Spawner::indices);
-
-            if (use_emission(*rng_ptr) > 0.f)
-            {
-                Builder.add_component(&Spawner::emissions);
-            }
+                .add_component(&Spawner::inst_datas);
         }
 
         void run(skr::ecs::TaskContext& Context)
@@ -554,42 +565,21 @@ void ModelViewerModule::CreateEntities(uint32_t count)
             for (uint32_t i = 0; i < cnt; i++)
             {
                 // Generate random position with Z behind camera
-                skr::float3 random_pos = {
-                    pos_xy_dist(*rng_ptr), // X: wider range
-                    pos_xy_dist(*rng_ptr), // Y: wider range
-                    pos_z_dist(*rng_ptr)   // Z: behind camera (negative)
-                };
-
-                // Generate random scale for small spheres
-                float random_scale = scale_dist(*rng_ptr);
-
-                // Generate random bright color
-                skr::float4 random_color = {
-                    color_dist(*rng_ptr),
-                    color_dist(*rng_ptr),
-                    color_dist(*rng_ptr),
-                    1.0f
-                };
+                skr::float3 random_pos = { 0.f, 0.f, 0.f };
+                scales[i].set(1.f);
+                // skr::float3 random_pos = { pos_xy_dist(rng), pos_xy_dist(rng), pos_z_dist(rng) };
+                // scales[i].set(0.2f);
 
                 // Set transform components
                 translations[i].set(random_pos);
                 rotations[i].set(0, 0, 0);
-                scales[i].set(random_scale);
 
                 // Create transform matrix from components
                 auto transform_matrix = skr::scene::Transform(
                     skr::math::QuatF(rotations[i].get()),
                     random_pos,
                     scales[i].get());
-                transforms[i].matrix = transform_matrix.to_matrix();
-
-                // Set random color
-                colors[i].color = random_color;
-
-                if (emissions)
-                {
-                    emissions[i].color = skr::float4(10.f, 0.f, 2.f, 1.f);
-                }
+                inst_datas[i].transform = transform_matrix.to_matrix();
 
                 // Add to GPU scene
                 pScene->AddEntity(entities[i]);
@@ -607,20 +597,15 @@ void ModelViewerModule::CreateEntities(uint32_t count)
         ModelViewerModule* pModule = nullptr;
         skr::GPUScene* pScene = nullptr;
         ComponentView<GPUSceneInstance> instances;
-        ComponentView<GPUSceneGeometryBuffers> geom_buffers;
-        ComponentView<GPUSceneInstanceColor> colors;
-        ComponentView<GPUSceneObjectToWorld> transforms;
-        ComponentView<GPUSceneInstanceEmission> emissions;
+        ComponentView<skr::gpu::Instance> inst_datas;
+
         ComponentView<skr::scene::PositionComponent> translations;
         ComponentView<skr::scene::RotationComponent> rotations;
         ComponentView<skr::scene::ScaleComponent> scales;
-        ComponentView<skr::scene::IndexComponent> indices;
         ComponentView<skr::MeshComponent> meshes;
         uint32_t local_index = 0;
-        std::mt19937* rng_ptr = nullptr;
     } spawner;
     spawner.pScene = &GPUScene;
-    spawner.rng_ptr = &rng;
     spawner.pModule = this;
     world.create_entities(spawner, count);
 }
@@ -708,6 +693,20 @@ void ModelViewerModule::InitializeReosurceSystem()
         TextureFactory = skr::TextureFactory::Create(factoryRoot);
         resource_system->RegisterFactory(TextureFactory);
     }
+    // material factory
+    {
+        skr::MaterialFactory::Root factoryRoot = {};
+        factoryRoot.device = render_device->get_cgpu_device();
+        factoryRoot.job_queue = job_queue.get();
+        factoryRoot.ram_service = ram_service;
+
+        // we have no shaders to install by material factory so these can be null
+        factoryRoot.bytecode_vfs = nullptr;
+        factoryRoot.shader_map = nullptr;
+
+        MatFactory = skr::MaterialFactory::Create(factoryRoot);
+        resource_system->RegisterFactory(MatFactory);
+    }
     // mesh factory
     {
         skr::MeshFactory::Root factoryRoot = {};
@@ -728,6 +727,7 @@ void ModelViewerModule::DestroyResourceSystem()
 
     skr::TextureSamplerFactory::Destroy(TextureSamplerFactory);
     skr::TextureFactory::Destroy(TextureFactory);
+    skr::MaterialFactory::Destroy(MatFactory);
     skr::MeshFactory::Destroy(MeshFactory);
 
     skr_io_ram_service_t::destroy(ram_service);
@@ -795,6 +795,8 @@ void ModelViewerModule::CreateComputePipeline()
 
     // Create root signature
     const char8_t* push_constant_name = u8"camera_constants";
+    const char8_t* static_sampler_name = u8"tex_sampler";
+    auto linear_sampler = render_device->get_linear_sampler();
     CGPUShaderEntryDescriptor compute_shader_entry = {
         .library = compute_shader,
         .entry = u8"cs_main",
@@ -803,6 +805,9 @@ void ModelViewerModule::CreateComputePipeline()
     CGPURootSignatureDescriptor root_desc = {
         .shaders = &compute_shader_entry,
         .shader_count = 1,
+        .static_samplers = &linear_sampler,
+        .static_sampler_names = &static_sampler_name,
+        .static_sampler_count = 1,
         .push_constant_names = &push_constant_name,
         .push_constant_count = 1,
     };

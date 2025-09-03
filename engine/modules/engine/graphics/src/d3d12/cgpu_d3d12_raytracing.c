@@ -38,12 +38,24 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
         SkrCZoneN(zz, "CreateBLAS", 1);
         AS->mDescCount = desc->bottom.count;
         AS->asBottom.pGeometryDescs = (D3D12_RAYTRACING_GEOMETRY_DESC*)(AS + 1);
+        CGPUBufferDescriptor tramsformBufferDesc = {
+            .memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU,
+            .flags = CGPU_BUFFER_FLAG_PERSISTENT_MAP_BIT,
+            .size = desc->bottom.count * sizeof(float) * 4 * 3,
+            .name = "BLAS-TransformBuffer"
+        };
+        AS->asBottom.pTransformBuffer = cgpu_create_buffer(device, &tramsformBufferDesc);
+        const CGPUBuffer_D3D12* pTransformBuffer = (const CGPUBuffer_D3D12*)AS->asBottom.pTransformBuffer;
         for (uint32_t j = 0; j < AS->mDescCount; ++j)
         {
             const CGPUAccelerationStructureGeometryDesc* pGeom = &desc->bottom.geometries[j];
             D3D12_RAYTRACING_GEOMETRY_DESC* pGeomD3D12 = &AS->asBottom.pGeometryDescs[j];
 
             pGeomD3D12->Flags = ToDXRGeometryFlags(pGeom->flags);
+            memcpy((uint8_t*)AS->asBottom.pTransformBuffer->info->cpu_mapped_address + j * sizeof(float) * 3 * 4, 
+                pGeom->transform, sizeof(float) * 3 * 4);
+
+            pGeomD3D12->Triangles.Transform3x4 = pTransformBuffer->mDxGpuAddress + j * sizeof(float) * 3 * 4; 
 
             if (pGeom->index_count)
             {
@@ -78,20 +90,19 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
             can be packed there, such as setting vertex stride to 3 bytes DXGI_FORMAT_R8G8_SNORM - third component assumed 0
             */
             cgpu_assert(DXGI_FORMAT_R32G32_FLOAT == pGeomD3D12->Triangles.VertexFormat ||
-                   DXGI_FORMAT_R32G32B32_FLOAT == pGeomD3D12->Triangles.VertexFormat ||
-                   DXGI_FORMAT_R16G16_FLOAT == pGeomD3D12->Triangles.VertexFormat ||
-                   DXGI_FORMAT_R16G16B16A16_FLOAT == pGeomD3D12->Triangles.VertexFormat ||
-                   DXGI_FORMAT_R16G16_SNORM == pGeomD3D12->Triangles.VertexFormat ||
-                   DXGI_FORMAT_R16G16B16A16_SNORM == pGeomD3D12->Triangles.VertexFormat ||
-                   ((A->mRayTracingTier > D3D12_RAYTRACING_TIER_1_0)
-                        ? (DXGI_FORMAT_R16G16B16A16_UNORM == pGeomD3D12->Triangles.VertexFormat ||
-                           DXGI_FORMAT_R16G16_UNORM == pGeomD3D12->Triangles.VertexFormat ||
-                           DXGI_FORMAT_R10G10B10A2_UNORM == pGeomD3D12->Triangles.VertexFormat ||
-                           DXGI_FORMAT_R8G8B8A8_UNORM == pGeomD3D12->Triangles.VertexFormat ||
-                           DXGI_FORMAT_R8G8_UNORM == pGeomD3D12->Triangles.VertexFormat ||
-                           DXGI_FORMAT_R8G8B8A8_SNORM == pGeomD3D12->Triangles.VertexFormat ||
-                           DXGI_FORMAT_R8G8_SNORM == pGeomD3D12->Triangles.VertexFormat)
-                        : false));
+                DXGI_FORMAT_R32G32B32_FLOAT == pGeomD3D12->Triangles.VertexFormat ||
+                DXGI_FORMAT_R16G16_FLOAT == pGeomD3D12->Triangles.VertexFormat ||
+                DXGI_FORMAT_R16G16B16A16_FLOAT == pGeomD3D12->Triangles.VertexFormat ||
+                DXGI_FORMAT_R16G16_SNORM == pGeomD3D12->Triangles.VertexFormat ||
+                DXGI_FORMAT_R16G16B16A16_SNORM == pGeomD3D12->Triangles.VertexFormat ||
+                ((A->mRayTracingTier > D3D12_RAYTRACING_TIER_1_0) ? (DXGI_FORMAT_R16G16B16A16_UNORM == pGeomD3D12->Triangles.VertexFormat ||
+                                                                        DXGI_FORMAT_R16G16_UNORM == pGeomD3D12->Triangles.VertexFormat ||
+                                                                        DXGI_FORMAT_R10G10B10A2_UNORM == pGeomD3D12->Triangles.VertexFormat ||
+                                                                        DXGI_FORMAT_R8G8B8A8_UNORM == pGeomD3D12->Triangles.VertexFormat ||
+                                                                        DXGI_FORMAT_R8G8_UNORM == pGeomD3D12->Triangles.VertexFormat ||
+                                                                        DXGI_FORMAT_R8G8B8A8_SNORM == pGeomD3D12->Triangles.VertexFormat ||
+                                                                        DXGI_FORMAT_R8G8_SNORM == pGeomD3D12->Triangles.VertexFormat) :
+                                                                    false));
         }
         /************************************************************************/
         // Get the size requirement for the Acceleration Structures
@@ -200,7 +211,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
             .size = 0
         };
         AS->pASBufferView = cgpu_create_buffer_view(device, &as_desc);
-        
+
         const CGPUBuffer_D3D12* pASBuffer = (const CGPUBuffer_D3D12*)AS->pASBuffer;
         const CGPUBufferView_D3D12* pASBufferView = (const CGPUBufferView_D3D12*)AS->pASBufferView;
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {
@@ -256,6 +267,14 @@ void cgpu_free_acceleration_structure_d3d12(CGPUAccelerationStructureId as)
             AS->asTop.pInstanceDescBuffer = CGPU_NULLPTR;
         }
     }
+    if (AS->super.type == CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL)
+    {
+        if (AS->asBottom.pTransformBuffer)
+        {
+            cgpu_free_buffer(AS->asBottom.pTransformBuffer);
+            AS->asBottom.pTransformBuffer = CGPU_NULLPTR;
+        }
+    }
     cgpu_free(AS);
 }
 
@@ -274,14 +293,13 @@ void cgpu_cmd_build_acceleration_structures_d3d12(CGPUCommandBufferId cmd, const
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {
             .DestAccelerationStructureData = COM_CALL(GetGPUVirtualAddress, ((const CGPUBuffer_D3D12*)AS->pASBuffer)->pDxResource),
             .ScratchAccelerationStructureData = COM_CALL(GetGPUVirtualAddress, ((const CGPUBuffer_D3D12*)AS->pScratchBuffer)->pDxResource),
-            .Inputs = 
-                {
-                    .Type = type,
-                    .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
-                    .Flags = AS->mFlags,
-                    .pGeometryDescs = NULL,
-                    .NumDescs = AS->mDescCount,
-                },
+            .Inputs = {
+                .Type = type,
+                .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
+                .Flags = AS->mFlags,
+                .pGeometryDescs = NULL,
+                .NumDescs = AS->mDescCount,
+            },
         };
         if (type == D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL)
         {

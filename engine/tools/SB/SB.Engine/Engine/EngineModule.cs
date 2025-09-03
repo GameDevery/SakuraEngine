@@ -135,6 +135,7 @@ namespace SB
             var CodegenDirectory = @this.GetCodegenDirectory();
             Directory.CreateDirectory(CodegenDirectory);
             @this.IncludeDirs(Visibility.Public, CodegenDirectory);
+            @this.CppSL_IncludeDirs(Visibility.Public, CodegenDirectory);
             return @this;
         }
 
