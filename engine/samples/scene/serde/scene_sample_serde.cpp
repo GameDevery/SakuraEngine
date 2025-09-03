@@ -122,6 +122,7 @@ int SceneSampleSerdeModule::main_module_exec(int argc, char8_t** argv)
         skr::fs::File::write_all_bytes(path, wbuffer);
 
         actor_manager.ClearAllActors();
+        world->finalize();
     }
     if (bIsDeserialize)
     {
@@ -148,6 +149,7 @@ int SceneSampleSerdeModule::main_module_exec(int argc, char8_t** argv)
         auto pos = pos_accessor[(skr::ecs::Entity)target_actor.lock()->GetEntity()].get();
         SKR_LOG_INFO(u8"Position: ({%f}, {%f}, {%f})", pos.x, pos.y, pos.z);
         actor_manager.ClearAllActors();
+        world->finalize();
     }
     skr_transform_system_destroy(transform_system);
     return 0;
