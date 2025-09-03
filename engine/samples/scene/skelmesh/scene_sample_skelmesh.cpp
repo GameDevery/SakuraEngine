@@ -232,7 +232,7 @@ void SceneSampleSkelMeshModule::on_load(int argc, char8_t** argv)
     scheduler.initialize({});
     scheduler.bind();
     world.initialize();
-    actor_manager.initialize(&world);
+    actor_manager.Initialize(&world);
     transform_system = skr_transform_system_create(&world);
 
     scene_render_system = skr::scene::SceneRenderSystem::Create(&world);
@@ -282,7 +282,7 @@ void SceneSampleSkelMeshModule::on_unload()
     skr_transform_system_destroy(transform_system);
     skr::scene::SceneRenderSystem::Destroy(scene_render_system);
 
-    actor_manager.finalize();
+    actor_manager.Finalize();
     world.finalize();
     scheduler.unbind();
     SKR_LOG_INFO(u8"Scene Sample Mesh Module Unloaded");

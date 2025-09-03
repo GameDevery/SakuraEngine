@@ -19,11 +19,14 @@ SkelMeshActor::~SkelMeshActor() SKR_NOEXCEPT
     }
 }
 
-SkelMeshActor::SkelMeshActor()
+void SkelMeshActor::Initialize()
 {
+    attach_rule = EAttachRule::Default;
+    guid = skr::GUID::Create();
+    rttr_type_guid = skr::type_id_of<SkelMeshActor>();
     display_name = u8"SkelMeshActor";
     // override spawner
-    spawner = Spawner{
+    spawner = skr::UPtr<Spawner>::New(
         [this](skr::ecs::ArchetypeBuilder& Builder) {
             Builder
                 .add_component<skr::scene::ParentComponent>()
@@ -42,8 +45,7 @@ SkelMeshActor::SkelMeshActor()
             this->scene_entities.resize_zeroed(1);
             this->scene_entities[0] = Context.entities()[0];
             SKR_LOG_INFO(u8"SkelMeshActor {%s} created with entity: {%u}", this->GetDisplayName().c_str(), this->GetEntity());
-        }
-    };
+        });
 }
 
 } // namespace skr

@@ -26,15 +26,17 @@ void SceneSampleSimpleModule::on_load(int argc, char8_t** argv)
     SKR_LOG_INFO(u8"Scene Sample Simple Module Loaded");
     scheduler.initialize(skr::task::scheudler_config_t());
     scheduler.bind();
+
     world.initialize();
+
     transform_system = skr_transform_system_create(&world);
-    actor_manager.initialize(&world);
+    actor_manager.Initialize(&world);
 }
 
 void SceneSampleSimpleModule::on_unload()
 {
     skr_transform_system_destroy(transform_system);
-    actor_manager.finalize();
+    actor_manager.Finalize();
     world.finalize();
     scheduler.unbind();
     SKR_LOG_INFO(u8"Scene Sample Simple Module Unloaded");
