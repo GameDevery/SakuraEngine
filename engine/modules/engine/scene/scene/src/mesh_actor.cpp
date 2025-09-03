@@ -19,6 +19,12 @@ MeshActor::~MeshActor() SKR_NOEXCEPT
 
 void MeshActor::Initialize()
 {
+    Initialize(skr::GUID::Create());
+}
+
+void MeshActor::Initialize(skr_guid_t _guid)
+{
+    this->guid = _guid;
     attach_rule = EAttachRule::Default;
     display_name = u8"MeshActor";
     rttr_type_guid = skr::type_id_of<MeshActor>();

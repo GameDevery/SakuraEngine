@@ -4,17 +4,25 @@ namespace skr
 {
 
 RootActor::~RootActor() SKR_NOEXCEPT {
-    if (world) {
-        world->finalize();
+    for (auto& child : children)
+    {
+        child->DetachFromParent();
+    }
+    if (root_world) {
+        root_world->finalize();
     }
 }
 
 void RootActor::Initialize()
 {
-    // standard initialize in system
+    RootActor::Initialize(skr::GUID::Create());
+}
+
+void RootActor::Initialize(skr_guid_t _guid)
+{
     attach_rule = EAttachRule::Default;
     rttr_type_guid = skr::type_id_of<RootActor>();
-    guid = skr::GUID::Create();
+    guid = _guid;
     display_name = u8"RootActor";
     spawner = skr::UPtr<Actor::Spawner>::New(
         [this](skr::ecs::ArchetypeBuilder& Builder) {
@@ -34,7 +42,9 @@ void RootActor::Initialize()
 
 void RootActor::InitWorld()
 {
-    world = skr::UPtr<skr::ecs::World>::New();
+    root_world = skr::UPtr<skr::ecs::World>::New();
+    ActorManager::GetInstance().world = root_world.get();
+    world = root_world.get();
 }
 
 

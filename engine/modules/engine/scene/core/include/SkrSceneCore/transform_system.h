@@ -39,5 +39,3 @@ private:
 SKR_EXTERN_C SKR_SCENE_CORE_API skr::TransformSystem* skr_transform_system_create(skr::ecs::World* world);
 SKR_EXTERN_C SKR_SCENE_CORE_API void skr_transform_system_destroy(skr::TransformSystem* system);
 SKR_EXTERN_C SKR_SCENE_CORE_API void skr_transform_system_update(skr::TransformSystem* system);
-SKR_EXTERN_C SKR_SCENE_CORE_API void skr_save_scene(skr::ecs::World* world, struct skr::archive::JsonWriter* writer);
-SKR_EXTERN_C SKR_SCENE_CORE_API void skr_load_scene(skr::ecs::World* world, struct skr::archive::JsonReader* reader);

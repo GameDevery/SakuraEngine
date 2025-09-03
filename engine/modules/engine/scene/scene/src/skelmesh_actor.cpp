@@ -21,8 +21,13 @@ SkelMeshActor::~SkelMeshActor() SKR_NOEXCEPT
 
 void SkelMeshActor::Initialize()
 {
+    Initialize(skr::GUID::Create());
+}
+
+void SkelMeshActor::Initialize(skr_guid_t _guid)
+{
     attach_rule = EAttachRule::Default;
-    guid = skr::GUID::Create();
+    guid = _guid;
     rttr_type_guid = skr::type_id_of<SkelMeshActor>();
     display_name = u8"SkelMeshActor";
     // override spawner

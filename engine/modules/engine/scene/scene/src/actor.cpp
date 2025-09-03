@@ -3,14 +3,19 @@
 #include "SkrRT/sugoi/sugoi_config.h"
 #include "SkrSceneCore/scene_components.h"
 
-
 namespace skr
 {
 
 void Actor::Initialize()
 {
-    attach_rule = EAttachRule::Default;
     guid = skr::GUID::Create();
+    Initialize(guid);
+}
+
+void Actor::Initialize(skr_guid_t _guid)
+{
+    this->guid = _guid;
+    attach_rule = EAttachRule::Default;
     rttr_type_guid = skr::type_id_of<Actor>();
     display_name = u8"GeneralActor";
     spawner = skr::UPtr<Spawner>::New(
@@ -43,7 +48,8 @@ Actor::~Actor() SKR_NOEXCEPT
     }
 }
 
-void Actor::serialize() SKR_NOEXCEPT {
+void Actor::serialize() SKR_NOEXCEPT
+{
     children_serialized.reserve(children.size());
     for (auto& child : children)
     {
@@ -57,17 +63,21 @@ void Actor::serialize() SKR_NOEXCEPT {
     }
 }
 
-void Actor::deserialize() SKR_NOEXCEPT {
+void Actor::deserialize() SKR_NOEXCEPT
+{
     auto& manager = skr::ActorManager::GetInstance();
     children.reserve(children_serialized.size());
     for (auto& child_guid : children_serialized)
     {
-        if (auto child = manager.GetActor(child_guid)) {
+        if (auto child = manager.GetActor(child_guid))
+        {
             children.push_back(child.lock());
         }
     }
-    if (parent_serialized != skr_guid_t{}) {
-        if (auto parent = manager.GetActor(parent_serialized)) {
+    if (parent_serialized != skr_guid_t{})
+    {
+        if (auto parent = manager.GetActor(parent_serialized))
+        {
             _parent = parent.lock();
         }
     }
@@ -79,7 +89,7 @@ void Actor::deserialize() SKR_NOEXCEPT {
     }
 }
 
-skr::RCWeak<Actor> Actor::GetRoot()
+skr::RCWeak<RootActor> Actor::GetRoot()
 {
     return ActorManager::GetInstance().GetRoot();
 }
@@ -134,11 +144,6 @@ void Actor::DetachFromParent()
 // ActorManager Implementation
 /////////////////////
 
-void ActorManager::Initialize(skr::ecs::World* world)
-{
-    this->world = world; // Store the ECS world pointer for actor management
-}
-
 skr::RC<Actor> ActorManager::CreateActor(skr::GUID actor_rttr_guid)
 {
     RTTRType* ActorType = skr::get_type_from_guid(actor_rttr_guid);
@@ -149,21 +154,19 @@ skr::RC<Actor> ActorManager::CreateActor(skr::GUID actor_rttr_guid)
 
 skr::RCWeak<Actor> ActorManager::GetActor(skr::GUID guid)
 {
-    return actors.find(guid).value();
+    return scene->actors.find(guid).value();
 }
-
-
 
 bool ActorManager::DestroyActor(skr::GUID guid)
 {
-    auto it = actors.find(guid).value();
+    auto it = scene->actors.find(guid).value();
     if (!it)
     {
         SKR_LOG_ERROR(u8"Actor with GUID {%s} not found", guid);
         return false;
     }
-    DestroyActorEntity(it); // Destroy the actor's entity in ECS world
-    actors.remove(guid);    // when ref-counted -> 0, it will call SkrDelete with release()
+    DestroyActorEntity(it);     // Destroy the actor's entity in ECS world
+    scene->actors.remove(guid); // when ref-counted -> 0, it will call SkrDelete with release()
     return true;
 }
 
@@ -231,26 +234,34 @@ void ActorManager::UpdateHierarchy(skr::RCWeak<Actor> parent, skr::RCWeak<Actor>
     }
 }
 
-void ActorManager::Finalize()
-{
-    ClearAllActors(); // Clear all actors when finalizing
-    world = nullptr;  // Clear the ECS world pointer
-}
-
 void ActorManager::ClearAllActors()
 {
-    for (auto& actor_item : actors)
+    auto root_guid = GetRoot().lock()->GetGUID();
+    for (auto& actor_item : scene->actors)
     {
-        DestroyActor(actor_item.key);
+        // filter out root because it contains the world
+        if (actor_item.key != root_guid)
+        {
+            DestroyActor(actor_item.key);
+        }
     }
+    DestroyActor(root_guid);
 }
 
-skr::RCWeak<Actor> ActorManager::GetRoot()
+skr::RCWeak<RootActor> ActorManager::GetRoot()
 {
-    static skr::RCWeak<Actor> root = nullptr;
+    static skr::RCWeak<RootActor> root = nullptr;
     if (!root)
     {
-        root = CreateActor<RootActor>();
+        if (!scene)
+        {
+            SKR_LOG_ERROR(u8"ActorManager::GetRoot: scene is null, Please bind scene first");
+            return nullptr;
+        }
+        auto _root = CreateActorInstance<RootActor>();
+        _root->Initialize(scene->root_actor_guid);
+        scene->actors.add(_root->GetGUID(), _root);
+        root = _root;
     }
     return root; // Return the root actor reference
 }

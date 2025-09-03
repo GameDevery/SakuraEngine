@@ -22,8 +22,8 @@ struct SceneSampleSerdeModule : public skr::IDynamicModule
 
     skr::TransformSystem* transform_system = nullptr;
     skr::task::scheduler_t scheduler;
-    skr::ecs::World world;
     skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
+    skr::Scene scene;
 };
 
 IMPLEMENT_DYNAMIC_MODULE(SceneSampleSerdeModule, SceneSample_Serde);
@@ -45,10 +45,15 @@ void SceneSampleSerdeModule::on_load(int argc, char8_t** argv)
 
     SKR_LOG_INFO(u8"Serialize: %d", bIsSerialize);
     SKR_LOG_INFO(u8"Deserialize: %d", bIsDeserialize);
+
+    scheduler.initialize(skr::task::scheudler_config_t());
+    scheduler.bind();
 }
 
 void SceneSampleSerdeModule::on_unload()
 {
+    scheduler.unbind();
+    actor_manager.UnBind();
 
     SKR_LOG_INFO(u8"Scene SceneSampleSerde Unloaded");
 }
@@ -57,8 +62,7 @@ int SceneSampleSerdeModule::main_module_exec(int argc, char8_t** argv)
 {
     SkrZoneScopedN("SceneSampleSerdeModule::main_module_exec");
     SKR_LOG_INFO(u8"Running SceneSampleSerde Module");
-    scheduler.initialize(skr::task::scheudler_config_t());
-    scheduler.bind();
+
     skr::Path path = u8"D://ws/data/mid/skr/test.bin";
 
     if (bIsSerialize)
@@ -66,66 +70,85 @@ int SceneSampleSerdeModule::main_module_exec(int argc, char8_t** argv)
         // initialize world
         SKR_LOG_INFO(u8"Serialize");
     }
+    scene.root_actor_guid = skr::GUID::Create();
+    actor_manager.BindScene(&scene);
+
     skr::Vector<uint8_t> rbuffer;
-    if (bIsDeserialize)
-    {
-        SKR_LOG_INFO(u8"Deserialize");
+    skr::Vector<uint8_t> wbuffer;
 
-        skr::fs::File::read_all_bytes(path, rbuffer);
-        skr::archive::BinSpanReader reader{ rbuffer, 0 };
-        SBinaryReader read_archive(reader);
-        skr::bin_read(&read_archive, world);
-    }
-    
-    world.bind_scheduler(scheduler); // bind task scheduler
-    world.initialize();              // create storage
+    skr::Path scene_path = u8"D://ws/data/mid/skr/scene.json";
 
-    transform_system = skr_transform_system_create(&world);
-    actor_manager.Initialize(&world);
-
-    skr::Path root_path = u8"D://ws/data/mid/skr/root.json";
-    auto pos_accessor = world.random_read<const skr::scene::PositionComponent>();
-
+    skr_guid_t target_actor_guid;
     if (bIsSerialize)
     {
-        auto root = skr::Actor::GetRoot();
+        auto root = actor_manager.GetRoot();
+        root.lock()->InitWorld();
+        auto* world = root.lock()->GetWorld();
+        transform_system = skr_transform_system_create(world);
+        world->bind_scheduler(scheduler);
+        world->initialize();
+
         root.lock()->CreateEntity();
-        root.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 3.0f, 5.0f, 7.0f }); // trigger update for the first time
-        auto pos = pos_accessor[(skr::ecs::Entity)root.lock()->GetEntity()].get();
+        auto actor1 = actor_manager.CreateActor<skr::Actor>();
+        actor1.lock()->CreateEntity();
+        actor1.lock()->AttachTo(root);
+
+        auto pos_accessor = world->random_read<const skr::scene::PositionComponent>();
+
+        root.lock()
+            ->GetComponent<skr::scene::PositionComponent>()
+            ->set({ 3.0f, 5.0f, 7.0f }); // trigger update for the first time
+
+        actor1.lock()
+            ->GetComponent<skr::scene::PositionComponent>()
+            ->set({ 2.0f, 4.0f, 6.0f });
+        transform_system->update();
+        skr::ecs::TaskScheduler::Get()->flush_all();
+        skr::ecs::TaskScheduler::Get()->sync_all();
+        target_actor_guid = actor1.lock()->GetGUID();
+
+        auto target_actor = actor_manager.GetActor(target_actor_guid);
+        auto pos = pos_accessor[(skr::ecs::Entity)target_actor.lock()->GetEntity()].get();
         SKR_LOG_INFO(u8"Position: ({%f}, {%f}, {%f})", pos.x, pos.y, pos.z);
-        SKR_LOG_INFO(u8"Entity: {%u}", root.lock()->GetEntity());
 
         root.lock()->serialize();
         skr::archive::JsonWriter writer(2);
-        skr::json_write(&writer, (*root.lock()));
+        skr::json_write(&writer, scene);
         auto jsString = writer.Write();
-        skr::fs::File::write_all_text(root_path, jsString);
+        skr::fs::File::write_all_text(scene_path, jsString);
+        skr::archive::BinVectorWriter world_writer{ &wbuffer };
+        SBinaryWriter archive(world_writer);
+        skr::bin_write(&archive, *world);
+        skr::fs::File::write_all_bytes(path, wbuffer);
+
+        actor_manager.ClearAllActors();
     }
     if (bIsDeserialize)
     {
-        auto root = skr::Actor::GetRoot();
+        SKR_LOG_INFO(u8"Deserialize");
+        // first deserialize the scene, will automatically create the root actor
         skr::String jsString;
-        skr::fs::File::read_all_text(root_path, jsString);
+        skr::fs::File::read_all_text(scene_path, jsString);
         skr::archive::JsonReader reader(jsString);
-        skr::json_read(&reader, (*root.lock()));
-        root.lock()->deserialize();
-        auto pos = pos_accessor[(skr::ecs::Entity)root.lock()->GetEntity()].get();
+        skr::json_read(&reader, scene);
+
+        auto root = skr::Actor::GetRoot();
+
+        auto* world = root.lock()->GetWorld();
+        world->bind_scheduler(scheduler);
+        world->initialize();
+
+        skr::fs::File::read_all_bytes(path, rbuffer);
+        skr::archive::BinSpanReader world_reader{ rbuffer, 0 };
+        SBinaryReader read_archive(world_reader);
+        skr::bin_read(&read_archive, *world);
+
+        auto pos_accessor = world->random_read<const skr::scene::PositionComponent>();
+        auto target_actor = actor_manager.GetActor(target_actor_guid);
+        auto pos = pos_accessor[(skr::ecs::Entity)target_actor.lock()->GetEntity()].get();
         SKR_LOG_INFO(u8"Position: ({%f}, {%f}, {%f})", pos.x, pos.y, pos.z);
-        SKR_LOG_INFO(u8"Entity: {%u}", root.lock()->GetEntity());
+        actor_manager.ClearAllActors();
     }
-
-    skr::Vector<uint8_t> wbuffer;
-    if (bIsSerialize)
-    {
-        skr::archive::BinVectorWriter writer{ &wbuffer };
-        SBinaryWriter archive(writer);
-        skr::bin_write(&archive, world);
-        skr::fs::File::write_all_bytes(path, wbuffer);
-    }
-
     skr_transform_system_destroy(transform_system);
-    actor_manager.Finalize();
-    world.finalize();
-    scheduler.unbind();
     return 0;
 }

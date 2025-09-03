@@ -13,6 +13,7 @@
 #include "SkrSceneCore/scene_components.h"
 #include "SkrRenderer/render_mesh.h"
 #include "SkrSerde/json_serde.hpp"
+#include "SkrScene/scene.h"
 
 #if !defined(__meta__)
     #include "SkrScene/actor.generated.h"
@@ -20,6 +21,7 @@
 
 namespace skr
 {
+struct RootActor;
 
 sreflect_enum_class(
     guid = "a1ebd9b1-900c-44f4-b381-0dd48014718d" serde = @json)
@@ -42,7 +44,7 @@ public:
 
     Actor() SKR_NOEXCEPT {}
     virtual ~Actor() SKR_NOEXCEPT;
-    static RCWeak<Actor> GetRoot();
+    static RCWeak<RootActor> GetRoot();
     void BindWorld(skr::ecs::World * world) { this->world = world; }
     void CreateEntity();
     skr::ecs::Entity GetEntity() const;
@@ -75,15 +77,14 @@ public:
     sattr(serde = @disable)
     skr::UPtr<Spawner> spawner;
 
-protected:
-    virtual void Initialize(); // The Actual Initialize Method
+    virtual void Initialize();                // Init Blank
+    virtual void Initialize(skr_guid_t guid); // Init with GUID
 
 protected:
     friend JsonSerde<Actor>;
     skr::String display_name; // for editor, profiler, and runtime dump
     skr::GUID guid;
     skr::GUID rttr_type_guid;
-
 
     EAttachRule attach_rule = EAttachRule::Default;
     bool bIsInitialized = false;
@@ -96,7 +97,6 @@ protected:
     skr::RC<Actor> _parent = nullptr;
     sattr(serde = @disable)
     skr::ecs::World* world = nullptr; // Pointer to the ECS world for actor management
-    
 
     skr::SerializeConstVector<skr_guid_t> children_serialized;
     skr_guid_t parent_serialized = skr_guid_t{};
@@ -120,6 +120,7 @@ public:
     }
 
     skr::GUID GetGUID() const SKR_NOEXCEPT { return guid; }
+    skr::GUID GetRTTRTypeGUID() const SKR_NOEXCEPT { return rttr_type_guid; }
 };
 class SKR_SCENE_API ActorManager
 {
@@ -129,16 +130,21 @@ public:
         static ActorManager instance;
         return instance;
     }
-    void Initialize(skr::ecs::World* world);
-    void Finalize();
+    void BindScene(skr::Scene* scene) { this->scene = scene; }
+    void UnBind()
+    {
+        scene = nullptr;
+        world = nullptr;
+    }
 
     template <typename T>
     skr::RCWeak<Actor> CreateActor()
     {
+        // General Initialize
         auto actor = CreateActorInstance<T>();
-        actor.get()->Initialize();
-        actor.get()->BindWorld(world);
-        actors.add(actor->guid, actor);
+        actor->Initialize();
+        actor->BindWorld(world);
+        scene->actors.add(actor->guid, actor);
         return actor;
     }
     template <typename T>
@@ -156,12 +162,10 @@ public:
     void UpdateHierarchy(skr::RCWeak<Actor> parent, skr::RCWeak<Actor> child, EAttachRule rule = EAttachRule::Default);
 
     void ClearAllActors();
-    skr::RCWeak<Actor> GetRoot();
-
-protected:
-    // Factory method to create specific actor types
+    skr::RCWeak<RootActor> GetRoot();
 
 private:
+    friend RootActor;
     ActorManager() = default;
     ~ActorManager() = default;
     ActorManager(const ActorManager&) = delete;
@@ -170,9 +174,7 @@ private:
     ActorManager& operator=(ActorManager&&) = delete;
 
     skr::ecs::World* world = nullptr; // Pointer to the ECS world for actor management
-    // Currently, we only use Map<GUID, Actor*> and cpp new/delete for Actor management.
-    // In the future, we can implement a more sophisticated memory management system.
-    skr::Map<skr::GUID, skr::RC<Actor>> actors; // Map to manage actors by their GUIDs
+    skr::Scene* scene = nullptr;
 };
 
 // Actor that Carry ECS World Instance, and ActorRootComponent
@@ -184,12 +186,12 @@ SKR_SCENE_API RootActor : public Actor
 public:
     RootActor() {}
     ~RootActor() SKR_NOEXCEPT override;
-    skr::ecs::World* GetWorld() const { return world.get(); }
-    void bind_scheduler(skr::task::scheduler_t& scheduler) { world->bind_scheduler(scheduler); }
+    skr::ecs::World* GetWorld() const { return root_world.get(); }
+    void bind_scheduler(skr::task::scheduler_t & scheduler) { root_world->bind_scheduler(scheduler); }
 
-protected:
-    skr::UPtr<skr::ecs::World> world = nullptr;
+    skr::UPtr<skr::ecs::World> root_world = nullptr;
     void Initialize() override;
+    void Initialize(skr_guid_t guid) override;
     void InitWorld();
 };
 
@@ -201,9 +203,8 @@ SKR_SCENE_API MeshActor : public Actor
 public:
     MeshActor() SKR_NOEXCEPT {}
     ~MeshActor() SKR_NOEXCEPT override;
-
-protected:
     void Initialize() override;
+    void Initialize(skr_guid_t guid) override;
 };
 
 sreflect_struct(
@@ -216,6 +217,7 @@ public:
     SkelMeshActor() SKR_NOEXCEPT {}
     ~SkelMeshActor() SKR_NOEXCEPT override;
     void Initialize() override;
+    void Initialize(skr_guid_t guid) override;
 };
 
 } // namespace skr
