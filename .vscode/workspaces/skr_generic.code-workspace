@@ -105,7 +105,7 @@
                 "type": "bun",
                 "request": "launch",
                 "cwd": "${workspaceFolder:root}",
-                "program": "${workspaceFolder:root}/tools/gen_math/gen_math.ts",
+                "program": "${workspaceFolder:root}/engine/tools/gen_math/gen_math.ts",
                 "args": [
                     "${workspaceFolder:root}/engine/modules/core/base/include/SkrBase/math/gen"
                 ],
@@ -126,7 +126,10 @@
                 "request": "launch",
                 "preLaunchTask": "build_SB_Debug",
                 "console": "integratedTerminal",
-                "program": "${workspaceFolder:root}\\.sb\\SB\\bin\\Debug\\net9.0\\SB"
+                "program": "${workspaceFolder:root}\\.sb\\SB\\bin\\Debug\\net9.0\\SB",
+                "args": [
+                    "build"
+                ]
             },
             {
                 "name": "C#: SB Build",
@@ -134,7 +137,22 @@
                 "request": "launch",
                 "preLaunchTask": "build_SB_Release",
                 "console": "integratedTerminal",
-                "program": "${workspaceFolder:root}\\.sb\\SB\\bin\\Release\\net9.0\\SB"
+                "program": "${workspaceFolder:root}\\.sb\\SB\\bin\\Release\\net9.0\\SB",
+                "args": [
+                    "build"
+                ]
+            },
+            {
+                "name": "C#: SB Debug Gen VSCode",
+                "type": "coreclr",
+                "request": "launch",
+                "preLaunchTask": "build_SB_Debug",
+                "console": "integratedTerminal",
+                "cwd": "${workspaceFolder:root}",
+                "program": "${workspaceFolder:root}\\.sb\\SB\\bin\\Debug\\net9.0\\SB",
+                "args": [
+                    "vscode"
+                ]
             },
         ]
     }

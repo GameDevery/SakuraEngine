@@ -43,14 +43,14 @@ struct RotatorF {
     RotatorF& operator-=(const RotatorF& rhs);
     
     // to matrix
-    operator float3x3() const;
-    operator float4x4() const;
+    explicit operator float3x3() const;
+    explicit operator float4x4() const;
     float3x3 to_matrix3() const;
     float4x4 to_matrix4() const;
     
     // from matrix
-    RotatorF(const float3x3& mat);
-    RotatorF(const float4x4& mat);
+    explicit RotatorF(const float3x3& mat);
+    explicit RotatorF(const float4x4& mat);
     static RotatorF FromMatrix(const float3x3& mat);
     static RotatorF FromMatrix(const float4x4& mat);
 }; 
@@ -88,14 +88,14 @@ struct RotatorD {
     RotatorD& operator-=(const RotatorD& rhs);
     
     // to matrix
-    operator double3x3() const;
-    operator double4x4() const;
+    explicit operator double3x3() const;
+    explicit operator double4x4() const;
     double3x3 to_matrix3() const;
     double4x4 to_matrix4() const;
     
     // from matrix
-    RotatorD(const double3x3& mat);
-    RotatorD(const double4x4& mat);
+    explicit RotatorD(const double3x3& mat);
+    explicit RotatorD(const double4x4& mat);
     static RotatorD FromMatrix(const double3x3& mat);
     static RotatorD FromMatrix(const double4x4& mat);
 }; 

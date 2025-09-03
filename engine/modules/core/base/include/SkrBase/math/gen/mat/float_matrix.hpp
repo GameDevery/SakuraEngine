@@ -103,7 +103,7 @@ struct float3x3 {
     // visitor operator
     inline float3 operator[](size_t idx) const { SKR_ASSERT(idx < 3); return rows[idx]; }
     inline float3& operator[](size_t idx) { SKR_ASSERT(idx < 3); return rows[idx]; }
-
+    
     // mul operator
     friend float3x3 operator*(const float3x3& lhs, const float3x3& rhs);
     float3x3& operator*=(const float3x3& rhs);
@@ -217,7 +217,7 @@ struct alignas(16) float4x4 {
     // visitor operator
     inline float4 operator[](size_t idx) const { SKR_ASSERT(idx < 4); return rows[idx]; }
     inline float4& operator[](size_t idx) { SKR_ASSERT(idx < 4); return rows[idx]; }
-
+    
     // mul operator
     friend float4x4 operator*(const float4x4& lhs, const float4x4& rhs);
     float4x4& operator*=(const float4x4& rhs);

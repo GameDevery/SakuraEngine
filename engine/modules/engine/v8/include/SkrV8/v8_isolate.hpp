@@ -17,6 +17,13 @@
     #include "SkrV8/v8_isolate.generated.h"
 #endif
 
+// About JS AOT, just remark here, in mostly time it's useless
+// see: https://mp2.dk/techblog/chowjs/
+//      https://github.com/CanadaHonk/porffor?tab=readme-ov-file
+//
+// TODO. hot reload
+// see: https://cloud.tencent.com/developer/article/1899559
+
 namespace skr
 {
 struct V8BindProxyPool {

@@ -58,14 +58,14 @@ struct alignas(16) QuatF {
     bool is_nearly_identity(float threshold_angle = float(0.00284714461)) const;
     
     // to matrix
-    operator float3x3() const;
-    operator float4x4() const;
+    explicit operator float3x3() const;
+    explicit operator float4x4() const;
     float3x3 to_matrix3() const;
     float4x4 to_matrix4() const;
     
     // from matrix
-    QuatF(const float3x3& mat);
-    QuatF(const float4x4& mat);
+    explicit QuatF(const float3x3& mat);
+    explicit QuatF(const float4x4& mat);
     static QuatF FromMatrix(const float3x3& mat);
     static QuatF FromMatrix(const float4x4& mat);
 };
@@ -118,14 +118,14 @@ struct alignas(16) QuatD {
     bool is_nearly_identity(double threshold_angle = double(0.00284714461)) const;
     
     // to matrix
-    operator double3x3() const;
-    operator double4x4() const;
+    explicit operator double3x3() const;
+    explicit operator double4x4() const;
     double3x3 to_matrix3() const;
     double4x4 to_matrix4() const;
     
     // from matrix
-    QuatD(const double3x3& mat);
-    QuatD(const double4x4& mat);
+    explicit QuatD(const double3x3& mat);
+    explicit QuatD(const double4x4& mat);
     static QuatD FromMatrix(const double3x3& mat);
     static QuatD FromMatrix(const double4x4& mat);
 };

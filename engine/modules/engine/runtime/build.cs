@@ -11,7 +11,8 @@ public static class SkrRT
             .Depend(Visibility.Public, "SkrGraphics")
             .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/**/build.*.cpp")
-            .AddCodegenScript("meta/ecs.ts");
+            .AddCodegenScript("meta/ecs.ts")
+            .AddNatvisFiles("dbg/*.natvis");
 
         if (BuildSystem.TargetOS == OSPlatform.OSX)
         {

@@ -145,16 +145,16 @@ function _gen_quat(opt: GenMiscOption) {
 
       // to matrix
       b.$line(`// to matrix`)
-      b.$line(`operator ${matrix3_name}() const;`)
-      b.$line(`operator ${matrix4_name}() const;`)
+      b.$line(`explicit operator ${matrix3_name}() const;`)
+      b.$line(`explicit operator ${matrix4_name}() const;`)
       b.$line(`${matrix3_name} to_matrix3() const;`)
       b.$line(`${matrix4_name} to_matrix4() const;`)
       b.$line(``)
 
       // from matrix
       b.$line(`// from matrix`)
-      b.$line(`${quat_name}(const ${matrix3_name}& mat);`)
-      b.$line(`${quat_name}(const ${matrix4_name}& mat);`)
+      b.$line(`explicit ${quat_name}(const ${matrix3_name}& mat);`)
+      b.$line(`explicit ${quat_name}(const ${matrix4_name}& mat);`)
       b.$line(`static ${quat_name} FromMatrix(const ${matrix3_name}& mat);`)
       b.$line(`static ${quat_name} FromMatrix(const ${matrix4_name}& mat);`)
     })
@@ -276,16 +276,16 @@ function _gen_rotator(opt: GenMiscOption) {
 
       // to matrix
       b.$line(`// to matrix`)
-      b.$line(`operator ${mat3_name}() const;`)
-      b.$line(`operator ${mat4_name}() const;`)
+      b.$line(`explicit operator ${mat3_name}() const;`)
+      b.$line(`explicit operator ${mat4_name}() const;`)
       b.$line(`${mat3_name} to_matrix3() const;`)
       b.$line(`${mat4_name} to_matrix4() const;`)
       b.$line(``)
 
       // from matrix
       b.$line(`// from matrix`)
-      b.$line(`${rotator_name}(const ${mat3_name}& mat);`)
-      b.$line(`${rotator_name}(const ${mat4_name}& mat);`)
+      b.$line(`explicit ${rotator_name}(const ${mat3_name}& mat);`)
+      b.$line(`explicit ${rotator_name}(const ${mat4_name}& mat);`)
       b.$line(`static ${rotator_name} FromMatrix(const ${mat3_name}& mat);`)
       b.$line(`static ${rotator_name} FromMatrix(const ${mat4_name}& mat);`)
     })
@@ -401,15 +401,15 @@ function _gen_transform(opt: GenMiscOption) {
 
       // to matrix
       b.$line(`// to matrix`)
-      b.$line(`operator ${mat4_name}() const;`)
+      b.$line(`explicit operator ${mat4_name}() const;`)
       b.$line(`${mat4_name} to_matrix() const;`)
       b.$line(`${mat4_name} to_matrix_no_scale() const;`)
       b.$line(``)
 
       // from matrix
       b.$line(`// from matrix`)
-      b.$line(`${transform_name}(const ${mat3_name}& mat);`)
-      b.$line(`${transform_name}(const ${mat4_name}& mat);`)
+      b.$line(`explicit ${transform_name}(const ${mat3_name}& mat);`)
+      b.$line(`explicit ${transform_name}(const ${mat4_name}& mat);`)
       b.$line(`static ${transform_name} FromMatrix(const ${mat3_name}& mat);`)
       b.$line(`static ${transform_name} FromMatrix(const ${mat4_name}& mat);`)
       b.$line(``)

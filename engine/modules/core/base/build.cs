@@ -15,8 +15,9 @@ public static class SkrBase
             .Depend(Visibility.Public, "phmap@phmap")
             .Require("phmap", new PackageConfig { Version = new Version(1, 3, 11) })
             .AddCFiles("src/**/build.*.c")
-            .AddCppFiles("src/**/build.*.cpp");
-        
+            .AddCppFiles("src/**/build.*.cpp")
+            .AddNatvisFiles("dbg/*.natvis");
+
         // 添加平台特定的文件系统实现
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {

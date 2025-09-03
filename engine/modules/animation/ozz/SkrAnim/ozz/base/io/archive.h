@@ -130,7 +130,7 @@ class OZZ_BASE_DLL OArchive {
   void operator<<(_type _v) {                                     \
     _type v = endian_swap_ ? EndianSwapper<_type>::Swap(_v) : _v; \
     OZZ_IF_DEBUG(size_t size =) stream_->Write(&v, sizeof(v));    \
-    SKR_ASSERT(size == sizeof(v));                                    \
+    OZZ_IF_DEBUG(SKR_ASSERT(size == sizeof(v)));                  \
   }
 
   OZZ_IO_PRIMITIVE_TYPE(char)
@@ -191,7 +191,7 @@ class OZZ_BASE_DLL IArchive {
   void operator>>(_Ty& _ty) {
     // Only uses tag validation for assertions, as reading cannot fail.
     OZZ_IF_DEBUG(bool valid =) internal::Tagger<const _Ty>::Validate(*this);
-    SKR_ASSERT(valid && "Type tag does not match archive content.");
+    OZZ_IF_DEBUG(SKR_ASSERT(valid && "Type tag does not match archive content."));
 
     // Loads instance.
     uint32_t version = LoadVersion<_Ty>();
@@ -203,7 +203,7 @@ class OZZ_BASE_DLL IArchive {
   void operator>>(_type& _v) {                                \
     _type v;                                                  \
     OZZ_IF_DEBUG(size_t size =) stream_->Read(&v, sizeof(v)); \
-    SKR_ASSERT(size == sizeof(v));                                \
+    OZZ_IF_DEBUG(SKR_ASSERT(size == sizeof(v)));              \
     _v = endian_swap_ ? EndianSwapper<_type>::Swap(v) : v;    \
   }
 
@@ -326,7 +326,7 @@ struct Version<const Array<_Ty>> {
     } else {                                                                \
       OZZ_IF_DEBUG(size_t size =)                                           \
       _archive.SaveBinary(array, count * sizeof(_type));                    \
-      SKR_ASSERT(size == count * sizeof(_type));                                \
+      OZZ_IF_DEBUG(SKR_ASSERT(size == count * sizeof(_type)));              \
     }                                                                       \
   }                                                                         \
                                                                             \
@@ -341,7 +341,7 @@ struct Version<const Array<_Ty>> {
     } else {                                                                \
       OZZ_IF_DEBUG(size_t size =)                                           \
       _archive.SaveBinary(array, count * sizeof(_type));                    \
-      SKR_ASSERT(size == count * sizeof(_type));                                \
+      OZZ_IF_DEBUG(SKR_ASSERT(size == count * sizeof(_type)));              \
     }                                                                       \
   }                                                                         \
                                                                             \
@@ -350,7 +350,7 @@ struct Version<const Array<_Ty>> {
       const {                                                               \
     OZZ_IF_DEBUG(size_t size =)                                             \
     _archive.LoadBinary(array, count * sizeof(_type));                      \
-    SKR_ASSERT(size == count * sizeof(_type));                                  \
+    OZZ_IF_DEBUG(SKR_ASSERT(size == count * sizeof(_type)));                \
     if (_archive.endian_swap()) { /*Can swap in-place.*/                    \
       EndianSwapper<_type>::Swap(array, count);                             \
     }                                                                       \
@@ -412,7 +412,7 @@ struct Tagger<_Ty, true> {
     typedef internal::Tag<const _Ty> Tag;
     OZZ_IF_DEBUG(size_t size =)
     _archive.SaveBinary(Tag::Get(), Tag::kTagLength);
-    SKR_ASSERT(size == Tag::kTagLength);
+    OZZ_IF_DEBUG(SKR_ASSERT(size == Tag::kTagLength));
   }
   static bool Validate(IArchive& _archive) {
     typedef internal::Tag<const _Ty> Tag;

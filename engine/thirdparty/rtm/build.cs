@@ -9,6 +9,7 @@ public static class RTM
         Engine.Target("rtm")
             .TargetType(TargetType.HeaderOnly)
             .IncludeDirs(Visibility.Public, "include")
-            .Defines(Visibility.Public, "RTM_ON_ASSERT_ABORT");
+            .Defines(Visibility.Public, "RTM_ON_ASSERT_ABORT")
+            .AddNatvisFiles("rtm.natvis");
     }
 }

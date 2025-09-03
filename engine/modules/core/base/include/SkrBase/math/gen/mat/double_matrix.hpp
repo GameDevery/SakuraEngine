@@ -103,7 +103,7 @@ struct double3x3 {
     // visitor operator
     inline double3 operator[](size_t idx) const { SKR_ASSERT(idx < 3); return rows[idx]; }
     inline double3& operator[](size_t idx) { SKR_ASSERT(idx < 3); return rows[idx]; }
-
+    
     // mul operator
     friend double3x3 operator*(const double3x3& lhs, const double3x3& rhs);
     double3x3& operator*=(const double3x3& rhs);
@@ -217,7 +217,7 @@ struct alignas(16) double4x4 {
     // visitor operator
     inline double4 operator[](size_t idx) const { SKR_ASSERT(idx < 4); return rows[idx]; }
     inline double4& operator[](size_t idx) { SKR_ASSERT(idx < 4); return rows[idx]; }
-
+    
     // mul operator
     friend double4x4 operator*(const double4x4& lhs, const double4x4& rhs);
     double4x4& operator*=(const double4x4& rhs);

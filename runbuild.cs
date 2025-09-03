@@ -288,7 +288,7 @@ public class VSCommand : CommandBase
 public class VSCodeCommand : CommandBase
 {
     [CmdOption(Name = "debugger", Help = "Default debugger type: cppdbg, lldb-dap, codelldb, cppvsdbg", IsRequired = false)]
-    public string Debugger { get; set; } = "cppdbg";
+    public string Debugger { get; set; } = "";
 
     [CmdOption(Name = "workspace", Help = "Workspace root directory", IsRequired = false)]
     public string WorkspaceRoot { get; set; } = ".";
@@ -296,42 +296,48 @@ public class VSCodeCommand : CommandBase
     [CmdOption(Name = "preserve-user", Help = "Preserve user-created debug configurations", IsRequired = false)]
     public bool PreserveUser { get; set; } = true;
 
+    [CmdOption(Name = "clear", Help = "Preserve user-created debug configurations", IsRequired = false)]
+    public bool ClearMode { get; set; } = false;
+
     public override void OnExecute()
     {
         Log.Information("Generating VSCode debug configurations...");
 
-        // Set debugger type
-        VSCodeDebugEmitter.DebuggerType debuggerType = VSCodeDebugEmitter.DebuggerType.CppDbg;
-        switch (Debugger.ToLower())
+        if (ClearMode)
         {
-            case "lldb-dap":
-                debuggerType = VSCodeDebugEmitter.DebuggerType.LLDBDap;
-                break;
-            case "codelldb":
-                debuggerType = VSCodeDebugEmitter.DebuggerType.CodeLLDB;
-                break;
-            case "cppvsdbg":
-                debuggerType = VSCodeDebugEmitter.DebuggerType.CppVsDbg;
-                break;
+            var emitter = new VSCodeDebugEmitter();
+            emitter.WorkspaceRoot = !string.IsNullOrEmpty(WorkspaceRoot) ? WorkspaceRoot :
+                                    (!string.IsNullOrEmpty(Engine.EngineDirectory) ? Engine.EngineDirectory : Directory.GetCurrentDirectory());
+            emitter.CmdFilesOutputDir = Path.Combine(emitter.WorkspaceRoot, ".sb", "vscode", "task_cmds");
+            emitter.MergedNatvisOutputDir = Path.Combine(emitter.WorkspaceRoot, ".sb", "vscode", "natvis");
+            // emitter.Debugger = Debugger.ToLower();
+            emitter.Mode = Mode;
+            emitter.Toolchain = Toolchain;
+            emitter.PreserveUserConfig = PreserveUser;
+            emitter.Clear();
+            Log.Information("Cleared generated VSCode debug configurations in: {Path}", Path.GetFullPath(Path.Combine(emitter.WorkspaceRoot, ".vscode")));
         }
+        else
+        {
+            // Add VSCode emitter
+            var emitter = new VSCodeDebugEmitter();
+            emitter.WorkspaceRoot = !string.IsNullOrEmpty(WorkspaceRoot) ? WorkspaceRoot :
+                                    (!string.IsNullOrEmpty(Engine.EngineDirectory) ? Engine.EngineDirectory : Directory.GetCurrentDirectory());
+            emitter.CmdFilesOutputDir = Path.Combine(emitter.WorkspaceRoot, ".sb", "vscode", "task_cmds");
+            emitter.MergedNatvisOutputDir = Path.Combine(emitter.WorkspaceRoot, ".sb", "vscode", "natvis");
+            emitter.Debugger = Debugger;
+            emitter.Mode = Mode;
+            emitter.Toolchain = Toolchain;
+            emitter.PreserveUserConfig = PreserveUser;
+            BuildSystem.AddTaskEmitter("VSCodeDebugEmitter", emitter);
 
-        // Configure VSCode emitter
-        VSCodeDebugEmitter.WorkspaceRoot = !string.IsNullOrEmpty(WorkspaceRoot) ? WorkspaceRoot : 
-                                           (!string.IsNullOrEmpty(Engine.EngineDirectory) ? Engine.EngineDirectory : Directory.GetCurrentDirectory());
-        VSCodeDebugEmitter.DefaultDebugger = debuggerType;
-        VSCodeDebugEmitter.PreserveUserConfigurations = PreserveUser;
+            // Run the build to process all targets
+            Engine.RunBuild();
 
-        // Add VSCode emitter
-        var emitter = new VSCodeDebugEmitter(Toolchain);
-        BuildSystem.AddTaskEmitter("VSCodeDebugEmitter", emitter);
-
-        // Run the build to process all targets
-        Engine.RunBuild();
-
-        // Generate the debug configurations
-        VSCodeDebugEmitter.GenerateDebugConfigurations(Toolchain);
-        
-        Log.Information("VSCode debug configurations generated in: {Path}", Path.GetFullPath(Path.Combine(VSCodeDebugEmitter.WorkspaceRoot, ".vscode")));
+            // Generate the debug configurations
+            emitter.Generate();
+            Log.Information("VSCode debug configurations generated in: {Path}", Path.GetFullPath(Path.Combine(emitter.WorkspaceRoot, ".vscode")));
+        }
     }
 }
 
@@ -365,7 +371,7 @@ public class GraphCommand : CommandBase
 
         // Clear any previous data
         DependencyGraphEmitter.Clear();
-        
+
         // Configure the emitter
         DependencyGraphEmitter.Format = ParseFormat(Format);
         DependencyGraphEmitter.ColorScheme = ParseColorScheme(ColorScheme);

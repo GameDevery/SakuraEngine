@@ -148,7 +148,7 @@ void SkrRenderWindow::_prepare_draw_data(const NativeWindowLayer* layer, Sizef w
             t.scale    = { 1.f, 1.f, 1.f };
             t.position = { 0.f, 0.f, 0.f };
             t.rotation = QuatF(RotatorF(0.f, 0.f, 0));
-            transform  = RtmConvert<float4x4>::to_rtm(t);
+            transform  = RtmConvert<float4x4>::to_rtm(t.to_matrix());
         }
 
         // make projection
