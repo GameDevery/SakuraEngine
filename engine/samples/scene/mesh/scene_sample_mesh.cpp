@@ -219,8 +219,10 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     }
     scheduler.initialize({});
     scheduler.bind();
+
     world.initialize();
-    actor_manager.initialize(&world);
+    actor_manager.Initialize(&world);
+
     transform_system = skr_transform_system_create(&world);
     scene_render_system = skr::scene::SceneRenderSystem::Create(&world);
     render_device = SkrRendererModule::Get()->get_render_device();
@@ -268,7 +270,7 @@ void SceneSampleMeshModule::on_unload()
     skr_transform_system_destroy(transform_system);
     skr::scene::SceneRenderSystem::Destroy(scene_render_system);
 
-    actor_manager.finalize();
+    actor_manager.Finalize();
     world.finalize();
     scheduler.unbind();
     SKR_LOG_INFO(u8"Scene Sample Mesh Module Unloaded");
@@ -378,6 +380,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     actor1.lock()->SetDisplayName(u8"Actor 1");
 
     root.lock()->CreateEntity();
+
     actor1.lock()->CreateEntity();
 
     actor1.lock()->AttachTo(root);
