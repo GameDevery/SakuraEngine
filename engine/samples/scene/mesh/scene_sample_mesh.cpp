@@ -27,6 +27,7 @@
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrRenderer/resources/texture_resource.h"
 #include "SkrRenderer/resources/material_resource.hpp"
+#include "SkrRenderer/resources/material_type_resource.hpp"
 #include "SkrRenderer/render_mesh.h"
 
 #include "SkrTask/fib_task.hpp"
@@ -80,7 +81,10 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     void CookAndLoadGLTF();
 
     skr::task::scheduler_t scheduler;
-    skr::ecs::World world{ scheduler };
+    skr::Scene scene;
+    skr::ecs::World* world = nullptr;
+    skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
+
     skr_vfs_t* resource_vfs = nullptr;
     skr::io::IRAMService* ram_service = nullptr;
     skr_io_vram_service_t* vram_service = nullptr;
@@ -96,9 +100,9 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     skr::TextureSamplerFactory* TextureSamplerFactory = nullptr;
     skr::TextureFactory* TextureFactory = nullptr;
     skr::MaterialFactory* matFactory = nullptr;
+    skr::MaterialTypeFactory* matTypeFactory = nullptr;
 
     skd::SProject project;
-    skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
     skr::TransformSystem* transform_system = nullptr;
     skr::scene::SceneRenderSystem* scene_render_system = nullptr;
 };
@@ -178,6 +182,23 @@ void SceneSampleMeshModule::InitializeResourceSystem()
         mesh_factory = skr::MeshFactory::Create(factoryRoot);
         resource_system->RegisterFactory(mesh_factory);
     }
+    // material type factory
+    {
+        skr::MaterialTypeFactory::Root factoryRoot = {};
+        factoryRoot.render_device = render_device;
+        matTypeFactory = skr::MaterialTypeFactory::Create(factoryRoot);
+        resource_system->RegisterFactory(matTypeFactory);
+    }
+
+    // material factory
+    {
+        skr::MaterialFactory::Root factoryRoot = {};
+        factoryRoot.device = render_device->get_cgpu_device();
+        factoryRoot.job_queue = job_queue.get();
+        factoryRoot.ram_service = ram_service;
+        matFactory = skr::MaterialFactory::Create(factoryRoot);
+        resource_system->RegisterFactory(matFactory);
+    }
 }
 
 void SceneSampleMeshModule::DestroyResourceSystem()
@@ -217,12 +238,19 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     {
         SKR_LOG_INFO(u8"No gltf file specified");
     }
-    scheduler.initialize({});
+
+    scheduler.initialize(skr::task::scheudler_config_t());
     scheduler.bind();
-    world.initialize();
-    actor_manager.initialize(&world);
-    transform_system = skr_transform_system_create(&world);
-    scene_render_system = skr::scene::SceneRenderSystem::Create(&world);
+    scene.root_actor_guid = skr::GUID::Create();
+    actor_manager.BindScene(&scene);
+    auto root = actor_manager.GetRoot();
+    root.lock()->InitWorld();
+    world = root.lock()->GetWorld();
+    world->bind_scheduler(scheduler);
+    world->initialize();
+
+    transform_system = skr_transform_system_create(world);
+    scene_render_system = skr::scene::SceneRenderSystem::Create(world);
     render_device = SkrRendererModule::Get()->get_render_device();
 
     auto resourceRoot = (skr::fs::current_directory() / u8"../resources");
@@ -251,7 +279,7 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
         InitializeAssetSystem();
     }
     scene_renderer = skr::SceneRenderer::Create();
-    scene_renderer->initialize(render_device, &world, resource_vfs);
+    scene_renderer->initialize(render_device, world, resource_vfs);
     scene_render_system->bind_renderer(scene_renderer);
 }
 
@@ -268,8 +296,7 @@ void SceneSampleMeshModule::on_unload()
     skr_transform_system_destroy(transform_system);
     skr::scene::SceneRenderSystem::Destroy(scene_render_system);
 
-    actor_manager.finalize();
-    world.finalize();
+    actor_manager.ClearAllActors();
     scheduler.unbind();
     SKR_LOG_INFO(u8"Scene Sample Mesh Module Unloaded");
 }
@@ -324,6 +351,7 @@ void SceneSampleMeshModule::CookAndLoadGLTF()
         skr::type_id_of<skd::asset::MeshCooker>());
     importer->assetPath = gltf_path.c_str();
     // importer->invariant_vertices = true;
+    importer->import_all_materials = true;
 
     cook_system.ImportAssetMeta(&project, asset, importer, metadata);
 
@@ -378,13 +406,14 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     actor1.lock()->SetDisplayName(u8"Actor 1");
 
     root.lock()->CreateEntity();
+
     actor1.lock()->CreateEntity();
 
     actor1.lock()->AttachTo(root);
 
     root.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
     actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 10.0f, 0.0f });
-    actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .9f, .9f, .9f });
+    actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
     actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
 
     //auto actor2 = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();

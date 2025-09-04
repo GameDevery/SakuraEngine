@@ -19,6 +19,11 @@ public static class SceneSamples
             .Depend(Visibility.Private, "SkrScene")
             .Depend(Visibility.Private, "SkrSystem");
 
+        Engine.Program("SceneSample_Serde")
+            .AddCppFiles("serde/*.cpp")
+            .Depend(Visibility.Private, "SkrScene")
+            .Depend(Visibility.Private, "SkrSystem");
+
         Engine.Program("SceneSample_Mesh")
             .AddCppFiles("mesh/*.cpp")
             .Depend(Visibility.Private, "SceneRenderer")

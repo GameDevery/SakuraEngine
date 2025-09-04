@@ -1,12 +1,16 @@
+#include "SkrBase/math.h"
+#include "SkrBase/misc/make_zeroed.hpp"
 #include "scene_render_system.h"
 #include "SkrAnim/components/skin_component.hpp"
-#include "SkrBase/math.h"
+
 #include "SkrCore/log.hpp"
 #include "SkrRenderer/primitive_draw.h"
 #include "SkrSceneCore/scene_components.h"
 #include "SkrRenderer/render_mesh.h"
 #include "helper.hpp"
 #include "scene_renderer.hpp"
+#include "SkrRenderer/resources/texture_resource.h"
+#include "SkrRenderer/resources/material_resource.hpp"
 
 namespace skr
 {
@@ -20,7 +24,7 @@ namespace skr::scene
 {
 struct SceneRenderJob
 {
-    using RenderF = std::function<void(const skr::span<skr::PrimitiveCommand>, skr_float4x4_t, const AnimComponent*)>;
+    using RenderF = std::function<void(const skr::MeshResource*, skr_float4x4_t, const skr::AnimComponent*)>;
     SceneRenderJob(RenderF render_callback = nullptr)
         : render_callback(render_callback)
     {
@@ -56,17 +60,27 @@ struct SceneRenderJob
             mesh_component->mesh_resource.resolve(true, 0);
             if (mesh_component->mesh_resource.is_resolved())
             {
-                MeshResource* mesh_resource = mesh_component->mesh_resource.get_resolved(true);
-                // SKR_LOG_FMT_INFO(u8"Rendering: {}", mesh_resource->name);
-
+                skr::MeshResource* mesh_resource = mesh_component->mesh_resource.get_resolved(true);
+                for (auto& mat : mesh_resource->materials)
+                {
+                    mat.resolve(true, 0);
+                    if (mat.is_resolved())
+                    {
+                        skr::MaterialResource* mat_resource = mat.get_resolved(true);
+                        for (auto& tex : mat_resource->overrides.textures)
+                        {
+                            skr::AsyncResource<skr::TextureResource> tex_handle = tex.value;
+                            tex_handle.resolve(true, 0);
+                        }
+                    }
+                }
                 if (mesh_resource && mesh_resource->render_mesh)
                 {
-                    // SKR_LOG_INFO(u8"Materials Count: %d", mesh_resource->materials.size());
-                    render_callback(mesh_resource->render_mesh->primitive_commands, transform_component->get().to_matrix(), pAnimComponent);
+                    render_callback(mesh_resource, transform_component->get().to_matrix(), pAnimComponent);
                 }
                 else
                 {
-                    continue; // skip if mesh resource is not valid
+                    continue;
                 }
             }
         }
@@ -89,10 +103,14 @@ struct SceneRenderSystem::Impl
     {
         skr_float4x4_t model = skr_float4x4_t::identity();
         skr_float4x4_t view_proj = skr_float4x4_t::identity();
+        bool use_base_color_texture = false;
     };
     skr::Vector<skr_primitive_draw_t> drawcalls;
     skr::Vector<PushConstants> push_constants_list;
     SceneRenderSystem::Context context;
+
+    skr::Map<CGPUTextureViewId, CGPUXBindTableId> bind_tables;
+    const char8_t* color_texture_name = u8"color_texture";
 };
 
 SceneRenderSystem* SceneRenderSystem::Create(skr::ecs::World* world) SKR_NOEXCEPT
@@ -140,16 +158,15 @@ void SceneRenderSystem::update() SKR_NOEXCEPT
     options.on_finishes.add(impl->context.update_finish);
 
     auto render_func = impl->mp_renderer != nullptr ?
-        scene::SceneRenderJob::RenderF([this](const skr::span<skr::PrimitiveCommand> cmds, skr_float4x4_t model, const AnimComponent* pAnimComponent) {
+        skr::scene::SceneRenderJob::RenderF([this](const skr::MeshResource* mesh, skr_float4x4_t model, const skr::AnimComponent* pAnimComponent) {
+            auto pso = impl->mp_renderer->get_render_pso();
             auto& push_constants_data = impl->push_constants_list.emplace().ref();
             push_constants_data.model = skr::transpose(model);
             utils::Camera* camera = impl->mp_renderer->get_camera();
-
             auto view = skr::float4x4::view_at(
-                camera->position,
-                camera->position + camera->front,
+                camera->pos,
+                camera->pos + camera->front,
                 camera->up);
-
             auto proj = skr::float4x4::perspective_fov(
                 skr::camera_fov_y_from_x(camera->fov, camera->aspect),
                 camera->aspect,
@@ -157,14 +174,61 @@ void SceneRenderSystem::update() SKR_NOEXCEPT
                 camera->far_plane);
             auto _view_proj = skr::mul(view, proj);
             push_constants_data.view_proj = skr::transpose(_view_proj);
+            auto& cmds = mesh->render_mesh->primitive_commands;
 
             for (auto i = 0; i < cmds.size(); i++)
             {
                 auto& cmd = cmds[i];
                 skr_primitive_draw_t& drawcall = impl->drawcalls.emplace().ref();
-                // fill the drawcall with data
-                // wait for the render effect to fill the pipeline data
-                drawcall.push_const = (const uint8_t*)(&push_constants_data);
+                if (mesh->materials.size() > cmd.material_index)
+                {
+                    auto& mat_handle = mesh->materials[cmd.material_index];
+                    if (mat_handle.is_resolved())
+                    {
+                        skr::MaterialResource* mat_resource = mat_handle.get_resolved(true);
+                        for (auto& tex : mat_resource->overrides.textures)
+                        {
+                            if (skr::String(tex.slot_name) == u8"BaseColor")
+                            {
+                                skr::AsyncResource<skr::TextureResource> tex_handle = tex.value;
+                                tex_handle.resolve(true, 0);
+                                if (tex_handle.is_resolved())
+                                {
+                                    skr::TextureResource* tex_resource = tex_handle.get_resolved(true);
+                                    // SKR_LOG_INFO(u8"Texture %s resolved with id %u", tex.slot_name.c_str(), tex_resource->texture);
+                                    auto& tex_view = tex_resource->texture_view;
+                                    {
+                                        if (!impl->bind_tables.contains(tex_view))
+                                        {
+                                            SkrZoneScopedN("SOCRender::createBindTable");
+                                            CGPUXBindTableDescriptor bind_table_desc = {};
+                                            bind_table_desc.root_signature = pso->root_signature;
+                                            bind_table_desc.names = &impl->color_texture_name;
+                                            bind_table_desc.names_count = 1;
+
+                                            auto bind_table = cgpux_create_bind_table(pso->device, &bind_table_desc);
+
+                                            impl->bind_tables.add(tex_view, bind_table);
+
+                                            CGPUDescriptorData datas[1] = {};
+                                            datas[0] = make_zeroed<CGPUDescriptorData>();
+                                            datas[0].by_name.name = impl->color_texture_name;
+                                            datas[0].count = 1;
+                                            datas[0].textures = &tex_view;
+                                            cgpux_bind_table_update(bind_table, datas, 1);
+                                        }
+                                        drawcall.bind_table = impl->bind_tables.find(tex_view).value();
+                                        if (drawcall.bind_table)
+                                        {
+                                            push_constants_data.use_base_color_texture = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 drawcall.vertex_buffer_count = (uint32_t)cmd.vbvs.size();
                 if (pAnimComponent)
                 {
@@ -176,9 +240,10 @@ void SceneRenderSystem::update() SKR_NOEXCEPT
                     drawcall.vertex_buffers = cmd.vbvs.data();
                 }
                 drawcall.index_buffer = *cmd.ibv;
+                drawcall.push_const = (const uint8_t*)(&push_constants_data);
             }
         }) :
-        scene::SceneRenderJob::RenderF([](const skr::span<skr::PrimitiveCommand> cmds, skr_float4x4_t model, const AnimComponent* pAnimComponent) {
+        skr::scene::SceneRenderJob::RenderF([](const skr::MeshResource*, skr_float4x4_t, const skr::AnimComponent*) {
             // do nothing
         });
     scene::SceneRenderJob job{ render_func };

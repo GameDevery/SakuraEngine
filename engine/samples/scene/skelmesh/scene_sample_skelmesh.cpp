@@ -7,8 +7,7 @@
 #include <SkrCore/time.h>
 #include <SkrCore/async/thread_job.hpp>
 #include <SkrRT/io/vram_io.hpp>
-#include "SkrAnim/ozz/local_to_model_job.h"
-#include "SkrAnim/resources/skin_resource.hpp"
+
 #include "SkrOS/thread.h"
 #include "SkrProfile/profile.h"
 #include "SkrRT/io/ram_io.hpp"
@@ -33,26 +32,26 @@
 #include "SkrMeshTool/mesh_asset.hpp"
 
 #include "SkrScene/actor.h"
-
 #include "SkrSceneCore/transform_system.h"
 
-#include "scene_renderer.hpp"
-#include "scene_render_system.h"
-
-#include "helper.hpp"
-
-#include "SkrAnimTool/skeleton_asset.h"
-#include "SkrAnimTool/animation_asset.h"
-#include "SkrAnimTool/skin_asset.h"
 #include "SkrAnim/resources/animation_resource.hpp"
 #include "SkrAnim/resources/skeleton_resource.hpp"
 #include "SkrAnim/resources/skin_resource.hpp"
 #include "SkrAnim/components/skin_component.hpp"
 #include "SkrAnim/components/skeleton_component.hpp"
-
 #include "SkrAnim/ozz/base/containers/vector.h"
 #include "SkrAnim/ozz/sampling_job.h"
 #include "SkrAnim/ozz/base/maths/soa_transform.h"
+#include "SkrAnim/ozz/local_to_model_job.h"
+#include "SkrAnim/resources/skin_resource.hpp"
+
+#include "SkrAnimTool/skeleton_asset.h"
+#include "SkrAnimTool/animation_asset.h"
+#include "SkrAnimTool/skin_asset.h"
+
+#include "scene_renderer.hpp"
+#include "scene_render_system.h"
+#include "helper.hpp"
 
 using namespace skr::literals;
 const auto MeshAssetID = u8"01988203-c467-72ef-916b-c8a5db2ec18d"_guid;
@@ -78,7 +77,10 @@ struct SceneSampleSkelMeshModule : public skr::IDynamicModule
     float current_time = 0.0f;
 
     skr::task::scheduler_t scheduler;
-    skr::ecs::World world{ scheduler };
+    skr::Scene scene;
+    skr::ecs::World* world = nullptr;
+    skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
+
     skr_vfs_t* resource_vfs = nullptr;
     skr::io::IRAMService* ram_service = nullptr;
     skr_io_vram_service_t* vram_service = nullptr;
@@ -98,7 +100,6 @@ struct SceneSampleSkelMeshModule : public skr::IDynamicModule
     skr::SkinFactory* skinFactory = nullptr;
 
     skd::SProject project;
-    skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
     skr::TransformSystem* transform_system = nullptr;
     skr::scene::SceneRenderSystem* scene_render_system = nullptr;
 };
@@ -229,13 +230,18 @@ void SceneSampleSkelMeshModule::on_load(int argc, char8_t** argv)
         SKR_LOG_INFO(u8"No animation name specified, will use the first animation in the gltf file");
     }
 
-    scheduler.initialize({});
+    scheduler.initialize(skr::task::scheudler_config_t());
     scheduler.bind();
-    world.initialize();
-    actor_manager.initialize(&world);
-    transform_system = skr_transform_system_create(&world);
+    scene.root_actor_guid = skr::GUID::Create();
+    actor_manager.BindScene(&scene);
+    auto root = actor_manager.GetRoot();
+    root.lock()->InitWorld();
+    world = root.lock()->GetWorld();
+    world->bind_scheduler(scheduler);
+    world->initialize();
+    transform_system = skr_transform_system_create(world);
+    scene_render_system = skr::scene::SceneRenderSystem::Create(world);
 
-    scene_render_system = skr::scene::SceneRenderSystem::Create(&world);
     render_device = SkrRendererModule::Get()->get_render_device();
 
     auto resourceRoot = (skr::fs::current_directory() / u8"../resources");
@@ -265,7 +271,7 @@ void SceneSampleSkelMeshModule::on_load(int argc, char8_t** argv)
         InitializeAssetSystem();
     }
     scene_renderer = skr::SceneRenderer::Create();
-    scene_renderer->initialize(render_device, &world, resource_vfs);
+    scene_renderer->initialize(render_device, world, resource_vfs);
     scene_render_system->bind_renderer(scene_renderer);
 }
 
@@ -282,8 +288,7 @@ void SceneSampleSkelMeshModule::on_unload()
     skr_transform_system_destroy(transform_system);
     skr::scene::SceneRenderSystem::Destroy(scene_render_system);
 
-    actor_manager.finalize();
-    world.finalize();
+    actor_manager.ClearAllActors();
     scheduler.unbind();
     SKR_LOG_INFO(u8"Scene Sample Mesh Module Unloaded");
 }
@@ -359,7 +364,6 @@ void SceneSampleSkelMeshModule::CookAndLoadGLTF()
 
     auto skin_importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
     skin_importer->assetPath = gltf_path.c_str();
-    // skin_importer->invariant_vertices = true;
     auto skin_asset = skr::RC<skd::asset::AssetMetaFile>::New(
         u8"test_skin.gltf.meta",
         SkinAssetID,
@@ -429,7 +433,8 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
         actor3.lock()->AttachTo(actor2);
 
         root.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 0.0f, 0.0f });
-        actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 0.0f, 1.0f, 10.0f });
+
+        actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set({ -10.0f, 1.0f, 10.0f });
         actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ .1f, .1f, .1f });
         actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.8f, 0.0f });
 
@@ -523,40 +528,7 @@ int SceneSampleSkelMeshModule::main_module_exec(int argc, char8_t** argv)
             imgui_app->pump_message();
         }
         {
-            // if left mouse button is pressed, toggle controlling actor
-            SkrZoneScopedN("InputControl");
-            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
-            {
-                // Move Actor 1 with WASD keys
-                if (ImGui::IsKeyDown(ImGuiKey_W))
-                {
-                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
-                    pos.z -= 0.1f;
-                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_S))
-                {
-                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
-                    pos.z += 0.1f;
-                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_A))
-                {
-                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
-                    pos.x -= 0.1f;
-                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_D))
-                {
-                    auto pos = actor1.lock()->GetComponent<skr::scene::PositionComponent>()->get();
-                    pos.x += 0.1f;
-                    actor1.lock()->GetComponent<skr::scene::PositionComponent>()->set(pos);
-                }
-            }
-        }
-
-        {
-            // ResourceSystem Update
+            SkrZoneScopedN("ResourceSystemUpdate");
             resource_system->Update();
         }
 

@@ -39,5 +39,6 @@ struct SCENE_RENDERER_API SceneRenderer
 
     virtual void set_camera(utils::Camera* camera) = 0;
     virtual utils::Camera* get_camera() const { return nullptr; }
+    virtual CGPURenderPipelineId get_render_pso() const = 0;
 };
 } // namespace skr

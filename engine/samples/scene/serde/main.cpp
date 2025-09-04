@@ -1,5 +1,5 @@
 #include "SkrCore/module/module_manager.hpp"
-#include "SkrOS/filesystem.hpp"
+#include <SkrOS/filesystem.hpp>
 
 int main(int argc, char* argv[])
 {
@@ -7,9 +7,9 @@ int main(int argc, char* argv[])
     auto root = skr::fs::current_directory();
     {
         FrameMark;
-        SkrZoneScopedN("SceneSampleSkelMesh");
+        SkrZoneScopedN("Initialize");
         moduleManager->mount(root.string().c_str());
-        moduleManager->make_module_graph(u8"SceneSample_SkelMesh", true);
+        moduleManager->make_module_graph(u8"SceneSample_Serde", true);
         moduleManager->init_module_graph(argc, argv);
         moduleManager->destroy_module_graph();
     }

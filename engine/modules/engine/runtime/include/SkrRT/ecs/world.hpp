@@ -256,7 +256,7 @@ public:
     }
 
     template <typename T>
-        requires std::is_copy_constructible_v<T>
+    requires std::is_copy_constructible_v<T>
     void dispatch_task(T TaskBody, uint32_t batch_size, skr::span<skr::ecs::Entity> entities, skr::Optional<TaskOptions> opts = skr::Optional<TaskOptions>())
     {
         SKR_ASSERT(TaskScheduler::Get());
@@ -308,7 +308,7 @@ public:
     }
 
     template <typename T>
-        requires std::is_copy_constructible_v<T>
+    requires std::is_copy_constructible_v<T>
     EntityQuery* dispatch_task(T TaskBody, uint32_t batch_size, sugoi_query_t* reuse_query, skr::Optional<TaskOptions> opts = skr::Optional<TaskOptions>())
     {
         SKR_ASSERT(TaskScheduler::Get());
@@ -427,11 +427,26 @@ public:
     }
 
     sugoi_storage_t* get_storage() SKR_NOEXCEPT;
+    void bind_scheduler(skr::task::scheduler_t& scheduler) SKR_NOEXCEPT;
 
 protected:
     World(const World&) = delete;
     World& operator=(const World&) = delete;
     sugoi_storage_t* storage = nullptr;
+
+private:
+    friend skr::BinSerde<World>;
+    void from_ext_storage(sugoi_storage_t* ext_storage) SKR_NOEXCEPT; // for serde
 };
 
 } // namespace skr::ecs
+
+namespace skr
+{
+template <>
+struct SKR_RUNTIME_API BinSerde<ecs::World>
+{
+    static bool read(SBinaryReader* r, skr::ecs::World& world);
+    static bool write(SBinaryWriter* w, const skr::ecs::World& world);
+};
+} // namespace skr

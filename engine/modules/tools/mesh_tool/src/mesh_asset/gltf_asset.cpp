@@ -80,6 +80,14 @@ void GltfMeshImporter::ImportMaterials(ImportData* import_data, CookContext* con
         MatImporter->asset->material_type_version = 0;
         auto pbr = material.pbr_metallic_roughness;
 
+        if (auto basecolor = pbr.base_color_factor)
+        {
+            auto& v = MatImporter->asset->override_values.emplace().ref();
+            v.prop_type = EMaterialPropertyType::FLOAT4;
+            v.slot_name = u8"pbrBaseColorFactor";
+            v.vec = { basecolor[0], basecolor[1], basecolor[2], basecolor[3] };
+        }
+
         if (auto basecolor = pbr.base_color_texture.texture)
         {
             auto& v = MatImporter->asset->override_values.emplace().ref();
@@ -104,8 +112,8 @@ void GltfMeshImporter::ImportMaterials(ImportData* import_data, CookContext* con
 
         auto MaterialAssetPath = (AssetDirectory / (const char8_t*)material.name).string();
         auto AssetFile = skr::RC<skd::asset::AssetMetaFile>::New(
-            MaterialAssetPath,                           // virtual uri for this asset in the project
-            MaterialAssetID,                             // guid for this asset
+            MaterialAssetPath,                            // virtual uri for this asset in the project
+            MaterialAssetID,                              // guid for this asset
             skr::type_id_of<skr::MaterialResource>(),     // output resource is a mesh resource
             skr::type_id_of<skd::asset::MaterialCooker>() // this cooker cooks t he raw mesh data to mesh resource
         );
