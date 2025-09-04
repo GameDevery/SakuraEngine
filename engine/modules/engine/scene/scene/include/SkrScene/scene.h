@@ -19,6 +19,8 @@ SKR_SCENE_API Scene
 public:
     Scene() {}
     ~Scene() SKR_NOEXCEPT;
+    void serialize();
+
     skr_guid_t root_actor_guid;
     sattr(serde = @disable)
     skr::Map<skr_guid_t, skr::RC<skr::Actor>> actors;

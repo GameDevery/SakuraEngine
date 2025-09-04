@@ -50,6 +50,7 @@ public:
     skr::ecs::Entity GetEntity() const;
     void AttachTo(RCWeak<Actor> parent, EAttachRule rule = EAttachRule::Default);
     void DetachFromParent();
+    void DetachAllChildren();
 
     struct Spawner
     {
@@ -107,6 +108,7 @@ public:
     void deserialize() SKR_NOEXCEPT;
     inline const skr::String GetDisplayName() const { return display_name; }
     inline void SetDisplayName(const skr::String& name) { display_name = name; }
+
     template <typename ComponentType>
     ComponentType* GetComponent() const
     {
@@ -121,6 +123,8 @@ public:
 
     skr::GUID GetGUID() const SKR_NOEXCEPT { return guid; }
     skr::GUID GetRTTRTypeGUID() const SKR_NOEXCEPT { return rttr_type_guid; }
+
+    skr::Vector<skr::GUID> GetChildrenGUIDs() const SKR_NOEXCEPT;
 };
 class SKR_SCENE_API ActorManager
 {

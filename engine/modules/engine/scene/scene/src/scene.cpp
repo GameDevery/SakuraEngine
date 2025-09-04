@@ -9,6 +9,14 @@ Scene::~Scene() SKR_NOEXCEPT
     SKR_LOG_INFO(u8"Scene Delete");
 }
 
+void Scene::serialize()
+{
+    for (auto& actor : actors)
+    {
+        actor.value->serialize();
+    }
+}
+
 inline bool Parse(skr::archive::JsonReader& reader, const char8_t* key, bool required = true)
 {
     bool exist = true;
@@ -62,14 +70,21 @@ bool JsonSerde<Scene>::read(skr::archive::JsonReader* r, Scene& v)
             // create actor with type guid
             auto actor = skr::ActorManager::GetInstance().CreateActor(actor_attr_type_guid);
             actor->Initialize(actor_guid);
+            v.actors.add(actor_guid, actor);
+            actor_iter = v.actors.find(actor_guid);
+            actor_ref = actor_iter.value();
         }
         reader.Key(u8"actor_data");
         skr::json_read(&reader, *actor_ref.lock()); // from json to serialized
-        actor_ref.lock()->deserialize();            // from serialized to container
-
         reader.EndObject();
     }
     reader.EndArray();
+
+    for (auto& actor : v.actors)
+    {
+        actor.value->deserialize();
+    }
+
 
     r->EndObject();
     return true;

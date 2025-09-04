@@ -37,14 +37,14 @@ void Actor::Initialize(skr_guid_t _guid)
 }
 
 Actor::~Actor() SKR_NOEXCEPT
+{}
+
+
+void Actor::DetachAllChildren()
 {
     for (auto& child : children)
     {
         child->DetachFromParent();
-    }
-    if (_parent)
-    {
-        DetachFromParent();
     }
 }
 
@@ -140,6 +140,16 @@ void Actor::DetachFromParent()
     }
 }
 
+
+skr::Vector<skr::GUID> Actor::GetChildrenGUIDs() const SKR_NOEXCEPT {
+    skr::Vector<skr::GUID> children_guids;
+    for (auto& child : children)
+    {
+        children_guids.push_back(child->GetGUID());
+    }
+    return children_guids;
+}
+
 /////////////////////
 // ActorManager Implementation
 /////////////////////
@@ -159,13 +169,16 @@ skr::RCWeak<Actor> ActorManager::GetActor(skr::GUID guid)
 
 bool ActorManager::DestroyActor(skr::GUID guid)
 {
-    auto it = scene->actors.find(guid).value();
+    auto it = scene->actors.find(guid);
     if (!it)
     {
         SKR_LOG_ERROR(u8"Actor with GUID {%s} not found", guid);
         return false;
     }
-    DestroyActorEntity(it);     // Destroy the actor's entity in ECS world
+    it.value()->DetachFromParent();
+    it.value()->DetachAllChildren();
+    DestroyActorEntity(it.value()); // Destroy the actor's entity in ECS world
+
     scene->actors.remove(guid); // when ref-counted -> 0, it will call SkrDelete with release()
     return true;
 }
@@ -236,6 +249,8 @@ void ActorManager::UpdateHierarchy(skr::RCWeak<Actor> parent, skr::RCWeak<Actor>
 
 void ActorManager::ClearAllActors()
 {
+    // print out all keys
+
     auto root_guid = GetRoot().lock()->GetGUID();
     for (auto& actor_item : scene->actors)
     {
@@ -246,6 +261,7 @@ void ActorManager::ClearAllActors()
         }
     }
     DestroyActor(root_guid);
+    scene->actors.clear();
 }
 
 skr::RCWeak<RootActor> ActorManager::GetRoot()
