@@ -102,16 +102,37 @@ int SceneSampleSerdeModule::main_module_exec(int argc, char8_t** argv)
         actor1.lock()
             ->GetComponent<skr::scene::PositionComponent>()
             ->set({ 2.0f, 4.0f, 6.0f });
+        actor1.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 1.0f, 1.0f, 1.0f });
+        actor1.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
+        
+        auto actor2 = actor_manager.CreateActor<skr::MeshActor>().cast_static<skr::MeshActor>();
+        actor2.lock()->CreateEntity();
+        actor2.lock()->AttachTo(actor1);
+        actor2.lock()->GetComponent<skr::scene::PositionComponent>()->set({ 17.0f, 0.0f, 0.0f });
+        actor2.lock()->GetComponent<skr::scene::ScaleComponent>()->set({ 1.0f, 1.0f, 1.0f });
+        actor2.lock()->GetComponent<skr::scene::RotationComponent>()->set({ 0.0f, 0.0f, 0.0f });
+        
+        
+        
+        
         transform_system->update();
+
         skr::ecs::TaskScheduler::Get()->flush_all();
         skr::ecs::TaskScheduler::Get()->sync_all();
-        target_actor_guid = actor1.lock()->GetGUID();
+
+        
+        target_actor_guid = actor2.lock()->GetGUID();
 
         auto target_actor = actor_manager.GetActor(target_actor_guid);
         auto pos = pos_accessor[(skr::ecs::Entity)target_actor.lock()->GetEntity()].get();
         SKR_LOG_INFO(u8"Position: ({%f}, {%f}, {%f})", pos.x, pos.y, pos.z);
+        auto trans_accessor = world->random_read<const skr::scene::TransformComponent>();
+        auto transform = trans_accessor[(skr::ecs::Entity)target_actor.lock()->GetEntity()].get();
+        SKR_LOG_INFO(u8"Transform Position: ({%f}, {%f}, {%f})", transform.position.x, transform.position.y, transform.position.z);
+        SKR_LOG_INFO(u8"Transform Rotation: ({%f}, {%f}, {%f}, {%f})", transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w);
+        SKR_LOG_INFO(u8"Transform Scale: ({%f}, {%f}, {%f})", transform.scale.x, transform.scale.y, transform.scale.z);
 
-        root.lock()->serialize();
+        scene.serialize();
         skr::archive::JsonWriter writer(2);
         skr::json_write(&writer, scene);
         auto jsString = writer.Write();
@@ -122,9 +143,11 @@ int SceneSampleSerdeModule::main_module_exec(int argc, char8_t** argv)
         skr::fs::File::write_all_bytes(path, wbuffer);
 
         actor_manager.ClearAllActors();
+        SKR_LOG_INFO(u8"Serialize Done");
     }
     if (bIsDeserialize)
     {
+
         SKR_LOG_INFO(u8"Deserialize");
         // first deserialize the scene, will automatically create the root actor
         skr::String jsString;
@@ -135,6 +158,7 @@ int SceneSampleSerdeModule::main_module_exec(int argc, char8_t** argv)
         auto root = skr::Actor::GetRoot();
 
         auto* world = root.lock()->GetWorld();
+        transform_system = skr_transform_system_create(world);
         world->bind_scheduler(scheduler);
         world->initialize();
 
@@ -143,11 +167,29 @@ int SceneSampleSerdeModule::main_module_exec(int argc, char8_t** argv)
         SBinaryReader read_archive(world_reader);
         skr::bin_read(&read_archive, *world);
 
-        auto pos_accessor = world->random_read<const skr::scene::PositionComponent>();
+
+        transform_system->update();
+        skr::ecs::TaskScheduler::Get()->flush_all();
+        skr::ecs::TaskScheduler::Get()->sync_all();
+        auto children_guids = root.lock()->GetChildrenGUIDs();
+        auto first_child = actor_manager.GetActor(children_guids[0]);
+        children_guids = first_child.lock()->GetChildrenGUIDs();
+        first_child = actor_manager.GetActor(children_guids[0]);
+
+        target_actor_guid = first_child.lock()->GetGUID();
         auto target_actor = actor_manager.GetActor(target_actor_guid);
+
+        auto pos_accessor = world->random_read<const skr::scene::PositionComponent>();
         auto pos = pos_accessor[(skr::ecs::Entity)target_actor.lock()->GetEntity()].get();
         SKR_LOG_INFO(u8"Position: ({%f}, {%f}, {%f})", pos.x, pos.y, pos.z);
+        auto trans_accessor = world->random_read<const skr::scene::TransformComponent>();
+        auto transform = trans_accessor[(skr::ecs::Entity)target_actor.lock()->GetEntity()].get();
+        SKR_LOG_INFO(u8"Transform Position: ({%f}, {%f}, {%f})", transform.position.x, transform.position.y, transform.position.z);
+        SKR_LOG_INFO(u8"Transform Rotation: ({%f}, {%f}, {%f}, {%f})", transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w);
+        SKR_LOG_INFO(u8"Transform Scale: ({%f}, {%f}, {%f})", transform.scale.x, transform.scale.y, transform.scale.z);
+        
         actor_manager.ClearAllActors();
+        SKR_LOG_INFO(u8"Deserialize Done");
     }
     skr_transform_system_destroy(transform_system);
     return 0;
