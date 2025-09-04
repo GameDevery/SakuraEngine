@@ -961,14 +961,16 @@ void AST::DeclareIntrinsics()
     _intrinsics["SATURATE"] = DeclareTemplateFunction(L"saturate", ReturnFirstArgType, OneFloatFamily);
     _intrinsics["DDX"] = DeclareTemplateFunction(L"ddx", ReturnFirstArgType, OneFloatFamily);
     _intrinsics["DDY"] = DeclareTemplateFunction(L"ddy", ReturnFirstArgType, OneFloatFamily);
-    _intrinsics["ISINF"] = DeclareTemplateFunction(L"is_inf", ReturnBoolVecWithSameDim, OneFloatFamily);
-    _intrinsics["ISNAN"] = DeclareTemplateFunction(L"is_nan", ReturnBoolVecWithSameDim, OneFloatFamily);
+    _intrinsics["ISINF"] = DeclareTemplateFunction(L"isinf", ReturnBoolVecWithSameDim, OneFloatFamily);
+    _intrinsics["ISNAN"] = DeclareTemplateFunction(L"isnan", ReturnBoolVecWithSameDim, OneFloatFamily);
 
     std::array<VarConceptDecl*, 2> TwoFloatFamily = { FloatFamily, FloatFamily };
     _intrinsics["POW"] = DeclareTemplateFunction(L"pow", ReturnFirstArgType, TwoArithmetic);
     _intrinsics["COPYSIGN"] = DeclareTemplateFunction(L"copysign", ReturnFirstArgType, TwoFloatFamily);
     _intrinsics["ATAN2"] = DeclareTemplateFunction(L"atan2", ReturnFirstArgType, TwoFloatFamily);
     _intrinsics["STEP"] = DeclareTemplateFunction(L"step", ReturnFirstArgType, TwoFloatFamily);
+    _intrinsics["FMOD"] = DeclareTemplateFunction(L"fmod", ReturnFirstArgType, TwoFloatFamily);
+    _intrinsics["MODF"] = DeclareTemplateFunction(L"modf", ReturnFirstArgType, TwoFloatFamily);
 
     std::array<VarConceptDecl*, 3> ThreeFloatFamily = { FloatFamily, FloatFamily, FloatFamily };
     _intrinsics["FMA"] = DeclareTemplateFunction(L"fma", ReturnFirstArgType, ThreeFloatFamily);

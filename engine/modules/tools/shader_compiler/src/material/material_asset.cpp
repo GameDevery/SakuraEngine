@@ -49,7 +49,7 @@ void MaterialImporter::Destroy(void* resource)
 {
     if (asset)
     {
-        asset.reset();
+
     }
     else
     {

@@ -346,6 +346,12 @@ function _gen_class_body(opt: GenMatrixOption) {
         b.$line(``)
       }
 
+      // visitor operator
+      b.$line(`// visitor operator`)
+      b.$line(`inline ${vec_name} operator[](size_t idx) const { SKR_ASSERT(idx < ${dim}); return rows[idx]; }`)
+      b.$line(`inline ${vec_name}& operator[](size_t idx) { SKR_ASSERT(idx < ${dim}); return rows[idx]; }`)
+      b.$line(``)
+
       // mul operator
       b.$line(`// mul operator`)
       b.$line(`friend ${mat_name} operator*(const ${mat_name}& lhs, const ${mat_name}& rhs);`)

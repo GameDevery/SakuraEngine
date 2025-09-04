@@ -1,66 +1,43 @@
 #pragma once
-#include "soa_layout.hpp"
+#include "database.hpp"
 #if !defined(__meta__) && !defined(__CPPSL__)
     #include "SkrRenderer/shared/gpu_scene.generated.h" // IWYU pragma: export
 #endif
 
-namespace skr
+namespace skr::gpu
 {
 
-sreflect_managed_component(guid = "7d7ae068-1c62-46a0-a3bc-e6b141c8e56d")
-GPUSceneObjectToWorld
+sreflect_managed_component(guid = "74e60480-7324-48d7-a174-bc5e404fe0bc" gpu.aos=@enable)
+Material
 {
-    data_layout::float4x4 matrix;
+    uint32_t global_index;
+    uint32_t basecolor_tex;
+    uint32_t metallic_roughness_tex;
+    uint32_t emission_tex;
 };
 
-sreflect_managed_component(guid = "d108318f-a1c2-4f64-b82f-63e7914773c8")
-GPUSceneInstanceColor
+sreflect_managed_component(guid = "62af1ab3-7762-4413-97f9-fab30d9232c0" gpu.aos=@enable)
+Primitive
 {
-    data_layout::float4 color;
+    uint32_t global_index;
+    uint32_t material_index;
+    Range<uint3> triangles;
+    Range<float3> positions;
+    Range<float3> normals;
+    Range<float3> tangents;
+    Range<float2> uvs;
 };
 
-sreflect_managed_component(guid = "e72c5ea1-9e31-4649-b190-45733b176760")
-GPUSceneInstanceEmission
+sreflect_managed_component(guid = "73a52be2-4247-4320-b30c-f1fbd5a1766a" gpu.aos=@enable)
+Instance
 {
-    data_layout::float4 color;
+    float4x4 transform;
+    Range<Material> materials;
+    Range<Primitive> primitives;
 };
-
-struct BufferEntry
-{
-    skr::data_layout::uint32 buffer = ~0;
-    skr::data_layout::uint32 offset = ~0;
-};
-
-sreflect_managed_component(guid = "03035b31-a526-4fa7-b062-56da0849d5b9")
-PBRMaterial
-{
-    struct Group
-    {
-        uint32_t basecolor_tex;
-        uint32_t metallic_roughness_tex;
-        uint32_t emission_tex;
-    } entries[256];
-};
-
-sreflect_managed_component(guid = "a434196c-7a99-4dee-8715-e422124288e2")
-GPUSceneGeometryBuffers
-{
-    struct Group
-    {
-        BufferEntry index;
-        BufferEntry pos;
-        BufferEntry uv;
-        BufferEntry normal;
-        BufferEntry tangent;
-        uint32_t material_index;
-    } entries[256];
-};
-
-using DefaultGPUSceneLayout = PagedLayout<16384, // 16K instances per page
-    GPUSceneObjectToWorld,
-    GPUSceneInstanceColor,
-    GPUSceneInstanceEmission,
-    GPUSceneGeometryBuffers
->;
 
 } // namespace skr
+
+#if !defined(__meta__)
+    #include "SkrRenderer/shared/gpu_scene.datablocks.h" // IWYU pragma: export
+#endif

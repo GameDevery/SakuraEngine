@@ -84,6 +84,7 @@ struct ComponentAccess
 struct TaskOptions
 {
     skr::InlineVector<skr::task::weak_event_t, 4> on_finishes;
+    bool no_parallelization = false;
 };
 
 struct TaskSignature

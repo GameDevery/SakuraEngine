@@ -14,16 +14,16 @@ trait TextureFlags
     static constexpr uint32 ReadWrite = 2;
 };
 
-template<typename T, uint64 N>
+template <typename T, uint64 N>
 struct vec;
 
-template<uint64 N>
+template <uint64 N>
 struct matrix;
 
-template<typename Type, uint32 size>
+template <typename Type, uint32 size>
 struct Array;
 
-template<typename Type, uint32 cache_flags>
+template <typename Type, uint32 cache_flags>
 struct Buffer;
 
 struct Ray;
@@ -33,193 +33,207 @@ struct TriangleHit;
 struct ProceduralHit;
 struct IndirectBuffer;
 
-namespace detail {
-template<class T>
-trait vec_or_matrix : public std::false_type {
+namespace detail
+{
+template <class T>
+trait vec_or_matrix : public std::false_type
+{
     using scalar_type = T;
     static constexpr bool is_vec = false;
     static constexpr bool is_matrix = false;
 };
 
-template<class T, uint64 N>
-trait vec_or_matrix<vec<T, N>> : public std::true_type {
+template <class T, uint64 N>
+trait vec_or_matrix<vec<T, N>> : public std::true_type
+{
     using scalar_type = T;
     static constexpr bool is_vec = true;
     static constexpr bool is_matrix = false;
 };
 
-template<uint64 N>
-trait vec_or_matrix<matrix<N>> : public std::true_type {
+template <uint64 N>
+trait vec_or_matrix<matrix<N>> : public std::true_type
+{
     using scalar_type = float;
     static constexpr bool is_vec = false;
     static constexpr bool is_matrix = true;
 };
 #ifdef DEBUG
-template<typename T>
-trait is_char {
+template <typename T>
+trait is_char
+{
     static constexpr bool value = false;
 };
-template<size_t n>
-trait is_char<const char (&)[n]> {
+template <size_t n>
+trait is_char<const char (&)[n]>
+{
     static constexpr bool value = true;
 };
 #endif
-}// namespace detail
+} // namespace detail
 
-template<typename T>
-using scalar_type = typename ::detail::vec_or_matrix<std::decay_t<T>>::scalar_type;
+template <typename T>
+using scalar_type = typename ::detail::vec_or_matrix<std::remove_cvref_t<T>>::scalar_type;
 
-template<typename T>
-static constexpr bool is_scalar_v = !::detail::vec_or_matrix<std::decay_t<T>>::is_vec;
+template <typename T>
+static constexpr bool is_scalar_v = !::detail::vec_or_matrix<std::remove_cvref_t<T>>::is_vec && !::detail::vec_or_matrix<std::remove_cvref_t<T>>::is_matrix;
 
-template<typename T>
-static constexpr bool is_vec_v = ::detail::vec_or_matrix<std::decay_t<T>>::is_vec;
+template <typename T>
+static constexpr bool is_vec_v = ::detail::vec_or_matrix<std::remove_cvref_t<T>>::is_vec;
 
-template<typename T>
-static constexpr bool is_matrix_v = ::detail::vec_or_matrix<std::decay_t<T>>::is_matrix;
+template <typename T>
+static constexpr bool is_matrix_v = ::detail::vec_or_matrix<std::remove_cvref_t<T>>::is_matrix;
 
-template<typename T>
-static constexpr bool is_vec_or_matrix_v = ::detail::vec_or_matrix<std::decay_t<T>>::value;
+template <typename T>
+static constexpr bool is_vec_or_matrix_v = ::detail::vec_or_matrix<std::remove_cvref_t<T>>::value;
 
-template<typename T>
+template <typename T>
 inline constexpr bool is_array_v = false;
 
-template<typename U, uint32 N>
+template <typename U, uint32 N>
 inline constexpr bool is_array_v<Array<U, N>> = true;
 
-template<typename T>
-inline constexpr bool is_buffer_v = std::is_specialization_resource_v<T, Buffer>;
+template <typename T>
+inline constexpr bool is_buffer_v = false;
+template <typename U, uint32 N>
+inline constexpr bool is_buffer_v<Buffer<U, N>> = true;
 
-template<typename T>
+template <typename T>
 inline constexpr bool is_rwbuffer_v = is_buffer_v<T> && (T::flags == BufferFlags::ReadWrite);
 
-template<typename T>
+template <typename T>
 static constexpr bool is_float_family_v = std::is_same_v<scalar_type<T>, float> | std::is_same_v<scalar_type<T>, double> | std::is_same_v<scalar_type<T>, half>;
 
-template<typename T>
+template <typename T>
 static constexpr bool is_sint_family_v = std::is_same_v<scalar_type<T>, int16> | std::is_same_v<scalar_type<T>, int32> | std::is_same_v<scalar_type<T>, int64>;
 
-template<typename T>
+template <typename T>
 static constexpr bool is_uint_family_v = std::is_same_v<scalar_type<T>, uint16> | std::is_same_v<scalar_type<T>, uint32> | std::is_same_v<scalar_type<T>, uint64>;
 
-template<typename T>
+template <typename T>
 static constexpr bool is_int_family_v = is_sint_family_v<T> || is_uint_family_v<T>;
 
-template<typename T>
+template <typename T>
 static constexpr bool is_bool_family_v = std::is_same_v<scalar_type<T>, bool>;
 
-template<typename T>
+template <typename T>
 static constexpr bool is_arithmetic_v = is_float_family_v<T> || is_bool_family_v<T> || is_int_family_v<T>;
 
-template<typename T>
+template <typename T>
 static constexpr bool is_signed_arithmetic_v = is_float_family_v<T> || is_sint_family_v<T>;
 
-template<typename T>
+template <typename T>
 static constexpr bool is_arithmetic_scalar_v = is_arithmetic_v<T> && !is_vec_v<T>;
 
-template<typename T>
+template <typename T>
 static constexpr bool is_arithmetic_vec_v = is_arithmetic_v<T> && is_vec_v<T>;
 
-namespace concepts {
+namespace concepts
+{
 
-template<typename T>
+template <typename T>
 concept vec = is_vec_v<T>;
 
-template<typename T>
+template <typename T>
 concept non_vec = !is_vec_v<T>;
 
-template<typename T>
+template <typename T>
 concept matrix = is_matrix_v<T>;
 
-template<typename T>
+template <typename T>
 concept array = is_array_v<T>;
 
-template<typename T>
+template <typename T>
 concept buffer = is_buffer_v<T>;
 
-template<typename T>
+template <typename T>
 concept rw_buffer = is_buffer_v<T> && (T::flags == BufferFlags::ReadWrite);
 
-template<typename T>
+template <typename T>
 concept float_family = is_float_family_v<T>;
 
-template<typename T>
+template <typename T>
 concept float_vec_family = is_float_family_v<T> && is_vec_v<T>;
 
-template<typename T>
+template <typename T>
 concept bool_family = is_bool_family_v<T>;
 
-template<typename T>
+template <typename T>
 concept bool_vec_family = is_bool_family_v<T> && is_vec_v<T>;
 
-template<typename T>
+template <typename T>
 concept sint_family = is_sint_family_v<T>;
 
-template<typename T>
+template <typename T>
 concept sint_vec_family = is_sint_family_v<T> && is_vec_v<T>;
 
-template<typename T>
+template <typename T>
 concept uint_family = is_uint_family_v<T>;
 
-template<typename T>
+template <typename T>
 concept uint_vec_family = is_uint_family_v<T> && is_vec_v<T>;
 
-template<typename T>
+template <typename T>
 concept int_family = is_int_family_v<T>;
 
-template<typename T>
+template <typename T>
 concept int_vec_family = is_int_family_v<T> && is_vec_v<T>;
 
-template<typename T>
+template <typename T>
 concept arithmetic = is_arithmetic_v<T>;
 
-template<typename T>
+template <typename T>
 concept arithmetic_vec = is_arithmetic_v<T> && is_vec_v<T>;
 
-template<typename T>
+template <typename T>
 concept signed_arithmetic = is_signed_arithmetic_v<T>;
 
-template<typename T>
+template <typename T>
 concept arithmetic_scalar = is_arithmetic_scalar_v<T>;
 
-template<typename T>
+template <typename T>
 concept arithmetic_scalar_or_vec = is_arithmetic_scalar_v<T> || is_arithmetic_vec_v<T>;
 
-template<typename T>
+template <typename T>
 concept struct_type = __is_class(T) && !__is_union(T) && !__is_enum(T) && !is_vec_or_matrix_v<T> && !is_arithmetic_v<T>;
 
-template<typename T>
+template <typename T>
 concept primitive = is_arithmetic_v<T> || is_vec_or_matrix_v<T>;
 #ifdef DEBUG
-template<typename T>
+template <typename T>
 concept string_literal = detail::is_char<T>::value;
 #endif
-}// namespace concepts
+} // namespace concepts
 
-template<concepts::arithmetic_scalar T, uint32 cache_flag>
+template <concepts::arithmetic_scalar T, uint32 cache_flag>
 struct Image;
 
-template<concepts::arithmetic_scalar T, uint32 cache_flag>
+template <concepts::arithmetic_scalar T, uint32 cache_flag>
 struct Volume;
 
-template<typename T>
-inline constexpr bool is_texture2d_v = std::is_specialization_resource_v<T, Image>;
+template <typename T>
+inline constexpr bool is_texture2d_v = false;
+template <typename U, uint32 N>
+inline constexpr bool is_texture2d_v<Image<U, N>> = true;
 
-template<typename T>
-inline constexpr bool is_texture3d_v = std::is_specialization_resource_v<T, Volume>;
+template <typename T>
+inline constexpr bool is_texture3d_v = false;
+template <typename U, uint32 N>
+inline constexpr bool is_texture3d_v<Volume<U, N>> = true;
 
-template<typename T>
+template <typename T>
 inline constexpr bool is_texture_v = is_texture2d_v<T> || is_texture3d_v<T>;
 
-namespace concepts {
+namespace concepts
+{
 
-template<typename T>
+template <typename T>
 concept texture2d = is_texture2d_v<T>;
 
-template<typename T>
+template <typename T>
 concept texture3d = is_texture3d_v<T>;
 
-template<typename T>
+template <typename T>
 concept texture = is_texture_v<T>;
 
-}// namespace concepts
+} // namespace concepts

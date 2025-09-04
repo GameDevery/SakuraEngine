@@ -20,8 +20,10 @@ struct alignas(8) [[builtin("vec")]] vec<T, 2> {
 	}
 
 	template<concepts::arithmetic_scalar U>
-	constexpr vec(U v)
-		: _v(v, v) {}
+	constexpr vec(U v) : _v(v, v) {}
+
+	template<concepts::arithmetic_scalar U>
+	inline void operator=(U v) { x = v; y = v; }
 
 	explicit constexpr vec(Array<T, 2> array) : vec{array[0], array[1]} {}
 
@@ -64,6 +66,9 @@ struct alignas(16) [[builtin("vec")]] vec<T, 3> {
 	template<concepts::arithmetic_scalar U>
 	constexpr vec(U v)
 		: _v(v, v, v) {}
+
+	template<concepts::arithmetic_scalar U>
+	inline void operator=(U v) { x = v; y = v; z = v; }
 
 	explicit constexpr vec(Array<T, 3> array) : vec{array[0], array[1], array[2]} {}
 
@@ -108,6 +113,9 @@ struct alignas(16) [[builtin("vec")]] vec<T, 4> {
 	template<concepts::arithmetic_scalar U>
 	constexpr vec(U v)
 		: _v(v, v, v, v) {}
+
+	template<concepts::arithmetic_scalar U>
+	inline void operator=(U v) { x = v; y = v; z = v; w = v; }
 
 	explicit constexpr vec(Array<T, 4> array) : vec{array[0], array[1], array[2], array[3]} {}
 

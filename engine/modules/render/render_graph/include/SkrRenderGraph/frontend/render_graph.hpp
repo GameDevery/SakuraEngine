@@ -52,6 +52,8 @@ public:
         return last_state;
     }
 
+    void reset(ECGPUResourceState state = CGPU_RESOURCE_STATE_COMMON) { last_state = state; }
+
 private:
     friend class BarrierGenerationPhase;
     ECGPUResourceState last_state = ECGPUResourceState::CGPU_RESOURCE_STATE_COMMON;

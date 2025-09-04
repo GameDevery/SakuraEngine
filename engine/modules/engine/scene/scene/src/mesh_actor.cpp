@@ -17,12 +17,18 @@ MeshActor::~MeshActor() SKR_NOEXCEPT
     }
 }
 
-MeshActor::MeshActor()
+void MeshActor::Initialize()
 {
-    // Initialize the actor with default values
+    Initialize(skr::GUID::Create());
+}
+
+void MeshActor::Initialize(skr_guid_t _guid)
+{
+    this->guid = _guid;
+    attach_rule = EAttachRule::Default;
     display_name = u8"MeshActor";
-    // override spawner
-    spawner = Spawner{
+    rttr_type_guid = skr::type_id_of<MeshActor>();
+    spawner = skr::UPtr<Spawner>::New(
         [this](skr::ecs::ArchetypeBuilder& Builder) {
             Builder
                 .add_component<skr::scene::ParentComponent>()
@@ -38,8 +44,7 @@ MeshActor::MeshActor()
             this->scene_entities.resize_zeroed(1);
             this->scene_entities[0] = Context.entities()[0];
             SKR_LOG_INFO(u8"MeshActor {%s} created with entity: {%u}", this->GetDisplayName().c_str(), this->GetEntity());
-        }
-    };
+        });
 }
 
 } // namespace skr

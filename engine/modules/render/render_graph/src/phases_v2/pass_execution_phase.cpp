@@ -110,8 +110,9 @@ void PassExecutionPhase::execute_scheduled_passes(RenderGraph* graph, RenderGrap
     {
         const auto& queue_info = schedule_result.all_queues[queue_index];
         const auto& timeline = reorder_phase_.get_optimized_timeline()[queue_index];
-        for (const auto pass : timeline)
+        for (uint32_t pass_idx = 0; pass_idx < timeline.size(); pass_idx++)
         {
+            const auto& pass = timeline[pass_idx];
             if (config_.enable_profiler_events && profiler)
             {
                 profiler->on_pass_begin(*static_cast<RenderGraphBackend*>(graph), *executor, *pass);
@@ -511,7 +512,7 @@ void PassExecutionPhase::execute_present_pass(RenderGraph* graph, RenderGraphFra
 void PassExecutionPhase::insert_pass_barriers(RenderGraphFrameExecutor* executor, PassNode* pass) SKR_NOEXCEPT
 {
     const auto& barrier_batches = barrier_generation_phase_.get_pass_barrier_batches(pass);
-    if (barrier_batches.is_empty()) 
+    if (barrier_batches.is_empty())
         return;
 
     skr::InlineVector<CGPUTextureBarrier, 8> texture_barriers;

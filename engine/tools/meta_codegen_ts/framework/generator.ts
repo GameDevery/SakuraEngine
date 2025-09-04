@@ -184,6 +184,15 @@ export class GenerateManager {
       this.#output_code(out_path, header.gen_code.content)
     }
 
+    // output custom header
+    for (const header of this.project_db.main_module.headers) {
+      for (const suffix in header.gen_code_custom) {
+        const code_builder = header.gen_code_custom[suffix]!;
+        const output_path = path.join(out_dir, header.get_header_path_of_suffix(suffix));
+        this.#output_code(output_path, code_builder.content);
+      }
+    }
+
     const main_db = this.project_db.main_module;
 
     // output main source

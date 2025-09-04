@@ -537,6 +537,7 @@ export class Header {
   functions: Function[] = [];
 
   gen_code: CodeBuilder = new CodeBuilder();
+  gen_code_custom: Dict<CodeBuilder> = {};
 
   constructor(parent: Module, meta_file_path: string) {
     this.parent = parent;
@@ -594,6 +595,15 @@ export class Header {
     for (const function_obj of this.functions) {
       solve_include_path(function_obj.file_name);
     }
+  }
+
+  // helper
+  get_header_path_of_suffix(suffix: string) {
+    const reg_meta_path = /(.*?)\.(.*?)\.meta/g;
+    return this.meta_path_relative.replace(
+      reg_meta_path,
+      `$1.${suffix}.$2`,
+    );
   }
 
   // find
