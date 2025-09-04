@@ -515,7 +515,7 @@ void ModelViewerModule::CookAndLoadGLTF()
             skr::type_id_of<skd::asset::MeshCooker>() // this cooker cooks t he raw mesh data to mesh resource
         );
         // source file
-        importer->assetPath = u8"D:/D5EngineAssets/GLTFModels/sponza/scene.gltf";
+        importer->assetPath = u8"D:/D5EngineAssets/Models/sponza/scene.gltf";
         // importer->assetPath = u8"C:/Code/D5Engine/engine/samples/assets/sketchfab/loli/scene.gltf";
         CookSystem.ImportAssetMeta(&project, asset, importer, metadata);       
 

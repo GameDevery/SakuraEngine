@@ -9,7 +9,8 @@ public static class WebSocketSample
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
             Engine.Program("WebSocketSample")
-                .Depend(Visibility.Public, "libhv")
+                .Require("LibHV", new PackageConfig { Version = new Version(1, 3, 3) })
+                .Depend(Visibility.Public, "LibHV@LibHV")
                 .Depend(Visibility.Public, "SkrCore")
                 .IncludeDirs(Visibility.Public, "include")
                 .AddMetaHeaders("include/**.hpp")

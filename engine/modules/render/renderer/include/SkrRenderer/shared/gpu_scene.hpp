@@ -1,5 +1,5 @@
 #pragma once
-#include "database.hpp"
+#include "SkrRenderer/shared/database.hpp"
 #if !defined(__meta__) && !defined(__CPPSL__)
     #include "SkrRenderer/shared/gpu_scene.generated.h" // IWYU pragma: export
 #endif

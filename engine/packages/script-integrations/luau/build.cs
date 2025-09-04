@@ -12,9 +12,9 @@ public static class Luau
                 if (Config.Version != new Version(0, 613, 1))
                     throw new TaskFatalError("luau version mismatch!", "luau version mismatch, only v0.613.1 is supported in source.");
 
-                Target.CppVersion("17")
+                Target.TargetType(TargetType.HeaderOnly)
+                    .CppVersion("17")
                     .Exception(false)
-                    .TargetType(TargetType.HeaderOnly)
                     .IncludeDirs(Visibility.Public, "luau/Common/include");
             })
             .AddTarget("VM", (Target Target, PackageConfig Config) =>

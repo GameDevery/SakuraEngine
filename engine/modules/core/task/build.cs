@@ -6,28 +6,11 @@ public static class SkrTask
 {
     static SkrTask()
     {
-        var MarlSourceDir = Path.Combine(Engine.EngineDirectory, "engine/thirdparty/marl");
-        var SkrTask = Engine
-            .Module("SkrTask")
+        Engine.Module("SkrTask")
+            .Require("Marl", new PackageConfig { Version = new Version(1, 0, 0) })
+            .Depend(Visibility.Public, "Marl@Marl")
             .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/build.*.cpp")
-            .Depend(Visibility.Public, "SkrCore")
-            // add marl source
-            .IncludeDirs(Visibility.Public, Path.Combine(MarlSourceDir, "include"))
-            .AddCppFiles(Path.Combine(MarlSourceDir, "src/build.*.cpp"));
-
-        if (BuildSystem.TargetOS != OSPlatform.Windows)
-        {
-            SkrTask.AddCFiles(
-                Path.Combine(MarlSourceDir, "src/**.c"), 
-                Path.Combine(MarlSourceDir, "src/**.S")
-            );
-        }
-
-        if (!Engine.ShippingOneArchive)
-        {
-            SkrTask.Defines(Visibility.Public, "MARL_DLL")
-                   .Defines(Visibility.Private,"MARL_BUILDING_DLL");
-        }
+            .Depend(Visibility.Public, "SkrCore");
     }
 }

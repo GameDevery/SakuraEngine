@@ -13,9 +13,8 @@ public static class ParallelHashMap
                 if (Config.Version != new Version(1, 3, 11))
                     throw new TaskFatalError("phmap version mismatch!", "phmap version mismatch, only v1.3.11 is supported in source.");
 
-                Target
+                Target.TargetType(TargetType.HeaderOnly)
                     .CppVersion("17")
-                    .TargetType(TargetType.HeaderOnly)
                     .IncludeDirs(Visibility.Public, "./");
             });
     }

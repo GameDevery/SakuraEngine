@@ -1,7 +1,7 @@
 #pragma once
-#include <std/types/vec.hpp>
-#include <std/types/matrix.hpp>
-#include <std/resources/buffer.hpp>
+#include <std/types/vec.hxx>
+#include <std/types/matrix.hxx>
+#include <std/resources/buffer.hxx>
 
 #define sreflect_struct(...) struct 
 #define sreflect_managed_component(...) struct 
