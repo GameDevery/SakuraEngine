@@ -125,7 +125,6 @@ private:
 
         shared_atomic_mutex dirty_mtx;
         skr::Vector<skr::ecs::Entity> dirty_ents;
-
         skr::Map<skr::ecs::Entity, skr::InlineVector<CPUTypeID, 4>> dirties;
     } lanes[kLaneCount];
     std::atomic_uint32_t front_lane = 0;
@@ -152,22 +151,11 @@ private:
         FrameContext& operator=(FrameContext const&) = delete;
 
         // Single buffer to discard when this frame comes around again
-        CGPUBufferId buffer_to_discard = nullptr;
         TLASHandle frame_tlas;
         skr::render_graph::AccelerationStructureHandle tlas_handle;
         skr::Map<CPUTypeID, skr::render_graph::BufferHandle> table_handles;
         skr::render_graph::BufferHandle primitives_handle;
         skr::render_graph::BufferHandle materials_handle;
-
-        ~FrameContext()
-        {
-            // Cleanup any remaining buffer when context is destroyed
-            if (buffer_to_discard) 
-            {
-                cgpu_free_buffer(buffer_to_discard);
-                buffer_to_discard = nullptr;
-            }
-        }
     };
     skr::render_graph::FrameResource<FrameContext> frame_ctxs;
 };

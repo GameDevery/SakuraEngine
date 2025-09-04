@@ -142,7 +142,9 @@ namespace SB
                 }
                 if (Target.IsFromPackage)
                 {
-                    Target.InstallArtifact();
+                    var BuildDirectory = Path.Combine(BS.BuildPath, $"{BS.TargetOS}-{BS.TargetArch}-{BS.GlobalConfiguration}");
+                    Target.LinkDirs(Visibility.Public, BuildDirectory)
+                        .InstallArtifact();
                 }
             };
 

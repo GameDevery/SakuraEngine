@@ -385,8 +385,7 @@ bool GPUScene::CanRemoveEntity(skr::ecs::Entity entity)
 void GPUScene::RemoveEntity(skr::ecs::Entity entity)
 {
     auto& Lane = GetFrontLane();
-    auto iter = entity_ids.find(entity);
-    if (iter != entity_ids.end())
+    if (entity_ids.contains(entity))
     {
         const auto instance_data = ecs_world->random_readwrite<GPUSceneInstance>().get(entity);
         const auto prims = ecs_world->random_readwrite<gpu::Primitive>().get(entity);
@@ -402,7 +401,6 @@ void GPUScene::RemoveEntity(skr::ecs::Entity entity)
 
         auto& tlas_instance = tlas_instances[instance_data->instance_index];
         memset(tlas_instance.transform, 0, sizeof(tlas_instance.transform));
-        total_inst_count -= 1;
         tlas_dirty = true;
 
         entity_ids.erase(entity);
@@ -496,11 +494,6 @@ void GPUScene::Shutdown()
     {
         auto& ctx = frame_ctxs[i];
         ctx.frame_tlas = {};
-        if (ctx.buffer_to_discard)
-        {
-            cgpu_free_buffer(ctx.buffer_to_discard);
-            ctx.buffer_to_discard = nullptr;
-        }
     }
     TLASManager::Destroy(tlas_manager);
 

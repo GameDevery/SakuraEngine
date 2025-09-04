@@ -11,7 +11,8 @@ public static class CefSimple
         {
             var CefSimple = Engine.Target("cef_simple")
                 .TargetType(TargetType.Executable)
-                .Depend(Visibility.Private, "cef")
+                .Require("Cef", new PackageConfig { Version = new Version(6778, 0, 0) })
+                .Depend(Visibility.Public, "Cef@Cef")
                 .Defines(Visibility.Private, "UNICODE")
                 .AddCppFiles("src/**.cc");
             

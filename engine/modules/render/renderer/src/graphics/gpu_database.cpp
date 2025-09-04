@@ -6,7 +6,8 @@ namespace skr::gpu
 {
 
 TableConfig::TableConfig(CGPUDeviceId device, const char8_t* name)
-    : device_(device), name(name)
+    : device_(device)
+    , name(name)
 {
 }
 
@@ -305,7 +306,7 @@ void TableInstanceBase::CopySegments(skr::render_graph::RenderGraph* graph,
         {});
 }
 
-static constexpr uint64_t kBatchBytesSize = 1024 * 1024; 
+static constexpr uint64_t kBatchBytesSize = 1024 * 1024;
 static constexpr uint64_t kStridePerOp = 16 * sizeof(float);
 static_assert((kBatchBytesSize % kStridePerOp) == 0);
 
@@ -326,10 +327,13 @@ skr::RC<TableInstanceBase::UploadBatch> TableInstanceBase::UploadContext::GetBat
     SKR_DEFER({ mtx.unlock(); });
 
     // try close batch
-    if (current_batch && (current_batch->used_ops + ops > current_batch->uploads.size()))
+    if (current_batch)
     {
-        batches.enqueue(current_batch);
-        current_batch = nullptr;
+        if (current_batch->used_ops + ops > current_batch->uploads.size())
+        {
+            batches.enqueue(current_batch);
+            current_batch = nullptr;
+        }
     }
 
     // pick new batch
@@ -408,7 +412,7 @@ void TableInstanceBase::DispatchSparseUpload(skr::render_graph::RenderGraph* gra
         },
         [this, ops_buffer, upload_buffer, BatchToExecute, exec = on_exec](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
             SkrZoneScopedN("GPUTable::SparseUploadScene");
-            
+
             if (exec)
                 exec(g, ctx);
 
@@ -442,7 +446,7 @@ void TableInstanceBase::DispatchSparseUpload(skr::render_graph::RenderGraph* gra
             }
 
             BatchToExecute->used_ops = 0;
-            upload_ctx.free_batches.enqueue(BatchToExecute); 
+            upload_ctx.free_batches.enqueue(BatchToExecute);
         });
 }
 
@@ -530,6 +534,15 @@ void TableInstanceBase::createBuffer()
 
 void TableInstanceBase::releaseBuffer()
 {
+    for (uint32_t i = 0; i < frame_ctxs.max_frames_in_flight(); ++i)
+    {
+        auto& ctx = frame_ctxs[i];
+        if (ctx.buffer_to_discard)
+        {
+            cgpu_free_buffer(ctx.buffer_to_discard);
+            ctx.buffer_to_discard = nullptr;
+        }
+    }
     if (buffer)
     {
         cgpu_free_buffer(buffer);

@@ -36,7 +36,9 @@ public static class SkrCore
             .AddCppFiles("src/archive/build.*.cpp");
 
         var SkrCore = Engine.Module("SkrCore")
-            .Depend(Visibility.Private, "mimalloc")
+            .Require("MiMalloc", new PackageConfig { Version = new Version(3, 1, 5) })
+            .Depend(Visibility.Private, "MiMalloc@MiMalloc")
+
             .Depend(Visibility.Public, "SkrProfile")
             // TODO: STATIC COMPONENTS, JUST WORKAROUND NOW, WE NEED TO DEPEND THEM AUTOMATICALLY LATTER
             .Depend(Visibility.Public, "SkrDependencyGraph", "SkrString", "SkrSimpleAsync", "SkrArchive")

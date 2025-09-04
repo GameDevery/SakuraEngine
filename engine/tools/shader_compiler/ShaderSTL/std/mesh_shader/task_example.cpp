@@ -1,5 +1,5 @@
-#include "attributes.hpp"
-#include <skr/std.hpp>
+#include "attributes.hxx"
+#include <skr/std.hxx>
 
 struct VertexIn {
 	[[INSTANCE_ID]] uint instance_id;

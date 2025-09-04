@@ -49,6 +49,9 @@ public static class SkrGraphics
                 .Require("WinPixEventRuntime", new PackageConfig { Version = new Version(1, 0, 240308001) })
                 .Depend(Visibility.Private, "WinPixEventRuntime@WinPixEventRuntime")
 
+                .Require("DirectStorage", new PackageConfig { Version = new Version(1, 3, 0) })
+                .Depend(Visibility.Private, "DirectStorage@DirectStorage")
+
                 .Require("NvML", new PackageConfig { Version = new Version(13, 0, 0) })
                 .Depend(Visibility.Private, "NvML@NvML")
 

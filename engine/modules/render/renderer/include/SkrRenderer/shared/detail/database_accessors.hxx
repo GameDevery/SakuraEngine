@@ -1,4 +1,5 @@
 #pragma once
+#include "std/type_traits/member_info.hxx"
 #include "type_usings.hxx" // IWYU pragma: export
 
 #define gpu_struct(...) struct
@@ -21,19 +22,42 @@ public:
 
     }
 
-    T Load(ByteAddressBuffer buffers[], uint32_t byte_offset = 0) const 
+    template <typename ByteBufferType>
+    T Load(ByteBufferType buffers[], uint32_t byte_offset = 0) const 
     {
-        return buffers[_bindless_index].Load<GPUDatablock<T>>(_buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size);
+        const auto ByteAddress = _buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size;
+        return buffers[_bindless_index].template Load<GPUDatablock<T>>(ByteAddress);
     }
 
-    T Load(ByteAddressBuffer buffer, uint32_t byte_offset = 0) const 
+    template <typename ByteBufferType>
+    T Load(ByteBufferType buffer, uint32_t byte_offset = 0) const 
     {
-        return buffer.Load<GPUDatablock<T>>(_buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size);
+        const auto ByteAddress = _buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size;
+        return buffer.template Load<GPUDatablock<T>>(ByteAddress);
+    }
+
+    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
+    auto Load(ByteBufferType buffers[], uint32_t byte_offset = 0) const
+    {
+        using MemberType = typename cppsl::MemberInfo<Member>::Type;
+        byte_offset += MemberOffset;
+        const auto ByteAddress = _buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size;
+        return (MemberType)buffers[_bindless_index].template Load<GPUDatablock<MemberType>>(ByteAddress);
+    }
+
+    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
+    auto Load(ByteBufferType buffer, uint32_t byte_offset = 0) const
+    {
+        using MemberType = typename cppsl::MemberInfo<Member>::Type;
+        byte_offset += MemberOffset;
+        const auto ByteAddress = _buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size;
+        return (MemberType)buffer.template Load<GPUDatablock<MemberType>>(ByteAddress);
     }
 
     void Store(RWByteAddressBuffer buffer, const T& v, uint32_t byte_offset = 0)
     {
-        buffer.Store(_buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size, GPUDatablock<T>(v));
+        const auto ByteAddress = _buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size;
+        buffer.Store(ByteAddress, GPUDatablock<T>(v));
     }
 
     uint32_t BindlessIndex() const { return _bindless_index; }
@@ -58,20 +82,41 @@ public:
     }
 
     template <typename ByteBufferType>
-    T Load(ByteAddressBuffer buffers[], uint32_t instance_index, uint32_t byte_offset = 0) const
+    T Load(ByteBufferType buffers[], uint32_t instance_index, uint32_t byte_offset = 0) const
     {
-        return buffers[_bindless_index].Load<GPUDatablock<T>>(_buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size);
+        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+        return buffers[_bindless_index].template Load<GPUDatablock<T>>(ByteAddress);
     }
 
     template <typename ByteBufferType>
-    T Load(ByteAddressBuffer buffer, uint32_t instance_index, uint32_t byte_offset = 0) const
+    T Load(ByteBufferType buffer, uint32_t instance_index, uint32_t byte_offset = 0) const
     {
-        return buffer.Load<GPUDatablock<T>>(_buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size);
+        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+        return buffer.template Load<GPUDatablock<T>>(ByteAddress);
+    }
+
+    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
+    auto Load(ByteBufferType buffers[], uint32_t instance_index, uint32_t byte_offset = 0) const
+    {
+        using MemberType = typename cppsl::MemberInfo<Member>::Type;
+        byte_offset += MemberOffset;
+        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+        return (MemberType)buffers[_bindless_index].template Load<GPUDatablock<MemberType>>(ByteAddress);
+    }
+
+    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
+    auto Load(ByteBufferType buffer, uint32_t instance_index, uint32_t byte_offset = 0) const
+    {
+        using MemberType = typename cppsl::MemberInfo<Member>::Type;
+        byte_offset += MemberOffset;
+        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+        return (MemberType)buffer.template Load<GPUDatablock<MemberType>>(ByteAddress);
     }
 
     void Store(RWByteAddressBuffer buffer, uint32_t instance_index, const T& v, uint32_t byte_offset = 0)
     {
-        buffer.Store(_buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, GPUDatablock<T>(v));
+        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+        buffer.Store(ByteAddress, GPUDatablock<T>(v));
     }
 
     uint32_t BindlessIndex() const { return _bindless_index; }
@@ -95,19 +140,42 @@ public:
 
     }
 
-    T Load(ByteAddressBuffer buffer, uint32_t instance_index, uint32_t byte_offset = 0) const
+    template <typename ByteBufferType>
+    T Load(ByteBufferType buffer, uint32_t instance_index, uint32_t byte_offset = 0) const
     {
-        return buffer.Load<GPUDatablock<T>>(_buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size);
+        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+        return buffer.template Load<GPUDatablock<T>>(ByteAddress);
     }
 
-    T Load(ByteAddressBuffer buffers[], uint32_t instance_index, uint32_t byte_offset = 0) const
+    template <typename ByteBufferType>
+    T Load(ByteBufferType buffers[], uint32_t instance_index, uint32_t byte_offset = 0) const
     {
-        return buffers[_bindless_index].Load<GPUDatablock<T>>(_buffer_offset + byte_offset + ((_first_instance + instance_index) * GPUDatablock<T>::Size));
+        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+        return buffers[_bindless_index].template Load<GPUDatablock<T>>(ByteAddress);
+    }
+
+    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
+    auto Load(ByteBufferType buffer, uint32_t instance_index, uint32_t byte_offset = 0) const
+    {
+        using MemberType = typename cppsl::MemberInfo<Member>::Type;
+        byte_offset += MemberOffset;
+        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+        return (MemberType)buffer.template Load<GPUDatablock<MemberType>>(ByteAddress);
+    }
+
+    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
+    auto Load(ByteBufferType buffers[], uint32_t instance_index, uint32_t byte_offset = 0) const
+    {
+        using MemberType = typename cppsl::MemberInfo<Member>::Type;
+        byte_offset += MemberOffset;
+        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+        return (MemberType)buffers[_bindless_index].template Load<GPUDatablock<MemberType>>(ByteAddress);
     }
 
     void Store(RWByteAddressBuffer buffer, uint32_t instance_index, const T& v, uint32_t byte_offset = 0)
     {
-        buffer.Store(_buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size, GPUDatablock<T>(v));
+        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+        buffer.Store(ByteAddress, GPUDatablock<T>(v));
     }
 
     uint32_t Count() const { return _count; }

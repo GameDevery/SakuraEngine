@@ -41,7 +41,7 @@ constexpr void set(U v, Args...args) {
 }
 
 template<typename X>
-static constexpr bool same_family = std::is_same_v<X, ThisType> || std::is_same_v<X, ElementType>;
+static constexpr bool same_family = cppsl::is_same_v<X, ThisType> || cppsl::is_same_v<X, ElementType>;
 
 template<typename X>
 static constexpr bool arithmetical = (is_scalar_v<X> || same_dim_v<ThisType, X>) && is_arithmetic_v<X>;
@@ -49,7 +49,7 @@ static constexpr bool arithmetical = (is_scalar_v<X> || same_dim_v<ThisType, X>)
 [[unaop("PLUS")]] ThisType operator+() const;
 [[unaop("MINUS")]] ThisType operator-() const;
 
-template <typename U> requires(std::is_same_v<U, matrix<dim>>)
+template <typename U> requires(cppsl::is_same_v<U, matrix<dim>>)
 [[binop("MUL")]] ThisType operator*(const U&) const;
 
 template <typename U> requires(same_family<U> || arithmetical<U>)
