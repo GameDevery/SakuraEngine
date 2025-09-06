@@ -96,7 +96,7 @@ struct SceneRenderJob
 
 struct SceneRenderSystem::Impl
 {
-    skr::ecs::World* mp_world = nullptr;
+    skr::ecs::ECSWorld* mp_world = nullptr;
     sugoi_query_t* m_render_job_query = nullptr;
     skr::SceneRenderer* mp_renderer = nullptr;
     struct PushConstants
@@ -113,7 +113,7 @@ struct SceneRenderSystem::Impl
     const char8_t* color_texture_name = u8"color_texture";
 };
 
-SceneRenderSystem* SceneRenderSystem::Create(skr::ecs::World* world) SKR_NOEXCEPT
+SceneRenderSystem* SceneRenderSystem::Create(skr::ecs::ECSWorld* world) SKR_NOEXCEPT
 {
     SkrZoneScopedN("CreateSceneRenderSystem");
     auto memory = (uint8_t*)sakura_calloc(1, sizeof(SceneRenderSystem) + sizeof(SceneRenderSystem::Impl));

@@ -165,6 +165,7 @@ protected:
     void ReportFatalError(const clang::Decl* decl, std::format_string<Args...> _fmt, Args&&... args) const;
     
     std::map<std::string, skr::CppSL::BinaryOp> _bin_ops;
+    const bool kUseNamespace = false;
 };
     
 } // namespace skr::CppSL

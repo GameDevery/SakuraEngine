@@ -56,7 +56,8 @@ public static class LLVMTools
             .Cl_CXFlags(Visibility.Private, "/wd4244", "/wd4291", "/wd4819")
             .IncludeDirs(Visibility.Private, Path.Combine(Engine.DownloadDirectory, "llvm-" + LLVMDownloader.Version, "include"))
             .LinkDirs(Visibility.Public, LibDir)
-            .Defines(Visibility.Public, "CLANG_BUILD_STATIC");
+            .Defines(Visibility.Public, "CLANG_BUILD_STATIC")
+            .Clang_CXFlags(Visibility.Public, "-Wno-preferred-type-bitfield-enum-conversion");
 
         var libs = new List<string>();
         if (BuildSystem.HostOS == OSPlatform.OSX)

@@ -172,6 +172,9 @@ private:
     std::vector<Stmt*> _stmts;
     std::vector<Attr*> _attrs;
 
+    // hide copy
+    AST(const AST& rhs) = default;
+    
     ASTDatabase& db;
     AccelTypeDecl* _accel = nullptr;
     SamplerDecl* _sampler = nullptr;

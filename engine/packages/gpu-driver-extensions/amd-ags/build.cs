@@ -9,12 +9,11 @@ public static class AmdAgs
         if (BuildSystem.TargetOS != OSPlatform.Windows)
             return;
 
-        // TODO: WE NEED TO ENABLE SETUP IN PACKAGE SCOPE
-        BuildSystem.AddSetup<AmdAgsSetup>();
-
         BuildSystem.Package("AmdAgs")
             .AddTarget("AmdAgs", (Target Target, PackageConfig Config) =>
             {
+                BuildSystem.AddSetup<AmdAgsSetup>();
+
                 Target.TargetType(TargetType.HeaderOnly);
                 if (Config.Version == new Version(6, 3, 0))
                 {

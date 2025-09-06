@@ -1,4 +1,6 @@
+#include "SkrSceneCore/scene_components.h"
 #include "SkrScene/actor.h"
+#include "SkrScene/actor_manager.h"
 
 namespace skr
 {
@@ -42,10 +44,9 @@ void RootActor::Initialize(skr_guid_t _guid)
 
 void RootActor::InitWorld()
 {
-    root_world = skr::UPtr<skr::ecs::World>::New();
+    root_world = skr::UPtr<skr::ecs::ECSWorld>::New();
     ActorManager::GetInstance().world = root_world.get();
     world = root_world.get();
 }
-
 
 } // namespace skr

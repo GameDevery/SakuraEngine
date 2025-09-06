@@ -5,7 +5,7 @@ import { CodeBuilder } from "@framework/utils";
 
 class SOAConfig extends ml.WithEnable {
   @ml.value("number")
-  page_size: number = 0;
+  page_size: number = 16384;
 }
 class AOSConfig extends ml.WithEnable {
 }
@@ -68,6 +68,7 @@ class _Gen {
           b.$line(``)
 
           // build ctor
+          b.$line(`GPUDatablock() = default;`)
           b.$line(`inline GPUDatablock<${record.name}>(const ${record.name}& v)`)
           b.$indent(_b => {
             record.fields.forEach((f, idx) => {
@@ -90,45 +91,24 @@ class _Gen {
           b.$line(`}`)
           b.$line(``)
 
-          // build fields
-          b.$indent_pop(_b => {
-            b.$line(`private:`)
-          })
           record.fields.forEach((f) => {
-            b.$line(`GPUDatablock<${f.type}> _${f.short_name};`)
+            b.$line(`const GPUDatablock<${f.type}> _${f.short_name};`)
           })
         });
         b.$line(`};`)
       });
     }
 
-    /*
     if (_gen_soa_records.length > 0) {
       _gen_soa_records.forEach((record) => {
+        const gpu_cfg = record.ml_configs.gpu as RecordConfig;
         b.$line(`template <>`)
-        b.$line(`struct Row<${record.name}> {`)
-        b.$line(`public:`)
-        b.$indent(_b => {
-          b.$line(`Row() = default;`)
-          b.$line(`Row(uint32_t instance_index, uint32_t buffer_offset = 0, uint32_t bindless_index = ~0)`)
-          b.$line(`: _instance_index(instance_index), _buffer_offset(buffer_offset), _bindless_index(bindless_index) {}`)
-
-          record.fields.forEach((f) => {
-            b.$line(`GPUDatablock<${f.type}> _${f.short_name};`)
-          })
-        })
-
-        b.$line(`private:`)
-        b.$indent(_b => {
-          b.$line(`friend struct GPUDatablock<Row<${record.name}>>;`)
-          b.$line(`uint32_t _instance_index = 0;`)
-          b.$line(`uint32_t _buffer_offset = 0;`)
-          b.$line(`uint32_t _bindless_index = ~0;`)
-        })
+        b.$line(`struct AOSOAInfo<${record.name}> {`)
+          b.$line(`inline static constexpr bool IsSOA = true;`)
+          b.$line(`inline static constexpr uint32_t SOAPageSize = ${gpu_cfg.soa.page_size};`)
         b.$line(`};`)
       })
     }
-    */
 
     b.$line(`} // namespace skr::gpu`)
     b.$line(`//! END Data Blocks`)

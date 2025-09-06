@@ -9,12 +9,11 @@ public static class AmdGPUPerf
         if (BuildSystem.TargetOS != OSPlatform.Windows)
             return;
 
-        // TODO: WE NEED TO ENABLE SETUP IN PACKAGE SCOPE
-        BuildSystem.AddSetup<AmdGPUPerfSetup>();
-
         BuildSystem.Package("AmdGPUPerf")
             .AddTarget("AmdGPUPerf", (Target Target, PackageConfig Config) =>
             {
+                BuildSystem.AddSetup<AmdGPUPerfSetup>();
+
                 Target.TargetType(TargetType.HeaderOnly);
                 if (Config.Version == new Version(4, 1, 0))
                 {

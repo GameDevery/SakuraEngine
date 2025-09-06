@@ -24,7 +24,7 @@ enum class Presence : uint8_t
 struct QueryBuilder
 {
 public:
-    SKR_RUNTIME_API QueryBuilder(World* world) SKR_NOEXCEPT;
+    SKR_RUNTIME_API QueryBuilder(ECSWorld* world) SKR_NOEXCEPT;
 
     template <typename...Ts, typename...Idxs>
     QueryBuilder& ReadWriteAll(Idxs... idxs) { return All<false, Ts...>(idxs...); }
@@ -101,7 +101,7 @@ private:
         return *this;
     }
 
-    World* world = nullptr;
+    ECSWorld* world = nullptr;
 
     skr::InlineVector<sugoi_entity_t, 4> all_meta;
     skr::InlineVector<sugoi_entity_t, 4> none_meta;

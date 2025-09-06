@@ -52,7 +52,7 @@ public:
 protected:
     ArchetypeBuilder& _access(TypeIndex Component, intptr_t Field, EAccessMode FieldMode);
 
-    friend struct World;
+    friend struct ECSWorld;
     skr::Vector<TypeIndex> types;
     skr::Vector<Entity> meta_entities;
 
@@ -161,7 +161,7 @@ protected:
     AccessBuilder& _access(TypeIndex type, bool write, EAccessMode mode, intptr_t field);
     sugoi_query_t* create_query(sugoi_storage_t* storage) SKR_NOEXCEPT;
 
-    friend struct World;
+    friend struct ECSWorld;
     skr::Vector<TypeIndex> types;
     skr::Vector<sugoi_operation_t> ops;
     skr::Vector<Entity> meta_entities;
@@ -205,7 +205,7 @@ public:
     }
 
 private:
-    friend struct World;
+    friend struct ECSWorld;
     TaskContext(sugoi_chunk_view_t& InView, uint32_t count, uint32_t offset, uint32_t task_index)
         : view(InView)
         , count(count)
@@ -219,11 +219,11 @@ private:
     const uint32_t _task_index;
 };
 
-struct SKR_RUNTIME_API World
+struct SKR_RUNTIME_API ECSWorld
 {
 public:
-    World() SKR_NOEXCEPT;
-    World(skr::task::scheduler_t& scheduler) SKR_NOEXCEPT;
+    ECSWorld() SKR_NOEXCEPT;
+    ECSWorld(skr::task::scheduler_t& scheduler) SKR_NOEXCEPT;
 
     void initialize() SKR_NOEXCEPT;
     void finalize() SKR_NOEXCEPT;
@@ -430,12 +430,12 @@ public:
     void bind_scheduler(skr::task::scheduler_t& scheduler) SKR_NOEXCEPT;
 
 protected:
-    World(const World&) = delete;
-    World& operator=(const World&) = delete;
+    ECSWorld(const ECSWorld&) = delete;
+    ECSWorld& operator=(const ECSWorld&) = delete;
     sugoi_storage_t* storage = nullptr;
 
 private:
-    friend skr::BinSerde<World>;
+    friend skr::BinSerde<ECSWorld>;
     void from_ext_storage(sugoi_storage_t* ext_storage) SKR_NOEXCEPT; // for serde
 };
 
@@ -444,9 +444,9 @@ private:
 namespace skr
 {
 template <>
-struct SKR_RUNTIME_API BinSerde<ecs::World>
+struct SKR_RUNTIME_API BinSerde<ecs::ECSWorld>
 {
-    static bool read(SBinaryReader* r, skr::ecs::World& world);
-    static bool write(SBinaryWriter* w, const skr::ecs::World& world);
+    static bool read(SBinaryReader* r, skr::ecs::ECSWorld& world);
+    static bool write(SBinaryWriter* w, const skr::ecs::ECSWorld& world);
 };
 } // namespace skr

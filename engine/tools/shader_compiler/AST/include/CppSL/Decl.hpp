@@ -28,6 +28,7 @@ public:
     void add_attr(Attr* attr);
 
 protected:
+    friend struct AST;
     Decl(AST& ast);
     const AST* _ast = nullptr;
     std::vector<Attr*> _attrs;
@@ -361,10 +362,13 @@ public:
     const std::span<const ParamVarDecl* const> parameters() const;
     const Stmt* body() const override { return _body; }
     CppSL::ShaderStage stage() const;
+    bool is_static() const { return _is_static; }
+    void set_static(bool is_static_) { _is_static = is_static_; }
 
 protected:
     friend struct AST;
     FunctionDecl(AST& ast, const Name& name, const TypeDecl* return_type, std::span<const ParamVarDecl* const> params, const CompoundStmt* body);
+    bool _is_static = false;
     const CompoundStmt* _body = nullptr;
     const TypeDecl* _return_type = nullptr;
     std::vector<const ParamVarDecl*> _parameters;

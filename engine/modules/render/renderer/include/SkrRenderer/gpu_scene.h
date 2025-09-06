@@ -49,7 +49,7 @@ GPUSceneInstance
 struct SKR_RENDERER_API GPUScene final
 {
 public:
-    void Initialize(gpu::TableManager* table_manager, skr::RenderDevice* render_device, skr::ecs::World* world);
+    void Initialize(gpu::TableManager* table_manager, skr::RenderDevice* render_device, skr::ecs::ECSWorld* world);
     void Shutdown();
 
     // TODO: ADD A TRACKER COMPONENT TO REPLACE THIS KIND OF API
@@ -61,7 +61,7 @@ public:
     void RequireUpload(skr::ecs::Entity entity, CPUTypeID component);
     void ExecuteUpload(skr::render_graph::RenderGraph* graph);
 
-    inline skr::ecs::World* GetECSWorld() const { return ecs_world; }
+    inline skr::ecs::ECSWorld* GetECSWorld() const { return ecs_world; }
     inline skr::render_graph::BufferHandle GetSceneBuffer(skr::render_graph::RenderGraph* graph) const 
     {
         return frame_ctxs.get(graph).table_handles.find(instance_type).value();
@@ -89,7 +89,7 @@ private:
     friend struct RemoveEntityFromGPUScene;
     friend struct ScanGPUScene;
 
-    skr::ecs::World* ecs_world = nullptr;
+    skr::ecs::ECSWorld* ecs_world = nullptr;
     skr::RenderDevice* render_device = nullptr;
 
     TLASManager* tlas_manager = nullptr;

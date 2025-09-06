@@ -69,7 +69,7 @@ struct Live2DRendererImpl : public skr::Live2DRenderer
     uint64_t frame_count = 0;
     uint64_t async_slot_index = 0;
 
-    void initialize(skr::RenderDevice* render_device, skr::ecs::World* world, struct skr_vfs_t* resource_vfs) override
+    void initialize(skr::RenderDevice* render_device, skr::ecs::ECSWorld* world, struct skr_vfs_t* resource_vfs) override
     {
         this->resource_vfs = resource_vfs;
         effect_query = skr::ecs::QueryBuilder(world)

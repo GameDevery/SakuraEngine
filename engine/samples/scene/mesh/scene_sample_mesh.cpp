@@ -43,6 +43,7 @@
 // #include "SkrMeshCore/builtin_mesh.hpp"
 
 #include "SkrScene/actor.h"
+#include "SkrScene/actor_manager.h"
 #include "SkrSceneCore/transform_system.h"
 
 #include "scene_renderer.hpp"
@@ -82,7 +83,7 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
 
     skr::task::scheduler_t scheduler;
     skr::Scene scene;
-    skr::ecs::World* world = nullptr;
+    skr::ecs::ECSWorld* world = nullptr;
     skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
 
     skr_vfs_t* resource_vfs = nullptr;

@@ -9,7 +9,7 @@
 
 namespace skr::ecs {
 
-struct World;
+struct ECSWorld;
 using TypeIndex = sugoi_type_index_t;
 
 template <typename T, typename = void>
@@ -49,7 +49,7 @@ struct ComponentViewBase
 protected:
     ComponentViewBase(void* ptr = nullptr, uint32_t local_type = 0, uint32_t offset = 0)
         : _ptr(ptr), _local_type(local_type), _offset(offset) {}
-    friend struct World;
+    friend struct ECSWorld;
     friend struct TaskContext;
     void* _ptr = nullptr;
     uint32_t _local_type = 0;
@@ -71,11 +71,16 @@ public:
         return _ptr != nullptr;
     }
     
+    const Storage* at(uint32_t Index) const
+    {
+        return _ptr ? ((Storage*)_ptr) + Index + _offset : nullptr;
+    }
+
     ComponentView()
         : ComponentViewBase(nullptr, 0) {}
 
 protected:
-    friend struct World;
+    friend struct ECSWorld;
     friend struct TaskContext;
     ComponentView(T* ptr, uint32_t local_type, uint32_t offset)
         : ComponentViewBase(ptr, local_type, offset) {}
@@ -99,7 +104,7 @@ public:
         : ComponentViewBase(nullptr, 0) {}
 
 protected:
-    friend struct World;
+    friend struct ECSWorld;
     friend struct TaskContext;
     ComponentView(const void* ptr, uint32_t local_type, uint32_t offset, uint32_t size)
         : ComponentViewBase((void*)ptr, local_type, offset), _size(size) {}
@@ -124,7 +129,7 @@ public:
         : ComponentViewBase(nullptr, 0) {}
 
 protected:
-    friend struct World;
+    friend struct ECSWorld;
     friend struct TaskContext;
     ComponentView(void* ptr, uint32_t local_type, uint32_t offset, uint32_t size)
         : ComponentViewBase(ptr, local_type, offset), _size(size) {}
@@ -175,7 +180,7 @@ protected:
         return *Result;
     }
 
-    friend struct World;
+    friend struct ECSWorld;
     sugoi_storage_t* World;
     TypeIndex Type;
     sugoi_chunk_view_t CachedView;

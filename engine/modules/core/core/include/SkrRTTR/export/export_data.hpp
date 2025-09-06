@@ -707,7 +707,7 @@ struct RTTREnumData {
 // primitive data
 namespace skr
 {
-struct RTTRPrimitiveData {
+struct RTTRPrimitiveTable {
     // basic
     String           name               = {};
     GUID             type_id            = {};
@@ -718,7 +718,7 @@ struct RTTRPrimitiveData {
     // extern method
     Vector<RTTRExternMethodData*> extern_methods;
 
-    inline ~RTTRPrimitiveData()
+    inline ~RTTRPrimitiveTable()
     {
         // delete extern methods
         for (auto method : extern_methods)

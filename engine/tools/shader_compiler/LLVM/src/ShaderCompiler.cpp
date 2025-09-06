@@ -61,13 +61,12 @@ public:
 
     void GenerateMSLCode()
     {
-        const skr::CppSL::AST MetalUsingAST = AST;
         skr::CppSL::SourceBuilderNew sb;
         skr::CppSL::MSL::MSLGenerator msl_generator;
-        auto msl_code = msl_generator.generate_code(sb, MetalUsingAST);
+        auto msl_code = msl_generator.generate_code(sb, AST);
         auto SourceFile = GetSourceFile();
         auto SourceName = SourceFile.filename().replace_extension(".");
-        for (auto func : MetalUsingAST.funcs())
+        for (auto func : AST.funcs())
         {
             std::wstring target_string = L"";
             std::wstring output_file = L"";
@@ -97,13 +96,12 @@ public:
     
     void GenerateHLSLCode()
     {
-        const skr::CppSL::AST HLSLUsingAST = AST;
         skr::CppSL::SourceBuilderNew sb;
         skr::CppSL::HLSL::HLSLGenerator hlsl_generator;
-        auto hlsl_code = hlsl_generator.generate_code(sb, HLSLUsingAST);
+        auto hlsl_code = hlsl_generator.generate_code(sb, AST);
         auto SourceFile = GetSourceFile();
         auto SourceName = SourceFile.filename().replace_extension(".");
-        for (auto func : HLSLUsingAST.funcs())
+        for (auto func : AST.funcs())
         {
             std::wstring target_string = L"";
             std::wstring output_file = L"";

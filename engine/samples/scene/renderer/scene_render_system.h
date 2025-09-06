@@ -28,7 +28,7 @@ public:
     {
         skr::task::event_t update_finish;
     };
-    static SceneRenderSystem* Create(skr::ecs::World* world) SKR_NOEXCEPT;
+    static SceneRenderSystem* Create(skr::ecs::ECSWorld* world) SKR_NOEXCEPT;
     static void Destroy(SceneRenderSystem* system) SKR_NOEXCEPT;
 
     void bind_renderer(skr::SceneRenderer* renderer) SKR_NOEXCEPT;

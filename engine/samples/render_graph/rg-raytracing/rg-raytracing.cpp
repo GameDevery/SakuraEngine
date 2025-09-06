@@ -24,7 +24,7 @@ public:
     void spawn_entities();
     void create_as();
     void create_sphere_blas();
-    void create_scene_tlas();
+    void create_SceneTLAS();
     void create_compute_pipeline();
     void create_swapchain(skr::SystemWindow* window);
     void render();
@@ -34,7 +34,7 @@ public:
     {
     }
     skr::SystemApp app;
-    skr::ecs::World world;
+    skr::ecs::ECSWorld world;
     skr::task::scheduler_t scheduler;
     skr::TransformSystem* transform_system = nullptr;
 
@@ -43,7 +43,7 @@ public:
     CGPUDeviceId device = nullptr;
     CGPUQueueId gfx_queue = nullptr;
     CGPUAccelerationStructureId sphere_blas = nullptr;
-    CGPUAccelerationStructureId scene_tlas = nullptr;
+    CGPUAccelerationStructureId SceneTLAS = nullptr;
     CGPUBufferId sphere_vertex_buffer = nullptr;
     CGPUBufferId sphere_index_buffer = nullptr;
 
@@ -543,7 +543,7 @@ void RGRaytracingSampleModule::create_as()
     create_sphere_blas();
 
     // Create TLAS from ECS entities
-    create_scene_tlas();
+    create_SceneTLAS();
 
     // Create compute pipeline and resources
     create_compute_pipeline();
@@ -649,7 +649,7 @@ void RGRaytracingSampleModule::create_sphere_blas()
     sphere_blas = cgpu_create_acceleration_structure(device, &blas_desc);
 }
 
-void RGRaytracingSampleModule::create_scene_tlas()
+void RGRaytracingSampleModule::create_SceneTLAS()
 {
     using namespace skr::ecs;
 
@@ -725,7 +725,7 @@ void RGRaytracingSampleModule::create_scene_tlas()
         tlas_desc.flags = CGPU_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
         tlas_desc.top.count = tlas_instances.size();
         tlas_desc.top.instances = tlas_instances.data();
-        scene_tlas = cgpu_create_acceleration_structure(device, &tlas_desc);
+        SceneTLAS = cgpu_create_acceleration_structure(device, &tlas_desc);
     }
     {
         SkrZoneScopedN("BuildSceneTLAS");
@@ -748,7 +748,7 @@ void RGRaytracingSampleModule::create_scene_tlas()
         CGPUAccelerationStructureBuildDescriptor tlas_build = {
             .type = CGPU_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
             .as_count = 1,
-            .as = &scene_tlas
+            .as = &SceneTLAS
         };
         cgpu_cmd_build_acceleration_structures(cmd, &tlas_build);
 
@@ -883,8 +883,8 @@ void RGRaytracingSampleModule::render()
     // Create acceleration structure handle for RenderGraph
     auto tlas_handle = render_graph->create_acceleration_structure(
         [=, this](render_graph::RenderGraph& g, render_graph::AccelerationStructureBuilder& builder) {
-            builder.set_name(u8"scene_tlas")
-                .import(scene_tlas);
+            builder.set_name(u8"SceneTLAS")
+                .import(SceneTLAS);
         });
 
     // Add raytracing compute pass (write to intermediate texture)
@@ -892,7 +892,7 @@ void RGRaytracingSampleModule::render()
         [=, this](render_graph::RenderGraph& g, render_graph::ComputePassBuilder& builder) {
             builder.set_name(u8"RayTracingPass")
                 .set_pipeline(compute_pipeline)
-                .read(u8"scene_tlas", tlas_handle)
+                .read(u8"SceneTLAS", tlas_handle)
                 .readwrite(u8"output_texture", render_target_handle);
         },
         [=, this](render_graph::RenderGraph& g, render_graph::ComputePassContext& ctx) {
@@ -960,7 +960,7 @@ void RGRaytracingSampleModule::on_unload()
     if (swapchain) cgpu_free_swapchain(swapchain);
 
     // Clean up raytracing resources
-    if (scene_tlas) cgpu_free_acceleration_structure(scene_tlas);
+    if (SceneTLAS) cgpu_free_acceleration_structure(SceneTLAS);
     if (sphere_blas) cgpu_free_acceleration_structure(sphere_blas);
     if (sphere_vertex_buffer) cgpu_free_buffer(sphere_vertex_buffer);
     if (sphere_index_buffer) cgpu_free_buffer(sphere_index_buffer);

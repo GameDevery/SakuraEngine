@@ -82,7 +82,7 @@ public class SkrGraphicsSetup : ISetup
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
             Task.WaitAll(
-                Install.SDK("dxc-2025_02_21")
+                Install.SDK("dxc-2025_07_14")
             );
         }
     }

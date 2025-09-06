@@ -6,6 +6,7 @@
 #include <SkrContainers/span.hpp>
 
 #include <SkrScene/actor.h>
+#include <SkrScene/actor_manager.h>
 #include <SkrSceneCore/scene_components.h>
 #include <SkrSceneCore/transform_system.h>
 #include <SkrRT/ecs/world.hpp>
@@ -166,7 +167,6 @@ int SceneSampleSerdeModule::main_module_exec(int argc, char8_t** argv)
         skr::archive::BinSpanReader world_reader{ rbuffer, 0 };
         SBinaryReader read_archive(world_reader);
         skr::bin_read(&read_archive, *world);
-
 
         transform_system->update();
         skr::ecs::TaskScheduler::Get()->flush_all();

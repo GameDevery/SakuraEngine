@@ -1,5 +1,7 @@
-#include "CppSL/magic_enum/magic_enum.hpp"
 #include "ShaderTranslator.hpp"
+#include "InitListAnalyzer.hpp"
+#include "CppSL/magic_enum/magic_enum.hpp"
+#include "InitListAnalyzer.hpp"
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/AST/Stmt.h>
 #include <clang/AST/Expr.h>
@@ -369,8 +371,16 @@ std::string ShaderTranslator::GetFunctionName(const clang::FunctionDecl* func)
 
     auto IsReserveWorld = [](const auto& string)
     {
-        if (string == "out") return true;
-        if (string == "triangle") return true;
+        if (string == "register") 
+            return true;
+        else if (string == "in")
+            return true;
+        else if (string == "out") 
+            return true;
+        else if (string == "inout") 
+            return true;
+        else if (string == "triangle") 
+            return true;
         return false;
     };
 
@@ -393,6 +403,7 @@ std::string ShaderTranslator::GetFunctionName(const clang::FunctionDecl* func)
     {
         index = static_cast<size_t>(std::distance(bucket.begin(), it));
     }
+
     if (index == 0)
         return base;
     return base + "_" + std::to_string(index);
@@ -590,7 +601,6 @@ void ShaderTranslator::HandleTranslationUnit(clang::ASTContext& Context)
     for (auto stage : _stages)
         TranslateStageEntry(stage);
 
-    // Assign translated types/functions/variables to their namespaces
     AssignDeclsToNamespaces();
 }
 
@@ -741,7 +751,7 @@ CppSL::TypeDecl* ShaderTranslator::TranslateRecordDecl(const clang::RecordDecl* 
         {
             addType(ThisQualType, AST.HalfType);
         }
-        else if (TSD && What == "buffer")
+        else if (TSD && ((What == "buffer") || (What == "byte_buffer")))
         {
             const auto& Arguments = TSD->getTemplateArgs();
             const auto ET = Arguments.get(0).getAsType();
@@ -751,7 +761,7 @@ CppSL::TypeDecl* ShaderTranslator::TranslateRecordDecl(const clang::RecordDecl* 
             if (getType(ET) == nullptr)
                 TranslateType(ET->getCanonicalTypeInternal());
 
-            if (ET->isVoidType())
+            if (ET->isVoidType() || What == "byte_buffer")
                 addType(ThisQualType, AST.ByteBuffer((CppSL::BufferFlags)BufferFlag));
             else
                 addType(ThisQualType, AST.StructuredBuffer(getType(ET), (CppSL::BufferFlags)BufferFlag));
@@ -823,7 +833,8 @@ CppSL::TypeDecl* ShaderTranslator::TranslateRecordDecl(const clang::RecordDecl* 
         for (auto field : recordDecl->fields())
         {
             auto fieldType = field->getType();
-            getType(fieldType);
+            if (!getType(fieldType))
+                TranslateType(fieldType);
         }
 
         auto NewType = AST.DeclareStructure(ToText(TypeName), {});
@@ -1108,6 +1119,7 @@ CppSL::Stmt* ShaderTranslator::TranslateCall(const clang::Decl* _funcDecl, const
         else if (auto cxxOperatorCall = llvm::dyn_cast<clang::CXXOperatorCallExpr>(callExpr))
         {
             auto _caller = TranslateStmt<CppSL::DeclRefExpr>(cxxOperatorCall->getArg(0));
+            _args.erase(_args.begin());
             _callee = AST.Method(_caller, (CppSL::MethodDecl*)getFunc(AsMethod));
         }
         else
@@ -1350,14 +1362,8 @@ CppSL::FunctionDecl* ShaderTranslator::TranslateFunction(const clang::FunctionDe
             if (_parentType->is_builtin())
                 return nullptr;
 
-            // Create constructor
-            auto ctor = AST.DeclareConstructor(
-                _parentType,
-                ConstructorDecl::kSymbolName,
-                params,
-                TranslateStmt<CppSL::CompoundStmt>(x->getBody()));
-
             // Process member initializers
+            std::vector<std::pair<CppSL::FieldDecl*, CppSL::Expr*>> inits;
             for (auto ctor_init : AsCtor->inits())
             {
                 if (auto F = ctor_init->getMember())
@@ -1365,13 +1371,23 @@ CppSL::FunctionDecl* ShaderTranslator::TranslateFunction(const clang::FunctionDe
                     auto N = ToText(F->getDeclName().getAsString());
                     auto field = _parentType->get_field(N);
                     auto init_expr = (CppSL::Expr*)TranslateStmt(ctor_init->getInit());
-                    ((CppSL::ConstructorDecl*)ctor)->add_member_init(field, init_expr);
+                    inits.emplace_back(field, init_expr);
                 }
                 else
                 {
                     ReportFatalError(x, "Derived class is currently unsupported!");
                 }
             }
+
+            // Create constructor
+            auto ctor = AST.DeclareConstructor(
+                _parentType,
+                ConstructorDecl::kSymbolName,
+                params,
+                TranslateStmt<CppSL::CompoundStmt>(x->getBody()));
+
+            for (auto [field, init_expr] : inits)
+                ((CppSL::ConstructorDecl*)ctor)->add_member_init(field, init_expr);
 
             F = ctor;
             _parentType->add_ctor((CppSL::ConstructorDecl*)F);
@@ -1390,6 +1406,8 @@ CppSL::FunctionDecl* ShaderTranslator::TranslateFunction(const clang::FunctionDe
     }
     else
     {
+        auto CxxFunctionName = override_name.empty() ? GetFunctionName(x) : override_name.str();
+
         if (AsMethod && !AsMethod->isStatic())
         {
             auto _t = getType(AsMethod->getThisType()->getPointeeType());
@@ -1401,9 +1419,9 @@ CppSL::FunctionDecl* ShaderTranslator::TranslateFunction(const clang::FunctionDe
             auto _this = AST.DeclareParam(qualifier, _t, L"_this");
             params.emplace(params.begin(), _this);
             current_stack->_this_redirect = _this->ref();
+            CxxFunctionName += std::to_string((uint64_t)AsMethod);
         }
 
-        auto CxxFunctionName = override_name.empty() ? GetFunctionName(x) : override_name.str();
         F = AST.DeclareFunction(ToText(CxxFunctionName),
             getType(x->getReturnType()),
             params,
@@ -1799,11 +1817,60 @@ Stmt* ShaderTranslator::TranslateStmt(const clang::Stmt* x)
     }
     else if (auto InitList = llvm::dyn_cast<clang::InitListExpr>(x))
     {
+        // 分析 InitList 的语义类型
+        auto semantic = AnalyzeInitListSemantic(InitList);
+        
+        // 根据语义类型决定如何处理
+        switch (semantic)
+        {
+        case EInitListSemantic::Constructor:
+        case EInitListSemantic::Vector:
+        case EInitListSemantic::Matrix:
+            // 对于构造函数、向量、矩阵，转换为 Construct 表达式
+            {
+                auto type = getType(InitList->getType());
+                if (type)
+                {
+                    std::vector<CppSL::Expr*> args;
+                    for (auto init : InitList->inits())
+                        args.emplace_back(TranslateStmt<CppSL::Expr>(init));
+                    return AST.Construct(type, args);
+                }
+            }
+            break;
+            
+        case EInitListSemantic::DefaultInit:
+            // 空初始化列表，生成默认构造
+            {
+                auto type = getType(InitList->getType());
+                if (type)
+                    return AST.Construct(type, {});
+            }
+            break;
+            
+        case EInitListSemantic::ScalarWrapper:
+            // 单元素标量包装，直接返回内部表达式
+            if (InitList->getNumInits() == 1)
+                return TranslateStmt<CppSL::Expr>(InitList->getInit(0));
+            break;
+            
+        case EInitListSemantic::Aggregate:
+        case EInitListSemantic::Array:
+        case EInitListSemantic::Unknown:
+        default:
+            // 保持原有的 InitList 处理方式
+            {
+                std::vector<CppSL::Expr*> exprs;
+                for (auto init : InitList->inits())
+                    exprs.emplace_back(TranslateStmt<CppSL::Expr>(init));
+                return AST.InitList(exprs);
+            }
+        }
+        
+        // 默认处理
         std::vector<CppSL::Expr*> exprs;
         for (auto init : InitList->inits())
-        {
             exprs.emplace_back(TranslateStmt<CppSL::Expr>(init));
-        }
         return AST.InitList(exprs);
     }
     else if (auto cxxCall = llvm::dyn_cast<clang::CallExpr>(x))

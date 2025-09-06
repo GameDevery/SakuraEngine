@@ -15,7 +15,7 @@ public static class CoreTests
             .AddCppFiles("serde/main.cpp");
 
         Test.UnitTest("NatvisTest")
-            .Depend(Visibility.Public, "SkrRT")
+            .Depend(Visibility.Public, "SkrCore")
             .AddCppFiles("natvis/*.cpp");
 
         Test.UnitTest("DelegateTest")

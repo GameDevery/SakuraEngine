@@ -121,6 +121,9 @@ namespace SB
                 AllTargets.AddRange(PackageTargets);
             }
 
+            // some target setups are loaded from package scope
+            BuildSystem.RunSetups(true);
+
             Log.Verbose("Resolving Dependencies... ");
             using (Profiler.BeginZone($"ResolveDependencies", color: (uint)Profiler.ColorType.Blue2))
             {

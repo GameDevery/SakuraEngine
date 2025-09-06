@@ -9,12 +9,11 @@ public static class NvPerf
         if (BuildSystem.TargetOS != OSPlatform.Windows)
             return;
 
-        // TODO: WE NEED TO ENABLE SETUP IN PACKAGE SCOPE
-        BuildSystem.AddSetup<NvPerfSetUp>();
-
         BuildSystem.Package("NvPerf")
             .AddTarget("NvPerf", (Target Target, PackageConfig Config) =>
             {
+                BuildSystem.AddSetup<NvPerfSetUp>();
+
                 Target.TargetType(TargetType.HeaderOnly);
                 if (Config.Version == new Version(2025, 1, 0))
                 {

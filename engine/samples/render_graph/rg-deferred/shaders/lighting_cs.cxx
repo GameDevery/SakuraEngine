@@ -26,7 +26,7 @@ void compute([[sv_thread_id]] uint2 threadID)
     float4 gbufferNormal = gbuffer_normal.Load(pixelPosition);
     float4 depth = gbuffer_depth.Load(pixelPosition);
 
-    float4 out_color = gbufferColor * 0.5f + abs(gbufferNormal) * 0.5f;
-    out_color *= depth.rrrr;
-    lighting_output.Store(pixelPosition, out_color);
+    float4 OutputColor = gbufferColor * 0.5f + abs(gbufferNormal) * 0.5f;
+    OutputColor *= depth.rrrr;
+    lighting_output.Store(pixelPosition, OutputColor);
 }

@@ -222,7 +222,7 @@ sugoi::archetype_t* sugoi_storage_t::cloneArchetype(archetype_t *src)
     return new_type;
 }
 
-sugoi_group_t* sugoi_storage_t::constructGroup(const sugoi_entity_type_t& inType)
+sugoi_group_t* sugoi_storage_t::allocateGroup(const sugoi_entity_type_t& inType)
 {
     using namespace sugoi;
     fixed_stack_scope_t _(localStack);
@@ -242,7 +242,6 @@ sugoi_group_t* sugoi_storage_t::constructGroup(const sugoi_entity_type_t& inType
     sugoi_entity_type_t type = sugoi::clone(inType, buffer);
     group.type               = type;
     group.archetype          = archetype;
-
 
     sugoi_type_set_t shared;
     shared.length = 0;
@@ -280,6 +279,7 @@ sugoi_group_t* sugoi_storage_t::constructGroup(const sugoi_entity_type_t& inType
     }
     if (!deadAdded)
         toClean[toCleanCount++] = kDeadComponent;
+
     // std::sort(&toClean[0], &toClean[toCleanCount]); dead is always smaller
     group.size = 0;
     group.timestamp = 0;
@@ -384,7 +384,7 @@ sugoi_group_t* sugoi_storage_t::get_group(const sugoi_entity_type_t& type)
     if(dead && !withPinned)
         return nullptr;
     sugoi_group_t* existed_group = tryGetGroup(type);
-    return existed_group ? existed_group : constructGroup(type);
+    return existed_group ? existed_group : allocateGroup(type);
 }
 
 void sugoi_storage_t::destructGroup(sugoi_group_t* group)

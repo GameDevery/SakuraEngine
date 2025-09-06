@@ -13,9 +13,20 @@ String CppLikeShaderGenerator::GetQualifiedTypeName(const TypeDecl* type)
     // Check if this type has a namespace mapping
     auto NonQualified = GetTypeName(type);
     auto it = type_namespace_map_.find(type);
-    if (it != type_namespace_map_.end() && !it->second.empty())
+    if (kUseNamespace)
     {
-        return it->second + L"::" + NonQualified;
+        if (it != type_namespace_map_.end() && !it->second.empty())
+        {
+            return it->second + L"::" + NonQualified;
+        }
+    }
+    else
+    {
+        if (it != type_namespace_map_.end() && !it->second.empty())
+        {
+            std::replace(it->second.begin(), it->second.end(), ':', '_');
+            return it->second + L"_" + NonQualified;
+        }
     }
     return NonQualified;
 }
@@ -23,11 +34,22 @@ String CppLikeShaderGenerator::GetQualifiedTypeName(const TypeDecl* type)
 String CppLikeShaderGenerator::GetQualifiedFunctionName(const FunctionDecl* func)
 {
     // Check if this function has a namespace mapping
-    auto NonQualified = GetFunctionName(func);  // Use virtual GetFunctionName instead of func->name()
+    auto NonQualified = GetFunctionName(func); // Use virtual GetFunctionName instead of func->name()
     auto it = function_namespace_map_.find(func);
-    if (it != function_namespace_map_.end() && !it->second.empty())
+    if (kUseNamespace)
     {
-        return it->second + L"::" + NonQualified;
+        if (it != function_namespace_map_.end() && !it->second.empty())
+        {
+            return it->second + L"::" + NonQualified;
+        }
+    }
+    else
+    {
+        if (it != function_namespace_map_.end() && !it->second.empty())
+        {
+            std::replace(it->second.begin(), it->second.end(), ':', '_');
+            return it->second + L"_" + NonQualified;
+        }
     }
     return NonQualified;
 }
@@ -90,7 +112,7 @@ void CppLikeShaderGenerator::visitStmt(SourceBuilderNew& sb, const skr::CppSL::S
         if (auto callee_decl = dynamic_cast<const FunctionDecl*>(callee->decl()))
         {
             auto func_name = GetQualifiedFunctionName(callee_decl);
-            
+
             // TODO: Implement REAL TEMPLATE CALL (CallWithTypeArgs)
             const bool ByteBufferReadTyped = callee_decl->name() == L"byte_buffer_read";
             const bool WaveReadLaneFirst = callee_decl->name() == L"WaveReadLaneFirst";
@@ -98,7 +120,7 @@ void CppLikeShaderGenerator::visitStmt(SourceBuilderNew& sb, const skr::CppSL::S
             {
                 func_name = func_name + L"<" + GetQualifiedTypeName(callee_decl->return_type()) + L">";
             }
-            
+
             sb.append(func_name);
             sb.append(L"(");
             for (size_t i = 0; i < callExpr->args().size(); i++)
@@ -171,49 +193,56 @@ void CppLikeShaderGenerator::visitStmt(SourceBuilderNew& sb, const skr::CppSL::S
         {
             // Use hexfloat for exact precision
             double value = f->ieee.value();
-            
+
             // Format as hexfloat
             std::wostringstream hexstream;
             hexstream << std::hexfloat << value;
             sb.append(hexstream.str());
-            
+
             // Add readable comment - avoid scientific notation for readability
             std::wostringstream decstream;
             decstream << std::fixed; // Use fixed-point notation
-            
+
             // Choose appropriate precision based on value magnitude
             double abs_value = std::abs(value);
-            if (abs_value == 0.0) {
+            if (abs_value == 0.0)
+            {
                 decstream << std::setprecision(1) << value;
             }
-            else if (abs_value >= 1e6 || abs_value < 1e-6) {
+            else if (abs_value >= 1e6 || abs_value < 1e-6)
+            {
                 // For very large or very small numbers, use scientific notation
                 decstream << std::scientific << std::setprecision(6) << value;
             }
-            else if (abs_value >= 1.0) {
+            else if (abs_value >= 1.0)
+            {
                 // For numbers >= 1, show up to 6 decimal places
                 decstream << std::setprecision(6) << value;
             }
-            else {
+            else
+            {
                 // For small numbers, show more precision
                 decstream << std::setprecision(9) << value;
             }
-            
+
             std::wstring decstr = decstream.str();
-            
+
             // Remove trailing zeros after decimal point
             size_t dot_pos = decstr.find(L'.');
-            if (dot_pos != std::wstring::npos) {
+            if (dot_pos != std::wstring::npos)
+            {
                 size_t last_nonzero = decstr.find_last_not_of(L'0');
-                if (last_nonzero != std::wstring::npos && last_nonzero > dot_pos) {
+                if (last_nonzero != std::wstring::npos && last_nonzero > dot_pos)
+                {
                     decstr.erase(last_nonzero + 1);
                 }
                 // Remove decimal point if no fractional part remains
-                if (decstr.back() == L'.') {
+                if (decstr.back() == L'.')
+                {
                     decstr.pop_back();
                 }
             }
-            
+
             sb.append(L"/*");
             sb.append(decstr);
             sb.append(L"*/");
@@ -457,13 +486,13 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::TypeD
             {
                 VisitField(sb, typeDecl, field);
             }
-            for (auto method : typeDecl->methods())
-            {
-                visit(sb, method, FunctionStyle::SignatureOnly);
-            }
             for (auto ctor : typeDecl->ctors())
             {
                 VisitConstructor(sb, ctor, FunctionStyle::SignatureOnly);
+            }
+            for (auto method : typeDecl->methods())
+            {
+                visit(sb, method, FunctionStyle::SignatureOnly);
             }
         });
         sb.append(L"}");
@@ -636,6 +665,7 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
         GenerateFunctionAttributes(sb, funcDecl);
 
         // generate signature
+        const bool is_static = funcDecl->is_static();
         auto functionName = GetFunctionName(funcDecl);
         if (SupportCtor && AsCtor)
             functionName = GetTypeName(AsMethod->owner_type());
@@ -646,8 +676,11 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
 
         if (SupportCtor && AsCtor)
             sb.append(functionName + L"(");
+        else if (is_static)
+            sb.append(L"static " + GetQualifiedTypeName(funcDecl->return_type()) + L" " + functionName + L"(");
         else
             sb.append(GetQualifiedTypeName(funcDecl->return_type()) + L" " + functionName + L"(");
+
         for (size_t i = 0; i < params.size(); i++)
         {
             if (i > 0)
@@ -685,9 +718,9 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
                     sb.append(L")");
                 }
             }
-            
+
             sb.endline();
-            
+
             // For languages that don't support constructors, emit initializers as assignments in body
             if (!SupportCtor && AsCtor && !AsCtor->member_inits().empty())
             {
@@ -704,7 +737,7 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
                         sb.append(L");");
                         sb.endline();
                     }
-                    
+
                     // Then emit the original body if it exists
                     if (auto compound = dynamic_cast<const CompoundStmt*>(funcDecl->body()))
                     {
@@ -736,17 +769,14 @@ String CppLikeShaderGenerator::GetFunctionName(const FunctionDecl* func)
 
 void CppLikeShaderGenerator::GenerateStmtAttributes(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt)
 {
-
 }
 
 void CppLikeShaderGenerator::GenerateFunctionAttributes(SourceBuilderNew& sb, const FunctionDecl* funcDecl)
 {
-
 }
 
 void CppLikeShaderGenerator::GenerateFunctionSignaturePostfix(SourceBuilderNew& sb, const FunctionDecl* func)
 {
-
 }
 
 void CppLikeShaderGenerator::GenerateKernelWrapper(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl)
@@ -786,12 +816,10 @@ void CppLikeShaderGenerator::visit_decl(SourceBuilderNew& sb, const skr::CppSL::
 
 void CppLikeShaderGenerator::BeforeGenerateGlobalVariables(SourceBuilderNew& sb, const AST& ast)
 {
-
 }
 
 void CppLikeShaderGenerator::BeforeGenerateFunctionImplementations(SourceBuilderNew& sb, const AST& ast)
 {
-
 }
 
 String CppLikeShaderGenerator::generate_code(SourceBuilderNew& sb, const AST& ast)
@@ -801,6 +829,7 @@ String CppLikeShaderGenerator::generate_code(SourceBuilderNew& sb, const AST& as
     RecordBuiltinHeader(sb, ast);
 
     build_type_namespace_map(ast);
+
     generate_namespace_declarations(sb, ast);
 
     for (const auto& decl : ast.types())
@@ -820,7 +849,6 @@ String CppLikeShaderGenerator::generate_code(SourceBuilderNew& sb, const AST& as
 void CppLikeShaderGenerator::generate_namespace_declarations(SourceBuilderNew& sb, const AST& ast)
 {
     // Generate forward declarations for global types (types without namespace)
-    bool has_global_types = false;
     for (const auto& type : ast.types())
     {
         // Check if this type is not in any namespace
@@ -853,12 +881,9 @@ void CppLikeShaderGenerator::generate_namespace_declarations(SourceBuilderNew& s
         if (is_global && !type->is_builtin())
         {
             sb.append(L"struct " + type->name() + L"; ");
-            has_global_types = true;
         }
     }
-
-    if (has_global_types)
-        sb.endline();
+    sb.endline();
 
     // Generate namespace forward declarations for HLSL
     // Only generate root namespaces (those without parents) to avoid duplicates
@@ -895,7 +920,10 @@ void CppLikeShaderGenerator::generate_namespace_recursive(SourceBuilderNew& sb, 
         return;
 
     // Generate namespace opening (compact style)
-    sb.append(L"namespace " + ns->name() + L" { ");
+    if (kUseNamespace)
+    {
+        sb.append(L"namespace " + ns->name() + L" { ");
+    }
 
     // Generate forward declarations for types in this namespace
     bool has_declarations = false;
@@ -905,7 +933,10 @@ void CppLikeShaderGenerator::generate_namespace_recursive(SourceBuilderNew& sb, 
         {
             if (!type->is_builtin())
             {
-                sb.append(L"struct " + type->name() + L"; ");
+                if (kUseNamespace)
+                    sb.append(L"struct " + type->name() + L"; ");
+                else
+                    sb.append(L"struct " + GetQualifiedTypeName(type) + L"; ");
                 has_declarations = true;
             }
         }
@@ -928,11 +959,14 @@ void CppLikeShaderGenerator::generate_namespace_recursive(SourceBuilderNew& sb, 
     }
 
     // Generate namespace closing
-    sb.append(L"}");
-    if (indent_level == 0) // Only add newline for root namespaces
-        sb.endline();
-    else
-        sb.append(L" ");
+    if (kUseNamespace)
+    {
+        sb.append(L"}");
+        if (indent_level == 0) // Only add newline for root namespaces
+            sb.endline();
+        else
+            sb.append(L" ");
+    }
 }
 
 void CppLikeShaderGenerator::build_type_namespace_map(const AST& ast)
@@ -963,7 +997,7 @@ void CppLikeShaderGenerator::build_type_namespace_map(const AST& ast)
                 type_namespace_map_[type] = namespace_path;
             }
         }
-        
+
         // Map all functions in this namespace
         for (const auto& func : ns->functions())
         {

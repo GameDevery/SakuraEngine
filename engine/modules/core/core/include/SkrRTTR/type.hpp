@@ -90,7 +90,7 @@ struct SKR_CORE_API RTTRType final {
     bool is_enum() const;
 
     // builders
-    void build_primitive(FunctionRef<void(RTTRPrimitiveData* data)> func);
+    void build_primitive(FunctionRef<void(RTTRPrimitiveTable* data)> func);
     void build_record(FunctionRef<void(RTTRRecordData* data)> func);
     void build_enum(FunctionRef<void(RTTREnumData* data)> func);
 
@@ -178,7 +178,7 @@ private:
     String            _module        = {};
     union
     {
-        RTTRPrimitiveData _primitive_data;
+        RTTRPrimitiveTable _primitive_data;
         RTTRRecordData    _record_data;
         RTTREnumData      _enum_data;
     };

@@ -9,6 +9,7 @@
 
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderer/render_mesh.h"
+#include "SkrGraphics/dstorage.h"
 
 IMPLEMENT_DYNAMIC_MODULE(SkrRendererModule, SkrRenderer);
 
@@ -24,7 +25,7 @@ void SkrRendererModule::on_load(int argc, char8_t** argv)
 {
     SKR_LOG_TRACE(u8"skr renderer loaded!");
 #ifdef _WIN32
-    cgpu_d3d12_enable_DRED();
+    dred = cgpu_d3d12_enable_DRED();
 #endif
     // initailize render device
     auto builder = make_zeroed<skr::RenderDevice::Builder>();
@@ -76,6 +77,10 @@ void SkrRendererModule::on_load(int argc, char8_t** argv)
 void SkrRendererModule::on_unload()
 {
     SKR_LOG_TRACE(u8"skr renderer unloaded!");
+
+#ifdef _WIN32
+    cgpu_d3d12_disable_DRED(dred);
+#endif
 
     skr::RenderDevice::Destroy(render_device);
 }

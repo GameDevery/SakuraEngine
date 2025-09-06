@@ -306,7 +306,7 @@ namespace SB
 
         public static TargetType? GetTargetType(this Target Target)
         {
-            if (Target.Arguments.TryGetValue("TargetType", out var V))
+            if (Target.PrivateArguments.TryGetValue("TargetType", out var V))
                 return (TargetType?)V;
             return null;
         }

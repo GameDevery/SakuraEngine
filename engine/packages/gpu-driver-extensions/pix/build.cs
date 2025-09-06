@@ -6,12 +6,11 @@ public static class WinPixEventRuntime
 {
     static WinPixEventRuntime()
     {
-        // TODO: WE NEED TO ENABLE SETUP IN PACKAGE SCOPE
-        BuildSystem.AddSetup<WinPixEventRuntimeSetup>();
-
         BuildSystem.Package("WinPixEventRuntime")
             .AddTarget("WinPixEventRuntime", (Target Target, PackageConfig Config) =>
             {
+                BuildSystem.AddSetup<WinPixEventRuntimeSetup>();
+
                 Target.TargetType(TargetType.HeaderOnly);
                 if (Config.Version == new Version(1, 0, 240308001))
                 {

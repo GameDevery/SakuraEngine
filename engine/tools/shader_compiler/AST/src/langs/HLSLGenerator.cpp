@@ -133,6 +133,13 @@ String HLSLGenerator::GetTypeName(const TypeDecl* type)
     {
         return L"ConstantBuffer<" + GetQualifiedTypeName(cbuffer->element_type()) + L">";
     }
+    else if (auto sbuffer = dynamic_cast<const StructuredBufferTypeDecl*>(type))
+    {
+        if (has_flag(sbuffer->flags(), BufferFlags::ReadWrite))
+            return L"RWStructuredBuffer<" + GetQualifiedTypeName(&sbuffer->element_type()) + L">";
+        else
+            return L"StructuredBuffer<" + GetQualifiedTypeName(&sbuffer->element_type()) + L">";
+    }
     else if (auto asRayQuery = dynamic_cast<const RayQueryTypeDecl*>(type))
     {
         const auto flags = asRayQuery->flags();
@@ -462,7 +469,7 @@ void HLSLGenerator::VisitConstructor(SourceBuilderNew& sb, const ConstructorDecl
 {
     CppLikeShaderGenerator::VisitConstructor(sb, ctor, FunctionStyle::SignatureOnly);
 
-    auto typeDecl = ctor->owner_type();
+    auto typeDecl = const_cast<TypeDecl*>(ctor->owner_type());
     AST* pAST = const_cast<AST*>(&typeDecl->ast());
     std::vector<Expr*> param_refs;
     param_refs.reserve(ctor->parameters().size());
@@ -478,10 +485,13 @@ void HLSLGenerator::VisitConstructor(SourceBuilderNew& sb, const ConstructorDecl
     // HLSL: return _this;
     auto _return = pAST->Return(_this->ref());
 
+    // Generate wrapper static function
     auto WrapperBody = pAST->Block({ _this, _init, _return });
-    sb.append(L"static ");
-    // 只 declare 这些 method，但是不把他们加到类型里面，不然会被生成 method 的逻辑重复生成
-    visit(sb, pAST->DeclareMethod(const_cast<skr::CppSL::TypeDecl*>(typeDecl), L"New", typeDecl, ctor->parameters(), WrapperBody), FunctionStyle::Normal);
+    auto CtorWrapper = pAST->DeclareMethod(const_cast<skr::CppSL::TypeDecl*>(typeDecl), 
+        L"New", typeDecl, ctor->parameters(), WrapperBody
+    );
+    CtorWrapper->set_static(true);
+    typeDecl->add_method(CtorWrapper);
 }
 
 void HLSLGenerator::GenerateStmtAttributes(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt)

@@ -15,14 +15,14 @@ namespace skr
 template <typename T>
 void primitive_type_loader(RTTRType* type)
 {
-    type->build_primitive([&](RTTRPrimitiveData* data) {
+    type->build_primitive([&](RTTRPrimitiveTable* data) {
         RTTRPrimitiveBuilder<T> builder(data);
         builder.basic_info();
     });
 }
 static void primitive_type_loader_void(RTTRType* type)
 {
-    type->build_primitive([&](RTTRPrimitiveData* data) {
+    type->build_primitive([&](RTTRPrimitiveTable* data) {
         data->name      = RTTRTraits<void>::get_name();
         data->type_id   = RTTRTraits<void>::get_guid();
         data->size      = 0;

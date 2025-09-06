@@ -261,8 +261,6 @@ SkrWindowsDStorageInstance::~SkrWindowsDStorageInstance()
         SkrDelete(_this->pEventPool);
     if (pFactory) 
         pFactory->Release();
-    if (pDxDevice) 
-        pDxDevice->Release();
     
     cgpu_trace(u8"Direct Storage unloaded");
 }
@@ -326,14 +324,12 @@ SkrDStorageQueueId skr_create_dstorage_queue(const SkrDStorageQueueDescriptor* d
     Q->max_size = _this->sDirectStorageStagingBufferSize;
     Q->pFactory = pFactory;
     Q->pFactory->AddRef();
-    Q->pDxDevice = _this->pDxDevice = queueDesc.Device ? queueDesc.Device : nullptr;
+    Q->pDxDevice = queueDesc.Device ? queueDesc.Device : nullptr;
     if (Q->pDxDevice)
         Q->pDxDevice->AddRef();
-    if (_this->pDxDevice)
-        _this->pDxDevice->AddRef();
     Q->device = desc->gpu_device;
     Q->pInstance = _this;
-    return Q;
+    return Q;   
 }
 
 void skr_free_dstorage_queue(SkrDStorageQueueId queue)
@@ -362,9 +358,10 @@ SkrDStorageFileHandle skr_dstorage_open_file(SkrDStorageInstanceId inst, const c
     auto I = (SkrWindowsDStorageInstance*)inst;
     const skr::Path absPath{abs_path};
     auto path_str = absPath.string();
-    skr_char16 path_buffer[MAX_PATH];
-    path_str.to_u16(path_buffer);
-    I->pFactory->OpenFile(reinterpret_cast<const wchar_t*>(path_buffer), IID_PPV_ARGS(&pFile));
+    skr::stl_wstring path_buffer;
+    path_buffer.resize(path_str.to_u16_length());
+    path_str.to_u16((skr_char16*)path_buffer.data());
+    I->pFactory->OpenFile(path_buffer.c_str(), IID_PPV_ARGS(&pFile));
     return (SkrDStorageFileHandle)pFile;
 }
 

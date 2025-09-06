@@ -9,12 +9,11 @@ public static class NvApi
         if (BuildSystem.TargetOS != OSPlatform.Windows)
             return;
 
-        // TODO: WE NEED TO ENABLE SETUP IN PACKAGE SCOPE
-        BuildSystem.AddSetup<NvApiSetup>();
-
         BuildSystem.Package("NvApi")
             .AddTarget("NvApi", (Target Target, PackageConfig Config) =>
             {
+                BuildSystem.AddSetup<NvApiSetup>();
+
                 Target.TargetType(TargetType.HeaderOnly);
                 if (Config.Version == new Version(580, 0, 0))
                 {

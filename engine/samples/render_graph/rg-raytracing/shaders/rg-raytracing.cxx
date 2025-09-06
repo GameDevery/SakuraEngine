@@ -3,7 +3,7 @@
 
 
 RWTexture2D<float> output_texture;
-Accel scene_tlas;
+Accel SceneTLAS;
 
 // Push constants - camera parameters
 struct CameraConstants 
@@ -94,7 +94,7 @@ float4 trace_scene(uint2 pixel_coord, uint2 screen_size)
     if (pixel_coord.x < 50 && pixel_coord.y < 50) {
         // Try a simple ray straight down from above origin to test TLAS binding
         Ray debug_ray = Ray(float3(0.0f, 1000.0f, 0.0f), float3(0.0f, -1.0f, 0.0f), 0.1f, 2000.0f);
-        query.TraceRayInline(scene_tlas, 0xff, debug_ray);
+        query.TraceRayInline(SceneTLAS, 0xff, debug_ray);
         query.Proceed();
         
         if (query.CommittedStatus() == HitType::HitTriangle) {
@@ -107,7 +107,7 @@ float4 trace_scene(uint2 pixel_coord, uint2 screen_size)
     }
     
     // Normal ray tracing
-    query.TraceRayInline(scene_tlas, 0xff, primary_ray);
+    query.TraceRayInline(SceneTLAS, 0xff, primary_ray);
     query.Proceed();
     
     // Check hit status

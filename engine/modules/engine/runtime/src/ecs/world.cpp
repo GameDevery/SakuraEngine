@@ -158,25 +158,26 @@ static const auto kTSServiceDesc = ServiceThreadDesc{
     .name = u8"ECSTaskScheduler",
     .priority = SKR_THREAD_ABOVE_NORMAL,
 };
-World::World(skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
+
+ECSWorld::ECSWorld(skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
 {
     kTaskSchedulerRefCount += 1;
     TaskScheduler::Initialize(kTSServiceDesc, scheduler);
     storage = sugoiS_create();
 }
 
-World::World() SKR_NOEXCEPT
+ECSWorld::ECSWorld() SKR_NOEXCEPT
 {
     storage = sugoiS_create();
 }
 
-void World::bind_scheduler(skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
+void ECSWorld::bind_scheduler(skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
 {
     kTaskSchedulerRefCount += 1;
     TaskScheduler::Initialize(kTSServiceDesc, scheduler);
 }
 
-void World::initialize() SKR_NOEXCEPT
+void ECSWorld::initialize() SKR_NOEXCEPT
 {
     if (auto TS = TaskScheduler::Get())
     {
@@ -184,7 +185,7 @@ void World::initialize() SKR_NOEXCEPT
     }
 }
 
-void World::finalize() SKR_NOEXCEPT
+void ECSWorld::finalize() SKR_NOEXCEPT
 {
     if (auto TS = TaskScheduler::Get())
     {
@@ -201,30 +202,30 @@ void World::finalize() SKR_NOEXCEPT
     storage = nullptr;
 }
 
-uint32_t World::GetComponentSize(skr::ecs::TypeIndex type) const
+uint32_t ECSWorld::GetComponentSize(skr::ecs::TypeIndex type) const
 {
     auto desc = sugoiT_get_desc(type);
     return desc->size;
 }
 
-uint32_t World::GetComponentAlign(skr::ecs::TypeIndex type) const
+uint32_t ECSWorld::GetComponentAlign(skr::ecs::TypeIndex type) const
 {
     auto desc = sugoiT_get_desc(type);
     return desc->alignment;
 }
 
-const char8_t* World::GetComponentName(skr::ecs::TypeIndex type) const
+const char8_t* ECSWorld::GetComponentName(skr::ecs::TypeIndex type) const
 {
     auto desc = sugoiT_get_desc(type);
     return desc->name;
 }
 
-sugoi_storage_t* World::get_storage() SKR_NOEXCEPT
+sugoi_storage_t* ECSWorld::get_storage() SKR_NOEXCEPT
 {
     return storage;
 }
 
-QueryBuilder::QueryBuilder(World* world) SKR_NOEXCEPT
+QueryBuilder::QueryBuilder(ECSWorld* world) SKR_NOEXCEPT
     : world(world)
 {
 }
@@ -269,13 +270,13 @@ QueryBuilderResult QueryBuilder::commit() SKR_NOEXCEPT
 namespace skr
 {
 
-bool BinSerde<ecs::World>::read(SBinaryReader* r, skr::ecs::World& world)
+bool BinSerde<ecs::ECSWorld>::read(SBinaryReader* r, skr::ecs::ECSWorld& world)
 {
     sugoiS_deserialize(world.storage, r);
     return true;
 }
 
-bool BinSerde<ecs::World>::write(SBinaryWriter* w, const skr::ecs::World& world)
+bool BinSerde<ecs::ECSWorld>::write(SBinaryWriter* w, const skr::ecs::ECSWorld& world)
 {
     sugoiS_serialize(world.storage, w);
     return true;

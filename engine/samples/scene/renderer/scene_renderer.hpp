@@ -32,7 +32,7 @@ struct SCENE_RENDERER_API SceneRenderer
     static void Destroy(SceneRenderer* renderer);
 
     virtual ~SceneRenderer();
-    virtual void initialize(skr::RenderDevice* render_device, skr::ecs::World* storage, struct skr_vfs_t* resource_vfs) = 0;
+    virtual void initialize(skr::RenderDevice* render_device, skr::ecs::ECSWorld* storage, struct skr_vfs_t* resource_vfs) = 0;
     virtual void finalize(skr::RenderDevice* renderer) = 0;
 
     virtual void draw_primitives(skr::render_graph::RenderGraph* render_graph, skr::span<skr_primitive_draw_t> drawcalls) = 0;

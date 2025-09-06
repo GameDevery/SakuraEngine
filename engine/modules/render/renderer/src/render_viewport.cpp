@@ -12,7 +12,7 @@
 
 struct SViewportManagerImpl : public SViewportManager
 {
-    SViewportManagerImpl(skr::ecs::World* world)
+    SViewportManagerImpl(skr::ecs::ECSWorld* world)
     {
         camera_query = skr::ecs::QueryBuilder(world)
                            .ReadAll<skr::scene::CameraComponent, skr::scene::PositionComponent>()
@@ -84,7 +84,7 @@ struct SViewportManagerImpl : public SViewportManager
     skr::Vector<uint32_t> free_list;
 };
 
-SViewportManager* SViewportManager::Create(skr::ecs::World* world)
+SViewportManager* SViewportManager::Create(skr::ecs::ECSWorld* world)
 {
     return SkrNew<SViewportManagerImpl>(world);
 }
@@ -122,7 +122,7 @@ void skr_resolve_camera_to_viewport(const skr::scene::CameraComponent* camera, c
     viewport->viewport_height = camera->viewport_height;
 }
 
-void skr_resolve_cameras_to_viewport(struct SViewportManager* viewport_manager, skr::ecs::World* storage)
+void skr_resolve_cameras_to_viewport(struct SViewportManager* viewport_manager, skr::ecs::ECSWorld* storage)
 {
     sugoi_query_t* camera_query = static_cast<SViewportManagerImpl*>(viewport_manager)->camera_query;
     auto cameraSetup = [&](sugoi_chunk_view_t* g_cv) {

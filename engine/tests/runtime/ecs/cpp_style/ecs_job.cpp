@@ -49,7 +49,7 @@ struct ECSJobs {
     }
 
 protected:
-    skr::ecs::World world;
+    skr::ecs::ECSWorld world;
     skr::task::scheduler_t scheduler;
 };
 

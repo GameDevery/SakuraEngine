@@ -72,5 +72,9 @@ private:
     void build_type_namespace_map(const AST& ast);
     std::unordered_map<const TypeDecl*, String> type_namespace_map_;
     std::unordered_map<const FunctionDecl*, String> function_namespace_map_;
+
+    // Assign translated types/functions/variables to their namespaces
+    // SPV backend of DXC has a stupid bug: if CBV<T>, T is inside a namespace and owns a method, it will cause ICE.
+    bool kUseNamespace = false;
 };
 } // namespace skr::CppSL

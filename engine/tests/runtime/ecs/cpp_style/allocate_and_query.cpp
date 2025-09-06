@@ -16,7 +16,7 @@ struct AllocateEntites
         world.finalize();
     }
     sugoi_storage_t* storage = nullptr;
-    skr::ecs::World world;
+    skr::ecs::ECSWorld world;
 };
 
 static constexpr size_t kIntEntityCount = 12;

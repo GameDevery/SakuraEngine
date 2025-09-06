@@ -2,10 +2,7 @@
 #include "SkrBase/config.h"
 #include "SkrSceneCore/scene_components.h"
 
-namespace skr::ecs
-{
-struct World;
-}
+namespace skr::ecs { struct ECSWorld; }
 
 namespace skr
 {
@@ -16,7 +13,7 @@ public:
     {
         skr::task::event_t update_finish;
     };
-    static TransformSystem* Create(skr::ecs::World* world) SKR_NOEXCEPT;
+    static TransformSystem* Create(skr::ecs::ECSWorld* world) SKR_NOEXCEPT;
     static void Destroy(TransformSystem* system) SKR_NOEXCEPT;
     void update() SKR_NOEXCEPT;
     Context const* get_context() const SKR_NOEXCEPT;
@@ -36,6 +33,6 @@ private:
 };
 } // namespace skr
 
-SKR_EXTERN_C SKR_SCENE_CORE_API skr::TransformSystem* skr_transform_system_create(skr::ecs::World* world);
+SKR_EXTERN_C SKR_SCENE_CORE_API skr::TransformSystem* skr_transform_system_create(skr::ecs::ECSWorld* world);
 SKR_EXTERN_C SKR_SCENE_CORE_API void skr_transform_system_destroy(skr::TransformSystem* system);
 SKR_EXTERN_C SKR_SCENE_CORE_API void skr_transform_system_update(skr::TransformSystem* system);
