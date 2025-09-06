@@ -24,22 +24,25 @@ namespace SB
 
     public partial class BuildSystem
     {
-        public static void RunSetups()
+        public static void RunSetups(bool IgnoreSetupAttributes = false)
         {
             using (Profiler.BeginZone("RunSetups", color: (uint)Profiler.ColorType.WebMaroon))
             {
-                var SetupAttributes = new ConcurrentBag<SetupAttribute>();
-                foreach (var Assembly in AppDomain.CurrentDomain.GetAssemblies())
+                if (!IgnoreSetupAttributes)
                 {
-                    if (!Assembly.GetReferencedAssemblies().Any(A => A.Name == "SB.Core") && Assembly.GetName().Name != "SB.Core")
-                        continue;
-
-                    foreach (var Type in Assembly.GetTypes())
+                    var SetupAttributes = new ConcurrentBag<SetupAttribute>();
+                    foreach (var Assembly in AppDomain.CurrentDomain.GetAssemblies())
                     {
-                        var SetupAttrs = Type.GetCustomAttributes<SetupAttribute>();
-                        foreach (var SetupAttr in SetupAttrs)
+                        if (!Assembly.GetReferencedAssemblies().Any(A => A.Name == "SB.Core") && Assembly.GetName().Name != "SB.Core")
+                            continue;
+
+                        foreach (var Type in Assembly.GetTypes())
                         {
-                            SetupAttributes.Add(SetupAttr);
+                            var SetupAttrs = Type.GetCustomAttributes<SetupAttribute>();
+                            foreach (var SetupAttr in SetupAttrs)
+                            {
+                                SetupAttributes.Add(SetupAttr);
+                            }
                         }
                     }
                 }
@@ -68,6 +71,7 @@ namespace SB
                         Log.Verbose("Setup {Name} finished... cost {Seconds}s", setup.GetType().Name, Seconds);
                     }
                 });
+                _AllSetups.Clear();
             }
         }
 

@@ -4,6 +4,7 @@
 #include <SkrCore/log.h>
 
 #include <SkrScene/actor.h>
+#include <SkrScene/actor_manager.h>
 #include <SkrSceneCore/scene_components.h>
 #include <SkrSceneCore/transform_system.h>
 #include <SkrRT/ecs/world.hpp>
@@ -17,7 +18,7 @@ struct SceneSampleSimpleModule : public skr::IDynamicModule
     skr::TransformSystem* transform_system = nullptr;
     skr::task::scheduler_t scheduler;
     skr::Scene scene;
-    skr::ecs::World* world = nullptr;
+    skr::ecs::ECSWorld* world = nullptr;
     skr::ActorManager& actor_manager = skr::ActorManager::GetInstance();
 };
 

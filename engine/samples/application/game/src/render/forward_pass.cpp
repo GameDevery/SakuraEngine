@@ -238,12 +238,12 @@ void RenderPassForward::execute(const skr_primitive_pass_context_t* context, skr
 
     renderGraph->add_render_pass(
     [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
-        const auto out_color    = renderGraph->get_texture(SKR_UTF8("backbuffer"));
+        const auto OutputColor    = renderGraph->get_texture(SKR_UTF8("backbuffer"));
         const auto depth_buffer = renderGraph->get_texture(SKR_UTF8("depth"));
         builder.set_name(SKR_UTF8("forward_pass"))
         // we know that the drawcalls always have a same pipeline
         .read(SKR_UTF8("pass_cb"), cbuffer.range(0, sizeof(skr_float4x4_t)))
-        .write(0, out_color, need_clear ? CGPU_LOAD_ACTION_CLEAR : CGPU_LOAD_ACTION_LOAD);
+        .write(0, OutputColor, need_clear ? CGPU_LOAD_ACTION_CLEAR : CGPU_LOAD_ACTION_LOAD);
         if (need_clear)
             builder.set_depth_stencil(depth_buffer.clear_depth(1.f));
         else

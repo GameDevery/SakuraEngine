@@ -9,12 +9,11 @@ public static class DirectStorage
         if (BuildSystem.TargetOS != OSPlatform.Windows)
             return;
 
-        // TODO: WE NEED TO ENABLE SETUP IN PACKAGE SCOPE
-        BuildSystem.AddSetup<DirectStorageSetup>();
-
         BuildSystem.Package("DirectStorage")
             .AddTarget("DirectStorage", (Target Target, PackageConfig Config) =>
             {
+                BuildSystem.AddSetup<DirectStorageSetup>();
+
                 Target.TargetType(TargetType.HeaderOnly);
                 if (Config.Version == new Version(1, 3, 0))
                 {

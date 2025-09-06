@@ -16,7 +16,7 @@ public static class SkrRenderer
             .AddCppFiles(new CFamilyFileOptions { UnityGroup = "resources" }, "src/resources/*.cpp")
             .AddCppSLFiles("shaders/**.cxx")
             .CppSLOutputDirectory("resources/shaders")
-            .CppSL_IncludeDirs(Visibility.Public, "include")
+            .CppSL_IncludeDirs(Visibility.Public, "include", "shaders")
             .AddMetaHeaders("include/**.h", "include/**.hpp") // codegen
             .AddCodegenScript("meta/gpu_data_block.ts");
     }

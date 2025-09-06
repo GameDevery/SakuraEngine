@@ -26,7 +26,7 @@ struct SceneRendererImpl : public skr::SceneRenderer
     CGPURasterizerStateDescriptor rs_state = {};
     CGPUDepthStateDescriptor ds_desc = {};
 
-    virtual void initialize(skr::RenderDevice* render_device, skr::ecs::World* world, struct skr_vfs_t* resource_vfs) override
+    virtual void initialize(skr::RenderDevice* render_device, skr::ecs::ECSWorld* world, struct skr_vfs_t* resource_vfs) override
     {
         this->resource_vfs = resource_vfs;
         prepare_pipeline_settings();

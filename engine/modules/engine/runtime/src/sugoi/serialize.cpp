@@ -5,6 +5,7 @@
 #include "SkrSerde/bin_serde.hpp"
 
 #include "SkrRT/sugoi/chunk.hpp"
+#include "chunk_view.hpp"
 #include "./impl/storage.hpp"
 #include "./stack.hpp"
 #include "SkrRT/sugoi/archetype.hpp"
@@ -25,12 +26,16 @@ static void ReadBuffer(SBinaryReader* reader, T* buffer, uint32_t count)
     reader->read((void*)buffer, sizeof(T) * count);
 }
 
-static void serialize_impl(const sugoi_chunk_view_t& view, sugoi_type_index_t type, EIndex offset, uint32_t size, uint32_t elemSize, SBinaryWriter* s, SBinaryReader* ds, void (*serialize)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryWriter* writer), void (*deserialize)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryReader* writer))
+static void serialize_impl(const sugoi_chunk_view_t& view, sugoi_type_index_t type, EIndex offset, uint32_t size, uint32_t elemSize, SBinaryWriter* s, SBinaryReader* ds, void (*serializer)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryWriter* writer), void (*deserializer)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryReader* writer))
 {
     using namespace sugoi;
 
-    bool  isSerialize = s != nullptr;
-    char* src         = view.chunk->data() + (size_t)offset + (size_t)size * view.start;
+    bool isSerialize = s != nullptr;
+    char* src = view.chunk->data() + (size_t)offset + (size_t)size * view.start;
+    if (!isSerialize)
+    {   
+        sugoi::construct_view(view);
+    }
     if (type_index_t(type).is_buffer())
     {
         // array component is pointer based and must be converted to persistent data format
@@ -38,13 +43,13 @@ static void serialize_impl(const sugoi_chunk_view_t& view, sugoi_type_index_t ty
         {
             forloop (i, 0, view.count)
             {
-                auto     array   = (sugoi_array_comp_t*)((size_t)i * size + src);
+                auto array = (sugoi_array_comp_t*)((size_t)i * size + src);
                 intptr_t padding = ((char*)array->BeginX - (char*)(array + 1));
-                intptr_t length  = ((char*)array->EndX - (char*)array->BeginX);
+                intptr_t length = ((char*)array->EndX - (char*)array->BeginX);
                 skr::bin_write(s, (uint32_t)padding);
                 skr::bin_write(s, (uint32_t)length);
-                if (serialize)
-                    serialize(type, view.chunk, view.start + i, (char*)array->BeginX, (EIndex)(length / elemSize), s);
+                if (serializer)
+                    serializer(type, view.chunk, view.start + i, (char*)array->BeginX, (EIndex)(length / elemSize), s);
                 else
                     WriteBuffer(s, (uint8_t*)array->BeginX, static_cast<uint32_t>(length));
             }
@@ -53,23 +58,23 @@ static void serialize_impl(const sugoi_chunk_view_t& view, sugoi_type_index_t ty
         {
             forloop (i, 0, view.count)
             {
-                auto     array   = (sugoi_array_comp_t*)((size_t)i * size + src);
+                auto array = (sugoi_array_comp_t*)((size_t)i * size + src);
                 uint32_t padding = 0, length = 0;
                 skr::bin_read(ds, padding);
                 skr::bin_read(ds, length);
                 if (padding > elemSize) // array on heap
                 {
-                    array->BeginX    = llvm_vecsmall::SmallVectorBase::allocate(length);
+                    array->BeginX = llvm_vecsmall::SmallVectorBase::allocate(length);
                     array->CapacityX = array->EndX = (char*)array->BeginX + length;
                 }
                 else
                 {
-                    array->BeginX    = (char*)(array + 1) + padding;
-                    array->EndX      = (char*)array->BeginX + length;
+                    array->BeginX = (char*)(array + 1) + padding;
+                    array->EndX = (char*)array->BeginX + length;
                     array->CapacityX = (char*)array + size;
                 }
-                if (deserialize)
-                    deserialize(type, view.chunk, view.start + i, (char*)array->BeginX, (EIndex)length, ds);
+                if (deserializer)
+                    deserializer(type, view.chunk, view.start + i, (char*)array->BeginX, (EIndex)length, ds);
                 else
                     ReadBuffer(ds, (uint8_t*)array->BeginX, length);
             }
@@ -79,15 +84,15 @@ static void serialize_impl(const sugoi_chunk_view_t& view, sugoi_type_index_t ty
     {
         if (isSerialize)
         {
-            if (serialize)
-                serialize(type, view.chunk, view.start, src, view.count, s);
+            if (serializer)
+                serializer(type, view.chunk, view.start, src, view.count, s);
             else
                 WriteBuffer(s, src, size * view.count);
         }
         else
         {
-            if (deserialize)
-                deserialize(type, view.chunk, view.start, src, view.count, ds);
+            if (deserializer)
+                deserializer(type, view.chunk, view.start, src, view.count, ds);
             else
                 ReadBuffer(ds, src, size * view.count);
         }
@@ -107,10 +112,10 @@ void sugoi_storage_t::serialize_view(sugoi_group_t* group, sugoi_chunk_view_t& v
         view = allocateViewStrict(group, view.count);
     }
 
-    archetype_t* type      = view.chunk->structure;
-    const auto*  offsets   = type->offsets[(int)view.chunk->pt];
-    const auto*  sizes     = type->sizes;
-    const auto*  elemSizes = type->elemSizes;
+    archetype_t* type = view.chunk->structure;
+    const auto* offsets = type->offsets[(int)view.chunk->pt];
+    const auto* sizes = type->sizes;
+    const auto* elemSizes = type->elemSizes;
     if (withEntities)
     {
         if (s)
@@ -152,7 +157,7 @@ sugoi_entity_type_t sugoi_storage_t::deserialize_type(sugoi::fixed_stack_t& stac
     auto guids = stack.allocate<guid_t>(type.type.length);
     ReadBuffer(s, guids, type.type.length);
     type.type.data = stack.allocate<sugoi_type_index_t>(type.type.length);
-    auto& reg      = TypeRegistry::get();
+    auto& reg = TypeRegistry::get();
     forloop (i, 0, type.type.length) // todo: check type existence
         ((sugoi_type_index_t*)type.type.data)[i] = reg.get_type(guids[i]);
     std::sort((sugoi_type_index_t*)type.type.data, (sugoi_type_index_t*)type.type.data + type.type.length);
@@ -173,8 +178,8 @@ sugoi_entity_type_t sugoi_storage_t::deserialize_type(sugoi::fixed_stack_t& stac
 void sugoi_storage_t::serialize_single(sugoi_entity_t e, SBinaryWriter* s)
 {
     using namespace sugoi;
-    auto view        = entity_view(e);
-    auto type        = view.chunk->group->type;
+    auto view = entity_view(e);
+    auto type = view.chunk->group->type;
     type.meta.length = 0; // remove meta
     serialize_type(type, s, false);
     serialize_view(view.chunk->group, view, s, nullptr, false);
@@ -184,8 +189,8 @@ sugoi_entity_t sugoi_storage_t::deserialize_single(SBinaryReader* s)
 {
     using namespace sugoi;
     fixed_stack_scope_t _(localStack);
-    auto                type  = deserialize_type(localStack, s, false);
-    auto                group = get_group(type);
+    auto type = deserialize_type(localStack, s, false);
+    auto group = get_group(type);
     sugoi_chunk_view_t view;
     serialize_view(group, view, nullptr, s, false);
     entity_registry.fill_entities(view);
@@ -226,7 +231,7 @@ sugoi_entity_t sugoi_storage_t::deserialize_prefab(SBinaryReader* s)
     else if (count > 1)
     {
         fixed_stack_scope_t _(localStack);
-        auto                prefab = localStack.allocate<sugoi_entity_t>(count);
+        auto prefab = localStack.allocate<sugoi_entity_t>(count);
         forloop (i, 0, count)
             prefab[i] = deserialize_single(s);
         prefab_to_linked(prefab, count);
@@ -282,9 +287,9 @@ void sugoi_storage_t::deserialize(SBinaryReader* s)
         {
             SkrZoneScopedN("deserialize group");
             fixed_stack_scope_t _(localStack);
-            auto                type       = deserialize_type(localStack, s, true);
-            auto                group      = constructGroup(type);
-            uint32_t            chunkCount = 0;
+            auto type = deserialize_type(localStack, s, true);
+            auto group = allocateGroup(type);
+            uint32_t chunkCount = 0;
             skr::bin_read(s, chunkCount);
             forloop (j, 0, chunkCount)
             {
@@ -295,9 +300,9 @@ void sugoi_storage_t::deserialize(SBinaryReader* s)
                 forloop (k, 0, view.count)
                 {
                     EntityRegistry::Entry entry;
-                    entry.chunk                                   = view.chunk;
-                    entry.indexInChunk                            = k + view.start;
-                    entry.version                                 = e_version(ents[k]);
+                    entry.chunk = view.chunk;
+                    entry.indexInChunk = k + view.start;
+                    entry.version = e_version(ents[k]);
                     entity_registry.entries[e_id(ents[k])] = entry;
                 }
             }

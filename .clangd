@@ -37,4 +37,4 @@ CompileFlags:
 
 Diagnostics:
   ClangTidy:
-    Remove: [misc-definitions-in-headers]
+    Remove: [ misc-definitions-in-headers ]

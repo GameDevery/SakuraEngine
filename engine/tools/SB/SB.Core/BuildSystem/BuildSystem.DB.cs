@@ -74,7 +74,7 @@ namespace SB
                         if (TargetDbContext.UpdateContext!.Targets.Find(Entity.TargetName) is not null)
                             TargetDbContext.UpdateContext!.Targets.Update(Entity);
                         else
-                                TargetDbContext.UpdateContext!.Targets.Add(Entity);
+                            TargetDbContext.UpdateContext!.Targets.Add(Entity);
                     }
                     TargetDbContext.UpdateContext!.SaveChanges();
                 }

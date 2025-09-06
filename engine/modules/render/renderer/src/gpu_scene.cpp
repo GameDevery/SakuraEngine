@@ -432,7 +432,7 @@ void GPUScene::RequireUpload(skr::ecs::Entity entity, CPUTypeID component)
     Lane.dirty_mtx.unlock();
 }
 
-void GPUScene::Initialize(gpu::TableManager* table_manager, skr::RenderDevice* render_device, skr::ecs::World* world)
+void GPUScene::Initialize(gpu::TableManager* table_manager, skr::RenderDevice* render_device, skr::ecs::ECSWorld* world)
 {
     SKR_LOG_INFO(u8"Initializing GPUScene...");
 

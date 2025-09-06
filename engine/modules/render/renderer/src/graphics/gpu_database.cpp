@@ -327,7 +327,7 @@ skr::RC<TableInstanceBase::UploadBatch> TableInstanceBase::UploadContext::GetBat
     SKR_DEFER({ mtx.unlock(); });
 
     // try close batch
-    if (current_batch)
+    if (current_batch != nullptr)
     {
         if (current_batch->used_ops + ops > current_batch->uploads.size())
         {
@@ -348,7 +348,7 @@ skr::RC<TableInstanceBase::UploadBatch> TableInstanceBase::UploadContext::GetBat
     return current_batch;
 }
 
-void TableInstanceBase::Store(uint64_t dst_offset, const void* data, uint64_t size)
+void TableInstanceBase::StoreInternal(uint64_t dst_offset, const void* data, uint64_t size)
 {
     const auto OpsCount = (size + kStridePerOp - 1) / kStridePerOp;
     uint64_t OpStart = 0;
@@ -371,16 +371,6 @@ void TableInstanceBase::Store(uint64_t dst_offset, const void* data, uint64_t si
 void TableInstanceBase::DispatchSparseUpload(skr::render_graph::RenderGraph* graph, const render_graph::ComputePassExecuteFunction& on_exec)
 {
     SkrZoneScopedN("GPUScene::DispatchSparseUpload");
-
-    // close batch
-    if (upload_ctx.current_batch)
-    {
-        upload_ctx.batches.enqueue(upload_ctx.current_batch);
-        upload_ctx.current_batch = nullptr;
-    }
-
-    skr::RC<UploadBatch> BatchToExecute = nullptr;
-    upload_ctx.batches.try_dequeue(BatchToExecute);
 
     auto upload_buffer = graph->create_buffer(
         [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
@@ -410,12 +400,21 @@ void TableInstanceBase::DispatchSparseUpload(skr::render_graph::RenderGraph* gra
                 .read(u8"upload_operations", ops_buffer)
                 .readwrite(u8"target_buffer", frame_ctxs.get(&g).buffer_handle);
         },
-        [this, ops_buffer, upload_buffer, BatchToExecute, exec = on_exec](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
+        [this, ops_buffer, upload_buffer, exec = on_exec](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
             SkrZoneScopedN("GPUTable::SparseUploadScene");
 
             if (exec)
                 exec(g, ctx);
 
+            // close batch
+            if (upload_ctx.current_batch)
+            {
+                upload_ctx.batches.enqueue(upload_ctx.current_batch);
+                upload_ctx.current_batch = nullptr;
+            }
+            // get batch to upload
+            skr::RC<UploadBatch> BatchToExecute = nullptr;
+            upload_ctx.batches.try_dequeue(BatchToExecute);
             if (!BatchToExecute)
                 return;
 

@@ -18,7 +18,6 @@ struct SkrWindowsDStorageInstance : public SkrDStorageInstance
     static SkrWindowsDStorageInstance* Get();
     ~SkrWindowsDStorageInstance();
 
-    struct ID3D12Device* pDxDevice = nullptr;
     IDStorageFactory* pFactory = nullptr;
     struct DStorageEventPool* pEventPool = nullptr;
     uint64_t sDirectStorageStagingBufferSize = DSTORAGE_STAGING_BUFFER_SIZE_32MB;

@@ -93,19 +93,13 @@ void cgpu_free_instance_d3d12(CGPUInstanceId instance)
 {
     CGPUInstance_D3D12* to_destroy = (CGPUInstance_D3D12*)instance;
     D3D12Util_DeInitializeEnvironment(&to_destroy->super);
-    if (to_destroy->mAdaptersCount > 0)
+    for (uint32_t i = 0; i < to_destroy->mAdaptersCount; i++)
     {
-        for (uint32_t i = 0; i < to_destroy->mAdaptersCount; i++)
-        {
-            SAFE_RELEASE(to_destroy->pAdapters[i].pDxActiveGPU);
-        }
+        SAFE_RELEASE(to_destroy->pAdapters[i].pDxActiveGPU);
     }
     cgpu_free(to_destroy->pAdapters);
     SAFE_RELEASE(to_destroy->pDXGIFactory);
-    if (to_destroy->pDXDebug)
-    {
-        SAFE_RELEASE(to_destroy->pDXDebug);
-    }
+    SAFE_RELEASE(to_destroy->pDXDebug);
     cgpu_free(to_destroy);
 
 #if !defined(XBOX) && defined(_WIN32)
@@ -117,7 +111,7 @@ void cgpu_free_instance_d3d12(CGPUInstanceId instance)
         IDXGIDebug1* dxgiDebug;
         if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_ARGS(IDXGIDebug1, &dxgiDebug))))
         {
-            COM_CALL(ReportLiveObjects, dxgiDebug, DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_DETAIL);
+            COM_CALL(ReportLiveObjects, dxgiDebug, DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
         }
         SAFE_RELEASE(dxgiDebug);
     }

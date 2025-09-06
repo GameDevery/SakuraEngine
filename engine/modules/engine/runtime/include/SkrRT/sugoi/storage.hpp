@@ -137,7 +137,7 @@ private:
     sugoi_chunk_view_t allocateView(sugoi_group_t* group, EIndex count);
     sugoi_chunk_view_t allocateViewStrict(sugoi_group_t* group, EIndex count);
 
-    sugoi_group_t* constructGroup(const sugoi_entity_type_t& type);
+    sugoi_group_t* allocateGroup(const sugoi_entity_type_t& type);
     sugoi_group_t* cloneGroup(sugoi_group_t* src);
     sugoi_group_t* tryGetGroup(const sugoi_entity_type_t& type) const;
     void destructGroup(sugoi_group_t* group);

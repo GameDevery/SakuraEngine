@@ -12,6 +12,15 @@ template <typename T>
 struct GPUDatablock;
 
 template <typename T>
+struct AOSOAInfo 
+{
+    inline static constexpr bool IsSOA = false;
+    inline static constexpr uint32_t SOAPageSize = 16 * 1024;
+};
+
+#define SubBlock(T, M) &T::M, __builtin_offsetof(skr::gpu::GPUDatablock<T>, _##M)
+
+template <typename T>
 struct Row
 {
 public:
@@ -22,44 +31,49 @@ public:
 
     }
 
-    template <typename ByteBufferType>
-    T Load(ByteBufferType buffers[], uint32_t byte_offset = 0) const 
+    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
+    auto Load(ByteBufferType buffer) const
     {
-        const auto ByteAddress = _buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size;
-        return buffers[_bindless_index].template Load<GPUDatablock<T>>(ByteAddress);
+        using MemberType = typename cppsl::MemberInfo<Member>::Type;
+        if constexpr (AOSOAInfo<T>::IsSOA)
+        {
+            constexpr auto InstanceCountInPage = AOSOAInfo<T>::SOAPageSize;
+            constexpr auto PageSizeInBytes = InstanceCountInPage * GPUDatablock<T>::Size;
+            const auto PageIndex = (_instance_index / InstanceCountInPage);
+            const auto InstanceOffsetInPage = (_instance_index % InstanceCountInPage);
+            const auto ByteAddress = PageIndex * PageSizeInBytes + MemberOffset * InstanceCountInPage + InstanceOffsetInPage * GPUDatablock<MemberType>::Size;
+            return (MemberType)buffer.template Load<GPUDatablock<MemberType>>(ByteAddress);
+        }
+        else
+        {
+            const auto ByteAddress = MemberOffset + _buffer_offset + _instance_index * GPUDatablock<T>::Size;
+            return (MemberType)buffer.template Load<GPUDatablock<MemberType>>(ByteAddress);
+        }
     }
 
     template <typename ByteBufferType>
-    T Load(ByteBufferType buffer, uint32_t byte_offset = 0) const 
+    T Load(ByteBufferType buffer) const requires (!AOSOAInfo<T>::IsSOA)
     {
-        const auto ByteAddress = _buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size;
+        const auto ByteAddress = _buffer_offset + _instance_index * GPUDatablock<T>::Size;
         return buffer.template Load<GPUDatablock<T>>(ByteAddress);
     }
 
-    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
-    auto Load(ByteBufferType buffers[], uint32_t byte_offset = 0) const
+    template <typename ByteBufferType>
+    void Store(ByteBufferType buffer, const T& v) requires (!AOSOAInfo<T>::IsSOA)
     {
-        using MemberType = typename cppsl::MemberInfo<Member>::Type;
-        byte_offset += MemberOffset;
-        const auto ByteAddress = _buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size;
-        return (MemberType)buffers[_bindless_index].template Load<GPUDatablock<MemberType>>(ByteAddress);
-    }
-
-    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
-    auto Load(ByteBufferType buffer, uint32_t byte_offset = 0) const
-    {
-        using MemberType = typename cppsl::MemberInfo<Member>::Type;
-        byte_offset += MemberOffset;
-        const auto ByteAddress = _buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size;
-        return (MemberType)buffer.template Load<GPUDatablock<MemberType>>(ByteAddress);
-    }
-
-    void Store(RWByteAddressBuffer buffer, const T& v, uint32_t byte_offset = 0)
-    {
-        const auto ByteAddress = _buffer_offset + byte_offset + _instance_index * GPUDatablock<T>::Size;
+        const auto ByteAddress = _buffer_offset + _instance_index * GPUDatablock<T>::Size;
         buffer.Store(ByteAddress, GPUDatablock<T>(v));
     }
 
+    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
+    auto Load(ByteBufferType buffers[]) const { return Load(buffers[_bindless_index]); }
+
+    template <typename ByteBufferType> requires (!AOSOAInfo<T>::IsSOA)
+    T Load(ByteBufferType buffers[]) const { return Load(buffers[_bindless_index]); }
+
+    template <typename ByteBufferType> requires (!AOSOAInfo<T>::IsSOA)
+    void Store(ByteBufferType buffers[], const T& v) { Store(buffers[_bindless_index], v); }
+    
     uint32_t BindlessIndex() const { return _bindless_index; }
     bool IsValidBindlessBuffer() const { return _bindless_index != ~0; }
 
@@ -81,43 +95,50 @@ public:
 
     }
 
-    template <typename ByteBufferType>
-    T Load(ByteBufferType buffers[], uint32_t instance_index, uint32_t byte_offset = 0) const
+    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
+    auto Load(ByteBufferType buffer, uint32_t instance_index) const
     {
-        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
-        return buffers[_bindless_index].template Load<GPUDatablock<T>>(ByteAddress);
+        using MemberType = typename cppsl::MemberInfo<Member>::Type;
+        if constexpr (AOSOAInfo<T>::IsSOA)
+        {
+            const auto _instance_index = _first_instance + instance_index;
+            constexpr auto InstanceCountInPage = AOSOAInfo<T>::SOAPageSize;
+            constexpr auto PageSizeInBytes = InstanceCountInPage * GPUDatablock<T>::Size;
+            const auto PageIndex = (_instance_index / InstanceCountInPage);
+            const auto InstanceOffsetInPage = (_instance_index % InstanceCountInPage);
+            const auto ByteAddress = PageIndex * PageSizeInBytes + MemberOffset * InstanceCountInPage + InstanceOffsetInPage * GPUDatablock<MemberType>::Size;
+            return (MemberType)buffer.template Load<GPUDatablock<MemberType>>(ByteAddress);
+        }
+        else
+        {
+            using MemberType = typename cppsl::MemberInfo<Member>::Type;
+            const auto ByteAddress = MemberOffset + _buffer_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+            return (MemberType)buffer.template Load<GPUDatablock<MemberType>>(ByteAddress);
+        }
     }
 
-    template <typename ByteBufferType>
-    T Load(ByteBufferType buffer, uint32_t instance_index, uint32_t byte_offset = 0) const
+    template <typename ByteBufferType> requires (!AOSOAInfo<T>::IsSOA)
+    T Load(ByteBufferType buffer, uint32_t instance_index) const
     {
-        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+        const auto ByteAddress = _buffer_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
         return buffer.template Load<GPUDatablock<T>>(ByteAddress);
     }
 
-    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
-    auto Load(ByteBufferType buffers[], uint32_t instance_index, uint32_t byte_offset = 0) const
+    template <typename ByteBufferType> requires (!AOSOAInfo<T>::IsSOA)
+    void Store(ByteBufferType buffer, uint32_t instance_index, const T& v)
     {
-        using MemberType = typename cppsl::MemberInfo<Member>::Type;
-        byte_offset += MemberOffset;
-        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
-        return (MemberType)buffers[_bindless_index].template Load<GPUDatablock<MemberType>>(ByteAddress);
-    }
-
-    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
-    auto Load(ByteBufferType buffer, uint32_t instance_index, uint32_t byte_offset = 0) const
-    {
-        using MemberType = typename cppsl::MemberInfo<Member>::Type;
-        byte_offset += MemberOffset;
-        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
-        return (MemberType)buffer.template Load<GPUDatablock<MemberType>>(ByteAddress);
-    }
-
-    void Store(RWByteAddressBuffer buffer, uint32_t instance_index, const T& v, uint32_t byte_offset = 0)
-    {
-        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+        const auto ByteAddress = _buffer_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
         buffer.Store(ByteAddress, GPUDatablock<T>(v));
     }
+
+    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
+    auto Load(ByteBufferType buffers[], uint32_t instance_index) const { return Load(buffers[_bindless_index], instance_index); }
+
+    template <typename ByteBufferType> requires (!AOSOAInfo<T>::IsSOA)
+    T Load(ByteBufferType buffers[], uint32_t instance_index) const { return Load(buffers[_bindless_index], instance_index); }
+
+    template <typename ByteBufferType> requires (!AOSOAInfo<T>::IsSOA)
+    void Store(ByteBufferType buffers[], uint32_t instance_index, const T& v) { return Store(buffers[_bindless_index], instance_index); }
 
     uint32_t BindlessIndex() const { return _bindless_index; }
     bool IsValidBindlessBuffer() const { return _bindless_index != ~0; }
@@ -140,43 +161,49 @@ public:
 
     }
 
-    template <typename ByteBufferType>
-    T Load(ByteBufferType buffer, uint32_t instance_index, uint32_t byte_offset = 0) const
+    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
+    auto Load(ByteBufferType buffer, uint32_t instance_index) const
     {
-        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+        using MemberType = typename cppsl::MemberInfo<Member>::Type;
+        if constexpr (AOSOAInfo<T>::IsSOA)
+        {
+            const auto _instance_index = _first_instance + instance_index;
+            constexpr auto InstanceCountInPage = AOSOAInfo<T>::SOAPageSize;
+            constexpr auto PageSizeInBytes = InstanceCountInPage * GPUDatablock<T>::Size;
+            const auto PageIndex = (_instance_index / InstanceCountInPage);
+            const auto InstanceOffsetInPage = (_instance_index % InstanceCountInPage);
+            const auto ByteAddress = PageIndex * PageSizeInBytes + MemberOffset * InstanceCountInPage + InstanceOffsetInPage * GPUDatablock<MemberType>::Size;
+            return (MemberType)buffer.template Load<GPUDatablock<MemberType>>(ByteAddress);
+        }
+        else
+        {
+            const auto ByteAddress = MemberOffset + _buffer_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+            return (MemberType)buffer.template Load<GPUDatablock<MemberType>>(ByteAddress);
+        }
+    }
+
+    template <typename ByteBufferType> requires (!AOSOAInfo<T>::IsSOA)
+    T Load(ByteBufferType buffer, uint32_t instance_index) const
+    {
+        const auto ByteAddress = _buffer_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
         return buffer.template Load<GPUDatablock<T>>(ByteAddress);
     }
 
-    template <typename ByteBufferType>
-    T Load(ByteBufferType buffers[], uint32_t instance_index, uint32_t byte_offset = 0) const
+    template <typename ByteBufferType> requires (!AOSOAInfo<T>::IsSOA)
+    void Store(ByteBufferType buffer, uint32_t instance_index, const T& v)
     {
-        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
-        return buffers[_bindless_index].template Load<GPUDatablock<T>>(ByteAddress);
-    }
-
-    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
-    auto Load(ByteBufferType buffer, uint32_t instance_index, uint32_t byte_offset = 0) const
-    {
-        using MemberType = typename cppsl::MemberInfo<Member>::Type;
-        byte_offset += MemberOffset;
-        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
-        return (MemberType)buffer.template Load<GPUDatablock<MemberType>>(ByteAddress);
-    }
-
-    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
-    auto Load(ByteBufferType buffers[], uint32_t instance_index, uint32_t byte_offset = 0) const
-    {
-        using MemberType = typename cppsl::MemberInfo<Member>::Type;
-        byte_offset += MemberOffset;
-        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
-        return (MemberType)buffers[_bindless_index].template Load<GPUDatablock<MemberType>>(ByteAddress);
-    }
-
-    void Store(RWByteAddressBuffer buffer, uint32_t instance_index, const T& v, uint32_t byte_offset = 0)
-    {
-        const auto ByteAddress = _buffer_offset + byte_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
+        const auto ByteAddress = _buffer_offset + (_first_instance + instance_index) * GPUDatablock<T>::Size;
         buffer.Store(ByteAddress, GPUDatablock<T>(v));
     }
+
+    template <auto Member, uint64_t MemberOffset, typename ByteBufferType>
+    auto Load(ByteBufferType buffers[], uint32_t instance_index) const { return Load(buffers[_bindless_index], instance_index); }
+
+    template <typename ByteBufferType> requires (!AOSOAInfo<T>::IsSOA)
+    T Load(ByteBufferType buffers[], uint32_t instance_index) const { return Load(buffers[_bindless_index], instance_index); }
+
+    template <typename ByteBufferType> requires (!AOSOAInfo<T>::IsSOA)
+    void Store(ByteBufferType buffers[], uint32_t instance_index, const T& v) { return Store(buffers[_bindless_index], instance_index); }
 
     uint32_t Count() const { return _count; }
     uint32_t BindlessIndex() const { return _bindless_index; }
@@ -190,32 +217,32 @@ private:
     uint32_t _bindless_index = ~0;
 };
 
-template <typename T, uint32_t Idx, uint32_t PageSize>
-struct SOAAccessor
-{
-public:
-    void operator=(const T& v)
-    {
-        GPUDatablock<T> data(v);
-    }
+// template <typename T, uint32_t Idx, uint32_t PageSize>
+// struct SOAAccessor
+// {
+// public:
+//     void operator=(const T& v)
+//     {
+//         GPUDatablock<T> data(v);
+//     }
 
-private:
-    ByteAddressBuffer _buffer;
-    uint32_t _buffer_offset = 0;
-};
+// private:
+//     ByteAddressBuffer _buffer;
+//     uint32_t _buffer_offset = 0;
+// };
 
-template <typename T, uint32_t Idx, uint32_t PageSize>
-struct SOARow
-{
-public:
-    SOAAccessor<T, Idx, PageSize> operator[](uint32_t idx)
-    {
+// template <typename T, uint32_t Idx, uint32_t PageSize>
+// struct SOARow
+// {
+// public:
+//     SOAAccessor<T, Idx, PageSize> operator[](uint32_t idx)
+//     {
 
-    }
+//     }
 
-private:
-    ByteAddressBuffer _buffer;
-};
+// private:
+//     ByteAddressBuffer _buffer;
+// };
 
 
 } // namespace skr::gpu

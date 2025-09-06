@@ -119,7 +119,7 @@ namespace SB
     {
         public void Setup()
         {
-            var Installation = Install.Tool("dxc-2025_02_21");
+            var Installation = Install.Tool("dxc-2025_07_14");
             Installation.Wait();
             DXC = Path.Combine(Installation.Result, BuildSystem.HostOS == OSPlatform.Windows ? "dxc.exe" : "dxc");
             Directory.CreateDirectory(Path.Combine(Engine.BuildPath, "resources/shaders"));

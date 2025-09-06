@@ -15,7 +15,7 @@ RTTRType::~RTTRType()
     case ERTTRTypeCategory::Invalid:
         break;
     case ERTTRTypeCategory::Primitive:
-        _primitive_data.~RTTRPrimitiveData();
+        _primitive_data.~RTTRPrimitiveTable();
         break;
     case ERTTRTypeCategory::Record:
         _record_data.~RTTRRecordData();
@@ -30,12 +30,12 @@ RTTRType::~RTTRType()
 }
 
 // builders
-void RTTRType::build_primitive(FunctionRef<void(RTTRPrimitiveData* data)> func)
+void RTTRType::build_primitive(FunctionRef<void(RTTRPrimitiveTable* data)> func)
 {
     // init
     if (_type_category == ERTTRTypeCategory::Invalid)
     {
-        new (&_primitive_data) RTTRPrimitiveData();
+        new (&_primitive_data) RTTRPrimitiveTable();
         _type_category = ERTTRTypeCategory::Primitive;
     }
 

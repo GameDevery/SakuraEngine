@@ -74,12 +74,12 @@ public:
         const uint64_t offset = GetComponentOffset(comp_id, inst);
         if constexpr (gpu::is_datablock_v<T>)
         {
-            Store(offset, &value, sizeof(value));
+            StoreInternal(offset, &value, sizeof(value));
         }
         else
         {
             GPUDatablock<T> data(value);
-            Store(offset, &data, GPUDatablock<T>::Size);
+            StoreInternal(offset, &data, GPUDatablock<T>::Size);
         }
     }
     void DispatchSparseUpload(skr::render_graph::RenderGraph* graph, const render_graph::ComputePassExecuteFunction& on_exec);
@@ -105,7 +105,7 @@ protected:
 
     bool needsResize(uint32_t required_instances) const;
     skr::render_graph::BufferHandle importBuffer(skr::render_graph::RenderGraph* graph, const char8_t* name);
-    void Store(uint64_t offset, const void* data, uint64_t size);    
+    void StoreInternal(uint64_t offset, const void* data, uint64_t size);    
 
     struct Upload
     {
@@ -123,6 +123,9 @@ protected:
     struct UploadBatch
     {
         UploadBatch();
+        // Delete copies.
+        UploadBatch(UploadBatch const&) = delete;
+        UploadBatch& operator=(UploadBatch const&) = delete;
 
         skr::Vector<Upload> uploads;
         skr::Vector<uint8_t> bytes;

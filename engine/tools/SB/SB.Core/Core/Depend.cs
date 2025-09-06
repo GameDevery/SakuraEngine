@@ -308,7 +308,7 @@ namespace SB.Core
 
             Factory = new(
                 new DbContextOptionsBuilder<DependContext>()
-                    .UseSqlite($"Data Source={DatabasePath}")
+                    .UseSqlite($"Data Source={DatabasePath};Mode=ReadWriteCreate;Cache=Shared")
                     .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
                     .Options
             );
@@ -317,7 +317,13 @@ namespace SB.Core
             using (var warmUpContext = Factory.CreateDbContext())
             {
                 warmUpContext.Database.EnsureCreated();
-                warmUpContext.FindAsync<DependEntity>("");
+                // Enable WAL mode for better concurrency
+                warmUpContext.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL");
+                // Optimize SQLite for concurrent access
+                warmUpContext.Database.ExecuteSqlRaw("PRAGMA synchronous=NORMAL");
+                warmUpContext.Database.ExecuteSqlRaw("PRAGMA temp_store=MEMORY");
+                warmUpContext.Database.ExecuteSqlRaw("PRAGMA mmap_size=30000000000");
+                warmUpContext.Database.ExecuteSqlRaw("PRAGMA busy_timeout=5000");
             }
         }
 

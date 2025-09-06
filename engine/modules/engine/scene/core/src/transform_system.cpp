@@ -92,12 +92,12 @@ namespace skr
 
 struct skr::TransformSystem::Impl
 {
-    skr::ecs::World* pWorld = nullptr;
+    skr::ecs::ECSWorld* pWorld = nullptr;
     sugoi_query_t* rootJobQuery = nullptr;
     skr::TransformSystem::Context context;
 };
 
-TransformSystem* TransformSystem::Create(skr::ecs::World* world) SKR_NOEXCEPT
+TransformSystem* TransformSystem::Create(skr::ecs::ECSWorld* world) SKR_NOEXCEPT
 {
     SkrZoneScopedN("CreateTransformSystem");
     auto memory = (uint8_t*)sakura_calloc(1, sizeof(TransformSystem) + sizeof(TransformSystem::Impl));
@@ -208,7 +208,7 @@ void TransformSystem::CalculateTransform(sugoi_entity_t entity) SKR_NOEXCEPT
 
 } // namespace skr
 
-skr::TransformSystem* skr_transform_system_create(skr::ecs::World* world)
+skr::TransformSystem* skr_transform_system_create(skr::ecs::ECSWorld* world)
 {
     return skr::TransformSystem::Create(world);
 }

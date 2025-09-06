@@ -202,7 +202,7 @@ protected:
     skr::MaterialFactory* MatFactory = nullptr;
 
     skr::RC<skr::gpu::TableManager> GPUTableManager;
-    skr::ecs::World world;
+    skr::ecs::ECSWorld world;
     skr::GPUScene GPUScene;
 
     // Compute pipeline resources for debug rendering
@@ -442,18 +442,18 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                 [=, this](render_graph::RenderGraph& g, render_graph::ComputePassBuilder& builder) {
                     builder.set_name(u8"RayTracingPass")
                         .set_pipeline(compute_pipeline)
-                        .read(u8"scene_tlas", TLASHandle)
-                        .read(u8"gpu_insts", GPUScene.GetSceneBuffer(render_graph))
-                        .read(u8"gpu_mats", GPUScene.GetMaterialBuffer(render_graph))
-                        .read(u8"gpu_prims", GPUScene.GetPrimitiveBuffer(render_graph))
+                        .read(u8"SceneTLAS", TLASHandle)
+                        .read(u8"GPUSceneInstances", GPUScene.GetSceneBuffer(render_graph))
+                        .read(u8"MaterialTable", GPUScene.GetMaterialBuffer(render_graph))
+                        .read(u8"PrimitiveTable", GPUScene.GetPrimitiveBuffer(render_graph))
                         .readwrite(u8"output_texture", render_target_handle);
                 },
                 [=, this](render_graph::RenderGraph& g, render_graph::ComputePassContext& ctx) {
                     // Bind Bindless IB/VBs
                     auto vbibs = MeshFactory->descriptor_buffer();
-                    cgpu_compute_encoder_bind_descriptor_buffer(ctx.encoder, vbibs, u8"geom_buffers");
+                    cgpu_compute_encoder_bind_descriptor_buffer(ctx.encoder, vbibs, u8"VertexBuffers");
                     auto texs = MatFactory->descriptor_buffer();
-                    cgpu_compute_encoder_bind_descriptor_buffer(ctx.encoder, texs, u8"mat_textures");
+                    cgpu_compute_encoder_bind_descriptor_buffer(ctx.encoder, texs, u8"MaterialTextures");
 
                     // Push constants
                     cgpu_compute_encoder_push_constants(ctx.encoder, root_signature, u8"camera_constants", &camera_constants);

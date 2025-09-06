@@ -8,13 +8,12 @@ public static class D3D12Agility
     {
         if (BuildSystem.TargetOS != OSPlatform.Windows)
             return;
-            
-        // TODO: WE NEED TO ENABLE SETUP IN PACKAGE SCOPE
-        BuildSystem.AddSetup<D3D12AgilitySetup>();
 
         BuildSystem.Package("D3D12Agility")
             .AddTarget("D3D12Agility", (Target Target, PackageConfig Config) =>
             {
+                BuildSystem.AddSetup<D3D12AgilitySetup>();
+
                 if (Config.Version != new Version(1, 616, 1))
                 {
                     throw new TaskFatalError("D3D12Agility version mismatch!", "D3D12Agility version mismatch, only v1.616.1 is supported in source.");

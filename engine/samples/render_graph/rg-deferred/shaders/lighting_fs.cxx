@@ -22,7 +22,7 @@ ConstantBuffer<RootConstants> push_constants;
 [[group(1)]] SamplerState texture_sampler;
 
 [[fragment_shader("fs")]]
-void fs(VSOut psIn, [[sv_render_target(0)]] float4 out_color)
+void fs(VSOut psIn, [[sv_render_target(0)]] float4 OutputColor)
 {
     float2 uv = psIn.uv;
     if (push_constants.bFlipUVX)
@@ -32,6 +32,6 @@ void fs(VSOut psIn, [[sv_render_target(0)]] float4 out_color)
 
     float4 gbufferColor = gbuffer_color.Sample(texture_sampler, uv);
     float4 gbufferNormal = gbuffer_normal.Sample(texture_sampler, uv);
-    out_color = gbufferColor * 0.5f + abs(gbufferNormal) * 0.5f;
-    out_color *= gbuffer_depth.Sample(texture_sampler, uv).rrrr;
+    OutputColor = gbufferColor * 0.5f + abs(gbufferNormal) * 0.5f;
+    OutputColor *= gbuffer_depth.Sample(texture_sampler, uv).rrrr;
 }

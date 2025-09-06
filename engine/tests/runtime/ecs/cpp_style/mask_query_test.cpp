@@ -6,7 +6,7 @@
 class MaskComponentTest 
 {
 public:
-    skr::ecs::World world;
+    skr::ecs::ECSWorld world;
     sugoi_storage_t* storage = nullptr;
     
     MaskComponentTest() SKR_NOEXCEPT

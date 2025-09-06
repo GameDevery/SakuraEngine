@@ -614,7 +614,7 @@ namespace skr
 {
 template <typename T>
 struct RTTRPrimitiveBuilder {
-    inline RTTRPrimitiveBuilder(RTTRPrimitiveData* data)
+    inline RTTRPrimitiveBuilder(RTTRPrimitiveTable* data)
         : _data(data)
     {
     }
@@ -697,6 +697,6 @@ struct RTTRPrimitiveBuilder {
     }
 
 private:
-    RTTRPrimitiveData* _data;
+    RTTRPrimitiveTable* _data;
 };
 } // namespace skr

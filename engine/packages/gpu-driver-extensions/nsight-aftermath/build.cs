@@ -9,12 +9,11 @@ public static class NvAftermath
         if (BuildSystem.TargetOS != OSPlatform.Windows)
             return;
 
-        // TODO: WE NEED TO ENABLE SETUP IN PACKAGE SCOPE
-        BuildSystem.AddSetup<NvAftermathSetup>();
-
         BuildSystem.Package("NvAftermath")
             .AddTarget("NvAftermath", (Target Target, PackageConfig Config) =>
             {
+                BuildSystem.AddSetup<NvAftermathSetup>();
+
                 Target.TargetType(TargetType.HeaderOnly);
                 if (Config.Version == new Version(2025, 1, 0))
                 {

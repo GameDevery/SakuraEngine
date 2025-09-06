@@ -1,7 +1,10 @@
-#include "SkrScene/actor.h"
+#include "SkrRTTR/type.hpp"
+#include "SkrRTTR/type_registry.hpp"
+#include "SkrSceneCore/scene_components.h"
 #include "SkrRT/ecs/world.hpp"
 #include "SkrRT/sugoi/sugoi_config.h"
-#include "SkrSceneCore/scene_components.h"
+#include "SkrScene/actor.h"
+#include "SkrScene/actor_manager.h"
 
 namespace skr
 {
@@ -37,8 +40,9 @@ void Actor::Initialize(skr_guid_t _guid)
 }
 
 Actor::~Actor() SKR_NOEXCEPT
-{}
-
+{
+    
+}
 
 void Actor::DetachAllChildren()
 {

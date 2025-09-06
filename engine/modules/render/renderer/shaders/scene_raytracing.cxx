@@ -1,12 +1,12 @@
 #include <std/std.hxx>
 #include "SkrRenderer/shared/gpu_scene.hpp"
 
-ByteAddressBuffer gpu_insts;
-ByteAddressBuffer gpu_mats;
-ByteAddressBuffer gpu_prims;
+ByteAddressBuffer GPUSceneInstances;
+ByteAddressBuffer MaterialTable;
+ByteAddressBuffer PrimitiveTable;
 
 RWTexture2D<float> output_texture;
-Accel scene_tlas;
+Accel SceneTLAS;
 
 // Push constants - camera parameters
 struct CameraConstants 
@@ -19,8 +19,8 @@ struct CameraConstants
 [[push_constant]]
 ConstantBuffer<CameraConstants> camera_constants;
 
-ByteAddressBuffer geom_buffers[0];
-Texture2D<> mat_textures[0];
+ByteAddressBuffer VertexBuffers[0];
+Texture2D<> MaterialTextures[0];
 
 [[group(1)]] SamplerState tex_sampler;
 
@@ -71,7 +71,7 @@ float4 trace_scene(uint2 pixel_coord, uint2 screen_size)
     RayQuery<RayQueryFlags::None> query;
     
     // Normal ray tracing
-    query.TraceRayInline(scene_tlas, 0xff, primary_ray);
+    query.TraceRayInline(SceneTLAS, 0xff, primary_ray);
     while (query.Proceed())
     {
         if (query.CandidateStatus() == HitType::HitTriangle)
@@ -82,18 +82,18 @@ float4 trace_scene(uint2 pixel_coord, uint2 screen_size)
     if (query.CommittedStatus() == HitType::HitTriangle) {
         uint instance_id = query.CommittedInstanceID();
         const auto instance_row = skr::gpu::Row<skr::gpu::Instance>(instance_id); 
-        const auto instance = instance_row.Load(gpu_insts);
-        const auto prim = instance.primitives.Load(gpu_prims, query.CommittedGeometryIndex());
-        const auto mat = instance.materials.Load(gpu_mats, prim.material_index);
-        const auto tri = prim.triangles.Load(geom_buffers, query.CommittedPrimitiveIndex());
-        const auto uv_a = prim.uvs.Load(geom_buffers, tri[0]);
-        const auto uv_b = prim.uvs.Load(geom_buffers, tri[1]);
-        const auto uv_c = prim.uvs.Load(geom_buffers, tri[2]);
+        const auto instance = instance_row.Load(GPUSceneInstances);
+        const auto prim = instance.primitives.Load(PrimitiveTable, query.CommittedGeometryIndex());
+        const auto mat = instance.materials.Load(MaterialTable, prim.material_index);
+        const auto tri = prim.triangles.Load(VertexBuffers, query.CommittedPrimitiveIndex());
+        const auto uv_a = prim.uvs.Load(VertexBuffers, tri[0]);
+        const auto uv_b = prim.uvs.Load(VertexBuffers, tri[1]);
+        const auto uv_c = prim.uvs.Load(VertexBuffers, tri[2]);
         const auto uv = interpolate(query.CommittedTriangleBarycentrics(), uv_a, uv_b, uv_c);
-        const auto pos_a = prim.positions.Load(geom_buffers, tri[0]);
+        const auto pos_a = prim.positions.Load(VertexBuffers, tri[0]);
         float4 color = float4(1.f, 1.f, 1.f, 1.f);
         if (mat.basecolor_tex != ~0)
-            color = mat_textures[mat.basecolor_tex].Sample(tex_sampler, uv);
+            color = MaterialTextures[mat.basecolor_tex].Sample(tex_sampler, uv);
         else
             color = float4(1.f, 0.f, 1.f, 1.f);
         return color;

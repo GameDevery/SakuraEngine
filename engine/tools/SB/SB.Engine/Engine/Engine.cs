@@ -10,9 +10,10 @@ namespace SB
     using BS = BuildSystem;
     public partial class Engine : BuildSystem
     {
-        public static void SetEngineDirectory(string Directory) => EngineDirectory = Directory;
+        public static void SetEngineDirectory(string directory) => EngineDirectory = directory;
+        public static void SetProjectRoot(string projectRoot) => ProjectRoot = projectRoot;
 
-        public static IToolchain Bootstrap(string ProjectRoot, TargetCategory Categories)
+        public static IToolchain Bootstrap(TargetCategory Categories)
         {
             using (Profiler.BeginZone("Bootstrap", color: (uint)Profiler.ColorType.WebMaroon))
             {
@@ -33,6 +34,7 @@ namespace SB
                         throw new Exception($"Drive letter {DriveLetter} from source location must be upper case! You might compiled SB in git bash environment, please recompile it in cmd.exe or powershell.exe!");
                 }
 
+                // create directories
                 BS.TempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".sb")).FullName;
                 BS.BuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".build", Toolchain.Name)).FullName;
                 BS.PackageBuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.build", Toolchain.Name)).FullName;
@@ -215,6 +217,7 @@ namespace SB
         public static DependDatabase ShaderCompileDepend = new DependDatabase(Engine.TempPath, "Engine.ShaderCompileDepends");
 
         public static string EngineDirectory { get; private set; } = Directory.GetCurrentDirectory();
+        public static string ProjectRoot { get; private set; } = Directory.GetCurrentDirectory();
         public static string ToolDirectory => Path.Combine(TempPath, "tools");
         public static string DownloadDirectory => Path.Combine(TempPath, "downloads");
         public static bool EnableDebugInfo = true;

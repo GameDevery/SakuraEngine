@@ -159,7 +159,7 @@ protected:
     void on_exit() SKR_NOEXCEPT override;
     void dispatch(skr::RC<TaskSignature> task);
     
-    friend struct World;
+    friend struct ECSWorld;
     void add_task(skr::RC<TaskSignature> task);
     skr::task::counter_t running;
 

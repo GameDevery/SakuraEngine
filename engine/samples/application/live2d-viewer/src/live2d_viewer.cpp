@@ -41,7 +41,7 @@ public:
 
     bool bUseCVV = true;
 
-    skr::ecs::World world;
+    skr::ecs::ECSWorld world;
     skr_vfs_t* resource_vfs = nullptr;
     skr_io_ram_service_t* ram_service = nullptr;
     skr_io_vram_service_t* vram_service = nullptr;

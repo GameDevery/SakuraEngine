@@ -1,6 +1,9 @@
 #pragma once
 #include "SkrBase/config.h"
 #include "SkrRenderer/fwd_types.h"
+#ifdef _WIN32
+#include "SkrGraphics/extensions/cgpu_d3d12_exts.h"
+#endif
 
 struct sugoi_storage_t;
 struct SViewportManager;
@@ -19,5 +22,8 @@ public:
     static SkrRendererModule* Get();
 protected:
     skr::RenderDevice* render_device;
+#ifdef _WIN32
+    CGPUDREDSettingsId dred = nullptr;
+#endif
 };
 #endif

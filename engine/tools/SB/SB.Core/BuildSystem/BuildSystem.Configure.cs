@@ -13,21 +13,21 @@ namespace SB
                 Target.DebugSymbols(true)
                     .OptimizationLevel(OptimizationLevel.None);
             };
-            Configurations.Add("debug", Debug);
+            Configurations["debug"] = Debug;
 
             TargetDelegate DebugRelease = (Target) =>
             {
                 Target.DebugSymbols(true)
                     .OptimizationLevel(OptimizationLevel.Faster);
             };
-            Configurations.Add("releasedbg", DebugRelease);
+            Configurations["releasedbg"] = DebugRelease;
 
             TargetDelegate Release = (Target) =>
             {
                 Target.DebugSymbols(false)
                     .OptimizationLevel(OptimizationLevel.Fastest);
             };
-            Configurations.Add("release", Release);
+            Configurations["release"] = Release;
         }
 
         public static void EnableAsan()

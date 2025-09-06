@@ -63,6 +63,7 @@ private:\
 #define GPU_DATABLOCK_MAT3(T)\
 template <> struct GPUDatablock<T##3x3> {\
     inline static constexpr uint32_t Size = 3 * 3 * 4;\
+    GPUDatablock<T##3x3>() = default;\
     GPUDatablock<T##3x3>(const T##3x3& v)\
         : u0(v[0]), u1(v[1]), u2(v[2])\
     { static_assert(sizeof(T) == sizeof(float), "PRIMITIVE MAT3 TYPES MUST BE 32BIT TYPES"); }\
@@ -74,6 +75,7 @@ private:\
 #define GPU_DATABLOCK_MAT4(T)\
 template <> struct GPUDatablock<T##4x4> {\
     inline static constexpr uint32_t Size = 4 * 4 * 4;\
+    GPUDatablock<T##4x4>() = default;\
     GPUDatablock<T##4x4>(const T##4x4& v)\
         : u0(v[0]), u1(v[1]), u2(v[2]), u3(v[3])\
     { static_assert(sizeof(T) == sizeof(float), "PRIMITIVE MAT4 TYPES MUST BE 32BIT TYPES"); }\
@@ -113,6 +115,7 @@ struct GPUDatablock<skr::gpu_array<T, N>>
 public:
     inline static constexpr uint32_t Size = sizeof(GPUDatablock<T>) * N;
 
+    GPUDatablock() = default;
     GPUDatablock<skr::gpu_array<T, N>>(const skr::gpu_array<T, N>& r)
     {
         for (uint32_t i = 0; i < N; i++)
@@ -143,6 +146,7 @@ public:
     using InnerType = Row<T>;
     inline static constexpr uint32_t Size = 4 + 4 + 4;
 
+    GPUDatablock() = default;
     GPUDatablock<Row<T>>(const InnerType& row)
         : instance_index(row._instance_index), buffer_offset(row._buffer_offset), bindless_index(row._bindless_index)
     {
@@ -172,6 +176,7 @@ public:
     using InnerType = FixedRange<T, N>;
     inline static constexpr uint32_t Size = 4 + 4 + 4;
 
+    GPUDatablock() = default;
     GPUDatablock<FixedRange<T, N>>(const InnerType& range)
         : bindless_index(range._bindless_index), buffer_offset(range._buffer_offset), first_instance(range._first_instance)
     {
@@ -201,6 +206,7 @@ public:
     using InnerType = Range<T>;
     inline static constexpr uint32_t Size = 4 + 4 + 4 + 4;
 
+    GPUDatablock() = default;
     GPUDatablock<Range<T>>(const InnerType& range)
         : first_instance(range._first_instance), count(range._count), 
           buffer_offset(range._buffer_offset), bindless_index(range._bindless_index)
